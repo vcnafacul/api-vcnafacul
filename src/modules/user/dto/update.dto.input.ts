@@ -1,43 +1,6 @@
-import { IsOptional, IsNotEmpty, IsString, IsEnum } from 'class-validator';
-import { Gender } from '../enum/gender';
+import { OmitType, PartialType } from '@nestjs/swagger';
+import { CreateUserDtoInput } from './create.dto.input';
 
-export class UpdateUserDTOInput {
-  @IsNotEmpty()
-  @IsString()
-  @IsOptional()
-  firstName: string;
-
-  @IsNotEmpty()
-  @IsString()
-  @IsOptional()
-  lastName: string;
-
-  @IsNotEmpty()
-  @IsString()
-  @IsOptional()
-  phone: string;
-
-  @IsEnum(Gender)
-  @IsOptional()
-  gender: Gender;
-
-  @IsNotEmpty()
-  @IsString()
-  @IsOptional()
-  birthday: Date;
-
-  @IsNotEmpty()
-  @IsString()
-  @IsOptional()
-  state: string;
-
-  @IsNotEmpty()
-  @IsString()
-  @IsOptional()
-  city: string;
-
-  @IsNotEmpty()
-  @IsString()
-  @IsOptional()
-  about?: string;
-}
+export class UpdateUserDTOInput extends PartialType(
+  OmitType(CreateUserDtoInput, ['email', 'password']),
+) {}
