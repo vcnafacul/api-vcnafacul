@@ -75,52 +75,21 @@ export class UserService {
   async update(updateUser: UpdateUserDTOInput) {
     const user = await this.userRepository.findUserById(updateUser.id);
 
-    let isChanged = false;
+    const originalUser = JSON.parse(JSON.stringify(user));
 
-    if (updateUser.nome != null) {
-      user.firstName = updateUser.nome;
-      isChanged = true;
-    }
+    const nonNullUpdates = Object.fromEntries(
+      Object.entries(updateUser).filter(([, value]) => value != null),
+    );
 
-    if (updateUser.sobrenome != null) {
-      user.lastName = updateUser.sobrenome;
-      isChanged = true;
-    }
+    Object.assign(user, nonNullUpdates);
 
-    if (updateUser.telefone != null) {
-      user.phone = updateUser.telefone;
-      isChanged = true;
-    }
-
-    if (updateUser.genero != null) {
-      user.gender = updateUser.genero;
-      isChanged = true;
-    }
-
-    if (updateUser.nascimento != null) {
-      user.birthday = updateUser.nascimento;
-      isChanged = true;
-    }
-
-    if (updateUser.estado != null) {
-      user.state = updateUser.estado;
-      isChanged = true;
-    }
-
-    if (updateUser.cidade != null) {
-      user.phone = updateUser.cidade;
-      isChanged = true;
-    }
-
-    if (updateUser.sobre != null) {
-      user.about = updateUser.sobre;
-      isChanged = true;
-    }
+    const isChanged = JSON.stringify(originalUser) !== JSON.stringify(user);
 
     if (isChanged) {
-      // Salve as alterações do usuário.
       await this.userRepository.update(user);
+      return true;
     }
+    return false;
   }
 
   async deleteUser(id: number) {
@@ -155,18 +124,7 @@ export class UserService {
 
   private convertDtoToDomain(userDto: CreateUserDtoInput): User {
     const newUser = new User();
-
-    newUser.email = userDto.email;
-    newUser.password = userDto.password;
-    newUser.firstName = userDto.nome;
-    newUser.lastName = userDto.sobrenome;
-    newUser.phone = userDto.telefone;
-    newUser.gender = userDto.genero;
-    newUser.birthday = userDto.nascimento;
-    newUser.state = userDto.estado;
-    newUser.city = userDto.cidade;
-
-    return newUser;
+    return Object.assign(userDto, newUser);
   }
 
   private MapListUsertoUserDTO(users: User[]): UserDtoOutput[] {
@@ -175,17 +133,7 @@ export class UserService {
 
   private MapUsertoUserDTO(user: User): UserDtoOutput {
     const output = new UserDtoOutput();
-    output.id = user.id;
-    output.firstName = user.firstName;
-    output.lastName = user.lastName;
-    output.email = user.email;
-    output.phone = user.phone;
-    output.gender = user.gender;
-    output.birthday = user.birthday;
-    output.state = user.state;
-    output.city = user.city;
-
-    return output;
+    return Object.assign(user, output);
   }
 
   private mapperRole(role: Role) {

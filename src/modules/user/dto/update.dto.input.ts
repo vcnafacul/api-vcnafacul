@@ -15,39 +15,39 @@ export class UpdateUserDTOInput {
   @IsNotEmpty()
   @IsString()
   @IsOptional()
-  nome: string;
+  firstName: string;
 
   @IsNotEmpty()
   @IsString()
   @IsOptional()
-  sobrenome: string;
+  lastName: string;
 
   @IsNotEmpty()
   @IsString()
   @IsOptional()
-  telefone: string;
+  phone: string;
 
   @IsEnum(Gender)
   @IsOptional()
-  genero: Gender;
+  gender: Gender;
 
   @IsNotEmpty()
   @IsString()
   @IsOptional()
-  nascimento: Date;
+  birthday: Date;
 
   @IsNotEmpty()
   @IsString()
   @IsOptional()
-  estado: string;
+  state: string;
 
   @IsNotEmpty()
   @IsString()
   @IsOptional()
-  cidade: string;
+  city: string;
 
   @IsNotEmpty()
   @IsString()
   @IsOptional()
-  sobre: string;
+  about?: string;
 }

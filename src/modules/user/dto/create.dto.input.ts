@@ -22,15 +22,15 @@ export class CreateUserDtoInput {
 
   @IsNotEmpty()
   @ApiProperty()
-  nome: string;
+  firstName: string;
 
   @IsNotEmpty()
   @ApiProperty()
-  sobrenome: string;
+  lastName: string;
 
   @IsNotEmpty()
   @ApiProperty()
-  telefone: string;
+  phone: string;
 
   @IsEnum(Gender)
   @ApiProperty()
@@ -38,18 +38,18 @@ export class CreateUserDtoInput {
 
   @IsDateString()
   @ApiProperty()
-  nascimento: Date;
+  birthday: Date;
 
   @IsNotEmpty()
   @ApiProperty()
-  estado: string;
+  state: string;
 
   @IsNotEmpty()
   @ApiProperty()
-  cidade: string;
+  city: string;
 
   @IsNotEmpty()
   @IsOptional()
   @ApiProperty({ required: false })
-  sobre: string;
+  about?: string;
 }

@@ -1,18 +1,9 @@
-import {
-  IsDateString,
-  IsEmail,
-  IsEnum,
-  IsNotEmpty,
-  IsNumber,
-} from 'class-validator';
+import { IsDateString, IsEnum, IsNotEmpty, IsNumber } from 'class-validator';
 import { Gender } from '../enum/gender';
 
 export class UserDtoOutput {
   @IsNumber()
   id: number;
-
-  @IsEmail()
-  email: string;
 
   @IsNotEmpty()
   firstName: string;

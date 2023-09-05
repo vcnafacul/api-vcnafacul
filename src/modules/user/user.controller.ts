@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpStatus,
   Patch,
   Post,
   Put,
@@ -50,8 +51,11 @@ export class UserController {
   @Put()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  async update(@Body() updateUser: UpdateUserDTOInput) {
-    return this.userService.update(updateUser);
+  async update(@Body() updateUser: UpdateUserDTOInput, @Res() res: Response) {
+    if (await this.userService.update(updateUser)) {
+      return res.status(HttpStatus.OK).send('Updated successfully');
+    }
+    return res.status(HttpStatus.NOT_MODIFIED).send('Not updated');
   }
 
   @Post('forgot')
