@@ -1,17 +1,7 @@
-import {
-  IsOptional,
-  IsNotEmpty,
-  IsString,
-  IsNumber,
-  IsEnum,
-} from 'class-validator';
+import { IsOptional, IsNotEmpty, IsString, IsEnum } from 'class-validator';
 import { Gender } from '../enum/gender';
 
 export class UpdateUserDTOInput {
-  @IsNotEmpty()
-  @IsNumber()
-  id: number;
-
   @IsNotEmpty()
   @IsString()
   @IsOptional()

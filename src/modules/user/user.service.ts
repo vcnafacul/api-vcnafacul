@@ -72,8 +72,8 @@ export class UserService {
     return this.MapListUsertoUserDTO(await this.userRepository.findAll());
   }
 
-  async update(updateUser: UpdateUserDTOInput) {
-    const user = await this.userRepository.findUserById(updateUser.id);
+  async update(updateUser: UpdateUserDTOInput, userId: number) {
+    const user = await this.userRepository.findUserById(userId);
 
     const originalUser = JSON.parse(JSON.stringify(user));
 

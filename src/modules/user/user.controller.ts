@@ -51,8 +51,12 @@ export class UserController {
   @Put()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  async update(@Body() updateUser: UpdateUserDTOInput, @Res() res: Response) {
-    if (await this.userService.update(updateUser)) {
+  async update(
+    @Body() updateUser: UpdateUserDTOInput,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    if (await this.userService.update(updateUser, (req.user as User).id)) {
       return res.status(HttpStatus.OK).send('Updated successfully');
     }
     return res.status(HttpStatus.NOT_MODIFIED).send('Not updated');
