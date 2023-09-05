@@ -44,7 +44,6 @@ export class GeoController {
     @Req() req: Request,
     @Res() res: Response,
   ) {
-    console.log(`put`);
     if (await this.geoService.updateGeo(updateDto, req.user as User)) {
       return res.status(HttpStatus.OK).send('Updated successfully');
     }
