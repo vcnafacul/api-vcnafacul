@@ -108,6 +108,6 @@ export class GeoService {
 
   private convertDtoToDomain(dto: CreateGeoDTOInput): Geolocation {
     const geolocation = new Geolocation();
-    return Object.assign(dto, geolocation);
+    return Object.assign(geolocation, dto) as Geolocation;
   }
 }

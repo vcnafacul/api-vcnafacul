@@ -123,7 +123,7 @@ export class UserService {
 
   private convertDtoToDomain(userDto: CreateUserDtoInput): User {
     const newUser = new User();
-    return Object.assign(userDto, newUser);
+    return Object.assign(newUser, userDto) as User;
   }
 
   private MapListUsertoUserDTO(users: User[]): UserDtoOutput[] {
@@ -132,7 +132,7 @@ export class UserService {
 
   private MapUsertoUserDTO(user: User): UserDtoOutput {
     const output = new UserDtoOutput();
-    return Object.assign(user, output);
+    return Object.assign(output, user) as UserDtoOutput;
   }
 
   private mapperRole(role: Role) {
