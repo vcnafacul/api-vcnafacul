@@ -108,32 +108,6 @@ export class GeoService {
 
   private convertDtoToDomain(dto: CreateGeoDTOInput): Geolocation {
     const geolocation = new Geolocation();
-    geolocation.latitude = dto.latitude;
-    geolocation.longitude = dto.longitude;
-    geolocation.name = dto.name;
-    geolocation.cep = dto.cep;
-    geolocation.state = dto.state;
-    geolocation.city = dto.city;
-    geolocation.neighborhood = dto.neighborhood;
-    geolocation.street = dto.street;
-    geolocation.number = dto.number;
-    geolocation.complement = dto.complement ?? '';
-    geolocation.phone = dto.phone ?? '';
-    geolocation.whatsapp = dto.whatsapp ?? '';
-    geolocation.email = dto.email ?? '';
-    geolocation.email2 = dto.email2 ?? '';
-    geolocation.category = dto.category ?? '';
-    geolocation.site = dto.site ?? '';
-    geolocation.linkedin = dto.linkedin ?? '';
-    geolocation.youtube = dto.youtube ?? '';
-    geolocation.facebook = dto.facebook ?? '';
-    geolocation.instagram = dto.instagram ?? '';
-    geolocation.twitter = dto.twitter ?? '';
-    geolocation.tiktok = dto.tiktok ?? '';
-    geolocation.userFullName = dto.userFullName ?? '';
-    geolocation.userPhone = dto.userPhone ?? '';
-    geolocation.userConnection = dto.userConnection ?? '';
-    geolocation.userEmail = dto.userEmail ?? '';
-    return geolocation;
+    return Object.assign(dto, geolocation);
   }
 }
