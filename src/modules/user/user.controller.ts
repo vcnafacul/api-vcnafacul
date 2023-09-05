@@ -74,6 +74,6 @@ export class UserController {
     @Body() resetPassword: ResetPasswordDtoInput,
     @Req() req: Request,
   ) {
-    return await this.userService.reset(resetPassword, req.user as User);
+    return await this.userService.reset(resetPassword, (req.user as User).id);
   }
 }

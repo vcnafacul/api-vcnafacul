@@ -110,8 +110,8 @@ export class UserService {
     );
   }
 
-  async reset(resetPassword: ResetPasswordDtoInput, userToken: User) {
-    const user = await this.findUserById(userToken.id);
+  async reset(resetPassword: ResetPasswordDtoInput, userId: number) {
+    const user = await this.findUserById(userId);
     user.password = resetPassword.password;
     await this.userRepository.update(user);
   }
