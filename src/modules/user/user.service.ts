@@ -53,7 +53,6 @@ export class UserService {
     const user = this.MapUsertoUserDTO(userFullInfo);
     return {
       access_token: await this.jwtService.signAsync({ user, roles }),
-      status: HttpStatus.OK,
     };
   }
 
