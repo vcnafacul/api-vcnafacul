@@ -34,7 +34,7 @@ export class CreateUserDtoInput {
 
   @IsEnum(Gender)
   @ApiProperty()
-  genero: Gender;
+  gender: Gender;
 
   @IsDateString()
   @ApiProperty()
