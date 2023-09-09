@@ -4,12 +4,17 @@ import { CreateSimuladoDTOInput } from './dtos/create-simulado.dto.input';
 import { SimuladoDTO } from './dtos/simulado.dto.output';
 import { catchError, map } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
+import { AnswerSimulado } from './dtos/answer-simulado.dto.input';
+import { ReportDTO } from './dtos/report.dto.input';
+import { ReportEntity } from './enum/report.enum';
+import { AuditLogService } from '../audit-log/audit-log.service';
 
 @Injectable()
 export class SimuladoService {
   constructor(
     private readonly http: HttpService,
-    private configService: ConfigService,
+    private readonly configService: ConfigService,
+    private readonly auditLod: AuditLogService,
   ) {
     this.http.axiosRef.defaults.baseURL =
       this.configService.get<string>('SIMULADO_URL');
@@ -82,5 +87,36 @@ export class SimuladoService {
         throw new ForbiddenException('API not available');
       }),
     );
+  }
+
+  public async answer(dto: AnswerSimulado) {
+    this.http
+      .post(`v1/simulado/answer`, dto)
+      .pipe(
+        catchError((err) => {
+          throw new ForbiddenException(err.message);
+        }),
+      )
+      .subscribe();
+  }
+
+  public async report(reportDto: ReportDTO, userId: number) {
+    if (reportDto.entity === ReportEntity.Simulado) {
+      await this.auditLod.create({
+        entityType: 'Simulado',
+        entityId: 0,
+        changes: { message: reportDto.message },
+        updatedBy: userId,
+      });
+    } else {
+      this.http
+        .post(`v1/questao/report`, reportDto)
+        .pipe(
+          catchError((err) => {
+            throw new ForbiddenException(err.message);
+          }),
+        )
+        .subscribe();
+    }
   }
 }

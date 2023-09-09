@@ -1,10 +1,24 @@
-import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { SimuladoService } from './simulado.service';
 import { CreateSimuladoDTOInput } from './dtos/create-simulado.dto.input';
 import { SimuladoDTO } from './dtos/simulado.dto.output';
-import { ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Observable } from 'rxjs';
 import { SimuladoAnswerDTO } from './dtos/simulado-answer.dto.output';
+import { AnswerSimulado } from './dtos/answer-simulado.dto.input';
+import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
+import { Request } from 'express';
+import { User } from '../user/user.entity';
+import { ReportDTO } from './dtos/report.dto.input';
 
 @ApiTags('Simulado')
 @Controller('simulado')
@@ -46,6 +60,14 @@ export class SimuladoController {
     return await this.simuladoService.getToAnswer(id);
   }
 
+  @Post('answer')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  public async answer(@Body() answer: AnswerSimulado, @Req() req: Request) {
+    answer.idEstudante = (req.user as User).id;
+    return await this.simuladoService.answer(answer);
+  }
+
   @Get('default')
   @ApiResponse({
     status: 200,
@@ -77,5 +99,12 @@ export class SimuladoController {
   @Delete(':id')
   public async delete(@Param('id') id: string): Promise<void> {
     await this.simuladoService.delete(id);
+  }
+
+  @Post('report')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  public async report(@Body() reportDto: ReportDTO, @Req() req: Request) {
+    return await this.simuladoService.report(reportDto, (req.user as User).id);
   }
 }
