@@ -34,7 +34,7 @@ export class UserRepository extends BaseRepository<User> {
       });
       await tem.save(UserRole, newUserRole);
     });
-    return newUser;
+    return this.findByEmail(newUser.email);
   }
 
   async findByEmail(email: string): Promise<User> {

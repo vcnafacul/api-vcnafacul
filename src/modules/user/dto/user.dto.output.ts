@@ -3,29 +3,29 @@ import { Gender } from '../enum/gender';
 
 export class UserDtoOutput {
   @IsNumber()
-  id: number;
+  id: number = 0;
 
   @IsNotEmpty()
-  firstName: string;
+  firstName: string = '';
 
   @IsNotEmpty()
-  lastName: string;
+  lastName: string = '';
 
   @IsNotEmpty()
-  phone: string;
+  phone: string = '';
 
   @IsEnum(Gender)
-  gender: Gender;
+  gender: Gender = Gender.Other;
 
   @IsDateString()
-  birthday: Date;
+  birthday: Date = new Date();
 
   @IsNotEmpty()
-  state: string;
+  state: string = '';
 
   @IsNotEmpty()
-  city: string;
+  city: string = '';
 
   @IsNotEmpty()
-  about?: string;
+  about?: string = '';
 }

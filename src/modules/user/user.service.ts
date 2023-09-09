@@ -21,14 +21,22 @@ export class UserService {
     private readonly emailService: EmailService,
   ) {}
 
-  async createUser(userDto: CreateUserDtoInput): Promise<User> {
+  async createUser(userDto: CreateUserDtoInput): Promise<LoginTokenDTO> {
     try {
+      if (userDto.password !== userDto.password_confirmation) {
+        throw new HttpException(
+          'password and password_confirmation do not match',
+          HttpStatus.CONFLICT,
+        );
+      }
       const newUser = this.convertDtoToDomain(userDto);
       const role = await this.roleRepository.findOneBy({ name: 'aluno' });
       if (!role) {
         throw new HttpException('role not found', HttpStatus.BAD_REQUEST);
       }
-      return await this.userRepository.create(newUser, role);
+      const userFullInfo = await this.userRepository.create(newUser, role);
+
+      return this.getAccessToken(userFullInfo);
     } catch (error) {
       if (error.code === '23505') {
         // código de erro para violação de restrição única no PostgreSQL
@@ -49,11 +57,7 @@ export class UserService {
     if (!(await bcrypt.compare(loginInput.password, userFullInfo?.password))) {
       throw new HttpException('password invalid', HttpStatus.CONFLICT);
     }
-    const roles = this.mapperRole(userFullInfo.userRole.role);
-    const user = this.MapUsertoUserDTO(userFullInfo);
-    return {
-      access_token: await this.jwtService.signAsync({ user, roles }),
-    };
+    return this.getAccessToken(userFullInfo);
   }
 
   async findUserById(id: number): Promise<User> {
@@ -130,9 +134,26 @@ export class UserService {
     return users.map((user) => this.MapUsertoUserDTO(user));
   }
 
+  private async getAccessToken(user: User) {
+    const roles = this.mapperRole(user.userRole.role);
+    const userDTO = this.MapUsertoUserDTO(user);
+    return {
+      access_token: await this.jwtService.signAsync({ userDTO, roles }),
+    };
+  }
+
   private MapUsertoUserDTO(user: User): UserDtoOutput {
     const output = new UserDtoOutput();
-    return Object.assign(output, user) as UserDtoOutput;
+    Object.assign(
+      output,
+      Object.keys(output).reduce((obj, key) => {
+        if (user.hasOwnProperty(key)) {
+          obj[key] = user[key];
+        }
+        return obj;
+      }, {} as UserDtoOutput),
+    );
+    return output;
   }
 
   private mapperRole(role: Role) {
