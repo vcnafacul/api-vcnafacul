@@ -134,11 +134,11 @@ export class UserService {
     return users.map((user) => this.MapUsertoUserDTO(user));
   }
 
-  private async getAccessToken(user: User) {
-    const roles = this.mapperRole(user.userRole.role);
-    const userDTO = this.MapUsertoUserDTO(user);
+  private async getAccessToken(domain: User) {
+    const roles = this.mapperRole(domain.userRole.role);
+    const user = this.MapUsertoUserDTO(domain);
     return {
-      access_token: await this.jwtService.signAsync({ userDTO, roles }),
+      access_token: await this.jwtService.signAsync({ user, roles }),
     };
   }
 
