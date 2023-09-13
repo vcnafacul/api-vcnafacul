@@ -1,0 +1,44 @@
+name: vCnafacul
+on:
+  pull_request: 
+    branches: ["develop"]
+    types: [opened, synchronize, reopened, closed]
+
+jobs:
+  CI:
+    if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened')
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Iniciando CI
+        run: echo "Iniciando CI"
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 16.x
+      - name: Install depends
+        run: yarn
+      - name: Build app vCnafacul
+        run: yarn build
+  PUSH:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Iniciando CI
+        run: echo "Iniciando PUSH"
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 16.x
+      - name: Install depends
+        run: yarn
+      - name: Build app vCnafacul
+        run: yarn build
+      - name: Build Image
+        run: docker build -t vcnafacul -f docker/node.dockerfile .
+      - name: docker tags
+        run: docker tag vcnafacul vcnafacul/api:latest
+      - name: docker login
+        run: docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }}
+      - name: Image Push
+        run: docker push vcnafacul/api:latest
