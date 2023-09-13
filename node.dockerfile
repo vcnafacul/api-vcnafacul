@@ -1,6 +1,6 @@
 FROM node:16
 
-COPY build /var/www
+COPY dist /var/www
 
 WORKDIR /var/www
 
