@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsDateString,
   IsEmail,
   IsEnum,
@@ -19,6 +20,10 @@ export class CreateUserDtoInput {
   @MinLength(8)
   @ApiProperty()
   password: string;
+
+  @MinLength(8)
+  @ApiProperty()
+  password_confirmation: string;
 
   @IsNotEmpty()
   @ApiProperty()
@@ -52,4 +57,8 @@ export class CreateUserDtoInput {
   @IsOptional()
   @ApiProperty({ required: false })
   about?: string;
+
+  @IsBoolean()
+  @ApiProperty()
+  lgpd: boolean;
 }

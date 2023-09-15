@@ -27,9 +27,6 @@ export class ControllerExceptionsFilter implements ExceptionFilter {
     let message = body;
     if (typeof body === 'object' && body.hasOwnProperty('message')) {
       message = body['message'];
-      if (Array.isArray(message)) {
-        message = message.join(', ');
-      }
     }
 
     response.status(status).json({

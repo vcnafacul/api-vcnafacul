@@ -18,6 +18,6 @@ async function bootstrap() {
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
   app.useGlobalFilters(new ControllerExceptionsFilter());
   SwaggerModule.setup('api', app, document(app));
-  await app.listen(3000);
+  await app.listen(process.env.PORT);
 }
 bootstrap();

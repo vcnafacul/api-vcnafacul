@@ -11,6 +11,8 @@ import { GeoModule } from './modules/geo/geo.module';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './shared/strategy/jwt.strategy';
 import { AuditLogModule } from './modules/audit-log/audit-log.module';
+import { SimuladoModule } from './modules/simulado/simulado.module';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
   imports: [
@@ -27,12 +29,19 @@ import { AuditLogModule } from './modules/audit-log/audit-log.module';
       secret: process.env.APP_KEY,
       signOptions: { expiresIn: '1d' },
     }),
+    HttpModule.registerAsync({
+      useFactory: async () => ({
+        timeout: 30000,
+        maxRedirects: 3,
+      }),
+    }),
     UserModule,
     RoleModule,
     UserRoleModule,
     SeederModule,
     GeoModule,
     AuditLogModule,
+    SimuladoModule,
   ],
   controllers: [],
   providers: [JwtStrategy],

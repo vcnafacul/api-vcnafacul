@@ -37,6 +37,9 @@ export class User extends BaseEntity {
   @Column({ nullable: true })
   public about?: string;
 
+  @Column()
+  public lgpd: boolean;
+
   @OneToOne(() => UserRole, (userRole) => userRole.user)
   userRole: UserRole;
 

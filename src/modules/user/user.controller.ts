@@ -21,6 +21,7 @@ import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { Request, Response } from 'express';
 import { User } from './user.entity';
+import { HasEmailDtoInput } from './dto/has-email.dto.input';
 
 @ApiTags('User')
 @Controller('user')
@@ -35,6 +36,12 @@ export class UserController {
   @Post('login')
   async signIn(@Body() login: LoginDtoInput, @Res() res: Response) {
     return res.status(200).json(await this.userService.signIn(login));
+  }
+
+  @Post('hasemail')
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async hasEmail(@Body() dto: HasEmailDtoInput, @Res() res: Response) {
+    return res.status(200).json(false);
   }
 
   @Get()
