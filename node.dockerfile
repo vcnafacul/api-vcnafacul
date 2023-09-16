@@ -4,6 +4,8 @@ COPY dist /var/www
 
 WORKDIR /var/www
 
+COPY package.json .
+
 EXPOSE 3333
 
 ENV NODE_ENV=$NODE_ENV
