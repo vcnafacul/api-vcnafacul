@@ -16,6 +16,9 @@ export class Role extends BaseEntity {
   @Column({ name: 'criar_simulado', default: false })
   criarSimulado: boolean;
 
+  @Column({ name: 'banco_questoes', default: false })
+  bancoQuestoes: boolean;
+
   @OneToMany(() => UserRole, (userRole) => userRole.role)
   userRoles: UserRole[];
 }

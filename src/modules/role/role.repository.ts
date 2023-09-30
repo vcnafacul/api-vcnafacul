@@ -19,6 +19,15 @@ export class RoleRepository extends BaseRepository<Role> {
     return newRole;
   }
 
+  async update(name: string, filter: object) {
+    await this.repository
+      .createQueryBuilder()
+      .update(Role)
+      .set(filter)
+      .where('name = :name', { name })
+      .execute();
+  }
+
   async findOneBy(filter: object): Promise<Role> {
     return await this.repository.findOneBy(filter);
   }
