@@ -8,6 +8,7 @@ import { AnswerSimulado } from './dtos/answer-simulado.dto.input';
 import { ReportDTO } from './dtos/report.dto.input';
 import { ReportEntity } from './enum/report.enum';
 import { AuditLogService } from '../audit-log/audit-log.service';
+import { Status } from './enum/status.enum';
 
 @Injectable()
 export class SimuladoService {
@@ -118,5 +119,17 @@ export class SimuladoService {
         )
         .subscribe();
     }
+  }
+
+  public async questoes(status: Status) {
+    return await this.http
+      .get(`v1/questao/${status}`)
+      .pipe(map((res) => res.data))
+      .pipe(
+        catchError((err) => {
+          console.log(err);
+          throw new ForbiddenException(err.message);
+        }),
+      );
   }
 }

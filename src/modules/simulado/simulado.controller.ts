@@ -19,6 +19,7 @@ import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { Request } from 'express';
 import { User } from '../user/user.entity';
 import { ReportDTO } from './dtos/report.dto.input';
+import { Status } from './enum/status.enum';
 
 @ApiTags('Simulado')
 @Controller('simulado')
@@ -81,6 +82,13 @@ export class SimuladoController {
   })
   public async getDefaults() {
     return await this.simuladoService.getDefaults();
+  }
+
+  @Get('questoes/:status')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  public async questoes(@Param('status') status: Status) {
+    return await this.simuladoService.questoes(status);
   }
 
   @Get(':id')
