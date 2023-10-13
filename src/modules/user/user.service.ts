@@ -34,7 +34,10 @@ export class UserService {
       if (!role) {
         throw new HttpException('role not found', HttpStatus.BAD_REQUEST);
       }
-      const userFullInfo = await this.userRepository.create(newUser, role);
+      const userFullInfo = await this.userRepository.createWithRole(
+        newUser,
+        role,
+      );
 
       return this.getAccessToken(userFullInfo);
     } catch (error) {

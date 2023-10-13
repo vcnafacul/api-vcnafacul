@@ -6,4 +6,10 @@ export class BaseRepository<T> {
   async findAll(): Promise<T[]> {
     return await this.repository.find();
   }
+
+  async create(entity: T): Promise<T> {
+    const newEntity = this.repository.create(entity);
+    await this.repository.save(newEntity);
+    return newEntity;
+  }
 }

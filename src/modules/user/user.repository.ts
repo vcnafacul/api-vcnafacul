@@ -22,7 +22,7 @@ export class UserRepository extends BaseRepository<User> {
     return await this.repository.findOne({ where: { id: id } });
   }
 
-  async create(user: User, role: Role): Promise<User> {
+  async createWithRole(user: User, role: Role): Promise<User> {
     let newUser = null;
     await this._entityManager.transaction(async (tem) => {
       newUser = tem.getRepository(User).create(user);
