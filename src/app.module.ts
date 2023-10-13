@@ -13,6 +13,7 @@ import { JwtStrategy } from './shared/strategy/jwt.strategy';
 import { AuditLogModule } from './modules/audit-log/audit-log.module';
 import { SimuladoModule } from './modules/simulado/simulado.module';
 import { HttpModule } from '@nestjs/axios';
+import { NewsModule } from './modules/news/news.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { HttpModule } from '@nestjs/axios';
     GeoModule,
     AuditLogModule,
     SimuladoModule,
+    NewsModule,
   ],
   controllers: [],
   providers: [JwtStrategy],
