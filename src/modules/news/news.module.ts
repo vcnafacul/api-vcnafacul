@@ -7,7 +7,7 @@ import {
 import { NewsController } from './news.controller';
 import { NewsService } from './news.service';
 import { NewsRepository } from './news.repository';
-import { NewsMiddleware } from 'src/shared/middleware/user-role.middle';
+import { NewsMiddleware } from '../../shared/middleware/news.middle';
 import { UserRoleModule } from '../user-role/user-role.module';
 
 @Module({
