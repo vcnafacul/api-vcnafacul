@@ -12,4 +12,8 @@ export class BaseRepository<T> {
     await this.repository.save(newEntity);
     return newEntity;
   }
+
+  async findBy(where: object): Promise<T[]> {
+    return await this.repository.find({ where: { ...where } });
+  }
 }

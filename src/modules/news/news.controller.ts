@@ -1,6 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
+  Get,
+  Param,
   Post,
   Req,
   UploadedFile,
@@ -30,5 +33,26 @@ export class NewsController {
     @UploadedFile() file,
   ) {
     return await this.newService.create(body, file, (req.user as User).id);
+  }
+
+  @Get('all')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async findall() {
+    return await this.newService.findAll();
+  }
+
+  @Get()
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async find() {
+    return await this.newService.findActived();
+  }
+
+  @Delete(':id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async delete(@Param('id') id: number) {
+    return await this.newService.delete(id);
   }
 }

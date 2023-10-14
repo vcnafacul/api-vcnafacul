@@ -28,6 +28,19 @@ export class NewsService {
     return await this.newRepository.create(news);
   }
 
+  async findAll() {
+    return await this.newRepository.findAll();
+  }
+
+  async findActived() {
+    const where = { actived: true };
+    return await this.newRepository.findBy(where);
+  }
+
+  async delete(id: number) {
+    await this.newRepository.delete(id);
+  }
+
   private async uploadFile(file: any): Promise<string> {
     const client = new ftp.Client(30000);
     try {

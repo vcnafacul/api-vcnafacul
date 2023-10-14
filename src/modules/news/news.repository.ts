@@ -12,4 +12,10 @@ export class NewsRepository extends BaseRepository<News> {
   ) {
     super(_entityManager.getRepository(News));
   }
+
+  async delete(id: number) {
+    const news = await this.repository.findOneBy({ id });
+    news.actived = false;
+    await this.repository.save(news);
+  }
 }
