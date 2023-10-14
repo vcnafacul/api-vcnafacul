@@ -51,4 +51,12 @@ export class UserRoleService {
       roleName: ur.role.name,
     }));
   }
+
+  async checkUserPermission(
+    userId: number,
+    roleName: string,
+  ): Promise<boolean> {
+    const userRole = await this.userRoleRepository.findOneById(userId);
+    return userRole.role[roleName];
+  }
 }
