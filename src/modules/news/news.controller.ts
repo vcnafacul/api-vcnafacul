@@ -43,8 +43,6 @@ export class NewsController {
   }
 
   @Get()
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
   async find() {
     return await this.newService.findActived();
   }

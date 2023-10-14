@@ -21,6 +21,13 @@ export class UserRoleRepository extends BaseRepository<UserRole> {
     return await this.repository.findOneBy(filter);
   }
 
+  async findOneById(id: number): Promise<UserRole> {
+    return await this.repository.findOne({
+      where: { id },
+      relations: ['user', 'role'],
+    });
+  }
+
   async findRelations(): Promise<UserRole[]> {
     return await this.repository.find({
       relations: ['user', 'role'],
