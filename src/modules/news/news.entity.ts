@@ -16,6 +16,9 @@ export class News extends BaseEntity {
   @Column({ name: 'updated_by' })
   updatedBy: number;
 
+  @Column({ default: true })
+  actived: boolean;
+
   @ManyToOne(() => User, (user) => user)
   @JoinColumn({ name: 'updated_by' })
   user: User;
