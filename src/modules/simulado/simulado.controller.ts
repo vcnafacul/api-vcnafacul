@@ -84,6 +84,13 @@ export class SimuladoController {
     return await this.simuladoService.getDefaults();
   }
 
+  @Get('questoes/infos')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  public async questoesInfo() {
+    return await this.simuladoService.questoesInfo();
+  }
+
   @Get('questoes/:status')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)

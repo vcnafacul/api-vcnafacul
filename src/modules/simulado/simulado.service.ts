@@ -132,4 +132,16 @@ export class SimuladoService {
         }),
       );
   }
+
+  public async questoesInfo() {
+    return await this.http
+      .get(`v1/questao/infos`)
+      .pipe(map((res) => res.data))
+      .pipe(
+        catchError((err) => {
+          console.log(err);
+          throw new ForbiddenException(err.message);
+        }),
+      );
+  }
 }
