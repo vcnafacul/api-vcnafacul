@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Req,
+  SetMetadata,
   UseGuards,
 } from '@nestjs/common';
 import { SimuladoService } from './simulado.service';
@@ -22,6 +23,7 @@ import { User } from '../user/user.entity';
 import { ReportDTO } from './dtos/report.dto.input';
 import { Status } from './enum/status.enum';
 import { UpdateDTOInput } from './dtos/update-questao.dto.input';
+import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 
 @ApiTags('Simulado')
 @Controller('simulado')
@@ -31,10 +33,11 @@ export class SimuladoController {
   @Post()
   @ApiResponse({
     status: 200,
-    description: 'materias cadastradas e validas',
+    description: 'cadastro de questões',
     type: SimuladoDTO,
     isArray: false,
   })
+  @UseGuards(JwtAuthGuard)
   async create(
     @Body() dto: CreateSimuladoDTOInput,
   ): Promise<Observable<SimuladoDTO>> {
@@ -44,27 +47,34 @@ export class SimuladoController {
   @Get()
   @ApiResponse({
     status: 200,
-    description: 'materias cadastradas e validas',
+    description: 'busca todas os simulados',
     type: SimuladoDTO,
     isArray: true,
   })
-  async gelAdd(): Promise<Observable<SimuladoDTO[]>> {
+  async getAdd(): Promise<Observable<SimuladoDTO[]>> {
     return await this.simuladoService.getAll();
   }
 
   @Get('toanswer/:id')
   @ApiResponse({
     status: 200,
-    description: 'materias cadastradas e validas',
+    description: 'busca simulado pronto para responder por Id',
     type: SimuladoAnswerDTO,
     isArray: false,
   })
+  @UseGuards(JwtAuthGuard)
   public async getToAnswer(@Param('id') id: string) {
     return await this.simuladoService.getToAnswer(id);
   }
 
   @Post('answer')
   @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'endpoint para responder simulado',
+    type: SimuladoAnswerDTO,
+    isArray: false,
+  })
   @UseGuards(JwtAuthGuard)
   public async answer(@Body() answer: AnswerSimulado, @Req() req: Request) {
     answer.idEstudante = (req.user as User).id;
@@ -74,7 +84,7 @@ export class SimuladoController {
   @Get('default')
   @ApiResponse({
     status: 200,
-    description: 'materias cadastradas e validas',
+    description: 'busca simulados default disponível para responder',
     schema: {
       type: 'object',
       additionalProperties: {
@@ -82,27 +92,63 @@ export class SimuladoController {
       },
     },
   })
+  @UseGuards(JwtAuthGuard)
   public async getDefaults() {
     return await this.simuladoService.getDefaults();
   }
 
   @Get('questoes/infos')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description:
+      'busca informações de exame, materias e frentes referente a questões',
+    schema: {
+      type: 'object',
+      additionalProperties: {
+        type: 'string',
+      },
+    },
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata('permissions', 'banco_questoes')
   public async questoesInfo() {
+    console.log('PermissionsGuard');
     return await this.simuladoService.questoesInfo();
   }
 
   @Get('questoes/:status')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: 'busca questões por status',
+    schema: {
+      type: 'object',
+      additionalProperties: {
+        type: 'string',
+      },
+    },
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata('permissions', 'banco_questoes')
   public async questoes(@Param('status') status: Status) {
     return await this.simuladoService.questoes(status);
   }
 
   @Patch('questoes/:id/:status')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: 'atualiza status de questão',
+    schema: {
+      type: 'object',
+      additionalProperties: {
+        type: 'string',
+      },
+    },
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata('permissions', 'banco_questoes')
   public async questoesUpdateStatus(
     @Param('id') id: string,
     @Param('status') status: Status,
@@ -112,7 +158,18 @@ export class SimuladoController {
 
   @Patch('questoes')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: 'atualiza informações de questão',
+    schema: {
+      type: 'object',
+      additionalProperties: {
+        type: 'string',
+      },
+    },
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata('permissions', 'banco_questoes')
   public async questoesUpdate(@Body() question: UpdateDTOInput) {
     return await this.simuladoService.questoesUpdate(question);
   }
@@ -120,10 +177,11 @@ export class SimuladoController {
   @Get(':id')
   @ApiResponse({
     status: 200,
-    description: 'materias cadastradas e validas',
+    description: 'Buscar Simulado por id',
     type: SimuladoDTO,
     isArray: false,
   })
+  @UseGuards(JwtAuthGuard)
   public async getById(
     @Param('id') id: string,
   ): Promise<Observable<SimuladoDTO>> {
@@ -131,12 +189,34 @@ export class SimuladoController {
   }
 
   @Delete(':id')
+  @UseGuards(PermissionsGuard)
+  @ApiResponse({
+    status: 200,
+    description: 'deleta simulado por id',
+    schema: {
+      type: 'object',
+      additionalProperties: {
+        type: 'string',
+      },
+    },
+  })
+  @SetMetadata('permissions', 'banco_questoes')
   public async delete(@Param('id') id: string): Promise<void> {
     await this.simuladoService.delete(id);
   }
 
   @Post('report')
   @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'endopint para report de problemas de simulado',
+    schema: {
+      type: 'object',
+      additionalProperties: {
+        type: 'string',
+      },
+    },
+  })
   @UseGuards(JwtAuthGuard)
   public async report(@Body() reportDto: ReportDTO, @Req() req: Request) {
     return await this.simuladoService.report(reportDto, (req.user as User).id);
