@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -20,6 +21,7 @@ import { Request } from 'express';
 import { User } from '../user/user.entity';
 import { ReportDTO } from './dtos/report.dto.input';
 import { Status } from './enum/status.enum';
+import { UpdateDTOInput } from './dtos/update-questao.dto.input';
 
 @ApiTags('Simulado')
 @Controller('simulado')
@@ -96,6 +98,23 @@ export class SimuladoController {
   @UseGuards(JwtAuthGuard)
   public async questoes(@Param('status') status: Status) {
     return await this.simuladoService.questoes(status);
+  }
+
+  @Patch('questoes/:id/:status')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  public async questoesUpdateStatus(
+    @Param('id') id: string,
+    @Param('status') status: Status,
+  ) {
+    return await this.simuladoService.questoesUpdateStatus(id, status);
+  }
+
+  @Patch('questoes')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  public async questoesUpdate(@Body() question: UpdateDTOInput) {
+    return await this.simuladoService.questoesUpdate(question);
   }
 
   @Get(':id')
