@@ -9,6 +9,7 @@ import { ReportDTO } from './dtos/report.dto.input';
 import { ReportEntity } from './enum/report.enum';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { Status } from './enum/status.enum';
+import { UpdateDTOInput } from './dtos/update-questao.dto.input';
 
 @Injectable()
 export class SimuladoService {
@@ -136,6 +137,30 @@ export class SimuladoService {
   public async questoesInfo() {
     return await this.http
       .get(`v1/questao/infos`)
+      .pipe(map((res) => res.data))
+      .pipe(
+        catchError((err) => {
+          console.log(err);
+          throw new ForbiddenException(err.message);
+        }),
+      );
+  }
+
+  public async questoesUpdateStatus(id: string, status: Status) {
+    return await this.http
+      .patch(`v1/questao/${id}/${status}`)
+      .pipe(map((res) => res.data))
+      .pipe(
+        catchError((err) => {
+          console.log(err);
+          throw new ForbiddenException(err.message);
+        }),
+      );
+  }
+
+  public async questoesUpdate(questao: UpdateDTOInput) {
+    return await this.http
+      .patch(`v1/questao`, questao)
       .pipe(map((res) => res.data))
       .pipe(
         catchError((err) => {
