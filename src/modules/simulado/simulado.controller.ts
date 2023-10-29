@@ -24,6 +24,7 @@ import { ReportDTO } from './dtos/report.dto.input';
 import { Status } from './enum/status.enum';
 import { UpdateDTOInput } from './dtos/update-questao.dto.input';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
+import { Permissions } from '../role/role.entity';
 
 @ApiTags('Simulado')
 @Controller('simulado')
@@ -33,11 +34,12 @@ export class SimuladoController {
   @Post()
   @ApiResponse({
     status: 200,
-    description: 'cadastro de questões',
+    description: 'cria simulado',
     type: SimuladoDTO,
     isArray: false,
   })
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.criarSimulado)
   async create(
     @Body() dto: CreateSimuladoDTOInput,
   ): Promise<Observable<SimuladoDTO>> {
@@ -111,7 +113,7 @@ export class SimuladoController {
     },
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata('permissions', 'banco_questoes')
+  @SetMetadata(PermissionsGuard.name, Permissions.bancoQuestoes)
   public async questoesInfo() {
     console.log('PermissionsGuard');
     return await this.simuladoService.questoesInfo();
@@ -130,7 +132,7 @@ export class SimuladoController {
     },
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata('permissions', 'banco_questoes')
+  @SetMetadata(PermissionsGuard.name, Permissions.bancoQuestoes)
   public async questoes(@Param('status') status: Status) {
     return await this.simuladoService.questoes(status);
   }
@@ -148,7 +150,7 @@ export class SimuladoController {
     },
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata('permissions', 'banco_questoes')
+  @SetMetadata(PermissionsGuard.name, Permissions.bancoQuestoes)
   public async questoesUpdateStatus(
     @Param('id') id: string,
     @Param('status') status: Status,
@@ -169,7 +171,7 @@ export class SimuladoController {
     },
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata('permissions', 'banco_questoes')
+  @SetMetadata(PermissionsGuard.name, Permissions.bancoQuestoes)
   public async questoesUpdate(@Body() question: UpdateDTOInput) {
     return await this.simuladoService.questoesUpdate(question);
   }
@@ -200,7 +202,7 @@ export class SimuladoController {
       },
     },
   })
-  @SetMetadata('permissions', 'banco_questoes')
+  @SetMetadata(PermissionsGuard.name, Permissions.criarSimulado)
   public async delete(@Param('id') id: string): Promise<void> {
     await this.simuladoService.delete(id);
   }
