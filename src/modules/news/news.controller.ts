@@ -6,17 +6,19 @@ import {
   Param,
   Post,
   Req,
+  SetMetadata,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { NewsService } from './news.service';
 import { Request } from 'express';
 import { CreateNewsDtoInput } from './dtos/create-news.dto.input';
-import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { User } from '../user/user.entity';
 import { FileInterceptor } from '@nestjs/platform-express/multer';
+import { PermissionsGuard } from 'src/shared/guards/permission.guard';
+import { Permissions } from '../role/role.entity';
 
 @ApiTags('News')
 @Controller('news')
@@ -25,7 +27,18 @@ export class NewsController {
 
   @Post()
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: 'criar divulgação de novidades',
+    schema: {
+      type: 'object',
+      additionalProperties: {
+        type: 'string',
+      },
+    },
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.uploadNews)
   @UseInterceptors(FileInterceptor('file'))
   async createNews(
     @Body() body: CreateNewsDtoInput,
@@ -37,7 +50,18 @@ export class NewsController {
 
   @Get('all')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: 'listar todas as permissoes cadastradas',
+    schema: {
+      type: 'object',
+      additionalProperties: {
+        type: 'string',
+      },
+    },
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.uploadNews)
   async findall() {
     return await this.newService.findAll();
   }
@@ -49,7 +73,18 @@ export class NewsController {
 
   @Delete(':id')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: 'deletar novidade por id',
+    schema: {
+      type: 'object',
+      additionalProperties: {
+        type: 'string',
+      },
+    },
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.uploadNews)
   async delete(@Param('id') id: number) {
     return await this.newService.delete(id);
   }

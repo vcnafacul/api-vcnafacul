@@ -6,14 +6,17 @@ import {
   Put,
   Req,
   Res,
+  SetMetadata,
   UseGuards,
 } from '@nestjs/common';
 import { UserRoleService } from './user-role.service';
 import { UpdateUserRoleInput } from './dto/update-user-role.dto.input';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { Request, Response } from 'express';
 import { User } from '../user/user.entity';
+import { PermissionsGuard } from 'src/shared/guards/permission.guard';
+import { Permissions } from '../role/role.entity';
 
 @ApiTags('UserRole')
 @Controller('userrole')
@@ -29,7 +32,18 @@ export class UserRoleController {
 
   @Put()
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: 'atualiza informações de cursinhos',
+    schema: {
+      type: 'object',
+      additionalProperties: {
+        type: 'string',
+      },
+    },
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
   async updateUserRole(
     @Body() userRoleUpdate: UpdateUserRoleInput,
     @Req() req: Request,
