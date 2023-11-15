@@ -74,4 +74,8 @@ export class CreateQuestaoDTOInput {
   @ApiProperty()
   @IsString()
   public imageId: string;
+
+  @ApiProperty()
+  @IsString()
+  public edicao: string;
 }

@@ -5,5 +5,5 @@ import { ApiProperty, PartialType } from '@nestjs/swagger';
 export class UpdateDTOInput extends PartialType(CreateQuestaoDTOInput) {
   @IsString()
   @ApiProperty()
-  id: number;
+  _id: number;
 }

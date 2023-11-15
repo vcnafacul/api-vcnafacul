@@ -115,7 +115,6 @@ export class SimuladoController {
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.bancoQuestoes)
   public async questoesInfo() {
-    console.log('PermissionsGuard');
     return await this.simuladoService.questoesInfo();
   }
 
