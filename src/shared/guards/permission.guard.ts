@@ -40,6 +40,7 @@ export class PermissionsGuard implements CanActivate {
       if (!userId) {
         return false;
       }
+      request['user'] = decoded.user;
       return await this.userRoleService.checkUserPermission(
         userId,
         'uploadNews',
