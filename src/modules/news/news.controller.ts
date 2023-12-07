@@ -52,7 +52,7 @@ export class NewsController {
   @ApiBearerAuth()
   @ApiResponse({
     status: 200,
-    description: 'listar todas as permissoes cadastradas',
+    description: 'listar todas as novidades cadastradas',
     schema: {
       type: 'object',
       additionalProperties: {

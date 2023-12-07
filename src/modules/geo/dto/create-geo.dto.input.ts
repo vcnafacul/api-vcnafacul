@@ -45,19 +45,16 @@ export class CreateGeoDTOInput {
   number: string;
 
   @IsString()
-  @IsNotEmpty()
   @IsOptional()
   @ApiProperty({ required: false })
   complement: string;
 
   @IsString()
-  @IsNotEmpty()
   @IsOptional()
   @ApiProperty({ required: false })
   phone: string;
 
   @IsString()
-  @IsNotEmpty()
   @IsOptional()
   @ApiProperty({ required: false })
   whatsapp: string;
@@ -69,55 +66,46 @@ export class CreateGeoDTOInput {
   email: string;
 
   @IsString()
-  @IsNotEmpty()
   @IsOptional()
   @ApiProperty({ required: false })
   email2: string;
 
   @IsString()
-  @IsNotEmpty()
   @IsOptional()
   @ApiProperty({ required: false })
   category: string;
 
   @IsString()
-  @IsNotEmpty()
   @IsOptional()
   @ApiProperty({ required: false })
   site: string;
 
   @IsString()
-  @IsNotEmpty()
   @IsOptional()
   @ApiProperty({ required: false })
   linkedin: string;
 
   @IsString()
-  @IsNotEmpty()
   @IsOptional()
   @ApiProperty({ required: false })
   youtube: string;
 
   @IsString()
-  @IsNotEmpty()
   @IsOptional()
   @ApiProperty({ required: false })
   facebook: string;
 
   @IsString()
-  @IsNotEmpty()
   @IsOptional()
   @ApiProperty({ required: false })
   instagram: string;
 
   @IsString()
-  @IsNotEmpty()
   @IsOptional()
   @ApiProperty({ required: false })
   twitter: string;
 
   @IsString()
-  @IsNotEmpty()
   @IsOptional()
   @ApiProperty({ required: false })
   tiktok: string;

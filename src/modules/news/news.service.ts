@@ -18,7 +18,6 @@ export class NewsService {
     if (!fileName) {
       throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);
     }
-
     const news = new News();
     news.session = request.session;
     news.title = request.title;
