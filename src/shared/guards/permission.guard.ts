@@ -12,6 +12,20 @@ export class PermissionsGuard implements CanActivate {
     private configService: ConfigService,
   ) {}
 
+  snakeToCamel = (snakeStr: string) => {
+    return snakeStr
+      .split('_')
+      .map((word, index) => {
+        if (index === 0) {
+          // Deixa a primeira palavra em minúsculas
+          return word.toLowerCase();
+        }
+        // Capitaliza a primeira letra de cada palavra subsequente
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      })
+      .join('');
+  };
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const requiredPermissions = this.reflector.get<string>(
       PermissionsGuard.name,
@@ -29,12 +43,12 @@ export class PermissionsGuard implements CanActivate {
     }
 
     const token = authorizationHeader.slice(7);
-
     try {
       const decoded = jwt.verify(
         token,
         this.configService.get<string>('APP_KEY'),
       ) as jwt.JwtPayload;
+
       const userId = decoded.user?.id;
 
       if (!userId) {
@@ -43,9 +57,10 @@ export class PermissionsGuard implements CanActivate {
       request['user'] = decoded.user;
       return await this.userRoleService.checkUserPermission(
         userId,
-        'uploadNews',
+        this.snakeToCamel(requiredPermissions),
       );
     } catch (error) {
+      console.log(error);
       return false;
     }
   }
