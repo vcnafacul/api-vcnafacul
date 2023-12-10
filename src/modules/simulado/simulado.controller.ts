@@ -3,10 +3,12 @@ import {
   Controller,
   Delete,
   Get,
+  HttpStatus,
   Param,
   Patch,
   Post,
   Req,
+  Res,
   SetMetadata,
   UploadedFile,
   UseGuards,
@@ -20,7 +22,7 @@ import { Observable } from 'rxjs';
 import { SimuladoAnswerDTO } from './dtos/simulado-answer.dto.output';
 import { AnswerSimulado } from './dtos/answer-simulado.dto.input';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { User } from '../user/user.entity';
 import { ReportDTO } from './dtos/report.dto.input';
 import { Status } from './enum/status.enum';
@@ -261,7 +263,9 @@ export class SimuladoController {
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
   @UseInterceptors(FileInterceptor('file', multerConfig))
-  public async uploadImage(@UploadedFile() file) {
-    return await this.simuladoService.uploadImage(file);
+  public async uploadImage(@UploadedFile() file, @Res() res: Response) {
+    return res
+      .status(HttpStatus.CREATED)
+      .send(await this.simuladoService.uploadImage(file));
   }
 }
