@@ -262,7 +262,6 @@ export class SimuladoController {
   @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
   @UseInterceptors(FileInterceptor('file', multerConfig))
   public async uploadImage(@UploadedFile() file) {
-    console.log(file);
     return await this.simuladoService.uploadImage(file);
   }
 }

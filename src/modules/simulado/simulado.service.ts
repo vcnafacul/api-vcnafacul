@@ -187,6 +187,6 @@ export class SimuladoService {
     if (!file) {
       throw new Error('Nenhum arquivo fornecido');
     }
-    return '';
+    return file.filename.split('.')[0];
   }
 }
