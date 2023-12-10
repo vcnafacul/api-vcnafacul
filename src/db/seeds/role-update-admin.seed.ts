@@ -7,7 +7,12 @@ export class RoleUpdateAdminSeedService {
 
   async seed() {
     await this.roleRepository
-      .update('admin', { bancoQuestoes: true, uploadNews: true })
+      .update('admin', {
+        criarQuestao: true,
+        visualizarQuestao: true,
+        validarQuestao: true,
+        uploadNews: true,
+      })
       .catch(() => {});
   }
 }

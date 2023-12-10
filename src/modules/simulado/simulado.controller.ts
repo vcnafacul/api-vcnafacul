@@ -8,7 +8,9 @@ import {
   Post,
   Req,
   SetMetadata,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { SimuladoService } from './simulado.service';
 import { CreateSimuladoDTOInput } from './dtos/create-simulado.dto.input';
@@ -25,6 +27,9 @@ import { Status } from './enum/status.enum';
 import { UpdateDTOInput } from './dtos/update-questao.dto.input';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { Permissions } from '../role/role.entity';
+import { CreateQuestaoDTOInput } from './dtos/create-questao.dto.input';
+import multerConfig from 'src/config/multer-config';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('Simulado')
 @Controller('simulado')
@@ -113,7 +118,7 @@ export class SimuladoController {
     },
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.bancoQuestoes)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
   public async questoesInfo() {
     return await this.simuladoService.questoesInfo();
   }
@@ -131,7 +136,7 @@ export class SimuladoController {
     },
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.bancoQuestoes)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
   public async questoes(@Param('status') status: Status) {
     return await this.simuladoService.questoes(status);
   }
@@ -149,7 +154,7 @@ export class SimuladoController {
     },
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.bancoQuestoes)
+  @SetMetadata(PermissionsGuard.name, Permissions.validarQuestao)
   public async questoesUpdateStatus(
     @Param('id') id: string,
     @Param('status') status: Status,
@@ -170,7 +175,7 @@ export class SimuladoController {
     },
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.bancoQuestoes)
+  @SetMetadata(PermissionsGuard.name, Permissions.validarQuestao)
   public async questoesUpdate(@Body() question: UpdateDTOInput) {
     return await this.simuladoService.questoesUpdate(question);
   }
@@ -221,5 +226,43 @@ export class SimuladoController {
   @UseGuards(JwtAuthGuard)
   public async report(@Body() reportDto: ReportDTO, @Req() req: Request) {
     return await this.simuladoService.report(reportDto, (req.user as User).id);
+  }
+
+  @Post('questoes')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'criar questão',
+    schema: {
+      type: 'object',
+      additionalProperties: {
+        type: 'string',
+      },
+    },
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  public async createQuestion(@Body() dto: CreateQuestaoDTOInput) {
+    return await this.simuladoService.createQuestion(dto);
+  }
+
+  @Post('questoes/uploadimage')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'upload de nova imagem de questao',
+    schema: {
+      type: 'object',
+      additionalProperties: {
+        type: 'string',
+      },
+    },
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  @UseInterceptors(FileInterceptor('file', multerConfig))
+  public async uploadImage(@UploadedFile() file) {
+    console.log(file);
+    return await this.simuladoService.uploadImage(file);
   }
 }

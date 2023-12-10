@@ -14,7 +14,13 @@ export class CreateRoleDtoInput {
   criarSimulado: boolean;
 
   @IsBoolean()
-  bancoQuestoes: boolean;
+  visualizarQuestao: boolean;
+
+  @IsBoolean()
+  criarQuestao: boolean;
+
+  @IsBoolean()
+  validarQuestao: boolean;
 
   @IsBoolean()
   uploadNews: boolean;
