@@ -183,7 +183,7 @@ export class SimuladoService {
       );
   }
 
-  public async uploadImage(file: Express.Multer.File): Promise<string> {
+  public async uploadImage(file: any): Promise<string> {
     if (!file) {
       throw new Error('Nenhum arquivo fornecido');
     }
