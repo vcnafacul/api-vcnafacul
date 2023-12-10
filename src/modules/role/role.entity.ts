@@ -6,7 +6,9 @@ export enum Permissions {
   validarCursinho = 'validar_cursinho',
   alterarPermissao = 'alterar_permissao',
   criarSimulado = 'criar_simulado',
-  bancoQuestoes = 'banco_questoes',
+  criarQuestao = 'criar_questao',
+  visualizarQuestao = 'visualizar_questao',
+  validarQuestao = 'validar_questao',
   uploadNews = 'upload_news',
 }
 
@@ -24,8 +26,14 @@ export class Role extends BaseEntity {
   @Column({ name: Permissions.criarSimulado, default: false })
   criarSimulado: boolean;
 
-  @Column({ name: Permissions.bancoQuestoes, default: false })
-  bancoQuestoes: boolean;
+  @Column({ name: Permissions.criarQuestao, default: false })
+  criarQuestao: boolean;
+
+  @Column({ name: Permissions.visualizarQuestao, default: false })
+  visualizarQuestao: boolean;
+
+  @Column({ name: Permissions.validarQuestao, default: false })
+  validarQuestao: boolean;
 
   @Column({ name: Permissions.uploadNews, default: false })
   uploadNews: boolean;

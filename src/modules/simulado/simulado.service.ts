@@ -10,6 +10,7 @@ import { ReportEntity } from './enum/report.enum';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { Status } from './enum/status.enum';
 import { UpdateDTOInput } from './dtos/update-questao.dto.input';
+import { CreateQuestaoDTOInput } from './dtos/create-questao.dto.input';
 
 @Injectable()
 export class SimuladoService {
@@ -168,5 +169,24 @@ export class SimuladoService {
           throw new ForbiddenException(err.message);
         }),
       );
+  }
+
+  public async createQuestion(questao: CreateQuestaoDTOInput) {
+    return await this.http
+      .post(`v1/questao`, questao)
+      .pipe(map((res) => res.data))
+      .pipe(
+        catchError((err) => {
+          console.log(err);
+          throw new ForbiddenException(err.message);
+        }),
+      );
+  }
+
+  public async uploadImage(file: any): Promise<string> {
+    if (!file) {
+      throw new Error('Nenhum arquivo fornecido');
+    }
+    return file.filename.split('.')[0];
   }
 }
