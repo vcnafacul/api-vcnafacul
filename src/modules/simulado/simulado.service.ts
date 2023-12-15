@@ -1,5 +1,10 @@
 import { HttpService } from '@nestjs/axios';
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+} from '@nestjs/common';
 import { CreateSimuladoDTOInput } from './dtos/create-simulado.dto.input';
 import { SimuladoDTO } from './dtos/simulado.dto.output';
 import { catchError, map } from 'rxjs';
@@ -11,6 +16,10 @@ import { AuditLogService } from '../audit-log/audit-log.service';
 import { Status } from './enum/status.enum';
 import { UpdateDTOInput } from './dtos/update-questao.dto.input';
 import { CreateQuestaoDTOInput } from './dtos/create-questao.dto.input';
+import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
+import * as ftp from 'basic-ftp';
+import * as fs from 'fs';
+import { CreateProvaDTORequest } from './dtos/prova-create.dto.request';
 
 @Injectable()
 export class SimuladoService {
@@ -129,8 +138,7 @@ export class SimuladoService {
       .pipe(map((res) => res.data))
       .pipe(
         catchError((err) => {
-          console.log(err);
-          throw new ForbiddenException(err.message);
+          throw new ForbiddenException(err.responde.data.message);
         }),
       );
   }
@@ -154,7 +162,7 @@ export class SimuladoService {
       .pipe(
         catchError((err) => {
           console.log(err);
-          throw new ForbiddenException(err.message);
+          throw new ForbiddenException(err.response.data);
         }),
       );
   }
@@ -188,5 +196,82 @@ export class SimuladoService {
       throw new Error('Nenhum arquivo fornecido');
     }
     return file.filename.split('.')[0];
+  }
+
+  public async createProva(prova: CreateProvaDTOInput, file: any) {
+    const fileName = await this.uploadFile(file);
+    if (!fileName) {
+      throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);
+    }
+    const request = new CreateProvaDTORequest();
+    request.edicao = prova.edicao;
+    request.exame = prova.exame;
+    request.ano = parseInt(prova.ano as unknown as string);
+    request.aplicacao = parseInt(prova.aplicacao as unknown as string);
+    request.filename = fileName;
+    return await this.http
+      .post(`v1/prova`, request)
+      .pipe(map((res) => res.data))
+      .pipe(
+        catchError((err) => {
+          throw new ForbiddenException(err.response.data.message);
+        }),
+      );
+  }
+
+  public async getProvaById(id: string) {
+    return await this.http
+      .get(`v1/prova/${id}`)
+      .pipe(map((res) => res.data))
+      .pipe(
+        catchError((err) => {
+          throw new ForbiddenException(err.response.data.message);
+        }),
+      );
+  }
+
+  public async getProvasAll() {
+    return await this.http
+      .get(`v1/prova`)
+      .pipe(map((res) => res.data))
+      .pipe(
+        catchError((err) => {
+          throw new ForbiddenException(err.response.data.message);
+        }),
+      );
+  }
+
+  private async uploadFile(file: any): Promise<string> {
+    const client = new ftp.Client(30000);
+    try {
+      await client.access({
+        host: this.configService.get<string>('FTP_HOST'),
+        user: this.configService.get<string>('FTP_USER'),
+        password: this.configService.get<string>('FTP_PASSWORD'),
+      });
+      const typeFile = file.originalname.split('.')[1];
+      const nameFile = Date.now();
+
+      const tempFilePath = `${this.configService.get<string>(
+        'FTP_TEMP_FILE',
+      )}${nameFile}.${typeFile}`;
+
+      fs.writeFileSync(tempFilePath, file.buffer);
+
+      const ftpResponse = await client.uploadFrom(
+        tempFilePath,
+        `${nameFile}.${typeFile}`,
+      );
+      fs.unlinkSync(tempFilePath);
+      if (ftpResponse.code == 226) {
+        return `${nameFile}.${typeFile}`;
+      }
+      return '';
+    } catch (error) {
+      console.log(error);
+      return '';
+    } finally {
+      client.close();
+    }
   }
 }

@@ -31,13 +31,12 @@ export class PermissionsGuard implements CanActivate {
       PermissionsGuard.name,
       context.getHandler(),
     );
+
     if (!requiredPermissions) {
       return true;
     }
-
     const request = context.switchToHttp().getRequest();
     const authorizationHeader = request.headers.authorization;
-
     if (!authorizationHeader || !authorizationHeader.startsWith('Bearer ')) {
       return false;
     }
@@ -60,7 +59,6 @@ export class PermissionsGuard implements CanActivate {
         this.snakeToCamel(requiredPermissions),
       );
     } catch (error) {
-      console.log(error);
       return false;
     }
   }

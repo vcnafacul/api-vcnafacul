@@ -12,6 +12,8 @@ export class RoleUpdateAdminSeedService {
         visualizarQuestao: true,
         validarQuestao: true,
         uploadNews: true,
+        visualizarProvas: true,
+        cadastrarProvas: true,
       })
       .catch(() => {});
   }

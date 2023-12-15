@@ -28,7 +28,7 @@ import { NewsModule } from './modules/news/news.module';
     JwtModule.register({
       global: true,
       secret: process.env.APP_KEY,
-      signOptions: { expiresIn: '1d' },
+      signOptions: { expiresIn: '7d' },
     }),
     HttpModule.registerAsync({
       useFactory: async () => ({

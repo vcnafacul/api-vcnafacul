@@ -1,8 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { FrenteDTO } from './frente.dto.outpur';
 import { MateriaDTO } from './materia.dto.outpur';
-import { ExameDTO } from './exame.dto.output';
-import { Caderno } from '../enum/caderno.enum';
 import { EnemArea } from '../enum/enem-area.enum';
 import { Status } from '../enum/status.enum';
 import { Alternativa } from '../enum/alternativa.enum';
@@ -10,15 +8,6 @@ import { Alternativa } from '../enum/alternativa.enum';
 export class QuestaoDTO {
   @ApiProperty()
   public _id?: string;
-
-  @ApiProperty()
-  public exame: ExameDTO;
-
-  @ApiProperty()
-  public ano: number;
-
-  @ApiProperty({ enum: Caderno })
-  public caderno: Caderno;
 
   @ApiProperty({ enum: EnemArea })
   public enemArea: EnemArea;
