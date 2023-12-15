@@ -24,4 +24,10 @@ export class CreateRoleDtoInput {
 
   @IsBoolean()
   uploadNews: boolean;
+
+  @IsBoolean()
+  visualizarProvas: boolean;
+
+  @IsBoolean()
+  cadastrarProvas: boolean;
 }

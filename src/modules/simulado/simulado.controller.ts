@@ -32,6 +32,7 @@ import { Permissions } from '../role/role.entity';
 import { CreateQuestaoDTOInput } from './dtos/create-questao.dto.input';
 import multerConfig from 'src/config/multer-config';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
 
 @ApiTags('Simulado')
 @Controller('simulado')
@@ -182,6 +183,30 @@ export class SimuladoController {
     return await this.simuladoService.questoesUpdate(question);
   }
 
+  @Get('prova')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'busca prova por id',
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarProvas)
+  public async getProvasAll() {
+    return await this.simuladoService.getProvasAll();
+  }
+
+  @Get('prova/:id')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'busca prova por id',
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarProvas)
+  public async getProvaById(@Param('id') id: string) {
+    return await this.simuladoService.getProvaById(id);
+  }
+
   @Get(':id')
   @ApiResponse({
     status: 200,
@@ -253,12 +278,6 @@ export class SimuladoController {
   @ApiResponse({
     status: 200,
     description: 'upload de nova imagem de questao',
-    schema: {
-      type: 'object',
-      additionalProperties: {
-        type: 'string',
-      },
-    },
   })
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
@@ -267,5 +286,21 @@ export class SimuladoController {
     return res
       .status(HttpStatus.CREATED)
       .send(await this.simuladoService.uploadImage(file));
+  }
+
+  @Post('prova')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'cadastrar provas',
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  @UseInterceptors(FileInterceptor('file'))
+  public async createProvas(
+    @Body() dto: CreateProvaDTOInput,
+    @UploadedFile() file,
+  ) {
+    return await this.simuladoService.createProva(dto, file);
   }
 }

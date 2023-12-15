@@ -22,10 +22,17 @@ export class RoleService {
     role.validarCursinho = roleDto.validarCursinho;
     role.alterarPermissao = roleDto.alterarPermissao;
     role.criarSimulado = roleDto.criarSimulado;
-    role.visualizarQuestao = roleDto.visualizarQuestao;
     role.criarQuestao = roleDto.criarQuestao;
     role.validarQuestao = roleDto.validarQuestao;
+    role.visualizarQuestao = role.validarQuestao
+      ? role.validarQuestao
+      : roleDto.visualizarQuestao;
+
     role.uploadNews = roleDto.uploadNews;
+    role.cadastrarProvas = roleDto.cadastrarProvas;
+    role.visualizarProvas = roleDto.cadastrarProvas
+      ? role.cadastrarProvas
+      : roleDto.visualizarProvas;
 
     return await this.roleRepository.create(role);
   }

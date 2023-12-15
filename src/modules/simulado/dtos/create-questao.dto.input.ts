@@ -1,22 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
-import { Caderno } from '../enum/caderno.enum';
 import { EnemArea } from '../enum/enem-area.enum';
 import { Alternativa } from '../enum/alternativa.enum';
 
 export class CreateQuestaoDTOInput {
-  @ApiProperty()
-  @IsString()
-  exame: string;
-
-  @ApiProperty()
-  @IsNumber()
-  public ano: number;
-
-  @ApiProperty({ enum: Caderno })
-  @IsEnum(Caderno)
-  public caderno: Caderno;
-
   @ApiProperty({ enum: EnemArea })
   @IsEnum(EnemArea)
   public enemArea: EnemArea;
@@ -78,4 +65,8 @@ export class CreateQuestaoDTOInput {
   @ApiProperty()
   @IsString()
   public edicao: string;
+
+  @ApiProperty()
+  @IsString()
+  public prova: string;
 }
