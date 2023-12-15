@@ -9,7 +9,13 @@ import { json, urlencoded } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.enableCors();
+  app.enableCors({
+    origin: [
+      'http://127.0.0.1:5173',
+      'https://vcnafacul.com.br/',
+      'https://homol.vcnafacul.com.br/',
+    ],
+  });
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
