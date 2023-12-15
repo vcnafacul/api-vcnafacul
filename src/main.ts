@@ -8,14 +8,7 @@ import { ControllerExceptionsFilter } from './exceptions/controller.filter';
 import { json, urlencoded } from 'express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  app.enableCors({
-    origin: [
-      'http://127.0.0.1:5173',
-      'https://vcnafacul.com.br/',
-      'https://homol.vcnafacul.com.br/',
-    ],
-  });
+  const app = await NestFactory.create(AppModule, { cors: true });
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
