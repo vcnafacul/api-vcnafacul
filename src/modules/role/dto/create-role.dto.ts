@@ -30,4 +30,16 @@ export class CreateRoleDtoInput {
 
   @IsBoolean()
   cadastrarProvas: boolean;
+
+  @IsBoolean()
+  visualizarDemanda: boolean;
+
+  @IsBoolean()
+  uploadDemanda: boolean;
+
+  @IsBoolean()
+  validarDemanda: boolean;
+
+  @IsBoolean()
+  gerenciadorDemanda: boolean;
 }

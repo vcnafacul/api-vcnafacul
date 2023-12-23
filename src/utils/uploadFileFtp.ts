@@ -17,7 +17,6 @@ export const uploadFileFTP = async (
     });
     const typeFile = file.originalname.split('.')[1];
     const nameFile = Date.now();
-
     const tempFilePath = `${FTP_TEMP_FILE}${nameFile}.${typeFile}`;
 
     fs.writeFileSync(tempFilePath, file.buffer);

@@ -16,4 +16,24 @@ export class BaseRepository<T> {
   async findBy(where: object): Promise<T[]> {
     return await this.repository.find({ where: { ...where } });
   }
+
+  async findOneBy(where: object): Promise<T> {
+    return await this.repository.findOne({ where: { ...where } });
+  }
+
+  async findOneOrFailBy(where: object): Promise<T> {
+    return await this.repository.findOneByOrFail({ ...where });
+  }
+
+  async update(entity: T) {
+    await this.repository.save(entity); //bloqquear o insert se não existir
+  }
+
+  async softDelete(id: number) {
+    await this.repository.softDelete(id);
+  }
+
+  async delete(id: number) {
+    await this.repository.delete(id);
+  }
 }
