@@ -1,13 +1,13 @@
 import { Column } from 'typeorm';
-import { BaseEntity } from '../base/entity.base';
+import { NodeEntity } from '../node/node.entity';
 
-export class LinkedListEntity extends BaseEntity {
-  @Column()
-  head: boolean;
+export abstract class LinkedListEntity extends NodeEntity {
+  @Column({ nullable: true })
+  head?: number;
 
-  @Column()
-  prev?: number;
+  @Column({ nullable: true })
+  tail?: number;
 
-  @Column()
-  next?: number;
+  @Column({ default: 0 })
+  lenght: number;
 }

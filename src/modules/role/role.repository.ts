@@ -19,7 +19,7 @@ export class RoleRepository extends BaseRepository<Role> {
     return newRole;
   }
 
-  async update(name: string, filter: object) {
+  async updateRole(name: string, filter: object) {
     await this.repository
       .createQueryBuilder()
       .update(Role)

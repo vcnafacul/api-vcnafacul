@@ -13,7 +13,7 @@ export class UserRoleRepository extends BaseRepository<UserRole> {
     super(_entityManager.getRepository(UserRole));
   }
 
-  async update(userRole: UserRole) {
+  override async update(userRole: UserRole) {
     await this.repository.save(userRole);
   }
 

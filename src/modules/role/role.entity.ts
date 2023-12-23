@@ -12,6 +12,10 @@ export enum Permissions {
   uploadNews = 'upload_news',
   visualizarProvas = 'visualizar_provas',
   cadastrarProvas = 'cadastrar_provas',
+  visualizarDemanda = 'visualizar_demanda',
+  uploadDemanda = 'upload_demanda',
+  validarDemanda = 'validar_demanda',
+  gerenciadorDemanda = 'gerenciador_demanda',
 }
 
 @Entity('roles')
@@ -45,6 +49,18 @@ export class Role extends BaseEntity {
 
   @Column({ name: Permissions.cadastrarProvas, default: false })
   cadastrarProvas: boolean;
+
+  @Column({ name: Permissions.visualizarDemanda, default: false })
+  visualizarDemanda: boolean;
+
+  @Column({ name: Permissions.uploadDemanda, default: false })
+  uploadDemanda: boolean;
+
+  @Column({ name: Permissions.validarDemanda, default: false })
+  validarDemanda: boolean;
+
+  @Column({ name: Permissions.gerenciadorDemanda, default: false })
+  gerenciadorDemanda: boolean;
 
   @OneToMany(() => UserRole, (userRole) => userRole.role)
   userRoles: UserRole[];

@@ -1,7 +1,7 @@
 import { Module, OnModuleInit } from '@nestjs/common';
-import { RoleSeedService } from './role.seed';
+import { RoleSeedService } from './1-role.seed';
 import { RoleRepository } from 'src/modules/role/role.repository';
-import { RoleUpdateAdminSeedService } from './role-update-admin.seed';
+import { RoleUpdateAdminSeedService } from './2-role-update-admin.seed';
 
 @Module({
   providers: [RoleSeedService, RoleRepository, RoleUpdateAdminSeedService],

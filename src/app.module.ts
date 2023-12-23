@@ -14,6 +14,9 @@ import { AuditLogModule } from './modules/audit-log/audit-log.module';
 import { SimuladoModule } from './modules/simulado/simulado.module';
 import { HttpModule } from '@nestjs/axios';
 import { NewsModule } from './modules/news/news.module';
+import { FrenteModule } from './modules/contents/frente/frente.module';
+import { SubjectModule } from './modules/contents/subject/subject.module';
+import { ContentModule } from './modules/contents/content/content.module';
 
 @Module({
   imports: [
@@ -44,6 +47,9 @@ import { NewsModule } from './modules/news/news.module';
     AuditLogModule,
     SimuladoModule,
     NewsModule,
+    FrenteModule,
+    SubjectModule,
+    ContentModule,
   ],
   controllers: [],
   providers: [JwtStrategy],

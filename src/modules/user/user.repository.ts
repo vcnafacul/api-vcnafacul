@@ -49,8 +49,8 @@ export class UserRepository extends BaseRepository<User> {
     return await this.repository.findOneBy(filter);
   }
 
-  async update(user: User): Promise<User> {
-    return await this.repository.save(user);
+  override async update(user: User) {
+    await this.repository.save(user);
   }
 
   async deleteUser(user: User) {
