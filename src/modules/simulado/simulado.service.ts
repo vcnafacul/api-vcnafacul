@@ -1,10 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import {
-  ForbiddenException,
-  HttpException,
-  HttpStatus,
-  Injectable,
-} from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { CreateSimuladoDTOInput } from './dtos/create-simulado.dto.input';
 import { SimuladoDTO } from './dtos/simulado.dto.output';
 import { catchError, map } from 'rxjs';
@@ -16,9 +11,6 @@ import { AuditLogService } from '../audit-log/audit-log.service';
 import { Status } from './enum/status.enum';
 import { UpdateDTOInput } from './dtos/update-questao.dto.input';
 import { CreateQuestaoDTOInput } from './dtos/create-questao.dto.input';
-import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
-import { CreateProvaDTORequest } from './dtos/prova-create.dto.request';
-import { uploadFileFTP } from 'src/utils/uploadFileFtp';
 
 @Injectable()
 export class SimuladoService {
@@ -195,54 +187,5 @@ export class SimuladoService {
       throw new Error('Nenhum arquivo fornecido');
     }
     return file.filename.split('.')[0];
-  }
-
-  public async createProva(prova: CreateProvaDTOInput, file: any) {
-    const fileName = await uploadFileFTP(
-      file,
-      this.configService.get<string>('FTP_TEMP_FILE'),
-      this.configService.get<string>('FTP_HOST'),
-      this.configService.get<string>('FTP_USER'),
-      this.configService.get<string>('FTP_PASSWORD'),
-    );
-    if (!fileName) {
-      throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);
-    }
-    const request = new CreateProvaDTORequest();
-    request.edicao = prova.edicao;
-    request.exame = prova.exame;
-    request.ano = parseInt(prova.ano as unknown as string);
-    request.aplicacao = parseInt(prova.aplicacao as unknown as string);
-    request.filename = fileName;
-    return await this.http
-      .post(`v1/prova`, request)
-      .pipe(map((res) => res.data))
-      .pipe(
-        catchError((err) => {
-          throw new ForbiddenException(err.response.data.message);
-        }),
-      );
-  }
-
-  public async getProvaById(id: string) {
-    return await this.http
-      .get(`v1/prova/${id}`)
-      .pipe(map((res) => res.data))
-      .pipe(
-        catchError((err) => {
-          throw new ForbiddenException(err.response.data.message);
-        }),
-      );
-  }
-
-  public async getProvasAll() {
-    return await this.http
-      .get(`v1/prova`)
-      .pipe(map((res) => res.data))
-      .pipe(
-        catchError((err) => {
-          throw new ForbiddenException(err.response.data.message);
-        }),
-      );
   }
 }
