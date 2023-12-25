@@ -11,6 +11,7 @@ import { AuditLogService } from '../audit-log/audit-log.service';
 import { Status } from './enum/status.enum';
 import { UpdateDTOInput } from './dtos/update-questao.dto.input';
 import { CreateQuestaoDTOInput } from './dtos/create-questao.dto.input';
+import { TipoSimuladoDTO } from './dtos/tipo-simulado.dto.output';
 
 @Injectable()
 export class SimuladoService {
@@ -47,9 +48,9 @@ export class SimuladoService {
       );
   }
 
-  async getDefaults() {
+  async getTipos() {
     return this.http
-      .get<SimuladoDTO>('v1/simulado/default')
+      .get<TipoSimuladoDTO[]>('v1/tipo-simulado')
       .pipe(map((res) => res.data))
       .pipe(
         catchError((err) => {

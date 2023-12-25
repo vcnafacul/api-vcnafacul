@@ -13,7 +13,7 @@ import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ProvaService } from './prova.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
-import { CreateProvaDTOInput } from '../dtos/prova-create.dto.input';
+import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
 import { Permissions } from 'src/modules/role/role.entity';
 
 @ApiTags('Simulado - Prova')

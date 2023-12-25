@@ -3,6 +3,9 @@ import { RegraDTO } from './regra.dto.output';
 
 export class TipoSimuladoDTO {
   @ApiProperty()
+  public _id: string;
+
+  @ApiProperty()
   public nome: string;
 
   @ApiProperty()
