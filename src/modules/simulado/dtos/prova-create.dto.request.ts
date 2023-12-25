@@ -5,6 +5,6 @@ export class CreateProvaDTORequest {
   aplicacao: number = 1;
   ano: number;
   exame: string;
-  totalQuestao: number = 0;
   filename: string;
+  tipo: string;
 }

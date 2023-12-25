@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsNumberString, IsOptional, IsString } from 'class-validator';
-import { EdicaoProva } from '../enum/edicao-prova.enum';
+import { EdicaoProva } from '../../enum/edicao-prova.enum';
 
 export class CreateProvaDTOInput {
   @ApiProperty({
@@ -25,8 +25,7 @@ export class CreateProvaDTOInput {
   @IsString()
   public exame: string;
 
-  @ApiProperty({ required: false, default: 0 })
-  @IsOptional()
-  @IsNumberString()
-  public totalQuestao: string;
+  @ApiProperty()
+  @IsString()
+  tipo: string;
 }

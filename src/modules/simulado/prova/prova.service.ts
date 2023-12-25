@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { uploadFileFTP } from 'src/utils/uploadFileFtp';
-import { CreateProvaDTOInput } from '../dtos/prova-create.dto.input';
+import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
 import { CreateProvaDTORequest } from '../dtos/prova-create.dto.request';
 import { catchError, map } from 'rxjs';
 
@@ -37,7 +37,8 @@ export class ProvaService {
     request.exame = prova.exame;
     request.ano = parseInt(prova.ano as unknown as string);
     request.aplicacao = parseInt(prova.aplicacao as unknown as string);
-    request.filename = fileName;
+    request.tipo = prova.tipo;
+    request.filename = 'fileName';
     return await this.http
       .post(`v1/prova`, request)
       .pipe(map((res) => res.data))

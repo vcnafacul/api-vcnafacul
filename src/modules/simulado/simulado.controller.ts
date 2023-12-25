@@ -22,6 +22,7 @@ import { User } from '../user/user.entity';
 import { ReportDTO } from './dtos/report.dto.input';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { Permissions } from '../role/role.entity';
+import { TipoSimuladoDTO } from './dtos/tipo-simulado.dto.output';
 
 @ApiTags('Simulado')
 @Controller('mssimulado/simulado')
@@ -52,6 +53,17 @@ export class SimuladoController {
   })
   async getAdd(): Promise<Observable<SimuladoDTO[]>> {
     return await this.simuladoService.getAll();
+  }
+
+  @Get('tipos')
+  @ApiResponse({
+    status: 200,
+    description: 'busca todos os tipos de simulados',
+    type: SimuladoDTO,
+    isArray: true,
+  })
+  async getTipos(): Promise<Observable<TipoSimuladoDTO[]>> {
+    return await this.simuladoService.getTipos();
   }
 
   @Get('toanswer/:id')
