@@ -19,7 +19,8 @@ export class FrenteRepository extends LinkedListRepository<Frente, Subject> {
     const query = this.repository
       .createQueryBuilder('frente')
       .select(['frente.id', 'frente.name', 'frente.lenght'])
-      .where('frente.materia = :materia', { materia });
+      .where('frente.materia = :materia', { materia })
+      .andWhere('frente.lenght > 0');
 
     return query.getMany();
   }

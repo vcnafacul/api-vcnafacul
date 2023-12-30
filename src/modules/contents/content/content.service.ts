@@ -48,12 +48,9 @@ export class ContentService {
   }
 
   async getAllOrder(subjectId: number, status: StatusContent) {
-    const frente = await this.subjectRepository.findOneBy({ id: subjectId });
-    const nodes = await this.repository.findBy({
-      list: subjectId,
-      status: status,
-    });
-    return await this.repository.getOrder(nodes, frente.head);
+    const subject = await this.subjectRepository.findOneBy({ id: subjectId });
+    const nodes = await this.repository.getBytSubject(subjectId);
+    return await this.repository.getOrderContent(nodes, subject.head, status);
   }
 
   async getById(id: number) {
