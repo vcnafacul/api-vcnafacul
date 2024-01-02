@@ -93,12 +93,16 @@ export class ContentRepository extends NodeRepository<Content> {
   async getOrderContent(
     nodes: Content[],
     start: number,
-    status: StatusContent,
+    status?: StatusContent,
   ) {
     const orderedNodes: Content[] = [];
     let currentNode = nodes.find((n) => n.id === start);
     while (currentNode) {
-      if (currentNode.status === status) {
+      if (
+        status === undefined ||
+        Number.isNaN(status) ||
+        currentNode.status === status
+      ) {
         orderedNodes.push(currentNode);
       }
       currentNode = nodes.find((n) => n.id === currentNode.next);

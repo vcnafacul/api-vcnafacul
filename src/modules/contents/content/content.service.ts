@@ -47,7 +47,7 @@ export class ContentService {
     return await this.repository.getAll(status, subjectId);
   }
 
-  async getAllOrder(subjectId: number, status: StatusContent) {
+  async getAllOrder(subjectId: number, status?: StatusContent) {
     const subject = await this.subjectRepository.findOneBy({ id: subjectId });
     const nodes = await this.repository.getBytSubject(subjectId);
     return await this.repository.getOrderContent(nodes, subject.head, status);
