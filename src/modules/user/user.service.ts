@@ -11,6 +11,11 @@ import { UpdateUserDTOInput } from './dto/update.dto.input';
 import { EmailService } from 'src/shared/services/email.service';
 import { ResetPasswordDtoInput } from './dto/reset-password.dto.input';
 import { LoginTokenDTO } from './dto/login-token.dto.input';
+import { CollaboratorDtoInput } from './dto/collaboratorDto';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import { ConfigService } from '@nestjs/config';
+import { uploadFileFTP } from 'src/utils/uploadFileFtp';
+import { removeFileFTP } from 'src/utils/removeFileFtp';
 
 @Injectable()
 export class UserService {
@@ -19,6 +24,8 @@ export class UserService {
     private readonly roleRepository: RoleRepository,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
+    private readonly auditLogService: AuditLogService,
+    private readonly configService: ConfigService,
   ) {}
 
   async createUser(userDto: CreateUserDtoInput): Promise<LoginTokenDTO> {
@@ -125,6 +132,81 @@ export class UserService {
   async getvalidateGeo(): Promise<string[]> {
     return (await this.userRepository.getValidatorGeo()).map(
       (user) => user.email,
+    );
+  }
+
+  async collaborator(data: CollaboratorDtoInput, userId: number) {
+    const user = await this.userRepository.findUserById(data.userId);
+    const changes = {
+      before: {
+        collaborador: user.collaborator,
+        description: user.collaboratorDescription,
+      },
+      after: {
+        collaborador: data.collaborator,
+        description: data.description,
+      },
+    };
+    user.collaborator = data.collaborator;
+    user.collaboratorDescription = data.description;
+    await this.userRepository.update(user);
+
+    await this.auditLogService.create({
+      entityType: User.name,
+      entityId: data.userId,
+      updatedBy: userId,
+      changes: changes,
+    });
+  }
+
+  async uploadImage(file: any, userId: number): Promise<string> {
+    const user = await this.userRepository.findUserById(userId);
+    if (user.collaboratorPhoto) {
+      await removeFileFTP(
+        user.collaboratorPhoto,
+        this.configService.get<string>('FTP_HOST'),
+        this.configService.get<string>('FTP_PROFILE'),
+        this.configService.get<string>('FTP_PASSWORD'),
+      );
+    }
+    const fileName = await uploadFileFTP(
+      file,
+      this.configService.get<string>('FTP_TEMP_FILE'),
+      this.configService.get<string>('FTP_HOST'),
+      this.configService.get<string>('FTP_PROFILE'),
+      this.configService.get<string>('FTP_PASSWORD'),
+    );
+    if (!fileName) {
+      throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);
+    }
+    user.collaboratorPhoto = fileName;
+    await this.userRepository.update(user);
+    return fileName;
+  }
+
+  async getVolunteers() {
+    return await this.userRepository.getVolunteers();
+  }
+
+  async removeImage(userId: number): Promise<boolean> {
+    const user = await this.userRepository.findUserById(userId);
+    const deleted = await removeFileFTP(
+      user.collaboratorPhoto,
+      this.configService.get<string>('FTP_HOST'),
+      this.configService.get<string>('FTP_PROFILE'),
+      this.configService.get<string>('FTP_PASSWORD'),
+    );
+    if (deleted) {
+      user.collaboratorPhoto = null;
+      await this.userRepository.update(user);
+      return true;
+    }
+    return false;
+  }
+
+  async me(userId: number) {
+    return this.MapUsertoUserDTO(
+      await this.userRepository.findUserById(userId),
     );
   }
 

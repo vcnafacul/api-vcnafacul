@@ -14,6 +14,7 @@ export class UserRoleRepository extends BaseRepository<UserRole> {
   }
 
   override async update(userRole: UserRole) {
+    userRole.updatedAt = new Date();
     await this.repository.save(userRole);
   }
 

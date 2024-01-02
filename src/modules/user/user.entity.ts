@@ -41,6 +41,15 @@ export class User extends BaseEntity {
   @Column()
   public lgpd: boolean;
 
+  @Column({ default: false })
+  public collaborator: boolean;
+
+  @Column({ default: null })
+  public collaboratorDescription?: string;
+
+  @Column({ default: null })
+  public collaboratorPhoto?: string;
+
   @OneToOne(() => UserRole, (userRole) => userRole.user)
   userRole: UserRole;
 

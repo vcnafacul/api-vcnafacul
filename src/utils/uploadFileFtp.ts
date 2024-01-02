@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as ftp from 'basic-ftp';
+import { compressImage } from './compressImage';
 
 export const uploadFileFTP = async (
   file: any,
@@ -19,7 +20,11 @@ export const uploadFileFTP = async (
     const nameFile = Date.now();
     const tempFilePath = `${FTP_TEMP_FILE}${nameFile}.${typeFile}`;
 
-    fs.writeFileSync(tempFilePath, file.buffer);
+    if (['jpg', 'jpeg', 'png'].includes(typeFile)) {
+      await compressImage(tempFilePath, file.buffer);
+    } else {
+      fs.writeFileSync(tempFilePath, file.buffer);
+    }
 
     const ftpResponse = await client.uploadFrom(
       tempFilePath,

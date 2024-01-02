@@ -17,7 +17,7 @@ export class ContentService {
     private readonly repository: ContentRepository,
     private readonly subjectRepository: SubjectRepository,
     private readonly configService: ConfigService,
-    private readonly auditLod: AuditLogService,
+    private readonly auditLog: AuditLogService,
   ) {}
 
   async create(data: CreateContentDTOInput): Promise<Content> {
@@ -73,7 +73,7 @@ export class ContentService {
     const demand = await this.repository.findOneBy({ id });
     demand.status = status;
     await this.repository.update(demand);
-    await this.auditLod.create({
+    await this.auditLog.create({
       entityType: 'Content',
       entityId: demand.id,
       updatedBy: user.id,
@@ -95,7 +95,7 @@ export class ContentService {
     demand.status = StatusContent.Pending_Upload;
     demand.filename = null;
     await this.repository.update(demand);
-    await this.auditLod.create({
+    await this.auditLog.create({
       entityType: 'Content',
       entityId: demand.id,
       updatedBy: user.id,
@@ -122,7 +122,7 @@ export class ContentService {
     demand.filename = fileName;
     demand.user = user;
     await this.repository.update(demand);
-    await this.auditLod.create({
+    await this.auditLog.create({
       entityType: 'Content',
       entityId: demand.id,
       updatedBy: user.id,
