@@ -16,6 +16,8 @@ jobs:
       - uses: actions/setup-node@v1
         with:
           node-version: 16.x
+      - name: Install sharp depend
+        run: yarn add sharp --ignore-engines 
       - name: Install depends
         run: yarn
       - name: Build app vCnafacul
