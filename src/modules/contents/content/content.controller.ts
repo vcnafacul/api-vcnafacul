@@ -51,7 +51,7 @@ export class ContentController {
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
   async getAllOrder(
-    @Query('subjectId') subjectId?: number,
+    @Query('subjectId') subjectId: number,
     @Query('status') status?: StatusContent,
   ) {
     return await this.subjectService.getAllOrder(subjectId, status);
@@ -68,7 +68,7 @@ export class ContentController {
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
   async changeOrder(@Body() dto?: ChangeOrderDTOInput) {
-    return await this.subjectService.changeOrder(dto);
+    await this.subjectService.changeOrder(dto);
   }
 
   @Patch('status')

@@ -46,6 +46,7 @@ export class LinkedListRepository<
   }
 
   async changeOrder(id1: number, id2?: number) {
+    //se o id2 é nulo, então estou colocando o id1 na primeira posição
     const node1 = await this.getNode(id1);
     let node2 = null;
     if (id2) {
