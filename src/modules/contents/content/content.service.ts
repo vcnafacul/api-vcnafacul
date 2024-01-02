@@ -66,7 +66,7 @@ export class ContentService {
   }
 
   async changeOrder(dto: ChangeOrderDTOInput) {
-    await this.subjectRepository.changeOrder(dto.node1, dto.node2);
+    await this.subjectRepository.changeOrder(dto.listId, dto.node1, dto.node2);
   }
 
   async changeStatus(id: number, status: StatusContent, user: User) {
@@ -138,7 +138,7 @@ export class ContentService {
         HttpStatus.NOT_FOUND,
       );
     }
-    await this.subjectRepository.removeNode(content);
+    await this.subjectRepository.removeNode(content.subject.id, content);
     await this.repository.delete(id);
   }
 

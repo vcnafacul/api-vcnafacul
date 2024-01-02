@@ -8,5 +8,5 @@ export abstract class NodeEntity extends BaseEntity {
   @Column({ nullable: true })
   next?: number;
 
-  abstract get list(): number | undefined;
+  abstract get list(): number;
 }

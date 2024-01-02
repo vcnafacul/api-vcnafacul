@@ -45,43 +45,51 @@ export class LinkedListRepository<
     return true;
   }
 
-  async changeOrder(id1: number, id2?: number) {
-    //se o id2 é nulo, então estou colocando o id1 na primeira posição
+  async changeOrder(listId: number, id1: number, id2?: number) {
     const node1 = await this.getNode(id1);
     let node2 = null;
+
     if (id2) {
       node2 = await this.getNode(id2);
     }
-    const entity = await this.getEntityList({ id: node1.list });
-
-    await this.removeNode(node1);
-
-    if (id2) {
-      if (node2.next) {
-        const node2Next = await this.getNode(node2.next);
-        node2.next = node1.id;
-        node1.next = node2Next.id;
-        node1.prev = node2.id;
-        node2Next.prev = node1.id;
-        await this.repositoryNodeChild.update(node2Next);
-      } else {
-        entity.tail = node1.id;
-        node2.next = node1.id;
-        node1.prev = node2.id;
-        node1.next = null;
+    await this.removeNode(listId, node1);
+    const entity = await this.getEntityList({ id: listId });
+    if (!id2) {
+      if (entity.head === id1) {
+        new HttpException('Não há necessidade de mudança', HttpStatus.CONFLICT);
       }
-    } else {
+      // Se id2 for nulo, coloca node1 na cabeça da lista
       const oldHead = await this.repositoryNodeChild.findOneBy({
         id: entity.head,
       });
       entity.head = node1.id;
       node1.next = oldHead.id;
       node1.prev = null;
-      oldHead.prev = node1.id;
+
+      if (oldHead) {
+        oldHead.prev = node1.id;
+        await this.repositoryNodeChild.update(oldHead);
+      }
+    } else {
+      // Se id2 não for nulo, coloca node1 após node2
+      node2 = await this.getNode(id2);
+      const node2Next = node2.next ? await this.getNode(node2.next) : null;
+
+      node1.next = node2.next;
+      node1.prev = node2.id;
+      node2.next = node1.id;
+
+      if (node2Next) {
+        node2Next.prev = node1.id;
+        await this.repositoryNodeChild.update(node2Next);
+      } else {
+        entity.tail = node1.id;
+      }
     }
 
     await this.repositoryNodeChild.update(node1);
     await this.repository.save(entity);
+
     if (node2) {
       await this.repositoryNodeChild.update(node2);
     }
@@ -106,12 +114,12 @@ export class LinkedListRepository<
     return entity;
   }
 
-  async removeNode(node: NodeEntity) {
-    const entity = await this.getEntityList({ id: node.list });
+  async removeNode(listId: number, node: NodeEntity) {
+    const entity = await this.getEntityList({ id: listId });
     if (!node.prev) {
       if (entity.head !== node.id) {
         throw new HttpException(
-          `Erro ao tentar remover. No ${node.id} não é a cabeça da lista ${node.list}`,
+          `Erro ao tentar remover. No ${node.id} não é a cabeça da lista ${listId}`,
           HttpStatus.CONFLICT,
         );
       }
