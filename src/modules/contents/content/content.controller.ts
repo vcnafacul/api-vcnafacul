@@ -28,13 +28,13 @@ import { FileInterceptor } from '@nestjs/platform-express';
 @ApiTags('Content')
 @Controller('content')
 export class ContentController {
-  constructor(private readonly subjectService: ContentService) {}
+  constructor(private readonly contentService: ContentService) {}
 
   @Post()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.validarDemanda)
   async create(@Body() dto: CreateContentDTOInput) {
-    return await this.subjectService.create(dto);
+    return await this.contentService.create(dto);
   }
 
   @Get()
@@ -44,7 +44,7 @@ export class ContentController {
     @Query('subjectId') subjectId?: number,
     @Query('status') status?: StatusContent,
   ) {
-    return await this.subjectService.getAll(subjectId, status);
+    return await this.contentService.getAll(subjectId, status);
   }
 
   @Get('order')
@@ -54,28 +54,28 @@ export class ContentController {
     @Query('subjectId') subjectId: number,
     @Query('status') status?: StatusContent,
   ) {
-    return await this.subjectService.getAllOrder(subjectId, status);
+    return await this.contentService.getAllOrder(subjectId, status);
   }
 
   @Get('demand')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.visualizarDemanda)
   async getAllDemand() {
-    return await this.subjectService.getAllDemand();
+    return await this.contentService.getAllDemand();
   }
 
   @Patch('order')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
   async changeOrder(@Body() dto?: ChangeOrderDTOInput) {
-    await this.subjectService.changeOrder(dto);
+    await this.contentService.changeOrder(dto);
   }
 
   @Patch('status')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.validarDemanda)
   async changeStatus(@Body() dto: UpdateStatusDTOInput, @Req() req: Request) {
-    return await this.subjectService.changeStatus(
+    return await this.contentService.changeStatus(
       dto.id,
       dto.status,
       req.user as User,
@@ -86,7 +86,7 @@ export class ContentController {
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
   async reset(@Param('id') id: number, @Req() req: Request) {
-    return await this.subjectService.reset(id, req.user as User);
+    return await this.contentService.reset(id, req.user as User);
   }
 
   @Post('upload/:id')
@@ -98,13 +98,13 @@ export class ContentController {
     @UploadedFile() file,
     @Req() req: Request,
   ) {
-    return await this.subjectService.uploadFile(id, req.user as User, file);
+    return await this.contentService.uploadFile(id, req.user as User, file);
   }
 
   @Delete(':id')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
   async delete(@Param('id') id: number) {
-    return await this.subjectService.delete(id);
+    return await this.contentService.delete(id);
   }
 }

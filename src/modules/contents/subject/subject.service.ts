@@ -48,7 +48,7 @@ export class SubjectService {
   }
 
   async changeOrder(dto: ChangeOrderDTOInput) {
-    await this.frenteRepository.changeOrder(dto.node1, dto.node2);
+    await this.frenteRepository.changeOrder(dto.listId, dto.node1, dto.node2);
   }
 
   async getByFrente(frente: number) {
@@ -82,7 +82,7 @@ export class SubjectService {
         HttpStatus.CONFLICT,
       );
     }
-    await this.frenteRepository.removeNode(subject);
+    await this.frenteRepository.removeNode(subject.frente.id, subject);
     await this.repository.delete(id);
   }
 }
