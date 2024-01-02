@@ -1,21 +1,7 @@
-import { IsNumber, IsString } from 'class-validator';
+import { User } from 'src/modules/user/user.entity';
 
 export class UserRoleDTO {
-  @IsNumber()
-  userId: number;
-
-  @IsString()
-  userName: string;
-
-  @IsString()
-  userEmail: string;
-
-  @IsString()
-  userPhone: string;
-
-  @IsNumber()
+  user: User;
   roleId: number;
-
-  @IsString()
   roleName: string;
 }

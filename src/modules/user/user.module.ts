@@ -7,10 +7,12 @@ import { UserExistValidator } from './validator/user-exist.validator';
 import { EmailService } from 'src/shared/services/email.service';
 import { RoleModule } from '../role/role.module';
 import { EmailExistValidator } from './validator/email-exist.validator';
+import { AuditLogModule } from '../audit-log/audit-log.module';
+import { UserRoleModule } from '../user-role/user-role.module';
 
 @Module({
   controllers: [UserController],
-  imports: [RoleModule],
+  imports: [RoleModule, AuditLogModule, UserRoleModule],
   providers: [
     UserService,
     UserRepository,

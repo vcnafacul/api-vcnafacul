@@ -1,4 +1,11 @@
-import { IsDateString, IsEnum, IsNotEmpty, IsNumber } from 'class-validator';
+import {
+  IsBoolean,
+  IsDateString,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsString,
+} from 'class-validator';
 import { Gender } from '../enum/gender';
 
 export class UserDtoOutput {
@@ -28,4 +35,13 @@ export class UserDtoOutput {
 
   @IsNotEmpty()
   about?: string = '';
+
+  @IsBoolean()
+  collaborator: boolean = false;
+
+  @IsString()
+  collaboratorDescription?: string = undefined;
+
+  @IsString()
+  collaboratorPhoto?: string = undefined;
 }
