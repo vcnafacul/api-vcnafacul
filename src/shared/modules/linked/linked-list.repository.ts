@@ -47,14 +47,15 @@ export class LinkedListRepository<
 
   async changeOrder(id1: number, id2?: number) {
     const node1 = await this.getNode(id1);
-
-    await this.removeNode(node1);
-
-    const entity = await this.getEntityList({ id: node1.list });
-
     let node2 = null;
     if (id2) {
       node2 = await this.getNode(id2);
+    }
+    const entity = await this.getEntityList({ id: node1.list });
+
+    await this.removeNode(node1);
+
+    if (id2) {
       if (node2.next) {
         const node2Next = await this.getNode(node2.next);
         node2.next = node1.id;
