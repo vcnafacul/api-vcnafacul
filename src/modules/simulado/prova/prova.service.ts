@@ -38,7 +38,7 @@ export class ProvaService {
     request.ano = parseInt(prova.ano as unknown as string);
     request.aplicacao = parseInt(prova.aplicacao as unknown as string);
     request.tipo = prova.tipo;
-    request.filename = 'fileName';
+    request.filename = fileName;
     return await this.http
       .post(`v1/prova`, request)
       .pipe(map((res) => res.data))
