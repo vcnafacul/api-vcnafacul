@@ -72,7 +72,6 @@ export class LinkedListRepository<
       }
     } else {
       // Se id2 não for nulo, coloca node1 após node2
-      node2 = await this.getNode(id2);
       const node2Next = node2.next ? await this.getNode(node2.next) : null;
 
       node1.next = node2.next;
