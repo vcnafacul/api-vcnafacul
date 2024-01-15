@@ -4,16 +4,33 @@ import { Frente } from './frente.entity';
 import { CreateFrenteDTOInput } from './dtos/create-frente.dto.input';
 import { Materias } from './enum/materias';
 import { UpdateFrenteDTOInput } from './dtos/update-frente.dto.input';
+import { QueryFailedError } from 'typeorm';
 
 @Injectable()
 export class FrenteService {
   constructor(private readonly repository: FrenteRepository) {}
 
   async create(data: CreateFrenteDTOInput): Promise<Frente> {
-    const frente = new Frente();
-    frente.name = data.name;
-    frente.materia = data.materia;
-    return this.repository.create(frente);
+    try {
+      const frente = new Frente();
+      frente.name = data.name;
+      frente.materia = data.materia;
+      return await this.repository.create(frente);
+    } catch (error) {
+      if (
+        error instanceof QueryFailedError &&
+        error.message.includes('duplicate key value')
+      ) {
+        // 23505 é o código específico para violação de chave única
+        throw new HttpException(
+          'Nome da frente deve ser único',
+          HttpStatus.CONFLICT,
+        );
+      } else {
+        // Se não for um erro de chave única, você pode lidar com isso de acordo com suas necessidades
+        throw new Error('Erro ao criar a frente');
+      }
+    }
   }
 
   async getAll() {
