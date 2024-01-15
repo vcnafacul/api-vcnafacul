@@ -5,6 +5,7 @@ import { Subject } from './subject.entity';
 import { FrenteRepository } from '../frente/frente.repository';
 import { ChangeOrderDTOInput } from 'src/shared/modules/node/dtos/change-order.dto.input';
 import { UpdateSubjectDTOInput } from './dtos/update-subject.dto.input';
+import { QueryFailedError } from 'typeorm';
 
 @Injectable()
 export class SubjectService {
@@ -14,23 +15,40 @@ export class SubjectService {
   ) {}
 
   async create(data: CreateSubjectDTOInput): Promise<Subject> {
-    const frente = await this.frenteRepository.findOneBy({
-      id: data.frente,
-    });
-    if (!frente) {
-      throw new HttpException(
-        `Subject not found by Id ${data.frente}`,
-        HttpStatus.NOT_FOUND,
-      );
-    }
+    try {
+      const frente = await this.frenteRepository.findOneBy({
+        id: data.frente,
+      });
+      if (!frente) {
+        throw new HttpException(
+          `Subject not found by Id ${data.frente}`,
+          HttpStatus.NOT_FOUND,
+        );
+      }
 
-    const subject = new Subject();
-    subject.name = data.name;
-    subject.frente = frente;
-    subject.description = data.description;
-    const subjectSave = await this.repository.create(subject);
-    await this.frenteRepository.addList(subjectSave, frente);
-    return subjectSave;
+      const subject = new Subject();
+      subject.name = data.name;
+      subject.frente = frente;
+      subject.description = data.description;
+      const subjectSave = await this.repository.create(subject);
+      await this.frenteRepository.addList(subjectSave, frente);
+      return subjectSave;
+    } catch (error) {
+      if (
+        error instanceof QueryFailedError &&
+        error.message.includes('duplicate key value')
+      ) {
+        // 23505 é o código específico para violação de chave única
+        throw new HttpException(
+          'Nome da Tema deve ser único',
+          HttpStatus.CONFLICT,
+        );
+      } else {
+        console.log('Não Entrei');
+        // Se não for um erro de chave única, você pode lidar com isso de acordo com suas necessidades
+        throw new Error('Erro ao criar a frente');
+      }
+    }
   }
 
   async getAll(frenteId: number) {

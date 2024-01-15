@@ -23,10 +23,11 @@ export class ContentService {
   async create(data: CreateContentDTOInput): Promise<Content> {
     if (!(await this.IsUnique(data.subjectId, data.title))) {
       throw new HttpException(
-        'Já existe um title para esse Tema',
+        'Já existe um Título para esse Tema',
         HttpStatus.CONFLICT,
       );
     }
+
     const subject = await this.subjectRepository.getById(data.subjectId);
     if (!subject) {
       throw new HttpException(
@@ -148,7 +149,7 @@ export class ContentService {
   }
 
   private async IsUnique(subjectId: number, title: string) {
-    const content = await this.repository.getAll(null, subjectId, title);
+    const content = await this.repository.getAll(undefined, subjectId, title);
     return content.length === 0;
   }
 }
