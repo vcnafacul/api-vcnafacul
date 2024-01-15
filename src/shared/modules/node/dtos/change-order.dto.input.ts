@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsOptional } from 'class-validator';
+import { IsEnum, IsNumber } from 'class-validator';
+import { InsertWhere } from 'src/modules/contents/content/enum/insert-where';
 
 export class ChangeOrderDTOInput {
   @ApiProperty()
@@ -12,6 +13,9 @@ export class ChangeOrderDTOInput {
 
   @ApiProperty()
   @IsNumber()
-  @IsOptional()
   node2?: number;
+
+  @ApiProperty()
+  @IsEnum(InsertWhere)
+  where?: number;
 }

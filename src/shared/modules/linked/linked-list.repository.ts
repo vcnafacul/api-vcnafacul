@@ -3,6 +3,7 @@ import { EntityManager } from 'typeorm';
 import { LinkedListEntity } from './linked-list.entity';
 import { NodeEntity } from '../node/node.entity';
 import { HttpException, HttpStatus } from '@nestjs/common';
+import { InsertWhere } from 'src/modules/contents/content/enum/insert-where';
 
 export class LinkedListRepository<
   T extends LinkedListEntity,
@@ -45,53 +46,45 @@ export class LinkedListRepository<
     return true;
   }
 
-  async changeOrder(listId: number, id1: number, id2?: number) {
-    const node1 = await this.getNode(id1);
-    let node2 = null;
+  async changeOrder(
+    listId: number,
+    id1: number,
+    id2: number,
+    where: InsertWhere,
+  ) {
+    const node1 = (await this.removeNode(listId, id1)) as K;
 
-    if (id2) {
-      node2 = await this.getNode(id2);
-    }
-    await this.removeNode(listId, node1);
     const entity = await this.getEntityList({ id: listId });
-    if (!id2) {
-      if (entity.head === id1) {
-        new HttpException('Não há necessidade de mudança', HttpStatus.CONFLICT);
-      }
-      // Se id2 for nulo, coloca node1 na cabeça da lista
-      const oldHead = await this.repositoryNodeChild.findOneBy({
-        id: entity.head,
-      });
-      entity.head = node1.id;
-      node1.next = oldHead.id;
-      node1.prev = null;
+    const node2 = await this.getNode(id2);
 
-      if (oldHead) {
-        oldHead.prev = node1.id;
-        await this.repositoryNodeChild.update(oldHead);
+    if (where === InsertWhere.Front) {
+      if (node2.id === entity.head) {
+        entity.head = node1.id;
+      } else {
+        const node2Prev = await this.getNode(node2.prev);
+        node2Prev.next = node1.id;
+        node1.prev = node2Prev.id;
+        await this.repositoryNodeChild.update(node2Prev);
       }
+      node1.next = node2.id;
+      node2.prev = node1.id;
     } else {
-      // Se id2 não for nulo, coloca node1 após node2
-      const node2Next = node2.next ? await this.getNode(node2.next) : null;
-
-      node1.next = node2.next;
+      if (node2.id === entity.tail) {
+        entity.tail = node1.id;
+      } else {
+        const node2Next = await this.getNode(node2.next);
+        node2Next.prev = node1.id;
+        node1.next = node2Next.id;
+        await this.repositoryNodeChild.update(node2Next);
+      }
       node1.prev = node2.id;
       node2.next = node1.id;
-
-      if (node2Next) {
-        node2Next.prev = node1.id;
-        await this.repositoryNodeChild.update(node2Next);
-      } else {
-        entity.tail = node1.id;
-      }
     }
 
     await this.repositoryNodeChild.update(node1);
+    await this.repositoryNodeChild.update(node2);
+    entity.lenght += 1;
     await this.repository.save(entity);
-
-    if (node2) {
-      await this.repositoryNodeChild.update(node2);
-    }
   }
 
   async getNode(id: number) {
@@ -113,7 +106,8 @@ export class LinkedListRepository<
     return entity;
   }
 
-  async removeNode(listId: number, node: NodeEntity) {
+  async removeNode(listId: number, id: number): Promise<NodeEntity> {
+    const node = await this.getNode(id);
     const entity = await this.getEntityList({ id: listId });
     if (!node.prev) {
       if (entity.head !== node.id) {
@@ -148,6 +142,10 @@ export class LinkedListRepository<
       }
     }
     entity.lenght -= 1;
+    node.next = null;
+    node.prev = null;
+    await this.repositoryNodeChild.update(node);
     await this.repository.save(entity);
+    return node;
   }
 }
