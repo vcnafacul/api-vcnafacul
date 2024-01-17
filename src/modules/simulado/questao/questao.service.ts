@@ -18,12 +18,22 @@ export class QuestaoService {
       this.configService.get<string>('SIMULADO_URL');
   }
 
-  public async getAllQuestoes(status: Status) {
+  public async getAllQuestoes(page: number, limit: number, status: Status) {
     return await this.http
-      .get(`v1/questao/${status}`)
-      .pipe(map((res) => res.data))
+      .get(
+        `v1/questao/${status}?page=${page ? page : 1}&limit=${
+          limit ? limit : 10
+        }`,
+      )
+      .pipe(
+        map((res) => {
+          console.log(res);
+          return res.data;
+        }),
+      )
       .pipe(
         catchError((err) => {
+          console.log(err.responde);
           throw new ForbiddenException(err.responde.data.message);
         }),
       );

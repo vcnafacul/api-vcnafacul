@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Res,
   SetMetadata,
   UploadedFile,
@@ -61,8 +62,12 @@ export class QuestaoController {
   })
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
-  public async questoes(@Param('status') status: Status) {
-    return await this.questaoService.getAllQuestoes(status);
+  public async questoes(@Param('status') status: Status, @Query() query: any) {
+    return await this.questaoService.getAllQuestoes(
+      query.page,
+      query.limit,
+      status,
+    );
   }
 
   @Patch(':id/:status')
