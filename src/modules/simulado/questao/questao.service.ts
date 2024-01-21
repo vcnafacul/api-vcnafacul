@@ -6,6 +6,7 @@ import { Status } from '../enum/status.enum';
 import { catchError, map } from 'rxjs';
 import { UpdateDTOInput } from '../dtos/update-questao.dto.input';
 import { CreateQuestaoDTOInput } from '../dtos/create-questao.dto.input';
+import { User } from 'src/modules/user/user.entity';
 
 @Injectable()
 export class QuestaoService {
@@ -35,20 +36,26 @@ export class QuestaoService {
       .pipe(map((res) => res.data))
       .pipe(
         catchError((err) => {
-          console.log(err);
-          throw new ForbiddenException(err.message);
+          throw new ForbiddenException(err.responde.data.message);
         }),
       );
   }
 
-  public async questoesUpdateStatus(id: string, status: Status) {
+  public async questoesUpdateStatus(
+    id: string,
+    status: Status,
+    user: User,
+    message?: string,
+  ) {
     return await this.http
-      .patch(`v1/questao/${id}/${status}`)
+      .patch(`v1/questao/${id}/${status}`, {
+        message,
+        userId: user.id,
+      })
       .pipe(map((res) => res.data))
       .pipe(
         catchError((err) => {
-          console.log(err);
-          throw new ForbiddenException(err.response.data);
+          throw new ForbiddenException(err.responde.data.message);
         }),
       );
   }
@@ -59,8 +66,7 @@ export class QuestaoService {
       .pipe(map((res) => res.data))
       .pipe(
         catchError((err) => {
-          console.log(err);
-          throw new ForbiddenException(err.message);
+          throw new ForbiddenException(err.responde.data.message);
         }),
       );
   }
@@ -68,11 +74,14 @@ export class QuestaoService {
   public async createQuestion(questao: CreateQuestaoDTOInput) {
     return await this.http
       .post(`v1/questao`, questao)
-      .pipe(map((res) => res.data))
+      .pipe(
+        map((res) => {
+          return res.data;
+        }),
+      )
       .pipe(
         catchError((err) => {
-          console.log(err);
-          throw new ForbiddenException(err.message);
+          throw new ForbiddenException(err.responde.data.message);
         }),
       );
   }

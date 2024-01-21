@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Req,
   Res,
   SetMetadata,
   UploadedFile,
@@ -20,8 +21,10 @@ import { Status } from '../enum/status.enum';
 import { CreateQuestaoDTOInput } from '../dtos/create-questao.dto.input';
 import { FileInterceptor } from '@nestjs/platform-express';
 import multerConfig from 'src/config/multer-config';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import { UpdateDTOInput } from '../dtos/update-questao.dto.input';
+import { User } from 'src/modules/user/user.entity';
+import { UpdateStatusDTOInput } from '../dtos/update-questao-status.dto.input';
 
 @ApiTags('Questao')
 @Controller('mssimulado/questoes')
@@ -82,8 +85,15 @@ export class QuestaoController {
   public async questoesUpdateStatus(
     @Param('id') id: string,
     @Param('status') status: Status,
+    @Body() body: UpdateStatusDTOInput,
+    @Req() req: Request,
   ) {
-    return await this.questaoService.questoesUpdateStatus(id, status);
+    return await this.questaoService.questoesUpdateStatus(
+      id,
+      status,
+      req.user as User,
+      body.message,
+    );
   }
 
   @Patch()
