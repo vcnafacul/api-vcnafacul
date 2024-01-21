@@ -64,9 +64,5 @@ export class CreateQuestaoDTOInput {
 
   @ApiProperty()
   @IsString()
-  public edicao: string;
-
-  @ApiProperty()
-  @IsString()
   public prova: string;
 }
