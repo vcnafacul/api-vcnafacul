@@ -74,11 +74,7 @@ export class QuestaoService {
   public async createQuestion(questao: CreateQuestaoDTOInput) {
     return await this.http
       .post(`v1/questao`, questao)
-      .pipe(
-        map((res) => {
-          return res.data;
-        }),
-      )
+      .pipe(map((res) => res.data))
       .pipe(
         catchError((err) => {
           throw new ForbiddenException(err.responde.data.message);
