@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuditLogService } from 'src/modules/audit-log/audit-log.service';
 import { Status } from '../enum/status.enum';
@@ -7,6 +7,8 @@ import { catchError, map } from 'rxjs';
 import { UpdateDTOInput } from '../dtos/update-questao.dto.input';
 import { CreateQuestaoDTOInput } from '../dtos/create-questao.dto.input';
 import { User } from 'src/modules/user/user.entity';
+import { AxiosError } from 'axios';
+import { QuestaoDTO } from '../dtos/questao.dto.output';
 
 @Injectable()
 export class QuestaoService {
@@ -20,12 +22,12 @@ export class QuestaoService {
   }
 
   public async getAllQuestoes(status: Status) {
-    return await this.http
-      .get(`v1/questao/${status}`)
+    return this.http
+      .get<QuestaoDTO[]>(`v1/questao/${status}`)
       .pipe(map((res) => res.data))
       .pipe(
-        catchError((err) => {
-          throw new ForbiddenException(err.responde.data.message);
+        catchError((error: AxiosError) => {
+          throw error.response.data;
         }),
       );
   }
@@ -35,8 +37,8 @@ export class QuestaoService {
       .get(`v1/questao/infos`)
       .pipe(map((res) => res.data))
       .pipe(
-        catchError((err) => {
-          throw new ForbiddenException(err.responde.data.message);
+        catchError((error: AxiosError) => {
+          throw error.response.data;
         }),
       );
   }
@@ -54,8 +56,8 @@ export class QuestaoService {
       })
       .pipe(map((res) => res.data))
       .pipe(
-        catchError((err) => {
-          throw new ForbiddenException(err.responde.data.message);
+        catchError((error: AxiosError) => {
+          throw error.response.data;
         }),
       );
   }
@@ -65,8 +67,8 @@ export class QuestaoService {
       .patch(`v1/questao`, questao)
       .pipe(map((res) => res.data))
       .pipe(
-        catchError((err) => {
-          throw new ForbiddenException(err.responde.data.message);
+        catchError((error: AxiosError) => {
+          throw error.response.data;
         }),
       );
   }
@@ -76,8 +78,8 @@ export class QuestaoService {
       .post(`v1/questao`, questao)
       .pipe(map((res) => res.data))
       .pipe(
-        catchError((err) => {
-          throw new ForbiddenException(err.responde.data.message);
+        catchError((error: AxiosError) => {
+          throw error.response.data;
         }),
       );
   }

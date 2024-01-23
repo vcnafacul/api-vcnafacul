@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { CreateSimuladoDTOInput } from './dtos/create-simulado.dto.input';
 import { SimuladoDTO } from './dtos/simulado.dto.output';
 import { catchError, map } from 'rxjs';
@@ -12,6 +12,7 @@ import { Status } from './enum/status.enum';
 import { UpdateDTOInput } from './dtos/update-questao.dto.input';
 import { CreateQuestaoDTOInput } from './dtos/create-questao.dto.input';
 import { TipoSimuladoDTO } from './dtos/tipo-simulado.dto.output';
+import { AxiosError } from 'axios';
 
 @Injectable()
 export class SimuladoService {
@@ -29,9 +30,8 @@ export class SimuladoService {
       .post('v1/simulado', dto)
       .pipe(map((res) => res.data))
       .pipe(
-        catchError((err) => {
-          console.log(err);
-          throw new ForbiddenException('API not available');
+        catchError((error: AxiosError) => {
+          throw error.response.data;
         }),
       );
   }
@@ -41,9 +41,8 @@ export class SimuladoService {
       .get<SimuladoDTO[]>('v1/simulado')
       .pipe(map((res) => res.data))
       .pipe(
-        catchError((err) => {
-          console.log(err);
-          throw new ForbiddenException('API not available');
+        catchError((error: AxiosError) => {
+          throw error.response.data;
         }),
       );
   }
@@ -53,9 +52,8 @@ export class SimuladoService {
       .get<TipoSimuladoDTO[]>('v1/tipo-simulado')
       .pipe(map((res) => res.data))
       .pipe(
-        catchError((err) => {
-          console.log(err);
-          throw new ForbiddenException('API not available');
+        catchError((error: AxiosError) => {
+          throw error.response.data;
         }),
       );
   }
@@ -65,9 +63,8 @@ export class SimuladoService {
       .get<SimuladoDTO>(`v1/simulado/toanswer/${id}`)
       .pipe(map((res) => res.data))
       .pipe(
-        catchError((err) => {
-          console.log(err);
-          throw new ForbiddenException('API not available');
+        catchError((error: AxiosError) => {
+          throw error.response.data;
         }),
       );
   }
@@ -77,18 +74,16 @@ export class SimuladoService {
       .get<SimuladoDTO>(`v1/simulado/${id}`)
       .pipe(map((res) => res.data))
       .pipe(
-        catchError((err) => {
-          console.log(err);
-          throw new ForbiddenException('API not available');
+        catchError((error: AxiosError) => {
+          throw error.response.data;
         }),
       );
   }
 
   public async delete(id: string): Promise<void> {
     this.http.delete<SimuladoDTO>(`v1/simulado/${id}`).pipe(
-      catchError((err) => {
-        console.log(err);
-        throw new ForbiddenException('API not available');
+      catchError((error: AxiosError) => {
+        throw error.response.data;
       }),
     );
   }
@@ -97,8 +92,8 @@ export class SimuladoService {
     this.http
       .post(`v1/simulado/answer`, dto)
       .pipe(
-        catchError((err) => {
-          throw new ForbiddenException(err.message);
+        catchError((error: AxiosError) => {
+          throw error.response.data;
         }),
       )
       .subscribe();
@@ -116,8 +111,8 @@ export class SimuladoService {
       this.http
         .post(`v1/questao/report`, reportDto)
         .pipe(
-          catchError((err) => {
-            throw new ForbiddenException(err.message);
+          catchError((error: AxiosError) => {
+            throw error.response.data;
           }),
         )
         .subscribe();
@@ -129,8 +124,8 @@ export class SimuladoService {
       .get(`v1/questao/${status}`)
       .pipe(map((res) => res.data))
       .pipe(
-        catchError((err) => {
-          throw new ForbiddenException(err.responde.data.message);
+        catchError((error: AxiosError) => {
+          throw error.response.data;
         }),
       );
   }
@@ -140,9 +135,8 @@ export class SimuladoService {
       .get(`v1/questao/infos`)
       .pipe(map((res) => res.data))
       .pipe(
-        catchError((err) => {
-          console.log(err);
-          throw new ForbiddenException(err.message);
+        catchError((error: AxiosError) => {
+          throw error.response.data;
         }),
       );
   }
@@ -152,9 +146,8 @@ export class SimuladoService {
       .patch(`v1/questao/${id}/${status}`)
       .pipe(map((res) => res.data))
       .pipe(
-        catchError((err) => {
-          console.log(err);
-          throw new ForbiddenException(err.response.data);
+        catchError((error: AxiosError) => {
+          throw error.response.data;
         }),
       );
   }
@@ -164,9 +157,8 @@ export class SimuladoService {
       .patch(`v1/questao`, questao)
       .pipe(map((res) => res.data))
       .pipe(
-        catchError((err) => {
-          console.log(err);
-          throw new ForbiddenException(err.message);
+        catchError((error: AxiosError) => {
+          throw error.response.data;
         }),
       );
   }
@@ -176,9 +168,8 @@ export class SimuladoService {
       .post(`v1/questao`, questao)
       .pipe(map((res) => res.data))
       .pipe(
-        catchError((err) => {
-          console.log(err);
-          throw new ForbiddenException(err.message);
+        catchError((error: AxiosError) => {
+          throw error.response.data;
         }),
       );
   }
