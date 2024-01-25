@@ -26,7 +26,14 @@ export class FrenteRepository extends LinkedListRepository<Frente, Subject> {
   async getByMateriaContentApproved(materia: Materias) {
     const query = this.repository
       .createQueryBuilder('frente')
-      .select(['frente.name', 'frente.materia', 'subject.name'])
+      .select([
+        'frente.id',
+        'frente.name',
+        'frente.materia',
+        'subject.id',
+        'subject.name',
+        'subject.description',
+      ])
       .innerJoin('frente.subject', 'subject')
       .innerJoin('subject.content', 'content')
       .where('frente.materia = :materia', { materia })
