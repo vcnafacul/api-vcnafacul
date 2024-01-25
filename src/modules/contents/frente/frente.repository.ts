@@ -18,8 +18,7 @@ export class FrenteRepository extends LinkedListRepository<Frente, Subject> {
   async getByMateria(materia: Materias) {
     const query = this.repository
       .createQueryBuilder('frente')
-      .leftJoinAndSelect('frente.subject', 'subject')
-      .select(['frente.id', 'frente.name', 'subject.id', 'subject.name'])
+      .select(['frente.id', 'frente.name'])
       .where('frente.materia = :materia', { materia });
     return query.getMany();
   }
