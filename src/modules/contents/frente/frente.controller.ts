@@ -29,6 +29,13 @@ export class FrenteController {
     return await this.frenteService.create(dto);
   }
 
+  @Get('materiawithcontent/:materia')
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarDemanda)
+  async getByMateriaContentApproved(@Param('materia') materia: Materias) {
+    return await this.frenteService.getByMateriaContentApproved(materia);
+  }
+
   @Get('materia/:materia')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.visualizarDemanda)

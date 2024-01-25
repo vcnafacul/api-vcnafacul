@@ -18,9 +18,26 @@ export class FrenteRepository extends LinkedListRepository<Frente, Subject> {
   async getByMateria(materia: Materias) {
     const query = this.repository
       .createQueryBuilder('frente')
-      .select(['frente.id', 'frente.name', 'frente.lenght'])
+      .select(['frente.id', 'frente.name'])
+      .where('frente.materia = :materia', { materia });
+    return query.getMany();
+  }
+
+  async getByMateriaContentApproved(materia: Materias) {
+    const query = this.repository
+      .createQueryBuilder('frente')
+      .select([
+        'frente.id',
+        'frente.name',
+        'frente.materia',
+        'subject.id',
+        'subject.name',
+        'subject.description',
+      ])
+      .innerJoin('frente.subject', 'subject')
+      .innerJoin('subject.content', 'content')
       .where('frente.materia = :materia', { materia })
-      .andWhere('frente.lenght > 0');
+      .andWhere('content.status = :status', { status: 1 });
 
     return query.getMany();
   }
