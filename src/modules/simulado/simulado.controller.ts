@@ -97,7 +97,7 @@ export class SimuladoController {
   @Get('available')
   @ApiResponse({
     status: 200,
-    description: 'Buscar Simulado  disponíveis por tipo',
+    description: 'Buscar Simulado disponíveis por tipo',
     type: AvailableSimuladoDTOoutput,
     isArray: true,
   })
