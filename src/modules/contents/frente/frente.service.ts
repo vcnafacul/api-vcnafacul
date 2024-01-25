@@ -73,4 +73,8 @@ export class FrenteService {
     }
     await this.repository.delete(id);
   }
+
+  async getByMateriaContentApproved(materia: Materias) {
+    return this.repository.getByMateriaContentApproved(materia);
+  }
 }
