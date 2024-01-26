@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Req,
   SetMetadata,
   UseGuards,
@@ -23,6 +24,7 @@ import { ReportDTO } from './dtos/report.dto.input';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { Permissions } from '../role/role.entity';
 import { TipoSimuladoDTO } from './dtos/tipo-simulado.dto.output';
+import { AvailableSimuladoDTOoutput } from './dtos/available-simulado.dto.output';
 
 @ApiTags('Simulado')
 @Controller('mssimulado/simulado')
@@ -90,6 +92,18 @@ export class SimuladoController {
   public async answer(@Body() answer: AnswerSimulado, @Req() req: Request) {
     answer.idEstudante = (req.user as User).id;
     return await this.simuladoService.answer(answer);
+  }
+
+  @Get('available')
+  @ApiResponse({
+    status: 200,
+    description: 'Buscar Simulado disponíveis por tipo',
+    type: AvailableSimuladoDTOoutput,
+    isArray: true,
+  })
+  @UseGuards(JwtAuthGuard)
+  public async getAvailable(@Query('tipo') type: string) {
+    return await this.simuladoService.getAvailable(type);
   }
 
   @Get(':id')

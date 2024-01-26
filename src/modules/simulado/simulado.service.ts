@@ -12,6 +12,8 @@ import { Status } from './enum/status.enum';
 import { UpdateDTOInput } from './dtos/update-questao.dto.input';
 import { CreateQuestaoDTOInput } from './dtos/create-questao.dto.input';
 import { TipoSimuladoDTO } from './dtos/tipo-simulado.dto.output';
+import { AxiosError } from 'axios';
+import { AvailableSimuladoDTOoutput } from './dtos/available-simulado.dto.output';
 
 @Injectable()
 export class SimuladoService {
@@ -188,5 +190,16 @@ export class SimuladoService {
       throw new Error('Nenhum arquivo fornecido');
     }
     return file.filename.split('.')[0];
+  }
+
+  public async getAvailable(type: string) {
+    return this.http
+      .get<AvailableSimuladoDTOoutput[]>(`v1/simulado/available?tipo=${type}`)
+      .pipe(map((res) => res.data))
+      .pipe(
+        catchError((error: AxiosError) => {
+          throw error.response.data;
+        }),
+      );
   }
 }
