@@ -55,8 +55,8 @@ export class QuestaoService {
       })
       .pipe(map((res) => res.data))
       .pipe(
-        catchError((err) => {
-          throw new ForbiddenException(err.responde.data.message);
+        catchError((error: AxiosError) => {
+          throw error.response.data;
         }),
       );
   }
