@@ -7,6 +7,7 @@ import { catchError, map } from 'rxjs';
 import { UpdateDTOInput } from '../dtos/update-questao.dto.input';
 import { CreateQuestaoDTOInput } from '../dtos/create-questao.dto.input';
 import { User } from 'src/modules/user/user.entity';
+import { AxiosError } from 'axios';
 
 @Injectable()
 export class QuestaoService {
@@ -54,8 +55,8 @@ export class QuestaoService {
       })
       .pipe(map((res) => res.data))
       .pipe(
-        catchError((err) => {
-          throw new ForbiddenException(err.responde.data.message);
+        catchError((error: AxiosError) => {
+          throw error.response.data;
         }),
       );
   }
