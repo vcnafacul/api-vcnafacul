@@ -10,6 +10,7 @@ import { uploadFileFTP } from 'src/utils/uploadFileFtp';
 import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
 import { CreateProvaDTORequest } from '../dtos/prova-create.dto.request';
 import { catchError, map } from 'rxjs';
+import { AxiosError } from 'axios';
 
 @Injectable()
 export class ProvaService {
@@ -76,8 +77,8 @@ export class ProvaService {
       .get(`v1/prova/missing/${id}`)
       .pipe(map((res) => res.data))
       .pipe(
-        catchError((err) => {
-          throw new ForbiddenException(err.response.data.message);
+        catchError((error: AxiosError) => {
+          throw error.response.data;
         }),
       );
   }
