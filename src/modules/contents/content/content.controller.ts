@@ -13,7 +13,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ChangeOrderDTOInput } from 'src/shared/modules/node/dtos/change-order.dto.input';
 import { ContentService } from './content.service';
 import { CreateContentDTOInput } from './dtos/create-content.dto.input';
@@ -24,6 +24,7 @@ import { Permissions } from 'src/modules/role/role.entity';
 import { Request } from 'express';
 import { User } from '../../user/user.entity';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 
 @ApiTags('Content')
 @Controller('content')
@@ -48,8 +49,8 @@ export class ContentController {
   }
 
   @Get('order')
-  @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   async getAllOrder(
     @Query('subjectId') subjectId: number,
     @Query('status') status?: StatusContent,
