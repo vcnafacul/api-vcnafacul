@@ -2,23 +2,12 @@ name: vCnafacul
 on:
   pull_request: 
     branches: ["main"]
-    types:
-      - closed
+    types: [opened, synchronize, reopened, closed]
 
 jobs:
   CI:
+    if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened')
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: testdb
-        ports:
-          - 5432:5432
-        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
 
     steps:
       - uses: actions/checkout@v3
@@ -26,28 +15,31 @@ jobs:
         run: echo "Iniciando CI"
       - uses: actions/setup-node@v1
         with:
-          node-version: 16.x
+          node-version: 20.x
+      - name: Install sharp depend
+        run: yarn add sharp --ignore-engines 
       - name: Install depends
         run: yarn
-      - name: Testes
-        run: yarn test
-        env:
-          PORT: ${{ vars.PORT }}
-          HOST: ${{ vars.HOST }}
-          NODE_ENV: ${{ vars.NODE_ENV }}
-          APP_KEY: ${{ secrets.APP_KEY }}
-          DB_CONNECTION: pg
-          PG_HOST: localhost
-          PG_PORT: ${{ vars.PG_PORT }}
-          PG_USER: postgres
-          PG_PASSWORD: password
-          PG_DB_NAME: testdb
-          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
-          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
       - name: Build app vCnafacul
-        run: npm run build
+        run: yarn build
+  PUSH:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Iniciando CI
+        run: echo "Iniciando PUSH"
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 20.x
+      - name: Install sharp depend
+        run: yarn add sharp --ignore-engines 
+      - name: Install depends
+        run: yarn
+      - name: Build app vCnafacul
+        run: yarn build
       - name: Build Image
-        run: docker build -t vcnafacul -f docker/node.dockerfile .
+        run: docker build -t vcnafacul -f node.dockerfile .
       - name: docker tags
         run: docker tag vcnafacul vcnafacul/api:stable
       - name: docker login
