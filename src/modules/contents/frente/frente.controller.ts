@@ -9,13 +9,14 @@ import {
   SetMetadata,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { FrenteService } from './frente.service';
 import { CreateFrenteDTOInput } from './dtos/create-frente.dto.input';
 import { Materias } from './enum/materias';
 import { UpdateFrenteDTOInput } from './dtos/update-frente.dto.input';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { Permissions } from 'src/modules/role/role.entity';
+import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 
 @ApiTags('Frente')
 @Controller('frente')
@@ -30,8 +31,8 @@ export class FrenteController {
   }
 
   @Get('materiawithcontent/:materia')
-  @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarDemanda)
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   async getByMateriaContentApproved(@Param('materia') materia: Materias) {
     return await this.frenteService.getByMateriaContentApproved(materia);
   }
