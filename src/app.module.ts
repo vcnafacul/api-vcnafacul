@@ -11,6 +11,12 @@ import { GeoModule } from './modules/geo/geo.module';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './shared/strategy/jwt.strategy';
 import { AuditLogModule } from './modules/audit-log/audit-log.module';
+import { SimuladoModule } from './modules/simulado/simulado.module';
+import { HttpModule } from '@nestjs/axios';
+import { NewsModule } from './modules/news/news.module';
+import { FrenteModule } from './modules/contents/frente/frente.module';
+import { SubjectModule } from './modules/contents/subject/subject.module';
+import { ContentModule } from './modules/contents/content/content.module';
 
 @Module({
   imports: [
@@ -25,7 +31,13 @@ import { AuditLogModule } from './modules/audit-log/audit-log.module';
     JwtModule.register({
       global: true,
       secret: process.env.APP_KEY,
-      signOptions: { expiresIn: '1d' },
+      signOptions: { expiresIn: '7d' },
+    }),
+    HttpModule.registerAsync({
+      useFactory: async () => ({
+        timeout: 30000,
+        maxRedirects: 3,
+      }),
     }),
     UserModule,
     RoleModule,
@@ -33,6 +45,11 @@ import { AuditLogModule } from './modules/audit-log/audit-log.module';
     SeederModule,
     GeoModule,
     AuditLogModule,
+    SimuladoModule,
+    NewsModule,
+    FrenteModule,
+    SubjectModule,
+    ContentModule,
   ],
   controllers: [],
   providers: [JwtStrategy],

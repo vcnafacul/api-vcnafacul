@@ -9,17 +9,19 @@ import {
   Query,
   Req,
   Res,
+  SetMetadata,
   UseGuards,
 } from '@nestjs/common';
 import { GeoService } from './geo.service';
 import { ListGeoDTOInput } from './dto/list-geo.dto.input';
 import { CreateGeoDTOInput } from './dto/create-geo.dto.input';
-import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { Request, Response } from 'express';
 import { UpdateGeoDTOInput } from './dto/update-geo.dto.input';
 import { GeoStatusChangeDTOInput } from './dto/geo-status.dto.input';
 import { User } from '../user/user.entity';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { PermissionsGuard } from 'src/shared/guards/permission.guard';
+import { Permissions } from '../role/role.entity';
 
 @ApiTags('Geolocation')
 @Controller('geo')
@@ -38,7 +40,18 @@ export class GeoController {
 
   @Put()
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: 'atualiza informações de cursinhos',
+    schema: {
+      type: 'object',
+      additionalProperties: {
+        type: 'string',
+      },
+    },
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.validarCursinho)
   async updateGeo(
     @Body() updateDto: UpdateGeoDTOInput,
     @Req() req: Request,
@@ -52,7 +65,18 @@ export class GeoController {
 
   @Patch()
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: 'atualiza status cursinho',
+    schema: {
+      type: 'object',
+      additionalProperties: {
+        type: 'string',
+      },
+    },
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.validarCursinho)
   async validateGeo(
     @Body() geoStatus: GeoStatusChangeDTOInput,
     @Req() req: Request,

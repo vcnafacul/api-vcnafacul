@@ -1,8 +1,9 @@
-import { Entity, Column, BeforeInsert, OneToOne } from 'typeorm';
+import { Entity, Column, BeforeInsert, OneToOne, ManyToMany } from 'typeorm';
 import { Gender } from './enum/gender';
 import { UserRole } from '../user-role/user-role.entity';
 import { BaseEntity } from '../../shared/modules/base/entity.base';
 import { Exclude } from 'class-transformer';
+import { Content } from '../contents/content/content.entity';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -37,8 +38,23 @@ export class User extends BaseEntity {
   @Column({ nullable: true })
   public about?: string;
 
+  @Column()
+  public lgpd: boolean;
+
+  @Column({ default: false })
+  public collaborator: boolean;
+
+  @Column({ default: null })
+  public collaboratorDescription?: string;
+
+  @Column({ default: null })
+  public collaboratorPhoto?: string;
+
   @OneToOne(() => UserRole, (userRole) => userRole.user)
   userRole: UserRole;
+
+  @ManyToMany(() => Content, (content) => content.user)
+  content: Content;
 
   @BeforeInsert()
   async hashPassword() {

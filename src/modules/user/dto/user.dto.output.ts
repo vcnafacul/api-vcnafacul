@@ -1,31 +1,47 @@
-import { IsDateString, IsEnum, IsNotEmpty, IsNumber } from 'class-validator';
+import {
+  IsBoolean,
+  IsDateString,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsString,
+} from 'class-validator';
 import { Gender } from '../enum/gender';
 
 export class UserDtoOutput {
   @IsNumber()
-  id: number;
+  id: number = 0;
 
   @IsNotEmpty()
-  firstName: string;
+  firstName: string = '';
 
   @IsNotEmpty()
-  lastName: string;
+  lastName: string = '';
 
   @IsNotEmpty()
-  phone: string;
+  phone: string = '';
 
   @IsEnum(Gender)
-  gender: Gender;
+  gender: Gender = Gender.Other;
 
   @IsDateString()
-  birthday: Date;
+  birthday: Date = new Date();
 
   @IsNotEmpty()
-  state: string;
+  state: string = '';
 
   @IsNotEmpty()
-  city: string;
+  city: string = '';
 
   @IsNotEmpty()
-  about?: string;
+  about?: string = '';
+
+  @IsBoolean()
+  collaborator: boolean = false;
+
+  @IsString()
+  collaboratorDescription?: string = undefined;
+
+  @IsString()
+  collaboratorPhoto?: string = undefined;
 }

@@ -13,12 +13,20 @@ export class UserRoleRepository extends BaseRepository<UserRole> {
     super(_entityManager.getRepository(UserRole));
   }
 
-  async update(userRole: UserRole) {
+  override async update(userRole: UserRole) {
+    userRole.updatedAt = new Date();
     await this.repository.save(userRole);
   }
 
   async findOneBy(filter: object): Promise<UserRole> {
     return await this.repository.findOneBy(filter);
+  }
+
+  async findOneById(id: number): Promise<UserRole> {
+    return await this.repository.findOne({
+      where: { id },
+      relations: ['user', 'role'],
+    });
   }
 
   async findRelations(): Promise<UserRole[]> {

@@ -43,12 +43,17 @@ export class UserRoleService {
   async findUserRole(): Promise<UserRoleDTO[]> {
     const userRole = await this.userRoleRepository.findRelations();
     return userRole.map((ur) => ({
-      userId: ur.userId,
+      user: ur.user,
       roleId: ur.roleId,
-      userName: ur.user.firstName + ' ' + ur.user.lastName,
-      userEmail: ur.user.email,
-      userPhone: ur.user.phone,
       roleName: ur.role.name,
     }));
+  }
+
+  async checkUserPermission(
+    userId: number,
+    roleName: string,
+  ): Promise<boolean> {
+    const userRole = await this.userRoleRepository.findOneById(userId);
+    return userRole.role[roleName];
   }
 }

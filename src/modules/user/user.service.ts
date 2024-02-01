@@ -11,6 +11,11 @@ import { UpdateUserDTOInput } from './dto/update.dto.input';
 import { EmailService } from 'src/shared/services/email.service';
 import { ResetPasswordDtoInput } from './dto/reset-password.dto.input';
 import { LoginTokenDTO } from './dto/login-token.dto.input';
+import { CollaboratorDtoInput } from './dto/collaboratorDto';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import { ConfigService } from '@nestjs/config';
+import { uploadFileFTP } from 'src/utils/uploadFileFtp';
+import { removeFileFTP } from 'src/utils/removeFileFtp';
 
 @Injectable()
 export class UserService {
@@ -19,16 +24,29 @@ export class UserService {
     private readonly roleRepository: RoleRepository,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
+    private readonly auditLogService: AuditLogService,
+    private readonly configService: ConfigService,
   ) {}
 
-  async createUser(userDto: CreateUserDtoInput): Promise<User> {
+  async createUser(userDto: CreateUserDtoInput): Promise<LoginTokenDTO> {
     try {
+      if (userDto.password !== userDto.password_confirmation) {
+        throw new HttpException(
+          'password and password_confirmation do not match',
+          HttpStatus.CONFLICT,
+        );
+      }
       const newUser = this.convertDtoToDomain(userDto);
       const role = await this.roleRepository.findOneBy({ name: 'aluno' });
       if (!role) {
         throw new HttpException('role not found', HttpStatus.BAD_REQUEST);
       }
-      return await this.userRepository.create(newUser, role);
+      const userFullInfo = await this.userRepository.createWithRole(
+        newUser,
+        role,
+      );
+
+      return this.getAccessToken(userFullInfo);
     } catch (error) {
       if (error.code === '23505') {
         // código de erro para violação de restrição única no PostgreSQL
@@ -49,11 +67,7 @@ export class UserService {
     if (!(await bcrypt.compare(loginInput.password, userFullInfo?.password))) {
       throw new HttpException('password invalid', HttpStatus.CONFLICT);
     }
-    const roles = this.mapperRole(userFullInfo.userRole.role);
-    const user = this.MapUsertoUserDTO(userFullInfo);
-    return {
-      access_token: await this.jwtService.signAsync({ user, roles }),
-    };
+    return this.getAccessToken(userFullInfo);
   }
 
   async findUserById(id: number): Promise<User> {
@@ -121,6 +135,81 @@ export class UserService {
     );
   }
 
+  async collaborator(data: CollaboratorDtoInput, userId: number) {
+    const user = await this.userRepository.findUserById(data.userId);
+    const changes = {
+      before: {
+        collaborador: user.collaborator,
+        description: user.collaboratorDescription,
+      },
+      after: {
+        collaborador: data.collaborator,
+        description: data.description,
+      },
+    };
+    user.collaborator = data.collaborator;
+    user.collaboratorDescription = data.description;
+    await this.userRepository.update(user);
+
+    await this.auditLogService.create({
+      entityType: User.name,
+      entityId: data.userId,
+      updatedBy: userId,
+      changes: changes,
+    });
+  }
+
+  async uploadImage(file: any, userId: number): Promise<string> {
+    const user = await this.userRepository.findUserById(userId);
+    if (user.collaboratorPhoto) {
+      await removeFileFTP(
+        user.collaboratorPhoto,
+        this.configService.get<string>('FTP_HOST'),
+        this.configService.get<string>('FTP_PROFILE'),
+        this.configService.get<string>('FTP_PASSWORD'),
+      );
+    }
+    const fileName = await uploadFileFTP(
+      file,
+      this.configService.get<string>('FTP_TEMP_FILE'),
+      this.configService.get<string>('FTP_HOST'),
+      this.configService.get<string>('FTP_PROFILE'),
+      this.configService.get<string>('FTP_PASSWORD'),
+    );
+    if (!fileName) {
+      throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);
+    }
+    user.collaboratorPhoto = fileName;
+    await this.userRepository.update(user);
+    return fileName;
+  }
+
+  async getVolunteers() {
+    return await this.userRepository.getVolunteers();
+  }
+
+  async removeImage(userId: number): Promise<boolean> {
+    const user = await this.userRepository.findUserById(userId);
+    const deleted = await removeFileFTP(
+      user.collaboratorPhoto,
+      this.configService.get<string>('FTP_HOST'),
+      this.configService.get<string>('FTP_PROFILE'),
+      this.configService.get<string>('FTP_PASSWORD'),
+    );
+    if (deleted) {
+      user.collaboratorPhoto = null;
+      await this.userRepository.update(user);
+      return true;
+    }
+    return false;
+  }
+
+  async me(userId: number) {
+    return this.MapUsertoUserDTO(
+      await this.userRepository.findUserById(userId),
+    );
+  }
+
   private convertDtoToDomain(userDto: CreateUserDtoInput): User {
     const newUser = new User();
     return Object.assign(newUser, userDto) as User;
@@ -130,9 +219,26 @@ export class UserService {
     return users.map((user) => this.MapUsertoUserDTO(user));
   }
 
+  private async getAccessToken(domain: User) {
+    const roles = this.mapperRole(domain.userRole.role);
+    const user = this.MapUsertoUserDTO(domain);
+    return {
+      access_token: await this.jwtService.signAsync({ user, roles }),
+    };
+  }
+
   private MapUsertoUserDTO(user: User): UserDtoOutput {
     const output = new UserDtoOutput();
-    return Object.assign(output, user) as UserDtoOutput;
+    Object.assign(
+      output,
+      Object.keys(output).reduce((obj, key) => {
+        if (user.hasOwnProperty(key)) {
+          obj[key] = user[key];
+        }
+        return obj;
+      }, {} as UserDtoOutput),
+    );
+    return output;
   }
 
   private mapperRole(role: Role) {

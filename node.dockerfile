@@ -1,12 +1,16 @@
-FROM node:16
+FROM node:20
 
-COPY build /var/www
+COPY dist /var/www
 
 WORKDIR /var/www
+
+COPY package.json .
 
 EXPOSE 3333
 
 ENV NODE_ENV=$NODE_ENV
+
+RUN yarn add sharp --ignore-engines
 
 RUN yarn
 

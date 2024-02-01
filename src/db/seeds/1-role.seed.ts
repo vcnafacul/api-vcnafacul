@@ -5,12 +5,6 @@ import { RoleRepository } from 'src/modules/role/role.repository';
 const RoleData = [
   { name: 'aluno' },
   {
-    name: 'validador cursinho',
-    validarCursinho: true,
-    alterarPermissao: false,
-    criarSimulado: false,
-  },
-  {
     name: 'admin',
     validarCursinho: true,
     alterarPermissao: true,

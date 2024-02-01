@@ -22,7 +22,7 @@ export class UserRepository extends BaseRepository<User> {
     return await this.repository.findOne({ where: { id: id } });
   }
 
-  async create(user: User, role: Role): Promise<User> {
+  async createWithRole(user: User, role: Role): Promise<User> {
     let newUser = null;
     await this._entityManager.transaction(async (tem) => {
       newUser = tem.getRepository(User).create(user);
@@ -34,7 +34,7 @@ export class UserRepository extends BaseRepository<User> {
       });
       await tem.save(UserRole, newUserRole);
     });
-    return newUser;
+    return this.findByEmail(newUser.email);
   }
 
   async findByEmail(email: string): Promise<User> {
@@ -49,8 +49,9 @@ export class UserRepository extends BaseRepository<User> {
     return await this.repository.findOneBy(filter);
   }
 
-  async update(user: User): Promise<User> {
-    return await this.repository.save(user);
+  override async update(user: User) {
+    user.updatedAt = new Date();
+    await this.repository.save(user);
   }
 
   async deleteUser(user: User) {
@@ -68,6 +69,23 @@ export class UserRepository extends BaseRepository<User> {
         { validarCursinho: true },
       )
       .select(['user.email'])
+      .getMany();
+  }
+
+  async getVolunteers() {
+    return await this.repository
+      .createQueryBuilder('volunteer')
+      .select([
+        'volunteer.collaboratorPhoto',
+        'volunteer.firstName',
+        'volunteer.lastName',
+        'volunteer.collaboratorDescription',
+      ])
+      .where('volunteer.collaborator = true')
+      .andWhere('volunteer.collaboratorPhoto IS NOT NULL')
+      .andWhere('volunteer.collaboratorPhoto <> :emptyString', {
+        emptyString: '',
+      })
       .getMany();
   }
 }
