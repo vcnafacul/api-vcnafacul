@@ -11,10 +11,12 @@ import { ProvaController } from './prova/prova.controller';
 import { ProvaService } from './prova/prova.service';
 import { QuestaoController } from './questao/questao.controller';
 import { QuestaoService } from './questao/questao.service';
+import { HistoricoController } from './historico/historico.controller';
+import { HistoricoService } from './historico/historico.service';
 
 @Module({
   imports: [HttpModule],
-  controllers: [SimuladoController, ProvaController, QuestaoController],
+  controllers: [SimuladoController, ProvaController, QuestaoController, HistoricoController],
   providers: [
     SimuladoService,
     AuditLogService,
@@ -24,6 +26,7 @@ import { QuestaoService } from './questao/questao.service';
     UserRoleRepository,
     ProvaService,
     QuestaoService,
+    HistoricoService,
   ],
 })
 export class SimuladoModule {}
