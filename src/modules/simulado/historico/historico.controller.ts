@@ -1,9 +1,9 @@
-import { Controller, Get, Req, UseGuards } from "@nestjs/common";
-import { ApiBearerAuth, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { JwtAuthGuard } from "src/shared/guards/jwt-auth.guard";
+import { Controller, Get, Req, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { Request } from 'express';
-import { HistoricoService } from "./historico.service";
-import { User } from "src/modules/user/user.entity";
+import { HistoricoService } from './historico.service';
+import { User } from 'src/modules/user/user.entity';
 
 @ApiTags('Historico')
 @Controller('mssimulado/historico')
