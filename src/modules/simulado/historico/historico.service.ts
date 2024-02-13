@@ -23,4 +23,15 @@ export class HistoricoService {
         }),
       );
   }
+
+  async getById(id: string) {
+    return this.http
+      .get(`v1/historico/${id}`)
+      .pipe(map((res) => res.data))
+      .pipe(
+        catchError((err: AxiosError) => {
+          throw err.response.data;
+        }),
+      );
+  }
 }

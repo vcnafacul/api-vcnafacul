@@ -1,9 +1,9 @@
-import { Controller, Get, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { Request } from 'express';
-import { HistoricoService } from './historico.service';
 import { User } from 'src/modules/user/user.entity';
+import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
+import { HistoricoService } from './historico.service';
 
 @ApiTags('Historico')
 @Controller('mssimulado/historico')
@@ -19,5 +19,16 @@ export class HistoricoController {
   @UseGuards(JwtAuthGuard)
   async getAllByUser(@Req() req: Request) {
     return await this.service.getAllByUser((req.user as User).id);
+  }
+
+  @Get(':id')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'obtém histórico detalhado por ID',
+  })
+  @UseGuards(JwtAuthGuard)
+  async getById(@Param('id') id: string) {
+    return await this.service.getById(id);
   }
 }
