@@ -18,7 +18,6 @@ export class HistoricoController {
   })
   @UseGuards(JwtAuthGuard)
   async getAllByUser(@Req() req: Request) {
-    console.log("🚀 ~ HistoricoController ~ getAllByUser ~ req:", req)
     return await this.service.getAllByUser((req.user as User).id);
   }
 }
