@@ -113,7 +113,7 @@ export class UserService {
   async forgotPassword(email: string) {
     const user = await this.userRepository.findByEmail(email);
     const token = await this.jwtService.signAsync(
-      { id: user.id },
+      { user: { id: user.id } },
       { expiresIn: '2h' },
     );
     await this.emailService.sendForgotPasswordMail(
