@@ -7,24 +7,25 @@ import {
   Post,
   Query,
   Req,
+  Res,
   SetMetadata,
   UseGuards,
 } from '@nestjs/common';
-import { SimuladoService } from './simulado.service';
-import { CreateSimuladoDTOInput } from './dtos/create-simulado.dto.input';
-import { SimuladoDTO } from './dtos/simulado.dto.output';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Request, Response } from 'express';
 import { Observable } from 'rxjs';
-import { SimuladoAnswerDTO } from './dtos/simulado-answer.dto.output';
-import { AnswerSimulado } from './dtos/answer-simulado.dto.input';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
-import { Request } from 'express';
 import { User } from '../user/user.entity';
-import { ReportDTO } from './dtos/report.dto.input';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { Permissions } from '../role/role.entity';
-import { TipoSimuladoDTO } from './dtos/tipo-simulado.dto.output';
+import { AnswerSimulado } from './dtos/answer-simulado.dto.input';
 import { AvailableSimuladoDTOoutput } from './dtos/available-simulado.dto.output';
+import { CreateSimuladoDTOInput } from './dtos/create-simulado.dto.input';
+import { ReportDTO } from './dtos/report.dto.input';
+import { SimuladoAnswerDTO } from './dtos/simulado-answer.dto.output';
+import { SimuladoDTO } from './dtos/simulado.dto.output';
+import { TipoSimuladoDTO } from './dtos/tipo-simulado.dto.output';
+import { SimuladoService } from './simulado.service';
 
 @ApiTags('Simulado')
 @Controller('mssimulado/simulado')
@@ -83,15 +84,19 @@ export class SimuladoController {
   @Post('answer')
   @ApiBearerAuth()
   @ApiResponse({
-    status: 200,
+    status: 204,
     description: 'endpoint para responder simulado',
     type: SimuladoAnswerDTO,
     isArray: false,
   })
   @UseGuards(JwtAuthGuard)
-  public async answer(@Body() answer: AnswerSimulado, @Req() req: Request) {
-    answer.idEstudante = (req.user as User).id;
-    return await this.simuladoService.answer(answer);
+  public async answer(
+    @Body() answer: AnswerSimulado,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    await this.simuladoService.answer(answer, (req.user as User).id);
+    return res.status(204).send();
   }
 
   @Get('available')
