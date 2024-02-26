@@ -1,20 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsArray,
-  IsNumber,
-  IsOptional,
-  IsString,
-  ValidateNested,
-} from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsArray, IsNumber, IsString, ValidateNested } from 'class-validator';
 import { Answer } from './answer.dto.input';
 
 export class AnswerSimulado {
-  @ApiProperty()
-  @IsNumber()
-  @IsOptional()
-  idEstudante?: number;
-
   @ApiProperty()
   @IsString()
   idSimulado: string;
@@ -24,4 +13,8 @@ export class AnswerSimulado {
   @ValidateNested({ each: true })
   @Type(() => Answer)
   respostas: Answer[];
+
+  @ApiProperty()
+  @IsNumber()
+  tempoRealizado: number;
 }

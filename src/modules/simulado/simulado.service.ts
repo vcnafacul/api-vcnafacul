@@ -95,9 +95,9 @@ export class SimuladoService {
     );
   }
 
-  public async answer(dto: AnswerSimulado) {
+  public async answer(dto: AnswerSimulado, userId: number) {
     this.http
-      .post(`v1/simulado/answer`, dto)
+      .post(`v1/simulado/answer`, { ...dto, idEstudante: userId })
       .pipe(
         catchError((err) => {
           throw new ForbiddenException(err.message);
