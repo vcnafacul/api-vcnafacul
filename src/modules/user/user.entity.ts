@@ -1,7 +1,14 @@
-import { Entity, Column, BeforeInsert, OneToOne, ManyToMany } from 'typeorm';
+import {
+  BeforeInsert,
+  BeforeUpdate,
+  Column,
+  Entity,
+  ManyToMany,
+  OneToOne,
+} from 'typeorm';
+import { BaseEntity } from '../../shared/modules/base/entity.base';
 import { Gender } from './enum/gender';
 import { UserRole } from '../user-role/user-role.entity';
-import { BaseEntity } from '../../shared/modules/base/entity.base';
 import { Exclude } from 'class-transformer';
 import { Content } from '../contents/content/content.entity';
 
@@ -56,6 +63,7 @@ export class User extends BaseEntity {
   @ManyToMany(() => Content, (content) => content.user)
   content: Content;
 
+  @BeforeUpdate()
   @BeforeInsert()
   async hashPassword() {
     const bcrypt = await import('bcrypt');
