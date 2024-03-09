@@ -53,7 +53,7 @@ export class UserRoleService {
     userId: number,
     roleName: string,
   ): Promise<boolean> {
-    const userRole = await this.userRoleRepository.findOneById(userId);
+    const userRole = await this.userRoleRepository.findOneByUserId(userId);
     return userRole.role[roleName];
   }
 }
