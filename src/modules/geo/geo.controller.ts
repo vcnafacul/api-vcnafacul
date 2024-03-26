@@ -12,16 +12,18 @@ import {
   SetMetadata,
   UseGuards,
 } from '@nestjs/common';
-import { GeoService } from './geo.service';
-import { ListGeoDTOInput } from './dto/list-geo.dto.input';
-import { CreateGeoDTOInput } from './dto/create-geo.dto.input';
-import { Request, Response } from 'express';
-import { UpdateGeoDTOInput } from './dto/update-geo.dto.input';
-import { GeoStatusChangeDTOInput } from './dto/geo-status.dto.input';
-import { User } from '../user/user.entity';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Request, Response } from 'express';
+import { GetAllDtoOutput } from 'src/shared/dtos/get-all.dto.output';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { Permissions } from '../role/role.entity';
+import { User } from '../user/user.entity';
+import { CreateGeoDTOInput } from './dto/create-geo.dto.input';
+import { GeoStatusChangeDTOInput } from './dto/geo-status.dto.input';
+import { ListGeoDTOInput } from './dto/list-geo.dto.input';
+import { UpdateGeoDTOInput } from './dto/update-geo.dto.input';
+import { Geolocation } from './geo.entity';
+import { GeoService } from './geo.service';
 
 @ApiTags('Geolocation')
 @Controller('geo')
@@ -34,7 +36,9 @@ export class GeoController {
   }
 
   @Get()
-  async findAllByFilter(@Query() filterDto: ListGeoDTOInput) {
+  async findAllByFilter(
+    @Query() filterDto: ListGeoDTOInput,
+  ): Promise<GetAllDtoOutput<Geolocation>> {
     return await this.geoService.findAllByFilter(filterDto);
   }
 
