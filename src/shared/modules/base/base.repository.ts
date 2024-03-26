@@ -1,10 +1,26 @@
 import { Repository } from 'typeorm';
+import { GetAllInput } from './interfaces/get-all.input';
+import { GetAllOutput } from './interfaces/get-all.output';
 
 export class BaseRepository<T> {
   constructor(protected readonly repository: Repository<T>) {}
 
-  async findAll(): Promise<T[]> {
-    return await this.repository.find();
+  async findAll({ page, limit }: GetAllInput): Promise<GetAllOutput<T>> {
+    const [data, totalItems] = await Promise.all([
+      this.repository
+        .createQueryBuilder('entity')
+        .orderBy('entity.createdAt', 'DESC')
+        .skip((page - 1) * limit)
+        .take(limit)
+        .getMany(),
+      this.repository.createQueryBuilder('entity').getCount(),
+    ]);
+    return {
+      data,
+      page,
+      limit,
+      totalItems,
+    };
   }
 
   async create(entity: T): Promise<T> {
