@@ -1,8 +1,9 @@
 import { Repository } from 'typeorm';
+import { IBaseRepository } from './interfaces/base.repository';
 import { GetAllInput } from './interfaces/get-all.input';
 import { GetAllOutput } from './interfaces/get-all.output';
 
-export class BaseRepository<T> {
+export class BaseRepository<T> implements IBaseRepository<T> {
   constructor(protected readonly repository: Repository<T>) {}
 
   async findAll({ page, limit }: GetAllInput): Promise<GetAllOutput<T>> {
@@ -41,7 +42,7 @@ export class BaseRepository<T> {
     return await this.repository.findOneByOrFail({ ...where });
   }
 
-  async update(entity: T) {
+  async update(entity: T): Promise<void> {
     await this.repository.save(entity); //bloqquear o insert se não existir
   }
 
