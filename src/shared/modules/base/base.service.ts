@@ -15,7 +15,7 @@ export class BaseService<T> {
     await this._repository.delete(id);
   }
 
-  async findOneById(id: number) {
-    return await this._repository.findOneBy({ id });
+  async findOneBy(filter: object) {
+    return await this._repository.findOneBy(filter);
   }
 }

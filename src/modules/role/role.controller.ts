@@ -26,14 +26,14 @@ export class RoleController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async find(@Query() query: GetAllDtoInput): Promise<GetAllDtoOutput<Role>> {
-    return await this.roleService.findAll(query);
+    return await this.roleService.findAllBy(query);
   }
 
   @Get(':id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async getById(@Param('id') id: number) {
-    return await this.roleService.findById(id);
+    return await this.roleService.findOneBy({ id });
   }
 
   @Post()
