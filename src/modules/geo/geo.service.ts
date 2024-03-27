@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { EmailService } from 'src/shared/services/email.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
@@ -13,13 +14,15 @@ import { Geolocation } from './geo.entity';
 import { GeoRepository } from './geo.repository';
 
 @Injectable()
-export class GeoService {
+export class GeoService extends BaseService<Geolocation> {
   constructor(
     private readonly geoRepository: GeoRepository,
     private readonly userService: UserService,
     private readonly emailService: EmailService,
     private readonly auditLogService: AuditLogService,
-  ) {}
+  ) {
+    super(geoRepository);
+  }
 
   async create(geoDTOInput: CreateGeoDTOInput): Promise<Geolocation> {
     const newGeo = await this.geoRepository.create(
@@ -40,14 +43,14 @@ export class GeoService {
       where.status = parseInt(filterDto.status as any) as StatusGeolocation;
     }
 
-    return await this.geoRepository.findAll({
+    return await this.geoRepository.findAllBy({
       page: filterDto.page,
       limit: filterDto.limit,
       where,
     });
   }
 
-  async findById(id: number): Promise<Geolocation> {
+  async findOneById(id: number): Promise<Geolocation> {
     const geo = await this.geoRepository.findOneBy({ id: id });
 
     // Verifica se o registro existe
@@ -61,7 +64,7 @@ export class GeoService {
   }
 
   async updateGeo(updateDTO: UpdateGeoDTOInput, user: User): Promise<boolean> {
-    const oldGeo = await this.findById(updateDTO.id);
+    const oldGeo = await this.findOneById(updateDTO.id);
     const changes = {};
     Object.keys(updateDTO).forEach((key) => {
       if (updateDTO[key] !== undefined && updateDTO[key] !== oldGeo[key]) {
@@ -83,7 +86,7 @@ export class GeoService {
   }
 
   async validateGeolocation(geoStatus: GeoStatusChangeDTOInput, user: User) {
-    const geo = await this.findById(geoStatus.geoId);
+    const geo = await this.findOneById(geoStatus.geoId);
     const oldStatus = geo.status;
     geo.status = geoStatus.status;
     await this.geoRepository.update(geo);

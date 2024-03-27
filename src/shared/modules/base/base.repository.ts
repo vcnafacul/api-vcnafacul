@@ -6,15 +6,23 @@ import { GetAllOutput } from './interfaces/get-all.output';
 export class BaseRepository<T> implements IBaseRepository<T> {
   constructor(protected readonly repository: Repository<T>) {}
 
-  async findAll({ page, limit }: GetAllInput): Promise<GetAllOutput<T>> {
+  async findAllBy({
+    page,
+    limit,
+    where,
+  }: GetAllInput): Promise<GetAllOutput<T>> {
     const [data, totalItems] = await Promise.all([
       this.repository
         .createQueryBuilder('entity')
         .orderBy('entity.createdAt', 'DESC')
         .skip((page - 1) * limit)
         .take(limit)
+        .where({ ...where })
         .getMany(),
-      this.repository.createQueryBuilder('entity').getCount(),
+      this.repository
+        .createQueryBuilder('entity')
+        .where({ ...where })
+        .getCount(),
     ]);
     return {
       data,
@@ -28,10 +36,6 @@ export class BaseRepository<T> implements IBaseRepository<T> {
     const newEntity = this.repository.create(entity);
     await this.repository.save(newEntity);
     return newEntity;
-  }
-
-  async findBy(where: object): Promise<T[]> {
-    return await this.repository.find({ where: { ...where } });
   }
 
   async findOneBy(where: object): Promise<T> {

@@ -7,15 +7,15 @@ export class BaseService<T> {
     this._repository = repository;
   }
 
-  async findAll({ page, limit }: GetAllInput) {
-    return await this._repository.findAll({ page, limit });
+  async findAllBy({ page, limit, where }: GetAllInput) {
+    return await this._repository.findAllBy({ page, limit, where });
   }
 
   async delete(id: number) {
     await this._repository.delete(id);
   }
 
-  async findById(id: number) {
+  async findOneById(id: number) {
     return await this._repository.findOneBy({ id });
   }
 }
