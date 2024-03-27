@@ -1,17 +1,19 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
+import { BaseService } from 'src/shared/modules/base/base.service';
 import { uploadFileFTP } from 'src/utils/uploadFileFtp';
 import { CreateNewsDtoInput } from './dtos/create-news.dto.input';
 import { News } from './news.entity';
 import { NewsRepository } from './news.repository';
 
 @Injectable()
-export class NewsService {
+export class NewsService extends BaseService<News> {
   constructor(
     private readonly newRepository: NewsRepository,
     private configService: ConfigService,
-  ) {}
+  ) {
+    super(newRepository);
+  }
 
   async create(request: CreateNewsDtoInput, file: any, userId: number) {
     const fileName = await uploadFileFTP(
@@ -33,16 +35,8 @@ export class NewsService {
     return await this.newRepository.create(news);
   }
 
-  async findAll({ page, limit }: GetAllInput) {
-    return await this.newRepository.findAll({ page, limit });
-  }
-
   async findActived() {
     const where = { actived: true };
     return await this.newRepository.findBy(where);
-  }
-
-  async delete(id: number) {
-    await this.newRepository.delete(id);
   }
 }
