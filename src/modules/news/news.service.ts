@@ -37,6 +37,6 @@ export class NewsService extends BaseService<News> {
 
   async findActived() {
     const where = { actived: true };
-    return await this.newRepository.findBy(where);
+    return await this.newRepository.findAllBy({ page: 1, limit: 0, where });
   }
 }

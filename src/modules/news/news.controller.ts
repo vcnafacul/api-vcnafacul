@@ -65,7 +65,7 @@ export class NewsController {
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.uploadNews)
   async findall(@Query() query: GetAllDtoInput) {
-    return await this.newService.findAll(query);
+    return await this.newService.findAllBy(query);
   }
 
   @Get()
