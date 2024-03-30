@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   HttpStatus,
+  Param,
   Patch,
   Post,
   Put,
@@ -15,21 +16,23 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { UserService } from './user.service';
-import { CreateUserDtoInput } from './dto/create.dto.input';
-import { LoginDtoInput } from './dto/login.dto.input';
-import { UpdateUserDTOInput } from './dto/update.dto.input';
-import { ForgotPasswordDtoInput } from './dto/forgot-password.dto.input';
-import { ResetPasswordDtoInput } from './dto/reset-password.dto.input';
-import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
-import { User } from './user.entity';
-import { HasEmailDtoInput } from './dto/has-email.dto.input';
+import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
+import { GetAllDtoOutput } from 'src/shared/dtos/get-all.dto.output';
+import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { Permissions } from '../role/role.entity';
 import { CollaboratorDtoInput } from './dto/collaboratorDto';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { CreateUserDtoInput } from './dto/create.dto.input';
+import { ForgotPasswordDtoInput } from './dto/forgot-password.dto.input';
+import { HasEmailDtoInput } from './dto/has-email.dto.input';
+import { LoginDtoInput } from './dto/login.dto.input';
+import { ResetPasswordDtoInput } from './dto/reset-password.dto.input';
+import { UpdateUserDTOInput } from './dto/update.dto.input';
+import { User } from './user.entity';
+import { UserService } from './user.service';
 
 @ApiTags('User')
 @Controller('user')
@@ -53,14 +56,17 @@ export class UserController {
   }
 
   @Get()
-  @ApiQuery({ name: 'id', required: false, description: 'ID do usuário' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  async find(@Query('id') id?: number) {
-    if (id) {
-      return await this.userService.findUserById(id);
-    }
-    return await this.userService.findAll();
+  async find(@Query() query: GetAllDtoInput): Promise<GetAllDtoOutput<User>> {
+    return await this.userService.findAllBy(query);
+  }
+
+  @Get(':id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async findById(@Param('id') id: number) {
+    return await this.userService.findUserById(id);
   }
 
   @Put()

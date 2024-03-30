@@ -1,24 +1,25 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { UserRepository } from './user.repository';
-import { User } from './user.entity';
-import { CreateUserDtoInput } from './dto/create.dto.input';
-import { RoleRepository } from '../role/role.repository';
-import { LoginDtoInput } from './dto/login.dto.input';
-import { UserDtoOutput } from './dto/user.dto.output';
-import { JwtService } from '@nestjs/jwt';
-import { Role } from '../role/role.entity';
-import { UpdateUserDTOInput } from './dto/update.dto.input';
-import { EmailService } from 'src/shared/services/email.service';
-import { ResetPasswordDtoInput } from './dto/reset-password.dto.input';
-import { LoginTokenDTO } from './dto/login-token.dto.input';
-import { CollaboratorDtoInput } from './dto/collaboratorDto';
-import { AuditLogService } from '../audit-log/audit-log.service';
 import { ConfigService } from '@nestjs/config';
-import { uploadFileFTP } from 'src/utils/uploadFileFtp';
+import { JwtService } from '@nestjs/jwt';
+import { BaseService } from 'src/shared/modules/base/base.service';
+import { EmailService } from 'src/shared/services/email.service';
 import { removeFileFTP } from 'src/utils/removeFileFtp';
+import { uploadFileFTP } from 'src/utils/uploadFileFtp';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import { Role } from '../role/role.entity';
+import { RoleRepository } from '../role/role.repository';
+import { CollaboratorDtoInput } from './dto/collaboratorDto';
+import { CreateUserDtoInput } from './dto/create.dto.input';
+import { LoginTokenDTO } from './dto/login-token.dto.input';
+import { LoginDtoInput } from './dto/login.dto.input';
+import { ResetPasswordDtoInput } from './dto/reset-password.dto.input';
+import { UpdateUserDTOInput } from './dto/update.dto.input';
+import { UserDtoOutput } from './dto/user.dto.output';
+import { User } from './user.entity';
+import { UserRepository } from './user.repository';
 
 @Injectable()
-export class UserService {
+export class UserService extends BaseService<User> {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly roleRepository: RoleRepository,
@@ -26,7 +27,9 @@ export class UserService {
     private readonly emailService: EmailService,
     private readonly auditLogService: AuditLogService,
     private readonly configService: ConfigService,
-  ) {}
+  ) {
+    super(userRepository);
+  }
 
   async createUser(userDto: CreateUserDtoInput): Promise<LoginTokenDTO> {
     try {
@@ -71,22 +74,11 @@ export class UserService {
   }
 
   async findUserById(id: number): Promise<User> {
-    const user = await this.userRepository.findUserById(id);
-    if (!user) {
-      throw new HttpException(
-        `User with id ${id} not found`,
-        HttpStatus.NOT_FOUND,
-      );
-    }
-    return user;
+    return await this.userRepository.findOneBy({ id });
   }
 
-  async findAll() {
-    return this.MapListUsertoUserDTO(await this.userRepository.findAll());
-  }
-
-  async update(updateUser: UpdateUserDTOInput, userId: number) {
-    const user = await this.userRepository.findUserById(userId);
+  async update(updateUser: UpdateUserDTOInput, id: number) {
+    const user = await this.userRepository.findOneBy({ id });
 
     const originalUser = JSON.parse(JSON.stringify(user));
 
@@ -136,7 +128,7 @@ export class UserService {
   }
 
   async collaborator(data: CollaboratorDtoInput, userId: number) {
-    const user = await this.userRepository.findUserById(data.userId);
+    const user = await this.userRepository.findOneBy({ id: data.userId });
     const changes = {
       before: {
         collaborador: user.collaborator,
@@ -160,7 +152,7 @@ export class UserService {
   }
 
   async uploadImage(file: any, userId: number): Promise<string> {
-    const user = await this.userRepository.findUserById(userId);
+    const user = await this.userRepository.findOneBy({ id: userId });
     if (user.collaboratorPhoto) {
       await removeFileFTP(
         user.collaboratorPhoto,
@@ -189,7 +181,7 @@ export class UserService {
   }
 
   async removeImage(userId: number): Promise<boolean> {
-    const user = await this.userRepository.findUserById(userId);
+    const user = await this.userRepository.findOneBy({ id: userId });
     const deleted = await removeFileFTP(
       user.collaboratorPhoto,
       this.configService.get<string>('FTP_HOST'),
@@ -206,7 +198,7 @@ export class UserService {
 
   async me(userId: number) {
     return this.MapUsertoUserDTO(
-      await this.userRepository.findUserById(userId),
+      await this.userRepository.findOneBy({ id: userId }),
     );
   }
 
