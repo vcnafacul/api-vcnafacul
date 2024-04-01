@@ -12,9 +12,13 @@ export class BaseService<T> {
   async findAllBy({
     page,
     limit,
-    where,
+    ...rest
   }: GetAllInput): Promise<GetAllOutput<T>> {
-    return await this._repository.findAllBy({ page, limit, where });
+    return await this._repository.findAllBy({
+      page,
+      limit,
+      where: { ...rest },
+    });
   }
 
   async delete(id: number) {

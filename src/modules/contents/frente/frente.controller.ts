@@ -6,17 +6,21 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   SetMetadata,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { FrenteService } from './frente.service';
-import { CreateFrenteDTOInput } from './dtos/create-frente.dto.input';
-import { Materias } from './enum/materias';
-import { UpdateFrenteDTOInput } from './dtos/update-frente.dto.input';
-import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { Permissions } from 'src/modules/role/role.entity';
+import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
+import { GetAllDtoOutput } from 'src/shared/dtos/get-all.dto.output';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
+import { PermissionsGuard } from 'src/shared/guards/permission.guard';
+import { CreateFrenteDTOInput } from './dtos/create-frente.dto.input';
+import { UpdateFrenteDTOInput } from './dtos/update-frente.dto.input';
+import { Materias } from './enum/materias';
+import { Frente } from './frente.entity';
+import { FrenteService } from './frente.service';
 
 @ApiTags('Frente')
 @Controller('frente')
@@ -47,8 +51,10 @@ export class FrenteController {
   @Get()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.visualizarDemanda)
-  async getAll() {
-    return await this.frenteService.getAll();
+  async getAll(
+    @Query() query: GetAllDtoInput,
+  ): Promise<GetAllDtoOutput<Frente>> {
+    return await this.frenteService.findAllBy(query);
   }
 
   @Patch()

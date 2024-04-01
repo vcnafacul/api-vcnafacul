@@ -55,11 +55,9 @@ export class UserController {
     return res.status(200).json(false);
   }
 
-  @Get()
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
-  async find(@Query() query: GetAllDtoInput): Promise<GetAllDtoOutput<User>> {
-    return await this.userService.findAllBy(query);
+  @Get('volunteers')
+  async getVolunteers() {
+    return await this.userService.getVolunteers();
   }
 
   @Get(':id')
@@ -67,6 +65,13 @@ export class UserController {
   @UseGuards(JwtAuthGuard)
   async findById(@Param('id') id: number) {
     return await this.userService.findUserById(id);
+  }
+
+  @Get()
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async find(@Query() query: GetAllDtoInput): Promise<GetAllDtoOutput<User>> {
+    return await this.userService.findAllBy(query);
   }
 
   @Put()
@@ -116,11 +121,6 @@ export class UserController {
   @UseGuards(JwtAuthGuard)
   async removeImage(@Req() req: Request) {
     return await this.userService.removeImage((req.user as User).id);
-  }
-
-  @Get('volunteers')
-  async getVolunteers() {
-    return await this.userService.getVolunteers();
   }
 
   @Get('me')

@@ -17,6 +17,7 @@ import { ChangeOrderDTOInput } from 'src/shared/modules/node/dtos/change-order.d
 import { UpdateSubjectDTOInput } from './dtos/update-subject.dto.input';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { Permissions } from 'src/modules/role/role.entity';
+import { GettAllByFrenteDtoInput } from './dtos/get-all-by-frente.dto.input';
 
 @ApiTags('Subject')
 @Controller('subject')
@@ -30,11 +31,18 @@ export class SubjectController {
     return await this.subjectService.create(dto);
   }
 
+  // @Get()
+  // @UseGuards(PermissionsGuard)
+  // @SetMetadata(PermissionsGuard.name, Permissions.visualizarDemanda)
+  // async getAll(@Query('frenteId') frenteId?: number) {
+  //   return await this.subjectService.getAll(frenteId);
+  // }
+
   @Get()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.visualizarDemanda)
-  async getAll(@Query('frenteId') frenteId?: number) {
-    return await this.subjectService.getAll(frenteId);
+  async getAll(@Query() query: GettAllByFrenteDtoInput) {
+    return await this.subjectService.findAllBy(query);
   }
 
   @Get('order')

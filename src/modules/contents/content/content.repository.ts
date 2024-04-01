@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
-import { EntityManager } from 'typeorm';
+import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { NodeRepository } from 'src/shared/modules/node/node.repository';
+import { EntityManager } from 'typeorm';
 import { Content } from './content.entity';
 import { StatusContent } from './enum/status-content';
+import { GetAllContentInput } from './interface/get-all-content.input';
 
 @Injectable()
 export class ContentRepository extends NodeRepository<Content> {
@@ -14,9 +16,17 @@ export class ContentRepository extends NodeRepository<Content> {
     super(_entityManager.getRepository(Content));
   }
 
-  async getAll(status?: StatusContent, subjectId?: number, title?: string) {
+  override async findAllBy({
+    page,
+    limit,
+    status,
+    subjectId,
+    title,
+  }: GetAllContentInput): Promise<GetAllOutput<Content>> {
     const query = this.repository
       .createQueryBuilder('demand')
+      .skip((page - 1) * limit)
+      .take(limit)
       .select([
         'demand.id',
         'demand.createdAt',
@@ -32,7 +42,6 @@ export class ContentRepository extends NodeRepository<Content> {
       .addSelect(['frente.id', 'frente.name', 'frente.materia']);
 
     let whereApplied = false;
-
     if (status !== undefined) {
       query.where('demand.status = :status', { status });
       whereApplied = true;
@@ -44,6 +53,7 @@ export class ContentRepository extends NodeRepository<Content> {
       } else {
         query.where('subject.id = :subjectId', { subjectId });
       }
+      whereApplied = true;
     }
 
     if (title) {
@@ -54,7 +64,14 @@ export class ContentRepository extends NodeRepository<Content> {
       }
     }
 
-    return query.getMany();
+    const data = await query.getMany();
+    const totalItems = await query.getCount();
+    return {
+      data,
+      page,
+      limit,
+      totalItems,
+    };
   }
 
   async getBytSubject(subjectId: number) {
@@ -108,5 +125,22 @@ export class ContentRepository extends NodeRepository<Content> {
       currentNode = nodes.find((n) => n.id === currentNode.next);
     }
     return orderedNodes;
+  }
+
+  async getNodes(list: number) {
+    return this.repository.findBy({ list });
+  }
+
+  async IsUnique(subjectId: number, title: string) {
+    const count = await this.repository
+      .createQueryBuilder('demand')
+      .select(['demand.id', 'demand.title'])
+      .leftJoin('demand.subject', 'subject')
+      .addSelect(['subject.id'])
+      .where({ title })
+      .andWhere('subject.id = :subjectId', { subjectId })
+      .getCount();
+
+    return count === 0;
   }
 }

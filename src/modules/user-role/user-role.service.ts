@@ -45,9 +45,8 @@ export class UserRoleService extends BaseService<UserRole> {
   async findUserRole({
     page,
     limit,
-    where,
   }: GetAllInput): Promise<GetAllDtoOutput<UserRoleDTO>> {
-    const userRole = await this._repository.findAllBy({ page, limit, where });
+    const userRole = await this._repository.findAllBy({ page, limit });
     return {
       data: userRole.data.map((ur) => ({
         user: ur.user,

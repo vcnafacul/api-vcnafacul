@@ -30,7 +30,6 @@ export class UserRoleRepository extends BaseRepository<UserRole> {
   override async findAllBy({
     page,
     limit,
-    where,
   }: GetAllInput): Promise<GetAllOutput<UserRole>> {
     const [data, totalItems] = await Promise.all([
       this.repository
@@ -40,12 +39,8 @@ export class UserRoleRepository extends BaseRepository<UserRole> {
         .orderBy('entity.createdAt', 'DESC')
         .skip((page - 1) * limit)
         .take(limit)
-        .where({ ...where })
         .getMany(),
-      this.repository
-        .createQueryBuilder('entity')
-        .where({ ...where })
-        .getCount(),
+      this.repository.createQueryBuilder('entity').getCount(),
     ]);
     return {
       data,

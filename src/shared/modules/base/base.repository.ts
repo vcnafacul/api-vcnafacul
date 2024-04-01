@@ -1,6 +1,6 @@
 import { Repository } from 'typeorm';
 import { IBaseRepository } from './interfaces/base.repository';
-import { GetAllInput } from './interfaces/get-all.input';
+import { GetAllWhereInput } from './interfaces/get-all.input';
 import { GetAllOutput } from './interfaces/get-all.output';
 
 export class BaseRepository<T> implements IBaseRepository<T> {
@@ -10,7 +10,7 @@ export class BaseRepository<T> implements IBaseRepository<T> {
     page,
     limit,
     where,
-  }: GetAllInput): Promise<GetAllOutput<T>> {
+  }: GetAllWhereInput): Promise<GetAllOutput<T>> {
     const [data, totalItems] = await Promise.all([
       this.repository
         .createQueryBuilder('entity')

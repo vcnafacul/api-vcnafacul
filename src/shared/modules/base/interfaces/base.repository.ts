@@ -1,8 +1,8 @@
-import { GetAllInput } from './get-all.input';
+import { GetAllWhereInput } from './get-all.input';
 import { GetAllOutput } from './get-all.output';
 
 export interface IBaseRepository<T> {
-  findAllBy({ page, limit, where }: GetAllInput): Promise<GetAllOutput<T>>;
+  findAllBy({ page, limit, where }: GetAllWhereInput): Promise<GetAllOutput<T>>;
   create(entity: T): Promise<T>;
   findOneBy(where: object): Promise<T>;
   findOneOrFailBy(where: object): Promise<T>;

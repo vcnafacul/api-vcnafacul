@@ -2,6 +2,8 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuditLogService } from 'src/modules/audit-log/audit-log.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
+import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
+import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { ChangeOrderDTOInput } from 'src/shared/modules/node/dtos/change-order.dto.input';
 import { removeFileFTP } from 'src/utils/removeFileFtp';
 import { uploadFileFTP } from 'src/utils/uploadFileFtp';
@@ -11,6 +13,7 @@ import { Content } from './content.entity';
 import { ContentRepository } from './content.repository';
 import { CreateContentDTOInput } from './dtos/create-content.dto.input';
 import { StatusContent } from './enum/status-content';
+import { GetAllContentInput } from './interface/get-all-content.input';
 
 @Injectable()
 export class ContentService extends BaseService<Content> {
@@ -47,8 +50,10 @@ export class ContentService extends BaseService<Content> {
     return contentSave;
   }
 
-  async getAll(subjectId?: number, status?: StatusContent) {
-    return await this.repository.getAll(status, subjectId);
+  override async findAllBy(
+    query: GetAllContentInput,
+  ): Promise<GetAllOutput<Content>> {
+    return await this.repository.findAllBy(query);
   }
 
   async getAllOrder(subjectId: number, status?: StatusContent) {
@@ -57,8 +62,12 @@ export class ContentService extends BaseService<Content> {
     return await this.repository.getOrderContent(nodes, subject.head, status);
   }
 
-  async getAllDemand() {
-    const demands = await this.repository.getAll(StatusContent.Pending_Upload);
+  async getAllDemand(query: GetAllInput): Promise<GetAllOutput<Content>> {
+    const demands = await this.repository.findAllBy({
+      status: StatusContent.Pending_Upload,
+      page: query.page,
+      limit: query.limit,
+    });
     if (!demands) {
       throw new HttpException('Não há demandas', HttpStatus.NO_CONTENT);
     }
@@ -148,7 +157,6 @@ export class ContentService extends BaseService<Content> {
   }
 
   private async IsUnique(subjectId: number, title: string) {
-    const content = await this.repository.getAll(undefined, subjectId, title);
-    return content.length === 0;
+    return this.repository.IsUnique(subjectId, title);
   }
 }

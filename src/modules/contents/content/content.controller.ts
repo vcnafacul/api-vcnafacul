@@ -13,18 +13,20 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Request } from 'express';
+import { Permissions } from 'src/modules/role/role.entity';
+import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
+import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
+import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { ChangeOrderDTOInput } from 'src/shared/modules/node/dtos/change-order.dto.input';
+import { User } from '../../user/user.entity';
 import { ContentService } from './content.service';
 import { CreateContentDTOInput } from './dtos/create-content.dto.input';
-import { StatusContent } from './enum/status-content';
+import { GetAllContentDtoInput } from './dtos/get-all-content.dto.input';
 import { UpdateStatusDTOInput } from './dtos/update-status.dto.input';
-import { PermissionsGuard } from 'src/shared/guards/permission.guard';
-import { Permissions } from 'src/modules/role/role.entity';
-import { Request } from 'express';
-import { User } from '../../user/user.entity';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
+import { StatusContent } from './enum/status-content';
 
 @ApiTags('Content')
 @Controller('content')
@@ -41,11 +43,8 @@ export class ContentController {
   @Get()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.visualizarDemanda)
-  async getAll(
-    @Query('subjectId') subjectId?: number,
-    @Query('status') status?: StatusContent,
-  ) {
-    return await this.contentService.getAll(subjectId, status);
+  async getAll(@Query() query: GetAllContentDtoInput) {
+    return await this.contentService.findAllBy(query);
   }
 
   @Get('order')
@@ -61,8 +60,8 @@ export class ContentController {
   @Get('demand')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.visualizarDemanda)
-  async getAllDemand() {
-    return await this.contentService.getAllDemand();
+  async getAllDemand(@Query() query: GetAllDtoInput) {
+    return await this.contentService.getAllDemand(query);
   }
 
   @Patch('order')
