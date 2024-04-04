@@ -17,14 +17,6 @@ export class GeoRepository extends BaseRepository<Geolocation> {
     return await this.repository.save(geo);
   }
 
-  async findBy(
-    where: object,
-    take?: number,
-    skip?: number,
-  ): Promise<Geolocation[]> {
-    return await this.repository.find({ take, skip, where: { ...where } });
-  }
-
   async findOneBy(where: object): Promise<Geolocation> {
     return await this.repository.findOneBy(where);
   }

@@ -1,18 +1,21 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { SubjectRepository } from './subject.repository';
-import { CreateSubjectDTOInput } from './dtos/create-subject.dto.input';
-import { Subject } from './subject.entity';
-import { FrenteRepository } from '../frente/frente.repository';
+import { BaseService } from 'src/shared/modules/base/base.service';
 import { ChangeOrderDTOInput } from 'src/shared/modules/node/dtos/change-order.dto.input';
-import { UpdateSubjectDTOInput } from './dtos/update-subject.dto.input';
 import { QueryFailedError } from 'typeorm';
+import { FrenteRepository } from '../frente/frente.repository';
+import { CreateSubjectDTOInput } from './dtos/create-subject.dto.input';
+import { UpdateSubjectDTOInput } from './dtos/update-subject.dto.input';
+import { Subject } from './subject.entity';
+import { SubjectRepository } from './subject.repository';
 
 @Injectable()
-export class SubjectService {
+export class SubjectService extends BaseService<Subject> {
   constructor(
     private readonly repository: SubjectRepository,
     private readonly frenteRepository: FrenteRepository,
-  ) {}
+  ) {
+    super(repository);
+  }
 
   async create(data: CreateSubjectDTOInput): Promise<Subject> {
     try {
@@ -51,18 +54,10 @@ export class SubjectService {
     }
   }
 
-  async getAll(frenteId: number) {
-    return await this.repository.findBy({ list: frenteId });
-  }
-
   async getAllOrder(frenteId: number) {
     const frente = await this.frenteRepository.findOneBy({ id: frenteId });
-    const nodes = await this.repository.findBy({ list: frenteId });
+    const nodes = await this.repository.getNodes(frenteId);
     return await this.repository.getOrder(nodes, frente.head);
-  }
-
-  async getById(id: number) {
-    return this.repository.findBy({ id });
   }
 
   async changeOrder(dto: ChangeOrderDTOInput) {

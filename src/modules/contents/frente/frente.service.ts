@@ -1,14 +1,17 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { FrenteRepository } from './frente.repository';
-import { Frente } from './frente.entity';
-import { CreateFrenteDTOInput } from './dtos/create-frente.dto.input';
-import { Materias } from './enum/materias';
-import { UpdateFrenteDTOInput } from './dtos/update-frente.dto.input';
+import { BaseService } from 'src/shared/modules/base/base.service';
 import { QueryFailedError } from 'typeorm';
+import { CreateFrenteDTOInput } from './dtos/create-frente.dto.input';
+import { UpdateFrenteDTOInput } from './dtos/update-frente.dto.input';
+import { Materias } from './enum/materias';
+import { Frente } from './frente.entity';
+import { FrenteRepository } from './frente.repository';
 
 @Injectable()
-export class FrenteService {
-  constructor(private readonly repository: FrenteRepository) {}
+export class FrenteService extends BaseService<Frente> {
+  constructor(private readonly repository: FrenteRepository) {
+    super(repository);
+  }
 
   async create(data: CreateFrenteDTOInput): Promise<Frente> {
     try {
@@ -31,14 +34,6 @@ export class FrenteService {
         throw new Error('Erro ao criar a frente');
       }
     }
-  }
-
-  async getAll() {
-    return this.repository.findAll();
-  }
-
-  async getById(id: number) {
-    return this.repository.findBy({ id });
   }
 
   async getByMateria(materia: Materias) {

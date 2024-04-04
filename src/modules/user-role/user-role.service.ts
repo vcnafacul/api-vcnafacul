@@ -1,19 +1,21 @@
 import { Injectable } from '@nestjs/common';
-import { UserRoleRepository } from './user-role.repository';
-import { UpdateUserRoleInput } from './dto/update-user-role.dto.input';
-import { UserRoleDTO } from './dto/user-role.dto.output';
+import { GetAllDtoOutput } from 'src/shared/dtos/get-all.dto.output';
+import { BaseService } from 'src/shared/modules/base/base.service';
+import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { User } from '../user/user.entity';
+import { UpdateUserRoleInput } from './dto/update-user-role.dto.input';
+import { UserRoleDTO } from './dto/user-role.dto.output';
+import { UserRole } from './user-role.entity';
+import { UserRoleRepository } from './user-role.repository';
 
 @Injectable()
-export class UserRoleService {
+export class UserRoleService extends BaseService<UserRole> {
   constructor(
     private readonly userRoleRepository: UserRoleRepository,
     private readonly auditLogService: AuditLogService,
-  ) {}
-
-  async findAll() {
-    return await this.userRoleRepository.findAll();
+  ) {
+    super(userRoleRepository);
   }
 
   async update(userRoleUpdate: UpdateUserRoleInput, user: User) {
@@ -40,20 +42,28 @@ export class UserRoleService {
     return true;
   }
 
-  async findUserRole(): Promise<UserRoleDTO[]> {
-    const userRole = await this.userRoleRepository.findRelations();
-    return userRole.map((ur) => ({
-      user: ur.user,
-      roleId: ur.roleId,
-      roleName: ur.role.name,
-    }));
+  async findUserRole({
+    page,
+    limit,
+  }: GetAllInput): Promise<GetAllDtoOutput<UserRoleDTO>> {
+    const userRole = await this._repository.findAllBy({ page, limit });
+    return {
+      data: userRole.data.map((ur) => ({
+        user: ur.user,
+        roleId: ur.roleId,
+        roleName: ur.role.name,
+      })),
+      limit,
+      page,
+      totalItems: userRole.totalItems,
+    };
   }
 
   async checkUserPermission(
     userId: number,
     roleName: string,
   ): Promise<boolean> {
-    const userRole = await this.userRoleRepository.findOneByUserId(userId);
+    const userRole = await this.userRoleRepository.findOneBy({ userId });
     return userRole.role[roleName];
   }
 }

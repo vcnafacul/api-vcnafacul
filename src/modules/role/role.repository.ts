@@ -31,12 +31,4 @@ export class RoleRepository extends BaseRepository<Role> {
   async findOneBy(filter: object): Promise<Role> {
     return await this.repository.findOneBy(filter);
   }
-
-  async findById(id: number): Promise<Role> {
-    return await this.repository.findOneBy({ id });
-  }
-
-  async findBy(filter: object): Promise<Role[]> {
-    return await this.repository.findBy(filter);
-  }
 }

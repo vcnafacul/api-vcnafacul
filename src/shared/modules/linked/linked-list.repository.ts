@@ -1,9 +1,9 @@
-import { NodeRepository } from '../node/node.repository';
-import { EntityManager } from 'typeorm';
-import { LinkedListEntity } from './linked-list.entity';
-import { NodeEntity } from '../node/node.entity';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { InsertWhere } from 'src/modules/contents/content/enum/insert-where';
+import { EntityManager } from 'typeorm';
+import { NodeEntity } from '../node/node.entity';
+import { NodeRepository } from '../node/node.repository';
+import { LinkedListEntity } from './linked-list.entity';
 
 export class LinkedListRepository<
   T extends LinkedListEntity,

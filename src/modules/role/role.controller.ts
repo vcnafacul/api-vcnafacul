@@ -2,17 +2,20 @@ import {
   Body,
   Controller,
   Get,
+  Param,
   Post,
   Query,
   SetMetadata,
   UseGuards,
 } from '@nestjs/common';
-import { RoleService } from './role.service';
-import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
+import { GetAllDtoOutput } from 'src/shared/dtos/get-all.dto.output';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
-import { Permissions } from '../role/role.entity';
+import { Permissions, Role } from '../role/role.entity';
 import { CreateRoleDtoInput } from './dto/create-role.dto';
+import { RoleService } from './role.service';
 
 @ApiTags('Role')
 @Controller('role')
@@ -20,14 +23,17 @@ export class RoleController {
   constructor(private readonly roleService: RoleService) {}
 
   @Get()
-  @ApiQuery({ name: 'id', required: false, description: 'ID do role' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  async find(@Query('id') id?: number) {
-    if (id) {
-      return await this.roleService.findById(id);
-    }
-    return await this.roleService.findAll();
+  async find(@Query() query: GetAllDtoInput): Promise<GetAllDtoOutput<Role>> {
+    return await this.roleService.findAllBy(query);
+  }
+
+  @Get(':id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async getById(@Param('id') id: number) {
+    return await this.roleService.findOneBy({ id });
   }
 
   @Post()
