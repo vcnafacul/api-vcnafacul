@@ -9,7 +9,7 @@ const multerConfig = {
     filename: (req, file, cb) => {
       const fileName = uuidv4();
 
-      const extension = path.parse(file.originalname).ext;
+      const extension = path.parse(file.originalname).ext.toLowerCase();
       cb(null, `${fileName}${extension}`);
     },
   }),
