@@ -3,6 +3,12 @@ export interface GetAllInput {
   limit: number;
 }
 
+export interface OrConditional {
+  prop: string;
+  value: any;
+}
+
 export interface GetAllWhereInput extends GetAllInput {
   where?: object;
+  or?: OrConditional[];
 }

@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
-import { EntityManager } from 'typeorm';
+import { GetAllWhereInput } from 'src/shared/modules/base/interfaces/get-all.input';
+import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { Brackets, EntityManager } from 'typeorm';
 import { BaseRepository } from '../../shared/modules/base/base.repository';
 import { Geolocation } from './geo.entity';
 
@@ -11,6 +13,55 @@ export class GeoRepository extends BaseRepository<Geolocation> {
     protected readonly _entityManager: EntityManager,
   ) {
     super(_entityManager.getRepository(Geolocation));
+  }
+
+  override async findAllBy({
+    page,
+    limit,
+    where,
+    or,
+  }: GetAllWhereInput): Promise<GetAllOutput<Geolocation>> {
+    const query = this.repository
+      .createQueryBuilder('entity')
+      .orderBy('entity.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .where({ ...where });
+
+    const queryTotalItems = await this.repository
+      .createQueryBuilder('entity')
+      .where({ ...where });
+
+    if (or?.length > 0) {
+      query.andWhere(
+        new Brackets((qb) => {
+          or?.map((o) => {
+            qb.orWhere(`entity.${o.prop} ILIKE :text`, {
+              text: `%${o.value}%`,
+            });
+          });
+        }),
+      );
+
+      queryTotalItems.andWhere(
+        new Brackets((qb) => {
+          or?.map((o) => {
+            qb.orWhere(`entity.${o.prop} ILIKE :text`, {
+              text: `%${o.value}%`,
+            });
+          });
+        }),
+      );
+    }
+
+    const totalItems = await queryTotalItems.getCount();
+    const data = await query.getMany();
+    return {
+      data,
+      page,
+      limit,
+      totalItems,
+    };
   }
 
   async create(geo: Geolocation): Promise<Geolocation> {

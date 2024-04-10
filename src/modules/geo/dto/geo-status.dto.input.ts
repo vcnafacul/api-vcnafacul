@@ -1,15 +1,15 @@
-import { IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
-import { StatusGeolocation } from '../enum/status-geolocation';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
+import { Status } from 'src/modules/simulado/enum/status.enum';
 
 export class GeoStatusChangeDTOInput {
   @IsNumber()
   @ApiProperty()
   geoId: number;
 
-  @IsEnum(StatusGeolocation)
-  @ApiProperty({ enum: StatusGeolocation })
-  status: StatusGeolocation;
+  @IsEnum(Status)
+  @ApiProperty({ enum: Status })
+  status: Status;
 
   @IsOptional()
   @IsString()
