@@ -21,9 +21,15 @@ export class QuestaoService {
       this.configService.get<string>('SIMULADO_URL');
   }
 
-  public async getAllQuestoes({ status, page, limit }: QuestaoDTOInput) {
+  public async getAllQuestoes(query: QuestaoDTOInput) {
+    let baseUrl = 'v1/questao?';
+
+    Object.keys(query).forEach((key) => {
+      baseUrl = baseUrl + `${key}=${query[key]}&`;
+    });
+
     return await this.http
-      .get(`v1/questao?status=${status}&page=${page}&limit=${limit}`)
+      .get(baseUrl)
       .pipe(map((res) => res.data))
       .pipe(
         catchError((error: AxiosError) => {
