@@ -1,5 +1,6 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { BaseService } from 'src/shared/modules/base/base.service';
+import { OrConditional } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { EmailService } from 'src/shared/services/email.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
@@ -9,7 +10,6 @@ import { CreateGeoDTOInput } from './dto/create-geo.dto.input';
 import { GeoStatusChangeDTOInput } from './dto/geo-status.dto.input';
 import { ListGeoDTOInput } from './dto/list-geo.dto.input';
 import { UpdateGeoDTOInput } from './dto/update-geo.dto.input';
-import { StatusGeolocation } from './enum/status-geolocation';
 import { Geolocation } from './geo.entity';
 import { GeoRepository } from './geo.repository';
 
@@ -34,19 +34,21 @@ export class GeoService extends BaseService<Geolocation> {
     return newGeo;
   }
 
-  async findAllByFilter(
-    filterDto: ListGeoDTOInput,
-  ): Promise<GetAllOutput<Geolocation>> {
-    const where: any = { status: StatusGeolocation.Validated };
+  async findAllByFilter({
+    page,
+    limit,
+    status,
+    text,
+  }: ListGeoDTOInput): Promise<GetAllOutput<Geolocation>> {
+    const where: any = { status };
 
-    if (filterDto.status) {
-      where.status = parseInt(filterDto.status as any) as StatusGeolocation;
-    }
+    const or = this.generateTextCombinations(text);
 
     return await this.geoRepository.findAllBy({
-      page: filterDto.page,
-      limit: filterDto.limit,
+      page: page,
+      limit: limit,
       where,
+      or,
     });
   }
 
@@ -107,5 +109,17 @@ export class GeoService extends BaseService<Geolocation> {
   private convertDtoToDomain(dto: CreateGeoDTOInput): Geolocation {
     const geolocation = new Geolocation();
     return Object.assign(geolocation, dto) as Geolocation;
+  }
+
+  private generateTextCombinations(text: string): OrConditional[] {
+    const combinations: OrConditional[] = [];
+
+    combinations.push({ prop: 'name', value: text });
+    combinations.push({ prop: 'state', value: text });
+    combinations.push({ prop: 'city', value: text });
+    combinations.push({ prop: 'email', value: text });
+    combinations.push({ prop: 'category', value: text });
+
+    return combinations;
   }
 }

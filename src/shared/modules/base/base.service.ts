@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { IBaseRepository } from './interfaces/base.repository';
-import { GetAllInput } from './interfaces/get-all.input';
+import { GetAllWhereInput } from './interfaces/get-all.input';
 import { GetAllOutput } from './interfaces/get-all.output';
 
 export class BaseService<T> {
@@ -12,12 +12,12 @@ export class BaseService<T> {
   async findAllBy({
     page,
     limit,
-    ...rest
-  }: GetAllInput): Promise<GetAllOutput<T>> {
+    where,
+  }: GetAllWhereInput): Promise<GetAllOutput<T>> {
     return await this._repository.findAllBy({
       page,
       limit,
-      where: { ...rest },
+      where,
     });
   }
 
