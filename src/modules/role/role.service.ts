@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { BaseService } from 'src/shared/modules/base/base.service';
+import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
+import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { CreateRoleDtoInput } from './dto/create-role.dto';
+import { GetAllRoleDto } from './dto/get-all-role.dto';
 import { Role } from './role.entity';
 import { RoleRepository } from './role.repository';
 
@@ -8,6 +11,22 @@ import { RoleRepository } from './role.repository';
 export class RoleService extends BaseService<Role> {
   constructor(private readonly roleRepository: RoleRepository) {
     super(roleRepository);
+  }
+
+  async findAllByDTO({
+    page,
+    limit,
+  }: GetAllInput): Promise<GetAllOutput<GetAllRoleDto>> {
+    const data = await this._repository.findAllBy({
+      page,
+      limit,
+    });
+    return {
+      data: data.data.map((d) => ({ id: d.id, name: d.name })),
+      page,
+      limit,
+      totalItems: data.totalItems,
+    };
   }
 
   async create(roleDto: CreateRoleDtoInput) {

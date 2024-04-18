@@ -13,8 +13,9 @@ import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 import { GetAllDtoOutput } from 'src/shared/dtos/get-all.dto.output';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
-import { Permissions, Role } from '../role/role.entity';
+import { Permissions } from '../role/role.entity';
 import { CreateRoleDtoInput } from './dto/create-role.dto';
+import { GetAllRoleDto } from './dto/get-all-role.dto';
 import { RoleService } from './role.service';
 
 @ApiTags('Role')
@@ -25,8 +26,10 @@ export class RoleController {
   @Get()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  async find(@Query() query: GetAllDtoInput): Promise<GetAllDtoOutput<Role>> {
-    return await this.roleService.findAllBy(query);
+  async find(
+    @Query() query: GetAllDtoInput,
+  ): Promise<GetAllDtoOutput<GetAllRoleDto>> {
+    return await this.roleService.findAllByDTO(query);
   }
 
   @Get(':id')
