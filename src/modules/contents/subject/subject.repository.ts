@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { LinkedListRepository } from 'src/shared/modules/linked/linked-list.repository';
-import { Subject } from '../subject/subject.entity';
 import { InjectEntityManager } from '@nestjs/typeorm';
+import { LinkedListRepository } from 'src/shared/modules/linked/linked-list.repository';
 import { EntityManager } from 'typeorm';
 import { Content } from '../content/content.entity';
+import { Subject } from '../subject/subject.entity';
 
 @Injectable()
 export class SubjectRepository extends LinkedListRepository<Subject, Content> {
@@ -56,5 +56,9 @@ export class SubjectRepository extends LinkedListRepository<Subject, Content> {
       .where('subject.id = :id', { id });
 
     return query.getOne();
+  }
+
+  async getNodes(list: number) {
+    return this.repository.findBy({ list });
   }
 }

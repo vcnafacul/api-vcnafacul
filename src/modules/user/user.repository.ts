@@ -15,13 +15,6 @@ export class UserRepository extends BaseRepository<User> {
     super(_entityManager.getRepository(User));
   }
 
-  async findUserById(id: number): Promise<User> {
-    if (!id) {
-      throw new Error('ID is invalid');
-    }
-    return await this.repository.findOne({ where: { id: id } });
-  }
-
   async createWithRole(user: User, role: Role): Promise<User> {
     let newUser = null;
     await this._entityManager.transaction(async (tem) => {
@@ -43,10 +36,6 @@ export class UserRepository extends BaseRepository<User> {
       relations: ['userRole', 'userRole.role'],
       cache: false,
     });
-  }
-
-  async findOneBy(filter: object): Promise<User> {
-    return await this.repository.findOneBy(filter);
   }
 
   override async update(user: User) {

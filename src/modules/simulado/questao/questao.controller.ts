@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   Res,
   SetMetadata,
@@ -13,23 +14,42 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { QuestaoService } from './questao.service';
-import { PermissionsGuard } from 'src/shared/guards/permission.guard';
-import { Permissions } from 'src/modules/role/role.entity';
-import { Status } from '../enum/status.enum';
-import { CreateQuestaoDTOInput } from '../dtos/create-questao.dto.input';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Request, Response } from 'express';
 import multerConfig from 'src/config/multer-config';
-import { Response, Request } from 'express';
-import { UpdateDTOInput } from '../dtos/update-questao.dto.input';
+import { Permissions } from 'src/modules/role/role.entity';
 import { User } from 'src/modules/user/user.entity';
+import { PermissionsGuard } from 'src/shared/guards/permission.guard';
+import { CreateQuestaoDTOInput } from '../dtos/create-questao.dto.input';
+import { QuestaoDTOInput } from '../dtos/questao.dto.input';
 import { UpdateStatusDTOInput } from '../dtos/update-questao-status.dto.input';
+import { UpdateDTOInput } from '../dtos/update-questao.dto.input';
+import { Status } from '../enum/status.enum';
+import { QuestaoService } from './questao.service';
 
 @ApiTags('Questao')
 @Controller('mssimulado/questoes')
 export class QuestaoController {
   constructor(private readonly questaoService: QuestaoService) {}
+
+  @Get()
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'busca questões por status',
+    schema: {
+      type: 'object',
+      additionalProperties: {
+        type: 'string',
+      },
+    },
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
+  public async questoes(@Query() query: QuestaoDTOInput) {
+    return await this.questaoService.getAllQuestoes(query);
+  }
 
   @Get('infos')
   @ApiBearerAuth()
@@ -48,24 +68,6 @@ export class QuestaoController {
   @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
   public async questoesInfo() {
     return await this.questaoService.questoesInfo();
-  }
-
-  @Get(':status')
-  @ApiBearerAuth()
-  @ApiResponse({
-    status: 200,
-    description: 'busca questões por status',
-    schema: {
-      type: 'object',
-      additionalProperties: {
-        type: 'string',
-      },
-    },
-  })
-  @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
-  public async questoes(@Param('status') status: Status) {
-    return await this.questaoService.getAllQuestoes(status);
   }
 
   @Patch(':id/:status')

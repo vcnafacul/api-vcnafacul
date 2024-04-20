@@ -5,20 +5,22 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Req,
   SetMetadata,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { NewsService } from './news.service';
-import { Request } from 'express';
-import { CreateNewsDtoInput } from './dtos/create-news.dto.input';
-import { User } from '../user/user.entity';
 import { FileInterceptor } from '@nestjs/platform-express/multer';
+import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Request } from 'express';
+import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { Permissions } from '../role/role.entity';
+import { User } from '../user/user.entity';
+import { CreateNewsDtoInput } from './dtos/create-news.dto.input';
+import { NewsService } from './news.service';
 
 @ApiTags('News')
 @Controller('news')
@@ -62,8 +64,8 @@ export class NewsController {
   })
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.uploadNews)
-  async findall() {
-    return await this.newService.findAll();
+  async findall(@Query() query: GetAllDtoInput) {
+    return await this.newService.findAllBy(query);
   }
 
   @Get()

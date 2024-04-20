@@ -1,6 +1,6 @@
 import { Column, Entity } from 'typeorm';
-import { StatusGeolocation } from './enum/status-geolocation';
 import { BaseEntity } from '../../shared/modules/base/entity.base';
+import { Status } from '../simulado/enum/status.enum';
 
 @Entity('geolocations')
 export class Geolocation extends BaseEntity {
@@ -82,6 +82,6 @@ export class Geolocation extends BaseEntity {
   @Column({ name: 'user_email' })
   public userEmail: string;
 
-  @Column({ default: StatusGeolocation.Waiting })
-  public status: StatusGeolocation;
+  @Column({ default: Status.Pending })
+  public status: Status;
 }

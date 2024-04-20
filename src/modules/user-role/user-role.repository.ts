@@ -1,8 +1,10 @@
+import { Injectable } from '@nestjs/common';
+import { InjectEntityManager } from '@nestjs/typeorm';
+import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
+import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { EntityManager } from 'typeorm';
 import { BaseRepository } from '../../shared/modules/base/base.repository';
 import { UserRole } from './user-role.entity';
-import { InjectEntityManager } from '@nestjs/typeorm';
-import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class UserRoleRepository extends BaseRepository<UserRole> {
@@ -18,27 +20,33 @@ export class UserRoleRepository extends BaseRepository<UserRole> {
     await this.repository.save(userRole);
   }
 
-  async findOneBy(filter: object): Promise<UserRole> {
-    return await this.repository.findOneBy(filter);
-  }
-
-  async findOneById(id: number): Promise<UserRole> {
+  override async findOneBy(where: object): Promise<UserRole> {
     return await this.repository.findOne({
-      where: { userId: id },
+      where: { ...where },
       relations: ['user', 'role'],
     });
   }
 
-  async findOneByUserId(id: number): Promise<UserRole> {
-    return await this.repository.findOne({
-      where: { userId: id },
-      relations: ['user', 'role'],
-    });
-  }
-
-  async findRelations(): Promise<UserRole[]> {
-    return await this.repository.find({
-      relations: ['user', 'role'],
-    });
+  override async findAllBy({
+    page,
+    limit,
+  }: GetAllInput): Promise<GetAllOutput<UserRole>> {
+    const [data, totalItems] = await Promise.all([
+      this.repository
+        .createQueryBuilder('entity')
+        .leftJoinAndSelect('entity.user', 'user')
+        .leftJoinAndSelect('entity.role', 'role')
+        .orderBy('entity.createdAt', 'DESC')
+        .skip((page - 1) * limit)
+        .take(limit)
+        .getMany(),
+      this.repository.createQueryBuilder('entity').getCount(),
+    ]);
+    return {
+      data,
+      page,
+      limit,
+      totalItems,
+    };
   }
 }

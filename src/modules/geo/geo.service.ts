@@ -1,24 +1,28 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { GeoRepository } from './geo.repository';
-import { CreateGeoDTOInput } from './dto/create-geo.dto.input';
-import { Geolocation } from './geo.entity';
-import { UserService } from '../user/user.service';
+import { BaseService } from 'src/shared/modules/base/base.service';
+import { OrConditional } from 'src/shared/modules/base/interfaces/get-all.input';
+import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { EmailService } from 'src/shared/services/email.service';
-import { ListGeoDTOInput } from './dto/list-geo.dto.input';
-import { StatusGeolocation } from './enum/status-geolocation';
-import { UpdateGeoDTOInput } from './dto/update-geo.dto.input';
-import { GeoStatusChangeDTOInput } from './dto/geo-status.dto.input';
-import { User } from '../user/user.entity';
 import { AuditLogService } from '../audit-log/audit-log.service';
+import { User } from '../user/user.entity';
+import { UserService } from '../user/user.service';
+import { CreateGeoDTOInput } from './dto/create-geo.dto.input';
+import { GeoStatusChangeDTOInput } from './dto/geo-status.dto.input';
+import { ListGeoDTOInput } from './dto/list-geo.dto.input';
+import { UpdateGeoDTOInput } from './dto/update-geo.dto.input';
+import { Geolocation } from './geo.entity';
+import { GeoRepository } from './geo.repository';
 
 @Injectable()
-export class GeoService {
+export class GeoService extends BaseService<Geolocation> {
   constructor(
     private readonly geoRepository: GeoRepository,
     private readonly userService: UserService,
     private readonly emailService: EmailService,
     private readonly auditLogService: AuditLogService,
-  ) {}
+  ) {
+    super(geoRepository);
+  }
 
   async create(geoDTOInput: CreateGeoDTOInput): Promise<Geolocation> {
     const newGeo = await this.geoRepository.create(
@@ -30,29 +34,25 @@ export class GeoService {
     return newGeo;
   }
 
-  async findAllByFilter(filterDto: ListGeoDTOInput): Promise<Geolocation[]> {
-    const where: any = { status: StatusGeolocation.Validated };
+  async findAllByFilter({
+    page,
+    limit,
+    status,
+    text,
+  }: ListGeoDTOInput): Promise<GetAllOutput<Geolocation>> {
+    const where: any = { status };
 
-    if (filterDto.status) {
-      where.status = parseInt(filterDto.status as any) as StatusGeolocation;
-    }
+    const or = this.generateTextCombinations(text);
 
-    if (filterDto.limit) {
-      filterDto.limit = parseInt(filterDto.limit as any);
-    }
-
-    if (filterDto.offset) {
-      filterDto.offset = parseInt(filterDto.offset as any);
-    }
-
-    return await this.geoRepository.findBy(
+    return await this.geoRepository.findAllBy({
+      page: page,
+      limit: limit,
       where,
-      filterDto.limit,
-      filterDto.offset,
-    );
+      or,
+    });
   }
 
-  async findById(id: number): Promise<Geolocation> {
+  async findOneById(id: number): Promise<Geolocation> {
     const geo = await this.geoRepository.findOneBy({ id: id });
 
     // Verifica se o registro existe
@@ -66,7 +66,7 @@ export class GeoService {
   }
 
   async updateGeo(updateDTO: UpdateGeoDTOInput, user: User): Promise<boolean> {
-    const oldGeo = await this.findById(updateDTO.id);
+    const oldGeo = await this.findOneById(updateDTO.id);
     const changes = {};
     Object.keys(updateDTO).forEach((key) => {
       if (updateDTO[key] !== undefined && updateDTO[key] !== oldGeo[key]) {
@@ -88,7 +88,7 @@ export class GeoService {
   }
 
   async validateGeolocation(geoStatus: GeoStatusChangeDTOInput, user: User) {
-    const geo = await this.findById(geoStatus.geoId);
+    const geo = await this.findOneById(geoStatus.geoId);
     const oldStatus = geo.status;
     geo.status = geoStatus.status;
     await this.geoRepository.update(geo);
@@ -109,5 +109,17 @@ export class GeoService {
   private convertDtoToDomain(dto: CreateGeoDTOInput): Geolocation {
     const geolocation = new Geolocation();
     return Object.assign(geolocation, dto) as Geolocation;
+  }
+
+  private generateTextCombinations(text: string): OrConditional[] {
+    const combinations: OrConditional[] = [];
+
+    combinations.push({ prop: 'name', value: text });
+    combinations.push({ prop: 'state', value: text });
+    combinations.push({ prop: 'city', value: text });
+    combinations.push({ prop: 'email', value: text });
+    combinations.push({ prop: 'category', value: text });
+
+    return combinations;
   }
 }

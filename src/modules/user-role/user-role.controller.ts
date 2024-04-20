@@ -4,19 +4,24 @@ import {
   Get,
   HttpStatus,
   Put,
+  Query,
   Req,
   Res,
   SetMetadata,
   UseGuards,
 } from '@nestjs/common';
-import { UserRoleService } from './user-role.service';
-import { UpdateUserRoleInput } from './dto/update-user-role.dto.input';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { Request, Response } from 'express';
-import { User } from '../user/user.entity';
+import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
+import { GetAllDtoOutput } from 'src/shared/dtos/get-all.dto.output';
+import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { Permissions } from '../role/role.entity';
+import { User } from '../user/user.entity';
+import { UpdateUserRoleInput } from './dto/update-user-role.dto.input';
+import { UserRole } from './user-role.entity';
+import { UserRoleService } from './user-role.service';
+import { UserRoleDTO } from './dto/user-role.dto.output';
 
 @ApiTags('UserRole')
 @Controller('userrole')
@@ -26,8 +31,10 @@ export class UserRoleController {
   @Get()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  async findAll() {
-    return await this.userRoleService.findAll();
+  async find(
+    @Query() query: GetAllDtoInput,
+  ): Promise<GetAllDtoOutput<UserRole>> {
+    return await this.userRoleService.findAllBy(query);
   }
 
   @Put()
@@ -58,7 +65,9 @@ export class UserRoleController {
   @Get('user')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  async findRelations() {
-    return await this.userRoleService.findUserRole();
+  async findUser(
+    @Query() query: GetAllDtoInput,
+  ): Promise<GetAllDtoOutput<UserRoleDTO>> {
+    return await this.userRoleService.findUserRole(query);
   }
 }

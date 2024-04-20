@@ -1,25 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional } from 'class-validator';
-import { StatusGeolocation } from '../enum/status-geolocation';
+import { IsNumberString, IsOptional, IsString } from 'class-validator';
+import { Status } from 'src/modules/simulado/enum/status.enum';
+import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 
-export class ListGeoDTOInput {
+export class ListGeoDTOInput extends GetAllDtoInput {
   @IsOptional()
+  @IsString()
   @ApiProperty({ required: false, nullable: true })
-  latitude?: number;
+  text?: string;
 
-  @IsOptional()
-  @ApiProperty({ required: false, nullable: true })
-  longitude?: number;
-
-  @IsOptional()
-  @ApiProperty({ required: false, nullable: true })
-  limit?: number;
-
-  @IsOptional()
-  @ApiProperty({ required: false, nullable: true })
-  offset?: number;
-
-  @IsOptional()
-  @ApiProperty({ required: false, enum: StatusGeolocation, default: 1 })
-  status: StatusGeolocation;
+  @ApiProperty({ default: Status.Pending })
+  @IsNumberString()
+  status: Status = Status.Pending;
 }
