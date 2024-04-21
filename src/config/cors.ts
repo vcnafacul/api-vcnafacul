@@ -10,6 +10,7 @@ export function VcnafaculCors():
   if (process.env.NODE_ENV === 'production') {
     return {
       origin: 'https://www.vcnafacul.com.br',
+      methods: ['POST', 'GET', 'DELETE', 'PUT', 'PATCH'],
     };
   }
   return true;
