@@ -1,14 +1,15 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
-import { useContainer } from 'class-validator';
+import { NestFactory } from '@nestjs/core';
 import { SwaggerModule } from '@nestjs/swagger';
+import { useContainer } from 'class-validator';
+import { json, urlencoded } from 'express';
+import { AppModule } from './app.module';
+import { VcnafaculCors } from './config/cors';
 import { document } from './config/swagger.config';
 import { ControllerExceptionsFilter } from './exceptions/controller.filter';
-import { json, urlencoded } from 'express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { cors: true });
+  const app = await NestFactory.create(AppModule, { cors: VcnafaculCors() });
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
