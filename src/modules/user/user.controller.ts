@@ -60,13 +60,6 @@ export class UserController {
     return await this.userService.getVolunteers();
   }
 
-  @Get(':id')
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
-  async findById(@Param('id') id: number) {
-    return await this.userService.findUserById(id);
-  }
-
   @Get()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
@@ -127,5 +120,12 @@ export class UserController {
   @UseGuards(JwtAuthGuard)
   async me(@Req() req: Request) {
     return await this.userService.me((req.user as User).id);
+  }
+
+  @Get(':id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async findById(@Param('id') id: number) {
+    return await this.userService.findUserById(id);
   }
 }
