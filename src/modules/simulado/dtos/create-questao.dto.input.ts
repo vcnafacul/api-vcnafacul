@@ -1,7 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
-import { EnemArea } from '../enum/enem-area.enum';
+import {
+  IsBoolean,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { Alternativa } from '../enum/alternativa.enum';
+import { EnemArea } from '../enum/enem-area.enum';
 
 export class CreateQuestaoDTOInput {
   @ApiProperty({ enum: EnemArea })
@@ -65,4 +71,20 @@ export class CreateQuestaoDTOInput {
   @ApiProperty()
   @IsString()
   public prova: string;
+
+  @IsBoolean()
+  @ApiProperty()
+  public subjectClassification: boolean;
+
+  @IsBoolean()
+  @ApiProperty()
+  public textClassification: boolean;
+
+  @IsBoolean()
+  @ApiProperty()
+  public imageClassfication: boolean;
+
+  @IsBoolean()
+  @ApiProperty()
+  public alternativeClassfication: boolean;
 }

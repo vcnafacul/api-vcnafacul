@@ -1,9 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { FrenteDTO } from './frente.dto.outpur';
-import { MateriaDTO } from './materia.dto.outpur';
+import { Alternativa } from '../enum/alternativa.enum';
 import { EnemArea } from '../enum/enem-area.enum';
 import { Status } from '../enum/status.enum';
-import { Alternativa } from '../enum/alternativa.enum';
+import { FrenteDTO } from './frente.dto.outpur';
+import { MateriaDTO } from './materia.dto.outpur';
 
 export class QuestaoDTO {
   @ApiProperty()
@@ -62,4 +62,22 @@ export class QuestaoDTO {
 
   @ApiProperty()
   public status: Status;
+
+  @ApiProperty()
+  public provaClassification: boolean;
+
+  @ApiProperty()
+  public subjectClassification: boolean;
+
+  @ApiProperty()
+  public textClassification: boolean;
+
+  @ApiProperty()
+  public imageClassfication: boolean;
+
+  @ApiProperty()
+  public alternativeClassfication: boolean;
+
+  @ApiProperty()
+  public reported: boolean;
 }
