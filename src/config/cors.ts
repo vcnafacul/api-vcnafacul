@@ -9,7 +9,7 @@ export function VcnafaculCors():
   | CorsOptionsDelegate<any> {
   if (process.env.NODE_ENV === 'production') {
     return {
-      origin: 'https://www.vcnafacul.com.br',
+      origin: ['https://www.vcnafacul.com.br', 'https://vcnafacul.com.br'],
       methods: ['POST', 'GET', 'DELETE', 'PUT', 'PATCH'],
     };
   }
