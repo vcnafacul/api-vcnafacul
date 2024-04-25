@@ -2,7 +2,7 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { BaseService } from 'src/shared/modules/base/base.service';
-import { EmailService } from 'src/shared/services/email.service';
+import { EmailService } from 'src/shared/services/email/email.service';
 import { removeFileFTP } from 'src/utils/removeFileFtp';
 import { uploadFileFTP } from 'src/utils/uploadFileFtp';
 import { AuditLogService } from '../audit-log/audit-log.service';
@@ -31,7 +31,7 @@ export class UserService extends BaseService<User> {
     super(userRepository);
   }
 
-  async createUser(userDto: CreateUserDtoInput): Promise<LoginTokenDTO> {
+  async createUser(userDto: CreateUserDtoInput): Promise<void> {
     try {
       if (userDto.password !== userDto.password_confirmation) {
         throw new HttpException(
@@ -44,12 +44,13 @@ export class UserService extends BaseService<User> {
       if (!role) {
         throw new HttpException('role not found', HttpStatus.BAD_REQUEST);
       }
-      const userFullInfo = await this.userRepository.createWithRole(
-        newUser,
-        role,
-      );
+      const user = await this.userRepository.createWithRole(newUser, role);
 
-      return this.getAccessToken(userFullInfo);
+      const token = await this.jwtService.signAsync(
+        { user: { id: user.id } },
+        { expiresIn: '2h' },
+      );
+      await this.emailService.sendCreateUser(user, token);
     } catch (error) {
       if (error.code === '23505') {
         // código de erro para violação de restrição única no PostgreSQL
@@ -59,16 +60,35 @@ export class UserService extends BaseService<User> {
     }
   }
 
+  async confirmEmail(id: number) {
+    const user = await this.userRepository.findOneBy({ id });
+    if (!user) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
+    if (user.emailValided) {
+      throw new HttpException('Email already valided', HttpStatus.CONFLICT);
+    }
+    user.emailValided = true;
+    await this._repository.update(user);
+    return this.getAccessToken(user);
+  }
+
   async signIn(loginInput: LoginDtoInput): Promise<LoginTokenDTO> {
     const bcrypt = await import('bcrypt');
-    const userFullInfo = await this.userRepository.findByEmail(
-      loginInput.email,
-    );
+    const userFullInfo = await this.userRepository.findOneBy({
+      email: loginInput.email,
+    });
     if (!userFullInfo || userFullInfo.deletedAt != null) {
       throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     }
     if (!(await bcrypt.compare(loginInput.password, userFullInfo?.password))) {
       throw new HttpException('password invalid', HttpStatus.CONFLICT);
+    }
+    if (!userFullInfo.emailValided) {
+      throw new HttpException(
+        'waiting email validation',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
     return this.getAccessToken(userFullInfo);
   }
@@ -103,7 +123,7 @@ export class UserService extends BaseService<User> {
   }
 
   async forgotPassword(email: string) {
-    const user = await this.userRepository.findByEmail(email);
+    const user = await this.userRepository.findOneBy({ email });
     const token = await this.jwtService.signAsync(
       { user: { id: user.id } },
       { expiresIn: '2h' },

@@ -1,8 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import * as hbs from 'nodemailer-express-handlebars';
+import * as path from 'path';
 import { Geolocation } from 'src/modules/geo/geo.entity';
-import { htmlGeo } from './email/data';
+import { User } from 'src/modules/user/user.entity';
+import { htmlGeo } from './data';
 
 @Injectable()
 export class EmailService {
@@ -17,25 +20,34 @@ export class EmailService {
         pass: this.configService.get<string>('SMTP_PASSWORD'),
       },
     });
+    console.log(path);
+    const handlebarOptions = {
+      viewEngine: {
+        partialsDir: path.resolve('src/shared/services/email/templates'),
+        defaultLayout: false,
+      },
+      viewPath: path.resolve('src/shared/services/email/templates'),
+    };
+    this.transporter.use('compile', hbs(handlebarOptions));
   }
 
   async sendForgotPasswordMail(name: string, email: string, token: string) {
     const resetPasswordUrl = `${this.configService.get<string>(
       'FRONT_URL',
     )}/reset?token=${token}`;
-    const info = await this.transporter.sendMail({
+
+    const mailOptions = {
       from: this.configService.get<string>('SMTP_USERNAME'),
       to: email,
       subject: 'Esqueci a Senha - Você na Facul',
-      html: `<h2> Olá ${name}</h2>
-        <p>Parace que você esqueceu sua senha. Caso queira prosseguir clique no link abaixo:</p>
-        <p><a href="${resetPasswordUrl}" target="_black" >Recuperar senha</a></p>
-        <p>Caso você não fez essa solicitação, desconsidere esse email</p>
-        <p><strong>Equipe vCnaFacul</strong></p>`,
-      // Você também pode usar HTML aqui
-    });
+      template: 'reset-password',
+      context: {
+        name,
+        resetPasswordUrl,
+      },
+    };
 
-    console.log('E-mail enviado: %s', info.messageId);
+    await this.transporter.sendMail(mailOptions);
   }
 
   async sendCreateGeoMail(geo: Geolocation, listEmail: string[]) {
@@ -47,5 +59,31 @@ export class EmailService {
       // Você também pode usar HTML aqui
     });
     console.log('E-mail enviado: %s', info.messageId);
+  }
+
+  async sendCreateUser(user: User, token: string) {
+    const confirmeEmailUrl = `${this.configService.get<string>(
+      'FRONT_URL',
+    )}/confirmEmail?token=${token}`;
+
+    const mailOptions = {
+      from: this.configService.get<string>('SMTP_USERNAME'),
+      to: user.email,
+      subject: 'Confirmação de Email - Você na Facul',
+      template: 'create-user',
+      context: {
+        name: user.firstName,
+        confirmeEmailUrl,
+      },
+      attachments: [
+        {
+          filename: 'imagename.svg',
+          path: path.resolve('src/shared/services/assets/logo.png'),
+          cid: 'imagename',
+        },
+      ],
+    };
+
+    await this.transporter.sendMail(mailOptions);
   }
 }

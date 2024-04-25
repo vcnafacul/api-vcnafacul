@@ -57,6 +57,9 @@ export class User extends BaseEntity {
   @Column({ default: null })
   public collaboratorPhoto?: string;
 
+  @Column({ default: false })
+  public emailValided?: boolean;
+
   @OneToOne(() => UserRole, (userRole) => userRole.user)
   userRole: UserRole;
 
