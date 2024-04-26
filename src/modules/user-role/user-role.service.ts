@@ -31,6 +31,7 @@ export class UserRoleService extends BaseService<UserRole> {
     };
 
     userRole.roleId = userRoleUpdate.roleId;
+    userRole.role = null;
     await this.userRoleRepository.update(userRole);
 
     await this.auditLogService.create({
