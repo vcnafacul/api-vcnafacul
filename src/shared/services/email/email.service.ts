@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import * as nodemailer from 'nodemailer';
 import * as hbs from 'nodemailer-express-handlebars';
 import * as path from 'path';
@@ -10,7 +11,10 @@ import { htmlGeo } from './data';
 @Injectable()
 export class EmailService {
   private transporter;
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private readonly jwtService: JwtService,
+  ) {
     this.transporter = nodemailer.createTransport({
       host: this.configService.get<string>('SMTP_HOST'),
       port: this.configService.get<number>('SMTP_PORT'),
@@ -61,7 +65,11 @@ export class EmailService {
     console.log('E-mail enviado: %s', info.messageId);
   }
 
-  async sendCreateUser(user: User, token: string) {
+  async sendCreateUser(user: User) {
+    const token = await this.jwtService.signAsync(
+      { user: { id: user.id } },
+      { expiresIn: '2h' },
+    );
     const confirmeEmailUrl = `${this.configService.get<string>(
       'FRONT_URL',
     )}/confirmEmail?token=${token}`;

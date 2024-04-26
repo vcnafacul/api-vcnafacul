@@ -46,11 +46,7 @@ export class UserService extends BaseService<User> {
       }
       const user = await this.userRepository.createWithRole(newUser, role);
 
-      const token = await this.jwtService.signAsync(
-        { user: { id: user.id } },
-        { expiresIn: '2h' },
-      );
-      await this.emailService.sendCreateUser(user, token);
+      await this.emailService.sendCreateUser(user);
     } catch (error) {
       if (error.code === '23505') {
         // código de erro para violação de restrição única no PostgreSQL
@@ -65,10 +61,10 @@ export class UserService extends BaseService<User> {
     if (!user) {
       throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     }
-    if (user.emailValided) {
+    if (!user.emailConfirmSended) {
       throw new HttpException('Email already valided', HttpStatus.CONFLICT);
     }
-    user.emailValided = true;
+    user.emailConfirmSended = null;
     await this._repository.update(user);
     return this.getAccessToken(user);
   }
@@ -84,13 +80,22 @@ export class UserService extends BaseService<User> {
     if (!(await bcrypt.compare(loginInput.password, userFullInfo?.password))) {
       throw new HttpException('password invalid', HttpStatus.CONFLICT);
     }
-    if (!userFullInfo.emailValided) {
+    if (!userFullInfo.emailConfirmSended) {
+      return this.getAccessToken(userFullInfo);
+    }
+
+    if (this.haveLess2Hours(userFullInfo.emailConfirmSended))
       throw new HttpException(
         'waiting email validation',
         HttpStatus.UNAUTHORIZED,
       );
+    else {
+      await this.emailService.sendCreateUser(userFullInfo);
+      throw new HttpException(
+        'email confirmation sended',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
-    return this.getAccessToken(userFullInfo);
   }
 
   async findUserById(id: number): Promise<User> {
@@ -263,5 +268,11 @@ export class UserService extends BaseService<User> {
       }
     });
     return roles;
+  }
+
+  private haveLess2Hours(date: Date): boolean {
+    const diff = date.getTime() - new Date().getTime();
+    if (diff / 3600 < 2) return true;
+    return false;
   }
 }
