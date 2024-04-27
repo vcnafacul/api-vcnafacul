@@ -1,10 +1,10 @@
-import { User } from './user.entity';
 import { Injectable } from '@nestjs/common';
-import { BaseRepository } from '../../shared/modules/base/base.repository';
-import { EntityManager } from 'typeorm';
 import { InjectEntityManager } from '@nestjs/typeorm';
+import { EntityManager } from 'typeorm';
+import { BaseRepository } from '../../shared/modules/base/base.repository';
 import { Role } from '../role/role.entity';
 import { UserRole } from '../user-role/user-role.entity';
+import { User } from './user.entity';
 
 @Injectable()
 export class UserRepository extends BaseRepository<User> {
@@ -27,12 +27,12 @@ export class UserRepository extends BaseRepository<User> {
       });
       await tem.save(UserRole, newUserRole);
     });
-    return this.findByEmail(newUser.email);
+    return this.findOneBy({ email: newUser.email });
   }
 
-  async findByEmail(email: string): Promise<User> {
+  async findOneBy(where: object): Promise<User> {
     return await this.repository.findOne({
-      where: { email: email },
+      where,
       relations: ['userRole', 'userRole.role'],
       cache: false,
     });
