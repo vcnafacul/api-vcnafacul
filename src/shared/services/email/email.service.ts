@@ -75,7 +75,10 @@ export class EmailService {
     const confirmeEmailUrl = `${this.configService.get<string>(
       'FRONT_URL',
     )}/confirmEmail?token=${token}`;
-
+    const logo = path.join(
+      path.resolve(this.configService.get<string>('TEMPLATE_EMAIL_ASSET')),
+      'logo.png',
+    );
     const mailOptions = {
       from: this.configService.get<string>('SMTP_USERNAME'),
       to: user.email,
@@ -85,10 +88,11 @@ export class EmailService {
         name: user.firstName,
         confirmeEmailUrl,
       },
+
       attachments: [
         {
           filename: 'imagename.svg',
-          path: path.resolve('src/shared/services/assets/logo.png'),
+          path: logo,
           cid: 'imagename',
         },
       ],
