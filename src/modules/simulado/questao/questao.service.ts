@@ -96,4 +96,15 @@ export class QuestaoService {
     }
     return file.filename.split('.')[0];
   }
+
+  public async delete(id: string) {
+    return await this.http
+      .delete(`v1/questao/${id}`)
+      .pipe(map((res) => res.data))
+      .pipe(
+        catchError((error: AxiosError) => {
+          throw error.response.data;
+        }),
+      );
+  }
 }
