@@ -24,13 +24,15 @@ export class EmailService {
         pass: this.configService.get<string>('SMTP_PASSWORD'),
       },
     });
-    console.log(path);
+    const templatePath = path.resolve(
+      this.configService.get<string>('TEMPLATE_EMAIL'),
+    );
     const handlebarOptions = {
       viewEngine: {
-        partialsDir: path.resolve('src/shared/services/email/templates'),
+        partialsDir: templatePath,
         defaultLayout: false,
       },
-      viewPath: path.resolve('src/shared/services/email/templates'),
+      viewPath: templatePath,
     };
     this.transporter.use('compile', hbs(handlebarOptions));
   }
