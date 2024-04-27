@@ -61,6 +61,7 @@ export class User extends BaseEntity {
     type: 'timestamptz',
     default: () => 'CURRENT_TIMESTAMP',
     name: 'email_confirm_sended',
+    nullable: true,
   })
   public emailConfirmSended?: Date;
 
