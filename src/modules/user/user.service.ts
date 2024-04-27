@@ -272,7 +272,7 @@ export class UserService extends BaseService<User> {
 
   private haveLess2Hours(date: Date): boolean {
     const diff = date.getTime() - new Date().getTime();
-    if (diff / 3600 < 2) return true;
+    if (diff / 3600000 < 2) return true;
     return false;
   }
 }

@@ -57,7 +57,11 @@ export class User extends BaseEntity {
   @Column({ default: null })
   public collaboratorPhoto?: string;
 
-  @Column({ default: () => 'CURRENT_TIMESTAMP' })
+  @Column({
+    type: 'timestamptz',
+    default: () => 'CURRENT_TIMESTAMP',
+    name: 'email_confirm_sended',
+  })
   public emailConfirmSended?: Date;
 
   @OneToOne(() => UserRole, (userRole) => userRole.user)
