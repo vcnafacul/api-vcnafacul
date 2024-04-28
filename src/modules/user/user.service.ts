@@ -65,7 +65,7 @@ export class UserService extends BaseService<User> {
       throw new HttpException('Email already valided', HttpStatus.CONFLICT);
     }
     user.emailConfirmSended = null;
-    user.password = null;
+    user.password = undefined;
     await this._repository.update(user);
     return this.getAccessToken(user);
   }
@@ -92,6 +92,9 @@ export class UserService extends BaseService<User> {
       );
     else {
       await this.emailService.sendCreateUser(userFullInfo);
+      userFullInfo.password = undefined;
+      userFullInfo.emailConfirmSended = new Date();
+      await this._repository.update(userFullInfo);
       throw new HttpException(
         'email confirmation sended',
         HttpStatus.UNAUTHORIZED,
