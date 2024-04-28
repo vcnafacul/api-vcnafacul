@@ -65,6 +65,7 @@ export class UserService extends BaseService<User> {
       throw new HttpException('Email already valided', HttpStatus.CONFLICT);
     }
     user.emailConfirmSended = null;
+    user.password = null;
     await this._repository.update(user);
     return this.getAccessToken(user);
   }
