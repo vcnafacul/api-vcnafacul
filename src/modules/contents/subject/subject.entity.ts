@@ -1,11 +1,12 @@
+import { Column, Entity, ManyToOne, OneToMany, Unique } from 'typeorm';
 import { LinkedListEntity } from '../../../shared/modules/linked/linked-list.entity';
-import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
 import { Content } from '../content/content.entity';
 import { Frente } from '../frente/frente.entity';
 
 @Entity('subject')
+@Unique(['name', 'frente'])
 export class Subject extends LinkedListEntity {
-  @Column({ unique: true })
+  @Column()
   name: string;
 
   @Column({ type: 'text' })
