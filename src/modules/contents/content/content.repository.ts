@@ -143,4 +143,16 @@ export class ContentRepository extends NodeRepository<Content> {
 
     return count === 0;
   }
+
+  async findByUpload(id: number): Promise<Content> {
+    const query = this.repository
+      .createQueryBuilder('content')
+      .leftJoin('content.subject', 'subject')
+      .addSelect(['subject.id', 'subject.name', 'subject.description'])
+      .leftJoin('subject.frente', 'frente')
+      .addSelect(['frente.id', 'frente.name', 'frente.materia'])
+      .where('content.id = :id', { id });
+
+    return query.getOne();
+  }
 }
