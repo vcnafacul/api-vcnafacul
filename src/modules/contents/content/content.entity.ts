@@ -1,10 +1,11 @@
+import { Column, Entity, ManyToOne, Unique } from 'typeorm';
 import { NodeEntity } from '../../../shared/modules/node/node.entity';
-import { Column, Entity, ManyToOne } from 'typeorm';
-import { StatusContent } from './enum/status-content';
-import { Subject } from '../subject/subject.entity';
 import { User } from '../../user/user.entity';
+import { Subject } from '../subject/subject.entity';
+import { StatusContent } from './enum/status-content';
 
 @Entity('content')
+@Unique(['title', 'subject'])
 export class Content extends NodeEntity {
   @Column({ nullable: true })
   filename?: string;

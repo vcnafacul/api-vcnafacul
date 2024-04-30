@@ -1,9 +1,7 @@
 export enum Materias {
-  LPT,
-  Gramatica,
-  Literatura,
-  Ingles,
-  Espanhol,
+  LinguaPortuguesa,
+  LinguaEstrangeira,
+  Artes,
   Biologia,
   Fisica,
   Quimica,
@@ -11,5 +9,6 @@ export enum Materias {
   Historia,
   Geografia,
   Filosofia,
-  Soliologia,
+  Sociologia,
+  Atualidades,
 }
