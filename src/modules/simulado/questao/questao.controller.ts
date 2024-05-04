@@ -66,7 +66,10 @@ export class QuestaoController {
     },
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.visualizarQuestao,
+    Permissions.cadastrarProvas,
+  ])
   public async questoesInfo() {
     return await this.questaoService.questoesInfo();
   }

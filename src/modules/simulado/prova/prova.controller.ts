@@ -9,12 +9,12 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { ProvaService } from './prova.service';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Permissions } from 'src/modules/role/role.entity';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
-import { Permissions } from 'src/modules/role/role.entity';
+import { ProvaService } from './prova.service';
 
 @ApiTags('Simulado - Prova')
 @Controller('mssimulado/prova')
@@ -40,7 +40,11 @@ export class ProvaController {
     description: 'busca prova por id',
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarProvas)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.visualizarProvas,
+    Permissions.criarQuestao,
+    Permissions.validarQuestao,
+  ])
   public async getMissingNumbers(@Param('id') id: string) {
     return await this.provaService.getMissingNumbers(id);
   }
