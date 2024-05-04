@@ -27,12 +27,16 @@ export class PermissionsGuard implements CanActivate {
   };
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const requiredPermissions = this.reflector.get<string>(
+    const requiredPermissions = this.reflector.get<string | string[]>(
       PermissionsGuard.name,
       context.getHandler(),
     );
 
-    if (!requiredPermissions) {
+    if (
+      (Array.isArray(requiredPermissions) &&
+        requiredPermissions.length === 0) ||
+      !requiredPermissions
+    ) {
       return true;
     }
     const request = context.switchToHttp().getRequest();
@@ -54,6 +58,20 @@ export class PermissionsGuard implements CanActivate {
         return false;
       }
       request['user'] = decoded.user;
+
+      if (Array.isArray(requiredPermissions)) {
+        const results = await Promise.all(
+          requiredPermissions.map(
+            async (permission) =>
+              await this.userRoleService.checkUserPermission(
+                userId,
+                this.snakeToCamel(permission),
+              ),
+          ),
+        );
+        return results.reduce((acc, value) => acc || value, true);
+      }
+
       return await this.userRoleService.checkUserPermission(
         userId,
         this.snakeToCamel(requiredPermissions),
