@@ -6,11 +6,11 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { uploadFileFTP } from 'src/utils/uploadFileFtp';
-import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
-import { CreateProvaDTORequest } from '../dtos/prova-create.dto.request';
-import { catchError, map } from 'rxjs';
 import { AxiosError } from 'axios';
+import { catchError, map } from 'rxjs';
+import { uploadFileFTP } from 'src/utils/uploadFileFtp';
+import { CreateProvaDTORequest } from '../dtos/prova-create.dto.request';
+import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
 
 @Injectable()
 export class ProvaService {

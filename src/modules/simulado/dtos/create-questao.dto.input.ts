@@ -14,7 +14,8 @@ export class CreateQuestaoDTOInput {
   @IsEnum(EnemArea)
   public enemArea: EnemArea;
 
-  @ApiProperty()
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsString()
   public frente1: string;
 
@@ -28,7 +29,8 @@ export class CreateQuestaoDTOInput {
   @IsString()
   public frente3: string;
 
-  @ApiProperty()
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsString()
   public materia: string;
 
@@ -73,18 +75,22 @@ export class CreateQuestaoDTOInput {
   public prova: string;
 
   @IsBoolean()
-  @ApiProperty()
-  public subjectClassification: boolean;
+  @ApiProperty({ required: false })
+  @IsOptional()
+  public subjectClassification: boolean = false;
 
   @IsBoolean()
-  @ApiProperty()
-  public textClassification: boolean;
+  @ApiProperty({ required: false })
+  @IsOptional()
+  public textClassification: boolean = false;
 
   @IsBoolean()
-  @ApiProperty()
-  public imageClassfication: boolean;
+  @ApiProperty({ required: false })
+  @IsOptional()
+  public imageClassfication: boolean = false;
 
   @IsBoolean()
-  @ApiProperty()
-  public alternativeClassfication: boolean;
+  @ApiProperty({ required: false })
+  @IsOptional()
+  public alternativeClassfication: boolean = false;
 }
