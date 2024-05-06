@@ -1,5 +1,5 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
-import { IsBoolean, IsString } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 import { CreateQuestaoDTOInput } from './create-questao.dto.input';
 
 export class UpdateDTOInput extends PartialType(CreateQuestaoDTOInput) {
@@ -8,10 +8,12 @@ export class UpdateDTOInput extends PartialType(CreateQuestaoDTOInput) {
   _id: number;
 
   @IsBoolean()
-  @ApiProperty()
-  public provaClassification: boolean;
+  @ApiProperty({ required: false })
+  @IsOptional()
+  public provaClassification: boolean = false;
 
   @IsBoolean()
-  @ApiProperty()
-  public reported: boolean;
+  @ApiProperty({ required: false })
+  @IsOptional()
+  public reported: boolean = false;
 }
