@@ -21,6 +21,7 @@ export class ContentRepository extends NodeRepository<Content> {
     limit,
     status,
     subjectId,
+    materia,
     title,
   }: GetAllContentInput): Promise<GetAllOutput<Content>> {
     const query = this.repository
@@ -56,6 +57,15 @@ export class ContentRepository extends NodeRepository<Content> {
       whereApplied = true;
     }
 
+    if (materia) {
+      if (whereApplied) {
+        query.andWhere('frente.materia = :materia', { materia });
+      } else {
+        query.where('frente.materia = :materia', { materia });
+      }
+      whereApplied = true;
+    }
+
     if (title) {
       if (whereApplied) {
         query.andWhere('demand.title = :title', { title });
@@ -66,6 +76,7 @@ export class ContentRepository extends NodeRepository<Content> {
 
     const data = await query.getMany();
     const totalItems = await query.getCount();
+    console.log(data);
     return {
       data,
       page,

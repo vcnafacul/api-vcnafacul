@@ -19,4 +19,8 @@ export class GetAllContentDtoInput
   @ApiProperty()
   @IsOptional()
   title?: string;
+
+  @ApiProperty()
+  @IsOptional()
+  materia?: number;
 }
