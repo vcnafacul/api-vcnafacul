@@ -1,19 +1,23 @@
 import { HttpService } from '@nestjs/axios';
-import { ForbiddenException, Injectable } from '@nestjs/common';
-import { CreateSimuladoDTOInput } from './dtos/create-simulado.dto.input';
-import { SimuladoDTO } from './dtos/simulado.dto.output';
-import { catchError, map } from 'rxjs';
+import {
+  ForbiddenException,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AnswerSimulado } from './dtos/answer-simulado.dto.input';
-import { ReportDTO } from './dtos/report.dto.input';
-import { ReportEntity } from './enum/report.enum';
-import { AuditLogService } from '../audit-log/audit-log.service';
-import { Status } from './enum/status.enum';
-import { UpdateDTOInput } from './dtos/update-questao.dto.input';
-import { CreateQuestaoDTOInput } from './dtos/create-questao.dto.input';
-import { TipoSimuladoDTO } from './dtos/tipo-simulado.dto.output';
 import { AxiosError } from 'axios';
+import { catchError, map } from 'rxjs';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import { AnswerSimulado } from './dtos/answer-simulado.dto.input';
 import { AvailableSimuladoDTOoutput } from './dtos/available-simulado.dto.output';
+import { CreateQuestaoDTOInput } from './dtos/create-questao.dto.input';
+import { CreateSimuladoDTOInput } from './dtos/create-simulado.dto.input';
+import { ReportDTO } from './dtos/report.dto.input';
+import { SimuladoDTO } from './dtos/simulado.dto.output';
+import { TipoSimuladoDTO } from './dtos/tipo-simulado.dto.output';
+import { UpdateDTOInput } from './dtos/update-questao.dto.input';
+import { ReportEntity } from './enum/report.enum';
+import { Status } from './enum/status.enum';
 
 @Injectable()
 export class SimuladoService {
@@ -96,14 +100,18 @@ export class SimuladoService {
   }
 
   public async answer(dto: AnswerSimulado, userId: number) {
-    this.http
-      .post(`v1/simulado/answer`, { ...dto, idEstudante: userId })
-      .pipe(
-        catchError((err) => {
-          throw new ForbiddenException(err.message);
-        }),
-      )
-      .subscribe();
+    try {
+      this.http
+        .post(`v1/simulado/answer`, { ...dto, idEstudante: userId })
+        .pipe(
+          catchError((error: AxiosError) => {
+            throw error.response.data;
+          }),
+        )
+        .subscribe();
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
+    }
   }
 
   public async report(reportDto: ReportDTO, userId: number) {
