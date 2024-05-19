@@ -151,7 +151,6 @@ export class UserService extends BaseService<User> {
       // Verifica se a senha está presente
       user.password = await bcrypt.hash(resetPassword.password, 10);
     }
-    user.password = resetPassword.password;
     await this.userRepository.update(user);
   }
 
