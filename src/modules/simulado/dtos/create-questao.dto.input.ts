@@ -1,14 +1,21 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
-import { EnemArea } from '../enum/enem-area.enum';
+import {
+  IsBoolean,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { Alternativa } from '../enum/alternativa.enum';
+import { EnemArea } from '../enum/enem-area.enum';
 
 export class CreateQuestaoDTOInput {
   @ApiProperty({ enum: EnemArea })
   @IsEnum(EnemArea)
   public enemArea: EnemArea;
 
-  @ApiProperty()
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsString()
   public frente1: string;
 
@@ -22,7 +29,8 @@ export class CreateQuestaoDTOInput {
   @IsString()
   public frente3: string;
 
-  @ApiProperty()
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsString()
   public materia: string;
 
@@ -65,4 +73,24 @@ export class CreateQuestaoDTOInput {
   @ApiProperty()
   @IsString()
   public prova: string;
+
+  @IsBoolean()
+  @ApiProperty({ required: false })
+  @IsOptional()
+  public subjectClassification: boolean = false;
+
+  @IsBoolean()
+  @ApiProperty({ required: false })
+  @IsOptional()
+  public textClassification: boolean = false;
+
+  @IsBoolean()
+  @ApiProperty({ required: false })
+  @IsOptional()
+  public imageClassfication: boolean = false;
+
+  @IsBoolean()
+  @ApiProperty({ required: false })
+  @IsOptional()
+  public alternativeClassfication: boolean = false;
 }

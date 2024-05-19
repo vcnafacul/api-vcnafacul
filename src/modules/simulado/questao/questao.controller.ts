@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpStatus,
   Param,
@@ -65,7 +66,10 @@ export class QuestaoController {
     },
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.visualizarQuestao,
+    Permissions.cadastrarProvas,
+  ])
   public async questoesInfo() {
     return await this.questaoService.questoesInfo();
   }
@@ -147,5 +151,17 @@ export class QuestaoController {
     return res
       .status(HttpStatus.CREATED)
       .send(await this.questaoService.uploadImage(file));
+  }
+
+  @Delete(':id')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'deleta questão',
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.validarQuestao)
+  public async delete(@Param('id') id: string) {
+    return await this.questaoService.delete(id);
   }
 }

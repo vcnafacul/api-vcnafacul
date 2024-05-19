@@ -1,3 +1,4 @@
+import { Exclude } from 'class-transformer';
 import {
   BeforeInsert,
   BeforeUpdate,
@@ -7,10 +8,9 @@ import {
   OneToOne,
 } from 'typeorm';
 import { BaseEntity } from '../../shared/modules/base/entity.base';
-import { Gender } from './enum/gender';
-import { UserRole } from '../user-role/user-role.entity';
-import { Exclude } from 'class-transformer';
 import { Content } from '../contents/content/content.entity';
+import { UserRole } from '../user-role/user-role.entity';
+import { Gender } from './enum/gender';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -56,6 +56,14 @@ export class User extends BaseEntity {
 
   @Column({ default: null })
   public collaboratorPhoto?: string;
+
+  @Column({
+    type: 'timestamptz',
+    default: () => 'CURRENT_TIMESTAMP',
+    name: 'email_confirm_sended',
+    nullable: true,
+  })
+  public emailConfirmSended?: Date;
 
   @OneToOne(() => UserRole, (userRole) => userRole.user)
   userRole: UserRole;

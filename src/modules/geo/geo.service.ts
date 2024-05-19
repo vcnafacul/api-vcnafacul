@@ -2,7 +2,7 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { OrConditional } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
-import { EmailService } from 'src/shared/services/email.service';
+import { EmailService } from 'src/shared/services/email/email.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { User } from '../user/user.entity';
 import { UserService } from '../user/user.service';

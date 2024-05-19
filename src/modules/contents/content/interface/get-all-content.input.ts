@@ -5,4 +5,5 @@ export interface GetAllContentInput extends GetAllInput {
   status?: StatusContent;
   subjectId?: number;
   title?: string;
+  materia?: number;
 }

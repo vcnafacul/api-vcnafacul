@@ -1,14 +1,14 @@
 import { Module } from '@nestjs/common';
+import { EmailService } from 'src/shared/services/email/email.service';
+import { AuditLogModule } from '../audit-log/audit-log.module';
+import { RoleModule } from '../role/role.module';
+import { UserRoleModule } from '../user-role/user-role.module';
 import { UserController } from './user.controller';
-import { UserService } from './user.service';
 import { UserRepository } from './user.repository';
+import { UserService } from './user.service';
+import { EmailExistValidator } from './validator/email-exist.validator';
 import { EmailUniqueValidator } from './validator/email-unique.validator';
 import { UserExistValidator } from './validator/user-exist.validator';
-import { EmailService } from 'src/shared/services/email.service';
-import { RoleModule } from '../role/role.module';
-import { EmailExistValidator } from './validator/email-exist.validator';
-import { AuditLogModule } from '../audit-log/audit-log.module';
-import { UserRoleModule } from '../user-role/user-role.module';
 
 @Module({
   controllers: [UserController],

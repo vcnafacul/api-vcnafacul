@@ -1,14 +1,15 @@
 import { LinkedListEntity } from '../../../shared/modules/linked/linked-list.entity';
-import { Column, Entity, OneToMany } from 'typeorm';
+import { Column, Entity, OneToMany, Unique } from 'typeorm';
 import { Materias } from './enum/materias';
 import { Subject } from '../subject/subject.entity';
 
 @Entity('frente')
+@Unique(['name', 'materia'])
 export class Frente extends LinkedListEntity {
   get list(): number {
     throw new Error('Method not implemented.');
   }
-  @Column({ unique: true })
+  @Column()
   name: string;
 
   @Column()

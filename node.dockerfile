@@ -4,6 +4,9 @@ COPY dist /var/www
 
 WORKDIR /var/www
 
+COPY src/shared/services/assets/* shared/services/assets/
+COPY src/shared/services/email/templates/* shared/services/email/templates/
+
 COPY package.json .
 
 EXPOSE 3333

@@ -96,6 +96,13 @@ export class UserController {
     return await this.userService.reset(resetPassword, (req.user as User).id);
   }
 
+  @Patch('confirmemail')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async confirmEmail(@Req() req: Request) {
+    return await this.userService.confirmEmail((req.user as User).id);
+  }
+
   @Patch(`collaborator`)
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
