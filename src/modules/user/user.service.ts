@@ -145,7 +145,12 @@ export class UserService extends BaseService<User> {
   }
 
   async reset(resetPassword: ResetPasswordDtoInput, userId: number) {
+    const bcrypt = await import('bcrypt');
     const user = await this.findUserById(userId);
+    if (resetPassword.password) {
+      // Verifica se a senha está presente
+      user.password = await bcrypt.hash(resetPassword.password, 10);
+    }
     user.password = resetPassword.password;
     await this.userRepository.update(user);
   }
