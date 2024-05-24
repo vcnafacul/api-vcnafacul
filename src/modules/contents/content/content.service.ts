@@ -6,7 +6,6 @@ import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { ChangeOrderDTOInput } from 'src/shared/modules/node/dtos/change-order.dto.input';
 import { cleanString } from 'src/utils/cleanString';
-import { removeFileFTP } from 'src/utils/removeFileFtp';
 import { uploadFileFTP } from 'src/utils/uploadFileFtp';
 import { User } from '../../user/user.entity';
 import { MateriasLabel } from '../frente/types/materiaLabel';
@@ -99,15 +98,6 @@ export class ContentService extends BaseService<Content> {
 
   async reset(id: number, user: User) {
     const demand = await this.repository.findOneBy({ id });
-    const removed = await removeFileFTP(
-      demand.filename,
-      this.configService.get<string>('FTP_HOST'),
-      this.configService.get<string>('FTP_USER'),
-      this.configService.get<string>('FTP_PASSWORD'),
-    );
-    if (!removed) {
-      throw new HttpException('Erro to try remove File', HttpStatus.NOT_FOUND);
-    }
     demand.status = StatusContent.Pending_Upload;
     demand.filename = null;
     await this.repository.update(demand);

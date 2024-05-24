@@ -76,7 +76,6 @@ export class ContentRepository extends NodeRepository<Content> {
 
     const data = await query.getMany();
     const totalItems = await query.getCount();
-    console.log(data);
     return {
       data,
       page,
