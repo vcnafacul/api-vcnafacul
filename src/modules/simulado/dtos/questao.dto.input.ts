@@ -4,9 +4,10 @@ import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 import { Status } from '../enum/status.enum';
 
 export class QuestaoDTOInput extends GetAllDtoInput {
-  @ApiProperty({ default: Status.Pending })
+  @ApiProperty()
+  @IsOptional()
   @IsNumberString()
-  status: Status = Status.Pending;
+  status?: Status | undefined;
 
   @ApiProperty({ default: '' })
   @IsString()
