@@ -1,8 +1,9 @@
-import { Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { User } from 'src/modules/user/user.entity';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
+import { GetHistoricoDTOInput } from '../dtos/get-historico.dto';
 import { HistoricoService } from './historico.service';
 
 @ApiTags('Historico')
@@ -17,8 +18,23 @@ export class HistoricoController {
     description: 'obtém todos os históricos de simulados',
   })
   @UseGuards(JwtAuthGuard)
-  async getAllByUser(@Req() req: Request) {
-    return await this.service.getAllByUser((req.user as User).id);
+  async getAllByUser(
+    @Query() query: GetHistoricoDTOInput,
+    @Req() req: Request,
+  ) {
+    return await this.service.getAllByUser(query, (req.user as User).id);
+  }
+
+  @Get('performance')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: 'obtém histórico de performance por usuário',
+    isArray: true,
+  })
+  async getPerformance(@Req() req: Request) {
+    return await this.service.getPerformance((req.user as User).id);
   }
 
   @Get(':id')
