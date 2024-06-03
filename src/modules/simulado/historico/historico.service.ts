@@ -43,4 +43,15 @@ export class HistoricoService {
         }),
       );
   }
+
+  async getPerformance(userId: number) {
+    return this.http
+      .get(`v1/historico/performance/${userId}`)
+      .pipe(map((res) => res.data))
+      .pipe(
+        catchError((err: AxiosError) => {
+          throw err.response.data;
+        }),
+      );
+  }
 }

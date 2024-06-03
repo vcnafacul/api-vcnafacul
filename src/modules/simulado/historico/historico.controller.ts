@@ -25,6 +25,18 @@ export class HistoricoController {
     return await this.service.getAllByUser(query, (req.user as User).id);
   }
 
+  @Get('performance')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: 'obtém histórico de performance por usuário',
+    isArray: true,
+  })
+  async getPerformance(@Req() req: Request) {
+    return await this.service.getPerformance((req.user as User).id);
+  }
+
   @Get(':id')
   @ApiBearerAuth()
   @ApiResponse({
