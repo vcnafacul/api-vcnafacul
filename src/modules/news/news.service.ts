@@ -49,8 +49,7 @@ export class NewsService extends BaseService<News> {
     return await this.repository.findAllBy({
       ...query,
       where: {
-        actived:
-          query.status.toString() === Status.Approved.toString() ? true : false,
+        actived: query.status.toString() === Status.Approved.toString(),
       },
     });
   }
