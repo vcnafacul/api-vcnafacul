@@ -1,18 +1,21 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { BaseService } from 'src/shared/modules/base/base.service';
+import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { uploadFileFTP } from 'src/utils/uploadFileFtp';
+import { Status } from '../simulado/enum/status.enum';
 import { CreateNewsDtoInput } from './dtos/create-news.dto.input';
+import { GetAllNewsDtoInput } from './dtos/get-all-news';
 import { News } from './news.entity';
 import { NewsRepository } from './news.repository';
 
 @Injectable()
 export class NewsService extends BaseService<News> {
   constructor(
-    private readonly newRepository: NewsRepository,
+    private readonly repository: NewsRepository,
     private configService: ConfigService,
   ) {
-    super(newRepository);
+    super(repository);
   }
 
   async create(request: CreateNewsDtoInput, file: any, userId: number) {
@@ -32,11 +35,23 @@ export class NewsService extends BaseService<News> {
     news.fileName = fileName;
     news.updatedBy = userId;
 
-    return await this.newRepository.create(news);
+    return await this.repository.create(news);
   }
 
   async findActived() {
     const where = { actived: true };
-    return await this.newRepository.findAllBy({ page: 1, limit: 0, where });
+    return await this.repository.findAllBy({ page: 1, limit: 0, where });
+  }
+
+  override async findAllBy(
+    query: GetAllNewsDtoInput,
+  ): Promise<GetAllOutput<News>> {
+    return await this.repository.findAllBy({
+      ...query,
+      where: {
+        actived:
+          query.status.toString() === Status.Approved.toString() ? true : false,
+      },
+    });
   }
 }

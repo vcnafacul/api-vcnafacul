@@ -15,11 +15,11 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express/multer';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
-import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { Permissions } from '../role/role.entity';
 import { User } from '../user/user.entity';
 import { CreateNewsDtoInput } from './dtos/create-news.dto.input';
+import { GetAllNewsDtoInput } from './dtos/get-all-news';
 import { NewsService } from './news.service';
 
 @ApiTags('News')
@@ -50,7 +50,7 @@ export class NewsController {
     return await this.newService.create(body, file, (req.user as User).id);
   }
 
-  @Get('all')
+  @Get()
   @ApiBearerAuth()
   @ApiResponse({
     status: 200,
@@ -64,7 +64,7 @@ export class NewsController {
   })
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.uploadNews)
-  async findall(@Query() query: GetAllDtoInput) {
+  async findall(@Query() query: GetAllNewsDtoInput) {
     return await this.newService.findAllBy(query);
   }
 
