@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import { Observable, catchError, map } from 'rxjs';
 
@@ -12,75 +12,55 @@ export class HttpServiceAxios {
   }
 
   public async get<T>(url: string): Promise<Observable<T>> {
-    try {
-      return this.http
-        .get<T>(url)
-        .pipe(
-          catchError((error: AxiosError) => {
-            console.log(error.response.data);
-            throw error.response?.data;
-          }),
-        )
-        .pipe(map((res) => res.data));
-    } catch (error) {
-      throw new InternalServerErrorException(error.message);
-    }
+    return this.http
+      .get<T>(url)
+      .pipe(
+        catchError((error: AxiosError) => {
+          console.log(error.response.data);
+          throw error.response?.data;
+        }),
+      )
+      .pipe(map((res) => res.data));
   }
 
   public async postR<T>(url: string, req: any): Promise<Observable<T>> {
-    try {
-      return this.http
-        .post<T>(url, req)
-        .pipe(map((res) => res.data))
-        .pipe(
-          catchError((error: AxiosError) => {
-            throw error.response?.data;
-          }),
-        );
-    } catch (error) {
-      throw new InternalServerErrorException(error.message);
-    }
+    return this.http
+      .post<T>(url, req)
+      .pipe(
+        catchError((error: AxiosError) => {
+          throw error.response?.data;
+        }),
+      )
+      .pipe(map((res) => res.data));
   }
 
   public async post<T>(url: string, req: any) {
-    try {
-      this.http
-        .post<T>(url, req)
-        .pipe(
-          catchError((error: AxiosError) => {
-            throw error.response?.data;
-          }),
-        )
-        .subscribe();
-    } catch (error) {
-      throw new InternalServerErrorException(error.message);
-    }
+    this.http
+      .post<T>(url, req)
+      .pipe(
+        catchError((error: AxiosError) => {
+          throw error.response?.data;
+        }),
+      )
+      .subscribe();
   }
 
   public async delete<T>(url: string) {
-    try {
-      this.http.delete<T>(url).pipe(
+    this.http.delete<T>(url).pipe(
+      catchError((error: AxiosError) => {
+        throw error.response?.data;
+      }),
+    );
+  }
+
+  public async patch<T>(url: string, req?: any) {
+    return this.http
+      .patch<T>(url, req)
+      .pipe(map((res) => res.data))
+      .pipe(
         catchError((error: AxiosError) => {
           throw error.response?.data;
         }),
       );
-    } catch (error) {
-      throw new InternalServerErrorException(error.message);
-    }
-  }
-
-  public async patch<T>(url: string, req?: any) {
-    try {
-      return this.http
-        .patch<T>(url, req)
-        .pipe(map((res) => res.data))
-        .pipe(
-          catchError((error: AxiosError) => {
-            throw error.response?.data;
-          }),
-        );
-    } catch (error) {
-      throw new InternalServerErrorException(error.message);
-    }
   }
 }
