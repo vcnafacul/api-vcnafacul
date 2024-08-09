@@ -1,13 +1,6 @@
-import { HttpService } from '@nestjs/axios';
-import {
-  ForbiddenException,
-  HttpException,
-  HttpStatus,
-  Injectable,
-} from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AxiosError } from 'axios';
-import { catchError, map } from 'rxjs';
+import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
 import { uploadFileFTP } from 'src/utils/uploadFileFtp';
 import { CreateProvaDTORequest } from '../dtos/prova-create.dto.request';
 import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
@@ -15,11 +8,10 @@ import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
 @Injectable()
 export class ProvaService {
   constructor(
-    private readonly http: HttpService,
+    private readonly axios: HttpServiceAxios,
     private readonly configService: ConfigService,
   ) {
-    this.http.axiosRef.defaults.baseURL =
-      this.configService.get<string>('SIMULADO_URL');
+    this.axios.setBaseURL(this.configService.get<string>('SIMULADO_URL'));
   }
 
   public async createProva(prova: CreateProvaDTOInput, file: any) {
@@ -40,46 +32,18 @@ export class ProvaService {
     request.aplicacao = parseInt(prova.aplicacao as unknown as string);
     request.tipo = prova.tipo;
     request.filename = fileName;
-    return await this.http
-      .post(`v1/prova`, request)
-      .pipe(map((res) => res.data))
-      .pipe(
-        catchError((err) => {
-          throw new ForbiddenException(err.response.data.message);
-        }),
-      );
+    return await this.axios.postR(`v1/prova`, request);
   }
 
   public async getProvaById(id: string) {
-    return await this.http
-      .get(`v1/prova/${id}`)
-      .pipe(map((res) => res.data))
-      .pipe(
-        catchError((err) => {
-          throw new ForbiddenException(err.response.data.message);
-        }),
-      );
+    return await this.axios.get(`v1/prova/${id}`);
   }
 
   public async getProvasAll() {
-    return await this.http
-      .get(`v1/prova`)
-      .pipe(map((res) => res.data))
-      .pipe(
-        catchError((err) => {
-          throw new ForbiddenException(err.response.data.message);
-        }),
-      );
+    return await this.axios.get(`v1/prova`);
   }
 
   public async getMissingNumbers(id: string) {
-    return await this.http
-      .get(`v1/prova/missing/${id}`)
-      .pipe(map((res) => res.data))
-      .pipe(
-        catchError((error: AxiosError) => {
-          throw error.response.data;
-        }),
-      );
+    return await this.axios.get(`v1/prova/missing/${id}`);
   }
 }
