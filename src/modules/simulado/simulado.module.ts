@@ -6,6 +6,7 @@ import { AuditLogRepository } from '../audit-log/audit-log.repository';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { UserRoleRepository } from '../user-role/user-role.repository';
 import { UserRoleService } from '../user-role/user-role.service';
+import { UserModule } from '../user/user.module';
 import { HistoricoController } from './historico/historico.controller';
 import { HistoricoService } from './historico/historico.service';
 import { ProvaController } from './prova/prova.controller';
@@ -16,7 +17,7 @@ import { SimuladoController } from './simulado.controller';
 import { SimuladoService } from './simulado.service';
 
 @Module({
-  imports: [HttpModule],
+  imports: [HttpModule, UserModule],
   controllers: [
     SimuladoController,
     ProvaController,

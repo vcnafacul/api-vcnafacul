@@ -1,4 +1,6 @@
+import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
+import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { AuditLogModule } from '../audit-log/audit-log.module';
 import { AuditLogRepository } from '../audit-log/audit-log.repository';
@@ -13,7 +15,7 @@ import { GeoService } from './geo.service';
 
 @Module({
   controllers: [GeoController],
-  imports: [UserModule, RoleModule, AuditLogModule],
+  imports: [UserModule, RoleModule, AuditLogModule, HttpModule],
   providers: [
     GeoService,
     GeoRepository,
@@ -22,6 +24,7 @@ import { GeoService } from './geo.service';
     UserRoleRepository,
     AuditLogService,
     AuditLogRepository,
+    HttpServiceAxios,
   ],
 })
 export class GeoModule {}

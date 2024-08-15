@@ -2,8 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuditLogService } from 'src/modules/audit-log/audit-log.service';
 import { User } from 'src/modules/user/user.entity';
+import { UserService } from 'src/modules/user/user.service';
 import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
 import { CreateQuestaoDTOInput } from '../dtos/create-questao.dto.input';
+import {
+  AuditLogMSDTO,
+  HistoryQuestionDTOOutput,
+} from '../dtos/history-question.dto.output';
 import { QuestaoDTOInput } from '../dtos/questao.dto.input';
 import { UpdateDTOInput } from '../dtos/update-questao.dto.input';
 import { Status } from '../enum/status.enum';
@@ -14,6 +19,7 @@ export class QuestaoService {
     private readonly axios: HttpServiceAxios,
     private readonly configService: ConfigService,
     private readonly auditLod: AuditLogService,
+    private readonly userService: UserService,
   ) {
     this.axios.setBaseURL(this.configService.get<string>('SIMULADO_URL'));
   }
@@ -61,5 +67,46 @@ export class QuestaoService {
 
   public async delete(id: string) {
     await this.axios.delete(`v1/questao/${id}`);
+  }
+
+  public async getHistory(id: string): Promise<HistoryQuestionDTOOutput> {
+    const history = await this.auditLod.getMSByEntityId(id);
+
+    const users: User[] = [];
+
+    const historyDTO: AuditLogMSDTO[] = await Promise.all(
+      history.map(async (item) => {
+        let user = users.find((u) => u.id === item.user);
+        if (!user) {
+          user = await this.userService.findUserById(item.user);
+          users.push(user);
+        }
+        return {
+          user: {
+            id: user.id,
+            name: user.firstName + ' ' + user.lastName,
+            email: user.email,
+          },
+          entityId: item.entityId,
+          changes: item.changes,
+          entityType: item.entityType,
+          createdAt: item.createdAt,
+        };
+      }),
+    );
+
+    const create = historyDTO?.reduce((prev, current) =>
+      prev.createdAt < current.createdAt ? prev : current,
+    );
+
+    return {
+      user: {
+        id: create?.user.id,
+        name: create?.user.name,
+        email: create?.user.email,
+      },
+      createdAt: create?.createdAt,
+      history: historyDTO,
+    };
   }
 }
