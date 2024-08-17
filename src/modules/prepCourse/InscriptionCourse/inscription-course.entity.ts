@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToMany, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToMany, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../shared/modules/base/entity.base';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
 import { StudentCourse } from '../studentCourse/student-course.entity';
@@ -29,6 +29,7 @@ export class InscriptionCourse extends BaseEntity {
     () => PartnerPrepCourse,
     (partnerInscription) => partnerInscription.inscriptionCourses,
   )
+  @JoinColumn({ name: 'partner_prep_course_id' })
   partnerPrepCourse: PartnerPrepCourse;
 
   @ManyToMany(
