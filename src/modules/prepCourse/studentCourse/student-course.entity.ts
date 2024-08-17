@@ -11,7 +11,7 @@ import { User } from '../../user/user.entity';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
 
-//Cursinho Parceiro
+//Representa o Estudante do Cursinho
 @Entity('student_course')
 export class StudentCourse extends BaseEntity {
   @Column()
