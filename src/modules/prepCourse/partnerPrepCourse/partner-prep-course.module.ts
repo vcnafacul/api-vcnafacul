@@ -5,4 +5,4 @@ import { Module } from '@nestjs/common';
   imports: [],
   providers: [],
 })
-export class CursinhoParceiroModule {}
+export class PartnerPrepCourseModule {}
