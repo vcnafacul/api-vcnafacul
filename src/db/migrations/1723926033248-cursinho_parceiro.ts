@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CursinhoParceiro1723925664244 implements MigrationInterface {
-  name = 'CursinhoParceiro1723925664244';
+export class CursinhoParceiro1723926033248 implements MigrationInterface {
+  name = 'CursinhoParceiro1723926033248';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
@@ -11,7 +11,7 @@ export class CursinhoParceiro1723925664244 implements MigrationInterface {
       `CREATE TABLE "partner_prep_course" ("id" SERIAL NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP WITH TIME ZONE, "user_id" integer NOT NULL, "geo_id" integer NOT NULL, CONSTRAINT "REL_2abeb84841d3be03a58e85dc18" UNIQUE ("user_id"), CONSTRAINT "REL_b4d2f1d87d59673289b6129f65" UNIQUE ("geo_id"), CONSTRAINT "PK_947f4b80ff67a4024798fd87f17" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
-      `CREATE TABLE "inscription_course" ("id" SERIAL NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP WITH TIME ZONE, "name" character varying NOT NULL, "description" character varying NOT NULL, "start_date" TIMESTAMP NOT NULL, "end_date" TIMESTAMP NOT NULL, "actived" boolean NOT NULL DEFAULT true, "expected_opening" integer NOT NULL, "partnerPrepCourseId" integer, CONSTRAINT "PK_1727f254c13c331ce26623e7fdf" PRIMARY KEY ("id"))`,
+      `CREATE TABLE "inscription_course" ("id" SERIAL NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP WITH TIME ZONE, "name" character varying NOT NULL, "description" character varying NOT NULL, "start_date" TIMESTAMP NOT NULL, "end_date" TIMESTAMP NOT NULL, "actived" boolean NOT NULL DEFAULT true, "expected_opening" integer NOT NULL, "partner_prep_course_id" integer, CONSTRAINT "PK_1727f254c13c331ce26623e7fdf" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
       `ALTER TABLE "student_course" ADD CONSTRAINT "FK_4a3ce5cc99a42d5eaab2d3cc662" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
@@ -26,13 +26,13 @@ export class CursinhoParceiro1723925664244 implements MigrationInterface {
       `ALTER TABLE "partner_prep_course" ADD CONSTRAINT "FK_b4d2f1d87d59673289b6129f65d" FOREIGN KEY ("geo_id") REFERENCES "geolocations"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
     );
     await queryRunner.query(
-      `ALTER TABLE "inscription_course" ADD CONSTRAINT "FK_0f38f4fd85b3feb600b36aadf07" FOREIGN KEY ("partnerPrepCourseId") REFERENCES "partner_prep_course"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+      `ALTER TABLE "inscription_course" ADD CONSTRAINT "FK_245c29cc87a39e7d3ef7f39e47e" FOREIGN KEY ("partner_prep_course_id") REFERENCES "partner_prep_course"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "inscription_course" DROP CONSTRAINT "FK_0f38f4fd85b3feb600b36aadf07"`,
+      `ALTER TABLE "inscription_course" DROP CONSTRAINT "FK_245c29cc87a39e7d3ef7f39e47e"`,
     );
     await queryRunner.query(
       `ALTER TABLE "partner_prep_course" DROP CONSTRAINT "FK_b4d2f1d87d59673289b6129f65d"`,
