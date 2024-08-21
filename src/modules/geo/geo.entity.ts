@@ -4,10 +4,10 @@ import { Status } from '../simulado/enum/status.enum';
 
 @Entity('geolocations')
 export class Geolocation extends BaseEntity {
-  @Column({ type: 'float8' })
+  @Column({ type: 'double' })
   public latitude: number;
 
-  @Column({ type: 'float8' })
+  @Column({ type: 'double' })
   public longitude: number;
 
   @Column()

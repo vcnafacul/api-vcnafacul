@@ -51,7 +51,7 @@ export class User extends BaseEntity {
   public collaboratorPhoto?: string;
 
   @Column({
-    type: 'timestamptz',
+    type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP',
     name: 'email_confirm_sended',
     nullable: true,
