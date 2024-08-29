@@ -33,6 +33,10 @@ export class CreateUserDtoInput {
   @ApiProperty()
   lastName: string;
 
+  @ApiProperty()
+  @IsOptional()
+  socialName: string;
+
   @IsNotEmpty()
   @ApiProperty()
   phone: string;

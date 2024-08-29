@@ -20,6 +20,9 @@ export class User extends BaseEntity {
   @Column()
   public lastName: string;
 
+  @Column({ nullable: true })
+  public socialName?: string;
+
   @Column()
   public phone: string;
 
