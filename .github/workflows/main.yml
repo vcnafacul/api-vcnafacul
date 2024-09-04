@@ -22,6 +22,8 @@ jobs:
         run: yarn
       - name: Build app vCnafacul
         run: yarn build
+      - name: Run tests
+        run: yarn test
   PUSH:
     if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
     runs-on: ubuntu-latest
@@ -38,6 +40,8 @@ jobs:
         run: yarn
       - name: Build app vCnafacul
         run: yarn build
+      - name: Run tests
+        run: yarn test
       - name: Build Image
         run: docker build -t vcnafacul -f node.dockerfile .
       - name: docker tags
