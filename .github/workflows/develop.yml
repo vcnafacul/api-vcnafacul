@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       mysql:
-        image: mysql:8.0
+        image: mysql
         ports:
           - 3306:3306
         env:
@@ -32,6 +32,12 @@ jobs:
           node-version: 20.x
       - name: Install sharp depend
         run: yarn add sharp --ignore-engines 
+      - name: Load .env.test file
+        run: |
+          # Export variables from .env.test
+          set -o allexport
+          source .env.test
+          set +o allexport
       - name: Install depends
         run: yarn
       - name: Build app vCnafacul
