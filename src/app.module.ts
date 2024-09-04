@@ -17,6 +17,7 @@ import { NewsModule } from './modules/news/news.module';
 import { FrenteModule } from './modules/contents/frente/frente.module';
 import { SubjectModule } from './modules/contents/subject/subject.module';
 import { ContentModule } from './modules/contents/content/content.module';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -51,7 +52,7 @@ import { ContentModule } from './modules/contents/content/content.module';
     SubjectModule,
     ContentModule,
   ],
-  controllers: [],
+  controllers: [AppController],
   providers: [JwtStrategy],
 })
 export class AppModule {}

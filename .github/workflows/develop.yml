@@ -8,7 +8,13 @@ jobs:
   CI:
     if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened')
     runs-on: ubuntu-latest
-
+    services:
+      mysql:
+        image: mysql
+        ports:
+          - 3306:3306
+        env:
+          MYSQL_ROOT_PASSWORD: 123456
     steps:
       - uses: actions/checkout@v3
       - name: Iniciando CI
@@ -22,6 +28,10 @@ jobs:
         run: yarn
       - name: Build app vCnafacul
         run: yarn build
+      - name: Install Dotenv-cli
+        run: npm install -g dotenv-cli
+      - name: Run tests
+        run: dotenv -e ./test/.env.test -- yarn test
   PUSH:
     if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
     runs-on: ubuntu-latest
@@ -38,6 +48,8 @@ jobs:
         run: yarn
       - name: Build app vCnafacul
         run: yarn build
+      - name: Run tests
+        run: yarn test
       - name: Build Image
         run: docker build -t vcnafacul -f node.dockerfile .
       - name: docker tags
