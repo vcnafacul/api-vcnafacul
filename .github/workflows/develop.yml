@@ -34,7 +34,7 @@ jobs:
       - name: Install Dotenv-cli
         run: npm install -g dotenv-cli
       - name: Run tests
-        run: yarn dotenv -e ./test/.env.test -- yarn test
+        run: dotenv -e ./test/.env.test -- yarn test
   PUSH:
     if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
     runs-on: ubuntu-latest
