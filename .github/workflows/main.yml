@@ -1,14 +1,28 @@
 name: vCnafacul
 on:
-  pull_request: 
-    branches: ["main"]
+  pull_request:
+    branches: ['main']
     types: [opened, synchronize, reopened, closed]
 
 jobs:
   CI:
     if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened')
     runs-on: ubuntu-latest
-
+    services:
+      mysql:
+        image: mysql:8.0
+        ports:
+          - 3306:3306
+        env:
+          MYSQL_ROOT_PASSWORD: 123456
+          MYSQL_DATABASE: mysql
+          MYSQL_USER: root
+          MYSQL_PASSWORD: 123456
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
     steps:
       - uses: actions/checkout@v3
       - name: Iniciando CI
@@ -17,7 +31,7 @@ jobs:
         with:
           node-version: 20.x
       - name: Install sharp depend
-        run: yarn add sharp --ignore-engines 
+        run: yarn add sharp --ignore-engines
       - name: Install depends
         run: yarn
       - name: Build app vCnafacul
@@ -35,13 +49,11 @@ jobs:
         with:
           node-version: 20.x
       - name: Install sharp depend
-        run: yarn add sharp --ignore-engines 
+        run: yarn add sharp --ignore-engines
       - name: Install depends
         run: yarn
       - name: Build app vCnafacul
         run: yarn build
-      - name: Run tests
-        run: yarn test
       - name: Build Image
         run: docker build -t vcnafacul -f node.dockerfile .
       - name: docker tags
