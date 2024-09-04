@@ -18,11 +18,6 @@ jobs:
           MYSQL_DATABASE: mysql
           MYSQL_USER: root
           MYSQL_PASSWORD: 123456
-        options: >-
-          --health-cmd="mysqladmin ping --silent"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
     steps:
       - uses: actions/checkout@v3
       - name: Iniciando CI
