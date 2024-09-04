@@ -15,9 +15,6 @@ jobs:
           - 3306:3306
         env:
           MYSQL_ROOT_PASSWORD: 123456
-          MYSQL_DATABASE: mysql
-          MYSQL_USER: root
-          MYSQL_PASSWORD: 123456
     steps:
       - uses: actions/checkout@v3
       - name: Iniciando CI
