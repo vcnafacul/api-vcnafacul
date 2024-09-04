@@ -13,8 +13,5 @@
   "moduleDirectories": [
     "<rootDir>/../",
     "node_modules"
-  ],
-  "setupFilesAfterEnv": [
-    "./.test/setEnvVars.js"
   ]
 }

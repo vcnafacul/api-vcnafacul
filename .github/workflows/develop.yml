@@ -27,18 +27,12 @@ jobs:
           node-version: 20.x
       - name: Install sharp depend
         run: yarn add sharp --ignore-engines 
-      - name: Load .env.test file
-        run: |
-          # Export variables from .env.test
-          set -o allexport
-          source .env.test
-          set +o allexport
       - name: Install depends
         run: yarn
       - name: Build app vCnafacul
         run: yarn build
       - name: Run tests
-        run: yarn test
+        run: yarn dotenv -e ./test/.env.test -- yarn test
   PUSH:
     if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
     runs-on: ubuntu-latest
