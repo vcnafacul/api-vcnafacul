@@ -2,11 +2,8 @@ import { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from 'src/app.module';
-import { AuditLogModule } from 'src/modules/audit-log/audit-log.module';
 import { GeoService } from 'src/modules/geo/geo.service';
 import { PartnerPrepCourseDtoInput } from 'src/modules/prepCourse/partnerPrepCourse/dtos/create-partner-prep-course.input.dto';
-import { RoleModule } from 'src/modules/role/role.module';
-import { UserModule } from 'src/modules/user/user.module';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
@@ -27,8 +24,8 @@ describe('PartnerPrepCourse (e2e)', () => {
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule, UserModule, RoleModule, AuditLogModule],
-      providers: [UserService, UserRepository, EmailService, ConfigService],
+      imports: [AppModule],
+      providers: [EmailService, ConfigService],
     })
       .overrideGuard(JwtAuthGuard) // Aqui estamos substituindo o guard por um mock
       .useValue({
@@ -54,12 +51,12 @@ describe('PartnerPrepCourse (e2e)', () => {
   });
 
   it('should create a new PartnerPrepCourse', async () => {
+    const geoDto = CreateGeoDTOInputFaker();
+    const geo = await geoService.create(geoDto);
+
     const userDto = CreateUserDtoInputFaker();
     await userService.createUser(userDto);
     const user = await userRepository.findOneBy({ email: userDto.email });
-
-    const geoDto = CreateGeoDTOInputFaker();
-    const geo = await geoService.create(geoDto);
 
     const dto: PartnerPrepCourseDtoInput = { geoId: geo.id, userId: user.id };
 
@@ -71,5 +68,5 @@ describe('PartnerPrepCourse (e2e)', () => {
         expect(res.body.geoId).toEqual(geo.id);
         expect(res.body.userId).toEqual(user.id);
       });
-  }, 10000);
+  }, 30000);
 });

@@ -6,7 +6,6 @@ export class RoleUpdateAdminSeedService {
   constructor(private readonly roleRepository: RoleRepository) {}
 
   async seed() {
-    console.log('RoleUpdateAdminSeedService');
     await this.roleRepository
       .updateRole('admin', {
         criarQuestao: true,
@@ -21,8 +20,7 @@ export class RoleUpdateAdminSeedService {
         gerenciadorDemanda: true,
       })
       .catch((e) => {
-        console.log('Role admin not found');
-        console.log(e);
+        console.log(e.message);
       });
   }
 }
