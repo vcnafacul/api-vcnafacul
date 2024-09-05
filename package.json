@@ -21,7 +21,8 @@
     "migration:show": "npm run typeorm -- migration:show",
     "migration:generate": "npm run typeorm migration:generate -n",
     "migration:run": "npm run typeorm -- migration:run",
-    "migration:revert": "npm run typeorm -- migration:revert"
+    "migration:revert": "npm run typeorm -- migration:revert",
+    "seed": "npm run typeorm -- src/db/seeds/seed.ts"
   },
   "dependencies": {
     "@nestjs/axios": "^3.0.0",
@@ -53,6 +54,7 @@
     "typeorm": "^0.3.17"
   },
   "devDependencies": {
+    "@faker-js/faker": "^9.0.0",
     "@nestjs/cli": "^10.0.0",
     "@nestjs/schematics": "^10.0.0",
     "@nestjs/testing": "^10.0.0",
