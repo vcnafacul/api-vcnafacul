@@ -37,7 +37,7 @@ export const uploadFileFTP = async (
     const ftpResponse = await client.uploadFrom(tempFilePath, pathFTP);
     fs.unlinkSync(tempFilePath);
     if (ftpResponse.code == 226) {
-      return `${nameFile}.${typeFile}`;
+      return pathFTP;
     }
     return '';
   } catch (error) {

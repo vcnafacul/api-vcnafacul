@@ -1,12 +1,6 @@
-import { HttpService } from '@nestjs/axios';
-import {
-  ForbiddenException,
-  Injectable,
-  InternalServerErrorException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AxiosError } from 'axios';
-import { catchError, map } from 'rxjs';
+import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AnswerSimulado } from './dtos/answer-simulado.dto.input';
 import { AvailableSimuladoDTOoutput } from './dtos/available-simulado.dto.output';
@@ -22,96 +16,42 @@ import { Status } from './enum/status.enum';
 @Injectable()
 export class SimuladoService {
   constructor(
-    private readonly http: HttpService,
+    private readonly axios: HttpServiceAxios,
     private readonly configService: ConfigService,
     private readonly auditLod: AuditLogService,
   ) {
-    this.http.axiosRef.defaults.baseURL =
-      this.configService.get<string>('SIMULADO_URL');
+    this.axios.setBaseURL(this.configService.get<string>('SIMULADO_URL'));
   }
 
   async create(dto: CreateSimuladoDTOInput) {
-    return this.http
-      .post('v1/simulado', dto)
-      .pipe(map((res) => res.data))
-      .pipe(
-        catchError((err) => {
-          console.log(err);
-          throw new ForbiddenException('API not available');
-        }),
-      );
+    return await this.axios.postR<SimuladoDTO>('v1/simulado', dto);
   }
 
   async getAll() {
-    return this.http
-      .get<SimuladoDTO[]>('v1/simulado')
-      .pipe(map((res) => res.data))
-      .pipe(
-        catchError((err) => {
-          console.log(err);
-          throw new ForbiddenException('API not available');
-        }),
-      );
+    return await this.axios.get<SimuladoDTO[]>('v1/simulado');
   }
 
   async getTipos() {
-    return this.http
-      .get<TipoSimuladoDTO[]>('v1/tipo-simulado')
-      .pipe(map((res) => res.data))
-      .pipe(
-        catchError((err) => {
-          console.log(err);
-          throw new ForbiddenException('API not available');
-        }),
-      );
+    return await this.axios.get<TipoSimuladoDTO[]>('v1/tipo-simulado');
   }
 
   async getToAnswer(id: string) {
-    return this.http
-      .get<SimuladoDTO>(`v1/simulado/toanswer/${id}`)
-      .pipe(map((res) => res.data))
-      .pipe(
-        catchError((err) => {
-          console.log(err);
-          throw new ForbiddenException('API not available');
-        }),
-      );
+    return await this.axios.get<SimuladoDTO>(`v1/simulado/toanswer/${id}`);
   }
 
   async getById(id: string) {
-    return this.http
-      .get<SimuladoDTO>(`v1/simulado/${id}`)
-      .pipe(map((res) => res.data))
-      .pipe(
-        catchError((err) => {
-          console.log(err);
-          throw new ForbiddenException('API not available');
-        }),
-      );
+    return await this.axios.get<SimuladoDTO>(`v1/simulado/${id}`);
   }
 
   public async delete(id: string): Promise<void> {
-    this.http.delete<SimuladoDTO>(`v1/simulado/${id}`).pipe(
-      catchError((err) => {
-        console.log(err);
-        throw new ForbiddenException('API not available');
-      }),
-    );
+    await this.axios.delete(`v1/simulado/${id}`);
   }
 
   public async answer(dto: AnswerSimulado, userId: number) {
-    try {
-      this.http
-        .post(`v1/simulado/answer`, { ...dto, idEstudante: userId })
-        .pipe(
-          catchError((error: AxiosError) => {
-            throw error.response.data;
-          }),
-        )
-        .subscribe();
-    } catch (error) {
-      throw new InternalServerErrorException(error.message);
-    }
+    await this.axios.post(`v1/simulado/answer`, {
+      ...dto,
+      idEstudante: userId,
+    });
   }
 
   public async report(reportDto: ReportDTO, userId: number) {
@@ -123,74 +63,28 @@ export class SimuladoService {
         updatedBy: userId,
       });
     } else {
-      this.http
-        .post(`v1/questao/report`, reportDto)
-        .pipe(
-          catchError((err) => {
-            throw new ForbiddenException(err.message);
-          }),
-        )
-        .subscribe();
+      await this.axios.postR(`v1/questao/report`, reportDto);
     }
   }
 
   public async questoes(status: Status) {
-    return await this.http
-      .get(`v1/questao/${status}`)
-      .pipe(map((res) => res.data))
-      .pipe(
-        catchError((err) => {
-          throw new ForbiddenException(err.responde.data.message);
-        }),
-      );
+    return await this.axios.get(`v1/questao/${status}`);
   }
 
   public async questoesInfo() {
-    return await this.http
-      .get(`v1/questao/infos`)
-      .pipe(map((res) => res.data))
-      .pipe(
-        catchError((err) => {
-          console.log(err);
-          throw new ForbiddenException(err.message);
-        }),
-      );
+    return await this.axios.get(`v1/questao/infos`);
   }
 
   public async questoesUpdateStatus(id: string, status: Status) {
-    return await this.http
-      .patch(`v1/questao/${id}/${status}`)
-      .pipe(map((res) => res.data))
-      .pipe(
-        catchError((err) => {
-          console.log(err);
-          throw new ForbiddenException(err.response.data);
-        }),
-      );
+    return await this.axios.patch(`v1/questao/${id}/${status}`);
   }
 
   public async questoesUpdate(questao: UpdateDTOInput) {
-    return await this.http
-      .patch(`v1/questao`, questao)
-      .pipe(map((res) => res.data))
-      .pipe(
-        catchError((err) => {
-          console.log(err);
-          throw new ForbiddenException(err.message);
-        }),
-      );
+    return await this.axios.patch(`v1/questao`, questao);
   }
 
   public async createQuestion(questao: CreateQuestaoDTOInput) {
-    return await this.http
-      .post(`v1/questao`, questao)
-      .pipe(map((res) => res.data))
-      .pipe(
-        catchError((err) => {
-          console.log(err);
-          throw new ForbiddenException(err.message);
-        }),
-      );
+    return await this.axios.postR(`v1/questao`, questao);
   }
 
   public async uploadImage(file: any): Promise<string> {
@@ -201,13 +95,8 @@ export class SimuladoService {
   }
 
   public async getAvailable(type: string) {
-    return this.http
-      .get<AvailableSimuladoDTOoutput[]>(`v1/simulado/available?tipo=${type}`)
-      .pipe(map((res) => res.data))
-      .pipe(
-        catchError((error: AxiosError) => {
-          throw error.response.data;
-        }),
-      );
+    return await this.axios.get<AvailableSimuladoDTOoutput[]>(
+      `v1/simulado/available?tipo=${type}`,
+    );
   }
 }

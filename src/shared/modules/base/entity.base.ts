@@ -1,33 +1,29 @@
 import { Exclude } from 'class-transformer';
-import {
-  CreateDateColumn,
-  DeleteDateColumn,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from 'typeorm';
+import { Column, PrimaryGeneratedColumn } from 'typeorm';
 
 export class BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @CreateDateColumn({
-    type: 'timestamptz',
+  @Column({
+    type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP',
     name: 'created_at',
   })
   public createdAt: Date;
 
-  @UpdateDateColumn({
-    type: 'timestamptz',
+  @Column({
+    type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP',
     name: 'updated_at',
   })
   public updatedAt: Date;
 
   @Exclude()
-  @DeleteDateColumn({
-    type: 'timestamptz',
+  @Column({
+    type: 'timestamp',
     name: 'deleted_at',
+    nullable: true,
   })
-  public deletedAt: Date;
+  public deletedAt?: Date;
 }

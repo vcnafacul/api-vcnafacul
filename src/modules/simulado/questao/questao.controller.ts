@@ -164,4 +164,16 @@ export class QuestaoController {
   public async delete(@Param('id') id: string) {
     return await this.questaoService.delete(id);
   }
+
+  @Get('history/:id')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'busca histórico de questão',
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
+  public async history(@Param('id') id: string) {
+    return await this.questaoService.getHistory(id);
+  }
 }

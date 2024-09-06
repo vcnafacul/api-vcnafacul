@@ -36,7 +36,7 @@ export class GeoRepository extends BaseRepository<Geolocation> {
       query.andWhere(
         new Brackets((qb) => {
           or?.map((o) => {
-            qb.orWhere(`entity.${o.prop} ILIKE :text`, {
+            qb.orWhere(`LOWER(entity.${o.prop}) LIKE LOWER(:text)`, {
               text: `%${o.value}%`,
             });
           });
@@ -46,7 +46,7 @@ export class GeoRepository extends BaseRepository<Geolocation> {
       queryTotalItems.andWhere(
         new Brackets((qb) => {
           or?.map((o) => {
-            qb.orWhere(`entity.${o.prop} ILIKE :text`, {
+            qb.orWhere(`LOWER(entity.${o.prop}) LIKE LOWER(:text)`, {
               text: `%${o.value}%`,
             });
           });
