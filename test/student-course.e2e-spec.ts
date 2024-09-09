@@ -54,7 +54,7 @@ describe('StudentCourse (e2e)', () => {
     return request(app.getHttpServer())
       .post('/student-course')
       .send(dto)
-      .expect(400)
+      .expect(201)
       .expect((res) => {
         console.log(res.body);
         expect(res.body.id).not.toBeNull();
@@ -63,6 +63,40 @@ describe('StudentCourse (e2e)', () => {
 
   it('user not exist', async () => {
     const dto = createStudentCourseDTOInputFaker();
+
+    return request(app.getHttpServer())
+      .post('/student-course')
+      .send(dto)
+      .expect(400)
+      .expect((res) => {
+        expect(res.body.id).not.toBeNull();
+      });
+  }, 300000);
+
+  it('cpf invalid', async () => {
+    const userDto = CreateUserDtoInputFaker();
+    await userService.createUser(userDto);
+    const user = await userRepository.findOneBy({ email: userDto.email });
+
+    const dto = createStudentCourseDTOInputFaker(user.id);
+    dto.cpf = '12345678901';
+
+    return request(app.getHttpServer())
+      .post('/student-course')
+      .send(dto)
+      .expect(400)
+      .expect((res) => {
+        expect(res.body.id).not.toBeNull();
+      });
+  }, 300000);
+
+  it('uf invalid', async () => {
+    const userDto = CreateUserDtoInputFaker();
+    await userService.createUser(userDto);
+    const user = await userRepository.findOneBy({ email: userDto.email });
+
+    const dto = createStudentCourseDTOInputFaker(user.id);
+    dto.uf = 'XX';
 
     return request(app.getHttpServer())
       .post('/student-course')
