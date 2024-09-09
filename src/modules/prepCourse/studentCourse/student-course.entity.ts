@@ -14,11 +14,17 @@ import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.enti
 //Representa o Estudante do Cursinho
 @Entity('student_course')
 export class StudentCourse extends BaseEntity {
-  @Column()
-  rg: number;
+  @Column({ name: 'user_id' })
+  userId: number;
 
   @Column()
-  cpf: number;
+  rg: string;
+
+  @Column()
+  uf: string;
+
+  @Column()
+  cpf: string;
 
   // Em caso de menor de idade, esse telefone será os do responsável
   @Column({ nullable: true })
