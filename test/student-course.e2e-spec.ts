@@ -50,6 +50,7 @@ describe('StudentCourse (e2e)', () => {
     const user = await userRepository.findOneBy({ email: userDto.email });
 
     const dto = createStudentCourseDTOInputFaker(user.id);
+    dto.rg = '45.678.123-4';
 
     return request(app.getHttpServer())
       .post('/student-course')

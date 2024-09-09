@@ -32,6 +32,8 @@ jobs:
         run: npm install -g dotenv-cli
       - name: Run Migrations
         run: dotenv -e ./test/.env.test -- yarn typeorm migration:run
+      - name: Run seed
+        run: dotenv -e ./test/.env.test -- yarn dev
       - name: Run tests
         run: dotenv -e ./test/.env.test -- yarn test
   PUSH:
