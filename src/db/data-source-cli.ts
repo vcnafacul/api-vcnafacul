@@ -20,7 +20,7 @@ const dataSourceOptions: DataSourceOptions = {
   password: process.env.MY_PASSWORD,
   database: process.env.MY_DB_NAME,
   entities: [__dirname + '/../**/*.entity.{js,ts}'],
-  migrations: [__dirname + '/migrations/mysql/*.{js,ts}'],
+  migrations: [__dirname + '/migrations/*.{js,ts}'],
 };
 
 const dataSource = new DataSource(dataSourceOptions);

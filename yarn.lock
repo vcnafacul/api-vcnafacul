@@ -6510,6 +6510,11 @@ v8-to-istanbul@^9.0.1:
     "@types/istanbul-lib-coverage" "^2.0.1"
     convert-source-map "^1.6.0"
 
+validations-br@^1.4.0:
+  version "1.4.0"
+  resolved "https://registry.yarnpkg.com/validations-br/-/validations-br-1.4.0.tgz#758aed45b2bd3724fca9fa86a81c9810308c9532"
+  integrity sha512-HDb0En8Bp/7ZnpIeQdBQ5ro6E+x/q6jWM37CpBsPYv7gWZt2ncANDKbExkcHYZF0rUUylfF+4agZfPtXubOf7g==
+
 validator@^13.7.0:
   version "13.11.0"
   resolved "https://registry.npmjs.org/validator/-/validator-13.11.0.tgz"

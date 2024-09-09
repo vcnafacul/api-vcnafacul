@@ -18,8 +18,8 @@ export class RoleSeedService {
   async seed() {
     await Promise.all(
       RoleData.map(async (role) => {
-        this.roleRepository.create(role as Role).catch((e) => {
-          console.log(e.message);
+        this.roleRepository.create(role as Role).catch(() => {
+          //console.log(e.message);
         });
       }),
     );
