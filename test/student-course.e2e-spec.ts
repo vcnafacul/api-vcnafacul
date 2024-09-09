@@ -11,6 +11,9 @@ import { createStudentCourseDTOInputFaker } from './faker/create-student-course.
 import { CreateUserDtoInputFaker } from './faker/create.dto..input.faker';
 import { createNestAppTest } from './utils/createNestAppTest';
 
+// Mock the EmailService globally
+jest.mock('src/shared/services/email/email.service');
+
 describe('StudentCourse (e2e)', () => {
   let app: INestApplication;
   let userService: UserService;
