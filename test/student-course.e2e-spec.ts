@@ -56,7 +56,6 @@ describe('StudentCourse (e2e)', () => {
       .send(dto)
       .expect(201)
       .expect((res) => {
-        console.log(res.body);
         expect(res.body.id).not.toBeNull();
       });
   }, 30000);
@@ -71,7 +70,7 @@ describe('StudentCourse (e2e)', () => {
       .expect((res) => {
         expect(res.body.id).not.toBeNull();
       });
-  }, 300000);
+  }, 30000);
 
   it('cpf invalid', async () => {
     const userDto = CreateUserDtoInputFaker();
@@ -88,7 +87,7 @@ describe('StudentCourse (e2e)', () => {
       .expect((res) => {
         expect(res.body.id).not.toBeNull();
       });
-  }, 300000);
+  }, 30000);
 
   it('uf invalid', async () => {
     const userDto = CreateUserDtoInputFaker();
@@ -105,5 +104,5 @@ describe('StudentCourse (e2e)', () => {
       .expect((res) => {
         expect(res.body.id).not.toBeNull();
       });
-  }, 300000);
+  }, 30000);
 });
