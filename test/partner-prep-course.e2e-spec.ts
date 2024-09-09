@@ -2,6 +2,8 @@ import { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from 'src/app.module';
+import { RoleSeedService } from 'src/db/seeds/1-role.seed';
+import { RoleUpdateAdminSeedService } from 'src/db/seeds/2-role-update-admin.seed';
 import { GeoService } from 'src/modules/geo/geo.service';
 import { PartnerPrepCourseDtoInput } from 'src/modules/prepCourse/partnerPrepCourse/dtos/create-partner-prep-course.input.dto';
 import { UserRepository } from 'src/modules/user/user.repository';
@@ -22,6 +24,8 @@ describe('PartnerPrepCourse (e2e)', () => {
   let userRepository: UserRepository;
   let geoService: GeoService;
   let emailService: EmailService;
+  let roleSeedService: RoleSeedService;
+  let roleUpdateAdminSeedService: RoleUpdateAdminSeedService;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -39,12 +43,18 @@ describe('PartnerPrepCourse (e2e)', () => {
     userRepository = moduleFixture.get<UserRepository>(UserRepository);
     geoService = moduleFixture.get<GeoService>(GeoService);
     emailService = moduleFixture.get<EmailService>(EmailService);
+    roleSeedService = moduleFixture.get<RoleSeedService>(RoleSeedService);
+    roleUpdateAdminSeedService = moduleFixture.get<RoleUpdateAdminSeedService>(
+      RoleUpdateAdminSeedService,
+    );
 
     jest
       .spyOn(emailService, 'sendCreateUser')
       .mockImplementation(async () => {});
 
     await app.init();
+    await roleSeedService.seed();
+    await roleUpdateAdminSeedService.seed();
   });
 
   afterAll(async () => {

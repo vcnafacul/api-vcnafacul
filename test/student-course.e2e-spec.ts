@@ -2,6 +2,8 @@ import { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from 'src/app.module';
+import { RoleSeedService } from 'src/db/seeds/1-role.seed';
+import { RoleUpdateAdminSeedService } from 'src/db/seeds/2-role-update-admin.seed';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
@@ -19,6 +21,8 @@ describe('StudentCourse (e2e)', () => {
   let userService: UserService;
   let userRepository: UserRepository;
   let emailService: EmailService;
+  let roleSeedService: RoleSeedService;
+  let roleUpdateAdminSeedService: RoleUpdateAdminSeedService;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -35,12 +39,18 @@ describe('StudentCourse (e2e)', () => {
     userService = moduleFixture.get<UserService>(UserService);
     userRepository = moduleFixture.get<UserRepository>(UserRepository);
     emailService = moduleFixture.get<EmailService>(EmailService);
+    roleSeedService = moduleFixture.get<RoleSeedService>(RoleSeedService);
+    roleUpdateAdminSeedService = moduleFixture.get<RoleUpdateAdminSeedService>(
+      RoleUpdateAdminSeedService,
+    );
 
     jest
       .spyOn(emailService, 'sendCreateUser')
       .mockImplementation(async () => {});
 
     await app.init();
+    await roleSeedService.seed();
+    await roleUpdateAdminSeedService.seed();
   });
 
   afterAll(async () => {
