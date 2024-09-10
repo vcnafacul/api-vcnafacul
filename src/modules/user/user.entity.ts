@@ -1,7 +1,15 @@
 import { Exclude } from 'class-transformer';
-import { BeforeInsert, Column, Entity, ManyToMany, OneToOne } from 'typeorm';
+import {
+  BeforeInsert,
+  Column,
+  Entity,
+  ManyToMany,
+  ManyToOne,
+  OneToOne,
+} from 'typeorm';
 import { BaseEntity } from '../../shared/modules/base/entity.base';
 import { Content } from '../contents/content/content.entity';
+import { StudentCourse } from '../prepCourse/studentCourse/student-course.entity';
 import { UserRole } from '../user-role/user-role.entity';
 import { Gender } from './enum/gender';
 
@@ -66,6 +74,9 @@ export class User extends BaseEntity {
 
   @ManyToMany(() => Content, (content) => content.user)
   content: Content;
+
+  @ManyToOne(() => StudentCourse, (student) => student.user)
+  studentCourse: StudentCourse;
 
   @BeforeInsert()
   async hashPassword() {
