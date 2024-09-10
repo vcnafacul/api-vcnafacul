@@ -4,7 +4,7 @@ import {
   JoinColumn,
   ManyToMany,
   ManyToOne,
-  OneToOne,
+  OneToMany,
 } from 'typeorm';
 import { BaseEntity } from '../../../shared/modules/base/entity.base';
 import { User } from '../../user/user.entity';
@@ -30,7 +30,7 @@ export class StudentCourse extends BaseEntity {
   @Column({ nullable: true })
   urgencyPhone?: string;
 
-  @OneToOne(() => User)
+  @OneToMany(() => User, (user) => user.studentCourse)
   @JoinColumn({ name: 'user_id' })
   public user: User;
 

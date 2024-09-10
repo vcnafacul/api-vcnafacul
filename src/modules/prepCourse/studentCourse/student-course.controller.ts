@@ -1,8 +1,11 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
+import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { CreateStudentCourseInput } from './dtos/create-student-course.dto.input';
 import { CreateStudentCourseOutput } from './dtos/create-student-course.dto.output';
+import { GetAllStudentDtoInput } from './dtos/get-all-student.dto.input';
+import { GetAllStudentDtoOutput } from './dtos/get-all-student.dto.output';
 import { StudentCourseService } from './student-course.service';
 
 @ApiTags('StudentCourse')
@@ -18,5 +21,14 @@ export class StudentCourseController {
     @Body() dto: CreateStudentCourseInput,
   ): Promise<CreateStudentCourseOutput> {
     return await this.service.create(dto);
+  }
+
+  @Get()
+  // @ApiBearerAuth()
+  // @UseGuards(JwtAuthGuard)
+  async findAllByStudent(
+    @Query() query: GetAllStudentDtoInput,
+  ): Promise<GetAllOutput<GetAllStudentDtoOutput>> {
+    return await this.service.findAllByStudent(query);
   }
 }

@@ -2,12 +2,15 @@ import { CreateStudentCourseInput } from 'src/modules/prepCourse/studentCourse/d
 
 export function createStudentCourseDTOInputFaker(
   userId?: number | undefined,
+  partnerPrepCourseId?: number | undefined,
 ): CreateStudentCourseInput {
   return {
     rg: generateRandomRG(),
     uf: generateRandomUF(),
     cpf: generateRandomCPF(),
-    userId: userId ?? Math.floor(Math.random() * 1000),
+    userId: userId ?? Math.floor(9999 + Math.random() * 9999),
+    partnerPrepCourse:
+      partnerPrepCourseId ?? Math.floor(9999 + Math.random() * 9999),
   };
 }
 
