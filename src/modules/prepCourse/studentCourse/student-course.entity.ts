@@ -30,6 +30,9 @@ export class StudentCourse extends BaseEntity {
   @Column({ nullable: true })
   urgencyPhone?: string;
 
+  @Column('text', { nullable: true })
+  documents: string;
+
   @OneToMany(() => User, (user) => user.studentCourse)
   @JoinColumn({ name: 'user_id' })
   public user: User;

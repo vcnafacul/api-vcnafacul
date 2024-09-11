@@ -24,8 +24,8 @@ export class StudentCourseController {
   }
 
   @Get()
-  // @ApiBearerAuth()
-  // @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   async findAllByStudent(
     @Query() query: GetAllStudentDtoInput,
   ): Promise<GetAllOutput<GetAllStudentDtoOutput>> {
