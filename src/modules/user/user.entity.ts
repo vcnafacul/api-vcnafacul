@@ -75,8 +75,11 @@ export class User extends BaseEntity {
   @ManyToMany(() => Content, (content) => content.user)
   content: Content;
 
-  @ManyToOne(() => StudentCourse, (student) => student.user)
-  studentCourse: StudentCourse;
+  @ManyToOne(
+    () => StudentCourse,
+    (studentCourse) => studentCourse.inscriptionCourses,
+  )
+  studentCourse: StudentCourse[];
 
   @BeforeInsert()
   async hashPassword() {
