@@ -2,7 +2,7 @@
 
 # Subir o container MySQL
 echo "Subindo o container MySQL..."
-docker run --name test-mysql -e MYSQL_ROOT_PASSWORD=123456 -e MYSQL_DATABASE=testdb -p 3306:3306 -d mysql
+docker run --name test-mysql -e MYSQL_ROOT_PASSWORD=123456 -e MYSQL_DATABASE=vcnafacul -p 3306:3306 -d mysql
 
 # Instal,ação das dependências
 echo "Instalando as dependências..."
