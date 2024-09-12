@@ -20,6 +20,7 @@ import { SimuladoModule } from './modules/simulado/simulado.module';
 import { UserRoleModule } from './modules/user-role/user-role.module';
 import { UserModule } from './modules/user/user.module';
 import { JwtStrategy } from './shared/strategy/jwt.strategy';
+import { BlobModule } from './shared/services/blob/blob.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { JwtStrategy } from './shared/strategy/jwt.strategy';
     PartnerPrepCourseModule,
     StudentCourseModule,
     SeederModule,
+    BlobModule,
   ],
   controllers: [AppController],
   providers: [JwtStrategy],

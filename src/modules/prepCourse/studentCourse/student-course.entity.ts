@@ -10,6 +10,7 @@ import { BaseEntity } from '../../../shared/modules/base/entity.base';
 import { User } from '../../user/user.entity';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
+import { DocumentStudent } from './documents/document-students.entity';
 
 //Representa o Estudante do Cursinho
 @Entity('student_course')
@@ -30,10 +31,13 @@ export class StudentCourse extends BaseEntity {
   @Column({ nullable: true })
   urgencyPhone?: string;
 
-  @Column('text', { nullable: true })
-  documents: string;
+  @OneToMany(
+    () => DocumentStudent,
+    (documentStudent) => documentStudent.studentCourse,
+  )
+  public documents: DocumentStudent[];
 
-  @OneToMany(() => User, (user) => user.studentCourse)
+  @ManyToOne(() => User, (user) => user.studentCourse)
   @JoinColumn({ name: 'user_id' })
   public user: User;
 

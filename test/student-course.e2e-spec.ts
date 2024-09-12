@@ -250,6 +250,7 @@ describe('StudentCourse (e2e)', () => {
       user.id,
       partnerPrepCourse1.id,
     );
+    student.rg = '45.678.123-4';
 
     await request(app.getHttpServer())
       .post('/student-course')
