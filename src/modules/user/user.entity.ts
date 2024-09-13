@@ -3,8 +3,8 @@ import {
   BeforeInsert,
   Column,
   Entity,
-  ManyToMany,
   ManyToOne,
+  OneToMany,
   OneToOne,
 } from 'typeorm';
 import { BaseEntity } from '../../shared/modules/base/entity.base';
@@ -72,8 +72,8 @@ export class User extends BaseEntity {
   @OneToOne(() => UserRole, (userRole) => userRole.user)
   userRole: UserRole;
 
-  @ManyToMany(() => Content, (content) => content.user)
-  content: Content;
+  @OneToMany(() => Content, (content) => content.user)
+  content: Content[];
 
   @ManyToOne(
     () => StudentCourse,

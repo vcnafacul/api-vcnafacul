@@ -28,7 +28,7 @@ export class BaseService<T> {
   async findOneBy(filter: object) {
     const entity = await this._repository.findOneBy(filter);
     if (!entity) {
-      throw new NotFoundException();
+      throw new NotFoundException(`Entity not found`);
     }
     return entity;
   }

@@ -12,4 +12,13 @@ export class PartnerPrepCourseRepository extends BaseRepository<PartnerPrepCours
   ) {
     super(_entityManager.getRepository(PartnerPrepCourse));
   }
+
+  override async findOneBy(where: object): Promise<PartnerPrepCourse> {
+    return await this.repository
+      .createQueryBuilder('partner_prep_course')
+      .where({ ...where })
+      .leftJoin('partner_prep_course.inscriptionCourses', 'inscription_course')
+      .addSelect(['inscription_course.id', 'inscription_course.actived'])
+      .getOne();
+  }
 }

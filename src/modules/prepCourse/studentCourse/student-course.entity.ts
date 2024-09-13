@@ -2,6 +2,7 @@ import {
   Column,
   Entity,
   JoinColumn,
+  JoinTable,
   ManyToMany,
   ManyToOne,
   OneToMany,
@@ -48,5 +49,6 @@ export class StudentCourse extends BaseEntity {
     () => InscriptionCourse,
     (inscriptionCourse) => inscriptionCourse.students,
   )
+  @JoinTable()
   public inscriptionCourses: InscriptionCourse[];
 }

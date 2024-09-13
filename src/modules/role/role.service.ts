@@ -62,6 +62,8 @@ export class RoleService extends BaseService<Role> {
       roleDto.gerenciadorDemanda
         ? true
         : roleDto.visualizarDemanda;
+    role.gerenciarInscricoesCursinhoParceiro =
+      roleDto.gerenciarInscricoesCursinhoParceiro;
 
     return await this.roleRepository.create(role);
   }
