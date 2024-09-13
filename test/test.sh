@@ -18,7 +18,7 @@ dotenv -e ./test/.env.test -- yarn migration:run
 
 # Executar os testes
 echo "Executando os testes..."
-dotenv -e ./test/.env.test -- yarn test
+dotenv -e ./test/.env.test -- yarn test:local
 
 # Remover o container MySQL após os testes
 echo "Removendo o container MySQL..."
