@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
+  Put,
   SetMetadata,
   UseGuards,
 } from '@nestjs/common';
@@ -25,16 +27,40 @@ export class InscriptionCourseController {
   @UseGuards(PermissionsGuard)
   @SetMetadata(
     PermissionsGuard.name,
-    Permissions.abrirInscricoesCursinhoParceiro,
+    Permissions.gerenciarInscricoesCursinhoParceiro,
   )
-  async create(@Body() dto: CreateInscriptionCourseInput): Promise<void> {
-    await this.service.create(dto);
+  async create(
+    @Body() dto: CreateInscriptionCourseInput,
+  ): Promise<InscriptionCourse> {
+    return await this.service.create(dto);
   }
 
   @Get(':id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  async getById(@Param('id') id: string): Promise<InscriptionCourse> {
+  async getById(@Param('id') id: number): Promise<InscriptionCourse> {
     return await this.service.getById(id);
+  }
+
+  @Put('active/:id')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(
+    PermissionsGuard.name,
+    Permissions.gerenciarInscricoesCursinhoParceiro,
+  )
+  async active(@Param('id') id: number): Promise<void> {
+    await this.service.activeInscriptionCourse(id);
+  }
+
+  @Delete(':id')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(
+    PermissionsGuard.name,
+    Permissions.gerenciarInscricoesCursinhoParceiro,
+  )
+  async cancel(@Param('id') id: number): Promise<void> {
+    await this.service.cancelInscriptionCourse(id);
   }
 }

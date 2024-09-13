@@ -1,6 +1,6 @@
 import { Column, Entity, OneToMany } from 'typeorm';
-import { UserRole } from '../user-role/user-role.entity';
 import { BaseEntity } from '../../shared/modules/base/entity.base';
+import { UserRole } from '../user-role/user-role.entity';
 
 export enum Permissions {
   validarCursinho = 'validar_cursinho',
@@ -16,7 +16,7 @@ export enum Permissions {
   uploadDemanda = 'upload_demanda',
   validarDemanda = 'validar_demanda',
   gerenciadorDemanda = 'gerenciador_demanda',
-  abrirInscricoesCursinhoParceiro = 'abrir_inscricoes_cursinho_parceiro',
+  gerenciarInscricoesCursinhoParceiro = 'gerenciar_inscricoes_cursinho_parceiro',
 }
 
 @Entity('roles')
@@ -63,8 +63,11 @@ export class Role extends BaseEntity {
   @Column({ name: Permissions.gerenciadorDemanda, default: false })
   gerenciadorDemanda: boolean;
 
-  @Column({ name: Permissions.abrirInscricoesCursinhoParceiro, default: false })
-  abrirInscricoesCursinhoParceiro: boolean;
+  @Column({
+    name: Permissions.gerenciarInscricoesCursinhoParceiro,
+    default: false,
+  })
+  gerenciarInscricoesCursinhoParceiro: boolean;
 
   @OneToMany(() => UserRole, (userRole) => userRole.role)
   userRoles: UserRole[];

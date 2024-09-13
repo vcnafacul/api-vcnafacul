@@ -15,7 +15,7 @@ export class UserRoleRepository extends BaseRepository<UserRole> {
     super(_entityManager.getRepository(UserRole));
   }
 
-  override async update(userRole: UserRole) {
+  async update(userRole: UserRole) {
     userRole.updatedAt = new Date();
     await this.repository.save(userRole);
   }

@@ -12,11 +12,11 @@ export class PartnerPrepCourseController {
 
   @Post()
   @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @ApiResponse({
     status: 201,
     description: 'criar cursinho parceiro',
   })
-  @UseGuards(JwtAuthGuard)
   async createPartnerPrepCourse(
     @Body() dto: PartnerPrepCourseDtoInput,
   ): Promise<PartnerPrepCourse> {

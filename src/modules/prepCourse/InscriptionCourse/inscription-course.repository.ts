@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { BaseRepository } from 'src/shared/modules/base/base.repository';
 import { EntityManager } from 'typeorm';
+import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
 import { InscriptionCourse } from './inscription-course.entity';
 
 @Injectable()
@@ -14,8 +15,8 @@ export class InscriptionCourseRepository extends BaseRepository<InscriptionCours
   }
 
   override async findOneBy(where: object): Promise<InscriptionCourse> {
-    return this.repository
-      .createQueryBuilder('entity')
+    return await this.repository
+      .createQueryBuilder('inscription_course')
       .where({ ...where })
       .innerJoin('inscription_course.students', 'student_course')
       .addSelect([
@@ -39,6 +40,20 @@ export class InscriptionCourseRepository extends BaseRepository<InscriptionCours
         'user.state',
         'user.city',
       ])
+      .getOne();
+  }
+
+  async findActived(
+    partnerPrepCourse: PartnerPrepCourse,
+  ): Promise<InscriptionCourse> {
+    return await this.repository
+      .createQueryBuilder('inscription_course')
+      .where({
+        partnerPrepCourse,
+        actived: true,
+      })
+      .leftJoin('inscription_course.students', 'student_course')
+      .addSelect(['student_course.userId'])
       .getOne();
   }
 }
