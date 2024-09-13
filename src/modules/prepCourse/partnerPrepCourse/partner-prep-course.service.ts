@@ -10,9 +10,7 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     super(repository);
   }
 
-  async createPartnerPrepCourse(
-    dto: PartnerPrepCourseDtoInput,
-  ): Promise<PartnerPrepCourse> {
+  async create(dto: PartnerPrepCourseDtoInput): Promise<PartnerPrepCourse> {
     const partnerPrepCourse = new PartnerPrepCourse();
     partnerPrepCourse.geoId = dto.geoId;
     partnerPrepCourse.userId = dto.userId;

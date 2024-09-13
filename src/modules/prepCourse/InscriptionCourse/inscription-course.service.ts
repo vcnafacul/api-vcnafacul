@@ -57,9 +57,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
   }
 
   async cancelInscriptionCourse(id: number) {
-    const inscriptionCourse = await this.repository.findOneBy({
-      where: { id },
-    });
+    const inscriptionCourse = await this.repository.findOneBy({ id });
     if (!inscriptionCourse) {
       throw new HttpException(
         'Inscrição não encontrada',

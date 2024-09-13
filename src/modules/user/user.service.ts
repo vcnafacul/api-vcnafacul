@@ -31,7 +31,7 @@ export class UserService extends BaseService<User> {
     super(userRepository);
   }
 
-  async createUser(userDto: CreateUserDtoInput): Promise<void> {
+  async create(userDto: CreateUserDtoInput): Promise<void> {
     try {
       if (userDto.password !== userDto.password_confirmation) {
         throw new HttpException(

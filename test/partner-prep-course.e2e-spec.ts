@@ -66,7 +66,7 @@ describe('PartnerPrepCourse (e2e)', () => {
     const geo = await geoService.create(geoDto);
 
     const userDto = CreateUserDtoInputFaker();
-    await userService.createUser(userDto);
+    await userService.create(userDto);
     const user = await userRepository.findOneBy({ email: userDto.email });
 
     const dto: PartnerPrepCourseDtoInput = { geoId: geo.id, userId: user.id };

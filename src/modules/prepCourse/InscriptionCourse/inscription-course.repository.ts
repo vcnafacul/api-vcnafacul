@@ -18,7 +18,7 @@ export class InscriptionCourseRepository extends BaseRepository<InscriptionCours
     return await this.repository
       .createQueryBuilder('inscription_course')
       .where({ ...where })
-      .innerJoin('inscription_course.students', 'student_course')
+      .leftJoin('inscription_course.students', 'student_course')
       .addSelect([
         'student_course.id',
         'student_course.userId',
@@ -27,7 +27,7 @@ export class InscriptionCourseRepository extends BaseRepository<InscriptionCours
         'student_course.cpf',
         'student_course.urgencyPhone',
       ])
-      .innerJoin('student_course.user', 'user')
+      .leftJoin('student_course.user', 'user')
       .addSelect([
         'user.id',
         'user.firstName',
