@@ -1,12 +1,5 @@
 import { Exclude } from 'class-transformer';
-import {
-  BeforeInsert,
-  Column,
-  Entity,
-  ManyToOne,
-  OneToMany,
-  OneToOne,
-} from 'typeorm';
+import { BeforeInsert, Column, Entity, OneToMany, OneToOne } from 'typeorm';
 import { BaseEntity } from '../../shared/modules/base/entity.base';
 import { Content } from '../contents/content/content.entity';
 import { StudentCourse } from '../prepCourse/studentCourse/student-course.entity';
@@ -75,7 +68,7 @@ export class User extends BaseEntity {
   @OneToMany(() => Content, (content) => content.user)
   content: Content[];
 
-  @ManyToOne(
+  @OneToMany(
     () => StudentCourse,
     (studentCourse) => studentCourse.inscriptionCourses,
   )
