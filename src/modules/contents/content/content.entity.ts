@@ -25,7 +25,7 @@ export class Content extends NodeEntity {
   @ManyToOne(() => Subject, (subject) => subject.content)
   subject: Subject;
 
-  get list(): number {
+  get list(): string {
     return this.subject.id;
   }
 }

@@ -7,6 +7,6 @@ export interface IBaseRepository<T> {
   findOneBy(where: object): Promise<T>;
   findOneOrFailBy(where: object): Promise<T>;
   update(entity: T): Promise<void>;
-  softDelete(id: number): Promise<void>;
-  delete(id: number): Promise<void>;
+  softDelete(id: string): Promise<void>;
+  delete(id: string): Promise<void>;
 }

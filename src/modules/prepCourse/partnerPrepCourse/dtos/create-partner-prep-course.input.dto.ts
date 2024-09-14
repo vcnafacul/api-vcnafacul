@@ -5,9 +5,9 @@ import { UserExist } from 'src/modules/user/validator/user-exist.validator';
 export class PartnerPrepCourseDtoInput {
   @ApiProperty()
   @GeoExist({ message: 'GeoLocation não existe not exist' })
-  geoId: number;
+  geoId: string;
 
   @ApiProperty()
   @UserExist({ message: 'User not exist' })
-  userId: number;
+  userId: string;
 }

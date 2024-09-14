@@ -87,7 +87,7 @@ export class NewsController {
   })
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.uploadNews)
-  async delete(@Param('id') id: number) {
+  async delete(@Param('id') id: string) {
     return await this.newService.delete(id);
   }
 }

@@ -48,7 +48,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     return result;
   }
 
-  async getById(id: number): Promise<InscriptionCourse> {
+  async getById(id: string): Promise<InscriptionCourse> {
     return this.repository.findOneBy({ where: { id } });
   }
 
@@ -56,7 +56,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     return await this.repository.findActived(partnerPrepCourse);
   }
 
-  async cancelInscriptionCourse(id: number) {
+  async cancelInscriptionCourse(id: string) {
     const inscriptionCourse = await this.repository.findOneBy({ id });
     if (!inscriptionCourse) {
       throw new HttpException(
@@ -68,7 +68,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     await this.repository.update(inscriptionCourse);
   }
 
-  async activeInscriptionCourse(id: number) {
+  async activeInscriptionCourse(id: string) {
     const inscriptionCourse = await this.repository.findOneBy({
       where: { id },
     });

@@ -1,10 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 export class CreateSubjectDTOInput {
   @ApiProperty()
-  @IsNumber() //Criar Verificacao se Frente Existe
-  frente: number;
+  @IsString() //Criar Verificacao se Frente Existe
+  frente: string;
 
   @ApiProperty()
   @IsString()

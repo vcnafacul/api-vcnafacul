@@ -1,9 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumberString } from 'class-validator';
+import { IsString } from 'class-validator';
 import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 
 export class GetAllStudentDtoInput extends GetAllDtoInput {
-  @IsNumberString()
+  @IsString()
   @ApiProperty()
-  partnerPrepCourse: number;
+  partnerPrepCourse: string;
 }

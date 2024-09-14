@@ -52,7 +52,7 @@ export class GeoService extends BaseService<Geolocation> {
     });
   }
 
-  async findOneById(id: number): Promise<Geolocation> {
+  async findOneById(id: string): Promise<Geolocation> {
     const geo = await this.geoRepository.findOneBy({ id: id });
 
     // Verifica se o registro existe

@@ -5,5 +5,5 @@ import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 export class GettAllByFrenteDtoInput extends GetAllDtoInput {
   @ApiProperty()
   @IsOptional()
-  frenteId: number;
+  frenteId: string;
 }

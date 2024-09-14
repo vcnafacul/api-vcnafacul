@@ -1,15 +1,15 @@
-import { IsNumber, IsString } from 'class-validator';
+import { IsString } from 'class-validator';
 
 export class CreateAuditDtoInput {
   @IsString()
   entityType: string;
 
   @IsString()
-  entityId: number;
+  entityId: string;
 
   @IsString()
   changes: object;
 
-  @IsNumber()
-  updatedBy: number;
+  @IsString()
+  updatedBy: string;
 }

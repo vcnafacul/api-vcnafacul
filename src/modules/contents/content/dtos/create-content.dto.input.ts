@@ -4,7 +4,7 @@ import { IsNumber, IsString } from 'class-validator';
 export class CreateContentDTOInput {
   @ApiProperty()
   @IsNumber()
-  subjectId: number; //precisa verificar se o subject existe
+  subjectId: string; //precisa verificar se o subject existe
 
   @ApiProperty()
   @IsString()

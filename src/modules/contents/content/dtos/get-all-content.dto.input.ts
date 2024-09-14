@@ -14,7 +14,7 @@ export class GetAllContentDtoInput
 
   @ApiProperty()
   @IsOptional()
-  subjectId?: number;
+  subjectId?: string;
 
   @ApiProperty()
   @IsOptional()

@@ -2,8 +2,8 @@ import { User } from 'src/modules/user/user.entity';
 import { StudentCourse } from '../student-course.entity';
 
 export class GetAllStudentDtoOutput {
-  userId: number;
-  studentId: number;
+  userId: string;
+  studentId: string;
   urgencyPhone?: string;
   user: User;
 }

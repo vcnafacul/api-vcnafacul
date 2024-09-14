@@ -7,7 +7,7 @@ export class NodeRepository<T> extends BaseRepository<T> {
     super(repository);
   }
 
-  async getOrder(nodes: NodeEntity[], start: number) {
+  async getOrder(nodes: NodeEntity[], start: string) {
     const orderedNodes: NodeEntity[] = [];
     let currentNode = nodes.find((n) => n.id === start);
     while (currentNode) {

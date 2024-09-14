@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 import { UserExist } from 'src/modules/user/validator/user-exist.validator';
 import { CPF } from 'src/shared/validator/cpf.validator';
 import { RG } from 'src/shared/validator/rg.validator';
@@ -9,7 +9,7 @@ import { PartnerPrepCourseExist } from '../../partnerPrepCourse/validator/partne
 export class CreateStudentCourseInput {
   @ApiProperty()
   @UserExist({ message: 'User not found' })
-  userId: number;
+  userId: string;
 
   @IsString()
   @ApiProperty()
@@ -32,7 +32,7 @@ export class CreateStudentCourseInput {
   urgencyPhone?: string | undefined;
 
   @ApiProperty()
-  @IsNumber()
+  @IsString()
   @PartnerPrepCourseExist({ message: 'Partner Prep Course not found' })
-  partnerPrepCourse: number;
+  partnerPrepCourse: string;
 }

@@ -38,7 +38,7 @@ export class InscriptionCourseController {
   @Get(':id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  async getById(@Param('id') id: number): Promise<InscriptionCourse> {
+  async getById(@Param('id') id: string): Promise<InscriptionCourse> {
     return await this.service.getById(id);
   }
 
@@ -49,7 +49,7 @@ export class InscriptionCourseController {
     PermissionsGuard.name,
     Permissions.gerenciarInscricoesCursinhoParceiro,
   )
-  async active(@Param('id') id: number): Promise<void> {
+  async active(@Param('id') id: string): Promise<void> {
     await this.service.activeInscriptionCourse(id);
   }
 
@@ -60,7 +60,7 @@ export class InscriptionCourseController {
     PermissionsGuard.name,
     Permissions.gerenciarInscricoesCursinhoParceiro,
   )
-  async cancel(@Param('id') id: number): Promise<void> {
+  async cancel(@Param('id') id: string): Promise<void> {
     await this.service.cancelInscriptionCourse(id);
   }
 }

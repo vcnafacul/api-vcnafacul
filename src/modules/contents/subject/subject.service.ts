@@ -54,7 +54,7 @@ export class SubjectService extends BaseService<Subject> {
     }
   }
 
-  async getAllOrder(frenteId: number) {
+  async getAllOrder(frenteId: string) {
     const frente = await this.frenteRepository.findOneBy({ id: frenteId });
     const nodes = await this.repository.getNodes(frenteId);
     return await this.repository.getOrder(nodes, frente.head);
@@ -69,7 +69,7 @@ export class SubjectService extends BaseService<Subject> {
     );
   }
 
-  async getByFrente(frente: number) {
+  async getByFrente(frente: string) {
     return this.repository.getByFrente(frente);
   }
 
@@ -86,7 +86,7 @@ export class SubjectService extends BaseService<Subject> {
     return await this.repository.update(subject);
   }
 
-  async delete(id: number) {
+  async delete(id: string) {
     const subject = await this.repository.getByIdToRemove(id);
     if (!subject) {
       throw new HttpException(
