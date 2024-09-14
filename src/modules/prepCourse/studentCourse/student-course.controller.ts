@@ -1,5 +1,21 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpStatus,
+  Param,
+  Post,
+  Query,
+  Req,
+  Res,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Request, Response } from 'express';
+import { User } from 'src/modules/user/user.entity';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { CreateStudentCourseInput } from './dtos/create-student-course.dto.input';
@@ -16,7 +32,6 @@ export class StudentCourseController {
   @Post()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async create(
     @Body() dto: CreateStudentCourseInput,
   ): Promise<CreateStudentCourseOutput> {
@@ -30,5 +45,36 @@ export class StudentCourseController {
     @Query() query: GetAllStudentDtoInput,
   ): Promise<GetAllOutput<GetAllStudentDtoOutput>> {
     return await this.service.findAllByStudent(query);
+  }
+
+  @Post('upload')
+  @ApiResponse({
+    status: 200,
+    description: 'upload de documento de estudante',
+  })
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  public async uploadImage(@UploadedFile() file, @Req() req: Request) {
+    await this.service.uploadDocument(file, (req.user as User).id);
+  }
+
+  @Get('document/:fileKey')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'upload de documento de estudante',
+  })
+  public async getDocument(
+    @Param('fileKey') fileKey: string,
+    @Res() res: Response,
+  ) {
+    const file = await this.service.getDocument(fileKey);
+
+    res.set({
+      'Content-Type': 'application/octet-stream',
+      'Content-Disposition': `attachment; filename="${fileKey}"`,
+    });
+    return res.status(HttpStatus.OK).send(file);
   }
 }
