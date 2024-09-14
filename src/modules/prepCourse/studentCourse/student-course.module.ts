@@ -1,5 +1,9 @@
 import { Module } from '@nestjs/common';
 import { BlobModule } from 'src/shared/services/blob/blob.module';
+import { InscriptionCourseRepository } from '../InscriptionCourse/inscription-course.repository';
+import { InscriptionCourseService } from '../InscriptionCourse/inscription-course.service';
+import { PartnerPrepCourseRepository } from '../partnerPrepCourse/partner-prep-course.repository';
+import { PartnerPrepCourseService } from '../partnerPrepCourse/partner-prep-course.service';
 import { DocumentStudentRepository } from './documents/document-students.repository';
 import { StudentCourseController } from './student-course.controller';
 import { StudentCourseRepository } from './student-course.repository';
@@ -12,6 +16,10 @@ import { StudentCourseService } from './student-course.service';
     StudentCourseService,
     StudentCourseRepository,
     DocumentStudentRepository,
+    InscriptionCourseRepository,
+    InscriptionCourseService,
+    PartnerPrepCourseService,
+    PartnerPrepCourseRepository,
   ],
   exports: [StudentCourseService, StudentCourseRepository],
 })

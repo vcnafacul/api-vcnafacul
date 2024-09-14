@@ -2,6 +2,7 @@ import {
   Column,
   Entity,
   JoinColumn,
+  JoinTable,
   ManyToMany,
   ManyToOne,
   OneToMany,
@@ -16,7 +17,7 @@ import { DocumentStudent } from './documents/document-students.entity';
 @Entity('student_course')
 export class StudentCourse extends BaseEntity {
   @Column({ name: 'user_id' })
-  userId: number;
+  userId: string;
 
   @Column()
   rg: string;
@@ -52,5 +53,6 @@ export class StudentCourse extends BaseEntity {
     () => InscriptionCourse,
     (inscriptionCourse) => inscriptionCourse.students,
   )
+  @JoinTable()
   public inscriptionCourses: InscriptionCourse[];
 }

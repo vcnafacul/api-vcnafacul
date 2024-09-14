@@ -1,16 +1,16 @@
 import { CreateStudentCourseInput } from 'src/modules/prepCourse/studentCourse/dtos/create-student-course.dto.input';
+import { v4 as uuidv4 } from 'uuid';
 
 export function createStudentCourseDTOInputFaker(
-  userId?: number | undefined,
-  partnerPrepCourseId?: number | undefined,
+  userId?: string | undefined,
+  partnerPrepCourseId?: string | undefined,
 ): CreateStudentCourseInput {
   return {
     rg: generateRandomRG(),
     uf: generateRandomUF(),
     cpf: generateRandomCPF(),
-    userId: userId ?? Math.floor(9999 + Math.random() * 9999),
-    partnerPrepCourse:
-      partnerPrepCourseId ?? Math.floor(9999 + Math.random() * 9999),
+    userId: userId ?? uuidv4(),
+    partnerPrepCourse: partnerPrepCourseId ?? uuidv4(),
   };
 }
 

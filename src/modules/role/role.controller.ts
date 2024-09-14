@@ -35,7 +35,7 @@ export class RoleController {
   @Get(':id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  async getById(@Param('id') id: number) {
+  async getById(@Param('id') id: string) {
     return await this.roleService.findOneBy({ id });
   }
 

@@ -13,6 +13,7 @@ import { FrenteModule } from './modules/contents/frente/frente.module';
 import { SubjectModule } from './modules/contents/subject/subject.module';
 import { GeoModule } from './modules/geo/geo.module';
 import { NewsModule } from './modules/news/news.module';
+import { InscriptionCourseModule } from './modules/prepCourse/InscriptionCourse/inscription-course.module';
 import { PartnerPrepCourseModule } from './modules/prepCourse/partnerPrepCourse/partner-prep-course.module';
 import { StudentCourseModule } from './modules/prepCourse/studentCourse/student-course.module';
 import { RoleModule } from './modules/role/role.module';
@@ -55,6 +56,7 @@ import { BlobModule } from './shared/services/blob/blob.module';
     ContentModule,
     PartnerPrepCourseModule,
     StudentCourseModule,
+    InscriptionCourseModule,
     SeederModule,
     BlobModule,
   ],

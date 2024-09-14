@@ -15,5 +15,5 @@ export class DocumentStudent extends BaseEntity {
 
   @ManyToOne(() => StudentCourse, (studentCourse) => studentCourse.documents)
   @JoinColumn({ name: 'student_course_id' })
-  studentCourse: number;
+  studentCourse: string;
 }

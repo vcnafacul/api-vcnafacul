@@ -3,7 +3,7 @@ import { StatusContent } from '../enum/status-content';
 
 export interface GetAllContentInput extends GetAllInput {
   status?: StatusContent;
-  subjectId?: number;
+  subjectId?: string;
   title?: string;
   materia?: number;
 }

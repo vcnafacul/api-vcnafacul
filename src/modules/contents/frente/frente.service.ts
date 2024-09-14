@@ -52,7 +52,7 @@ export class FrenteService extends BaseService<Frente> {
     return await this.repository.update(frente);
   }
 
-  async delete(id: number) {
+  async delete(id: string) {
     const frente = await this.repository.findOneBy({ id });
     if (!frente || frente.id !== id) {
       throw new HttpException(

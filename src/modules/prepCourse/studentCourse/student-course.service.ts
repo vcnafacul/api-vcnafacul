@@ -1,7 +1,9 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { BlobService } from 'src/shared/services/blob/blob-service';
+import { InscriptionCourseService } from '../InscriptionCourse/inscription-course.service';
+import { PartnerPrepCourseService } from '../partnerPrepCourse/partner-prep-course.service';
 import { DocumentStudent } from './documents/document-students.entity';
 import { DocumentStudentRepository } from './documents/document-students.repository';
 import { CreateStudentCourseInput } from './dtos/create-student-course.dto.input';
@@ -21,6 +23,8 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     private readonly repository: StudentCourseRepository,
     private readonly documentRepository: DocumentStudentRepository,
     @Inject('BlobService') private readonly blobService: BlobService,
+    private readonly inscriptionCourseService: InscriptionCourseService,
+    private readonly partnerPrepCourseService: PartnerPrepCourseService,
   ) {
     super(repository);
   }
@@ -28,12 +32,46 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   async create(
     dto: CreateStudentCourseInput,
   ): Promise<CreateStudentCourseOutput> {
+    const parnetPrepCourse = await this.partnerPrepCourseService.findOneBy({
+      id: dto.partnerPrepCourse,
+    });
+    const inscriptionCourse =
+      await this.inscriptionCourseService.findOneActived(parnetPrepCourse);
+
+    if (!inscriptionCourse) {
+      throw new HttpException(
+        'not exists active inscription course for this partner prep course',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    if (
+      inscriptionCourse.students?.find(
+        (student) => student.userId === dto.userId,
+      )
+    ) {
+      throw new HttpException(
+        'already exists student in this inscription course',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const studentCourse: StudentCourse = Object.assign(
       new StudentCourse(),
       dto,
     );
+    studentCourse.inscriptionCourses = [inscriptionCourse];
 
     const result = await this.repository.create(studentCourse);
+
+    if (!inscriptionCourse.students) {
+      inscriptionCourse.students = [result];
+    } else {
+      inscriptionCourse.students.push(result);
+    }
+
+    await this.inscriptionCourseService.update(inscriptionCourse);
+
     return { id: result.id } as CreateStudentCourseOutput;
   }
 
@@ -58,7 +96,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     } as GetAllOutput<GetAllStudentDtoOutput>;
   }
 
-  async uploadDocument(file: any, userId: number) {
+  async uploadDocument(file: any, userId: string) {
     const resultStudentCourse = await this.repository.findAllBy({
       where: { userId },
       limit: 1000,

@@ -47,9 +47,9 @@ export class LinkedListRepository<
   }
 
   async changeOrder(
-    listId: number,
-    id1: number,
-    id2: number,
+    listId: string,
+    id1: string,
+    id2: string,
     where: InsertWhere,
   ) {
     const node1 = (await this.removeNode(listId, id1)) as K;
@@ -87,7 +87,7 @@ export class LinkedListRepository<
     await this.repository.save(entity);
   }
 
-  async getNode(id: number) {
+  async getNode(id: string) {
     const node = await this.repositoryNodeChild.findOneBy({ id });
     if (!node) {
       throw new HttpException(
@@ -106,7 +106,7 @@ export class LinkedListRepository<
     return entity;
   }
 
-  async removeNode(listId: number, id: number): Promise<NodeEntity> {
+  async removeNode(listId: string, id: string): Promise<NodeEntity> {
     const node = await this.getNode(id);
     const entity = await this.getEntityList({ id: listId });
     if (!node.prev) {

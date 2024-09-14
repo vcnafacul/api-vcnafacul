@@ -21,14 +21,14 @@ export class BaseService<T> {
     });
   }
 
-  async delete(id: number) {
+  async delete(id: string) {
     await this._repository.delete(id);
   }
 
   async findOneBy(filter: object) {
     const entity = await this._repository.findOneBy(filter);
     if (!entity) {
-      throw new NotFoundException();
+      throw new NotFoundException(`Entity not found`);
     }
     return entity;
   }

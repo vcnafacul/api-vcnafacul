@@ -14,7 +14,7 @@ export class News extends BaseEntity {
   fileName: string;
 
   @Column({ name: 'updated_by' })
-  updatedBy: number;
+  updatedBy: string;
 
   @Column({ default: true })
   actived: boolean;

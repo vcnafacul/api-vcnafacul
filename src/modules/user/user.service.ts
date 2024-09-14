@@ -31,7 +31,7 @@ export class UserService extends BaseService<User> {
     super(userRepository);
   }
 
-  async createUser(userDto: CreateUserDtoInput): Promise<void> {
+  async create(userDto: CreateUserDtoInput): Promise<void> {
     try {
       if (userDto.password !== userDto.password_confirmation) {
         throw new HttpException(
@@ -56,7 +56,7 @@ export class UserService extends BaseService<User> {
     }
   }
 
-  async confirmEmail(id: number) {
+  async confirmEmail(id: string) {
     const user = await this.userRepository.findOneBy({ id });
     if (!user) {
       throw new HttpException('User not found', HttpStatus.NOT_FOUND);
@@ -102,11 +102,11 @@ export class UserService extends BaseService<User> {
     }
   }
 
-  async findUserById(id: number): Promise<User> {
+  async findUserById(id: string): Promise<User> {
     return await this.userRepository.findOneBy({ id });
   }
 
-  async update(updateUser: UpdateUserDTOInput, id: number) {
+  async update(updateUser: UpdateUserDTOInput, id: string) {
     const user = await this.userRepository.findOneBy({ id });
 
     const originalUser = JSON.parse(JSON.stringify(user));
@@ -126,7 +126,7 @@ export class UserService extends BaseService<User> {
     return false;
   }
 
-  async deleteUser(id: number) {
+  async deleteUser(id: string) {
     const user = await this.findUserById(id);
     await this.userRepository.deleteUser(user);
   }
@@ -144,7 +144,7 @@ export class UserService extends BaseService<User> {
     );
   }
 
-  async reset(resetPassword: ResetPasswordDtoInput, userId: number) {
+  async reset(resetPassword: ResetPasswordDtoInput, userId: string) {
     const bcrypt = await import('bcrypt');
     const user = await this.findUserById(userId);
     if (resetPassword.password) {
@@ -160,7 +160,7 @@ export class UserService extends BaseService<User> {
     );
   }
 
-  async collaborator(data: CollaboratorDtoInput, userId: number) {
+  async collaborator(data: CollaboratorDtoInput, userId: string) {
     const user = await this.userRepository.findOneBy({ id: data.userId });
     const changes = {
       before: {
@@ -184,7 +184,7 @@ export class UserService extends BaseService<User> {
     });
   }
 
-  async uploadImage(file: any, userId: number): Promise<string> {
+  async uploadImage(file: any, userId: string): Promise<string> {
     const user = await this.userRepository.findOneBy({ id: userId });
     if (user.collaboratorPhoto) {
       await removeFileFTP(
@@ -213,7 +213,7 @@ export class UserService extends BaseService<User> {
     return await this.userRepository.getVolunteers();
   }
 
-  async removeImage(userId: number): Promise<boolean> {
+  async removeImage(userId: string): Promise<boolean> {
     const user = await this.userRepository.findOneBy({ id: userId });
     const deleted = await removeFileFTP(
       user.collaboratorPhoto,
@@ -229,7 +229,7 @@ export class UserService extends BaseService<User> {
     return false;
   }
 
-  async me(userId: number) {
+  async me(userId: string) {
     return this.MapUsertoUserDTO(
       await this.userRepository.findOneBy({ id: userId }),
     );

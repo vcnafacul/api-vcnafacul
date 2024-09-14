@@ -3,10 +3,10 @@ import { NodeEntity } from '../node/node.entity';
 
 export abstract class LinkedListEntity extends NodeEntity {
   @Column({ nullable: true })
-  head?: number;
+  head?: string;
 
   @Column({ nullable: true })
-  tail?: number;
+  tail?: string;
 
   @Column({ default: 0 })
   lenght: number;

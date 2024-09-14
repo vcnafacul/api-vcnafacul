@@ -9,10 +9,10 @@ import { StudentCourse } from '../studentCourse/student-course.entity';
 @Entity('partner_prep_course')
 export class PartnerPrepCourse extends BaseEntity {
   @Column({ name: 'user_id' })
-  userId: number;
+  userId: string;
 
   @Column({ name: 'geo_id' })
-  geoId: number;
+  geoId: string;
 
   @OneToOne(() => User)
   @JoinColumn({ name: 'user_id' })

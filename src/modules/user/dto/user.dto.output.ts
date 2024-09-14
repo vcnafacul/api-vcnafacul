@@ -3,14 +3,13 @@ import {
   IsDateString,
   IsEnum,
   IsNotEmpty,
-  IsNumber,
   IsString,
 } from 'class-validator';
 import { Gender } from '../enum/gender';
 
 export class UserDtoOutput {
-  @IsNumber()
-  id: number = 0;
+  @IsString()
+  id: string = '';
 
   @IsNotEmpty()
   firstName: string = '';

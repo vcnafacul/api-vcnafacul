@@ -1,12 +1,12 @@
-import { IsBoolean, IsNumber, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 import { UserExist } from '../validator/user-exist.validator';
 
 export class CollaboratorDtoInput {
-  @IsNumber()
+  @IsString()
   @UserExist({ message: 'User not exist' })
   @ApiProperty()
-  userId: number;
+  userId: string;
 
   @IsOptional()
   @IsString()
