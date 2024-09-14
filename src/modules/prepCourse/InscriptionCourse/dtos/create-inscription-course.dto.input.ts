@@ -32,6 +32,6 @@ export class CreateInscriptionCourseInput {
 
   @ApiProperty()
   @PartnerPrepCourseExist({ message: 'O curso de preparação não existe' })
-  @IsNumber()
-  partnerPrepCourse: number;
+  @IsString()
+  partnerPrepCourse: string;
 }

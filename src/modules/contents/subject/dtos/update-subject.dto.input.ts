@@ -4,7 +4,7 @@ import { IsNumber, IsOptional, IsString } from 'class-validator';
 export class UpdateSubjectDTOInput {
   @ApiProperty()
   @IsNumber() //Criar Verificacao se Frente Existe
-  id: number;
+  id: string;
 
   @ApiProperty()
   @IsString()

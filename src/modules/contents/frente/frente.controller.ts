@@ -67,7 +67,7 @@ export class FrenteController {
   @Delete(':id')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
-  async delete(@Param('id') id: number) {
+  async delete(@Param('id') id: string) {
     return await this.frenteService.delete(id);
   }
 }

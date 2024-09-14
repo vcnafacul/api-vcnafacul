@@ -18,7 +18,7 @@ export class Subject extends LinkedListEntity {
   @ManyToOne(() => Frente, (frente) => frente.subject)
   frente: Frente;
 
-  get list(): number | undefined {
+  get list(): string | undefined {
     return this.frente?.id;
   }
 }

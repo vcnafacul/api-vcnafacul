@@ -51,7 +51,7 @@ export class ContentController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async getAllOrder(
-    @Query('subjectId') subjectId: number,
+    @Query('subjectId') subjectId: string,
     @Query('status') status?: StatusContent,
   ) {
     return await this.contentService.getAllOrder(subjectId, status);
@@ -85,7 +85,7 @@ export class ContentController {
   @Patch('reset/:id')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
-  async reset(@Param('id') id: number, @Req() req: Request) {
+  async reset(@Param('id') id: string, @Req() req: Request) {
     return await this.contentService.reset(id, req.user as User);
   }
 
@@ -94,7 +94,7 @@ export class ContentController {
   @SetMetadata(PermissionsGuard.name, Permissions.uploadDemanda)
   @UseInterceptors(FileInterceptor('file'))
   async upload(
-    @Param('id') id: number,
+    @Param('id') id: string,
     @UploadedFile() file,
     @Req() req: Request,
   ) {
@@ -104,7 +104,7 @@ export class ContentController {
   @Delete(':id')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
-  async delete(@Param('id') id: number) {
+  async delete(@Param('id') id: string) {
     return await this.contentService.delete(id);
   }
 }

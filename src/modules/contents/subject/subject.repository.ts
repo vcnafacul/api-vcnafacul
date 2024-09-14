@@ -14,7 +14,7 @@ export class SubjectRepository extends LinkedListRepository<Subject, Content> {
     super(_entityManager, Subject, Content);
   }
 
-  async getByFrente(frente: number) {
+  async getByFrente(frente: string) {
     const query = this.repository
       .createQueryBuilder('subject')
       .select([
@@ -30,7 +30,7 @@ export class SubjectRepository extends LinkedListRepository<Subject, Content> {
     return query.getMany();
   }
 
-  async getById(id: number) {
+  async getById(id: string) {
     const query = this.repository
       .createQueryBuilder('subject')
       .select([
@@ -47,7 +47,7 @@ export class SubjectRepository extends LinkedListRepository<Subject, Content> {
     return query.getOne();
   }
 
-  async getByIdToRemove(id: number) {
+  async getByIdToRemove(id: string) {
     const query = this.repository
       .createQueryBuilder('subject')
       .select(['subject.id', 'subject.next', 'subject.prev'])
@@ -58,7 +58,7 @@ export class SubjectRepository extends LinkedListRepository<Subject, Content> {
     return query.getOne();
   }
 
-  async getNodes(list: number) {
+  async getNodes(list: string) {
     return this.repository.findBy({ list });
   }
 }

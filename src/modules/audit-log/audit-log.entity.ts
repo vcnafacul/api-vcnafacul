@@ -8,13 +8,13 @@ export class AuditLog extends BaseEntity {
   entityType: string;
 
   @Column({ name: 'entity_id' })
-  entityId: number;
+  entityId: string;
 
   @Column('json')
   changes: string;
 
   @Column({ name: 'updated_by' })
-  updatedBy: number;
+  updatedBy: string;
 
   @ManyToOne(() => User, (user) => user)
   @JoinColumn({ name: 'updated_by' })

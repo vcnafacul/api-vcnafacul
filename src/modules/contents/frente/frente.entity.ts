@@ -6,7 +6,7 @@ import { Subject } from '../subject/subject.entity';
 @Entity('frente')
 @Unique(['name', 'materia'])
 export class Frente extends LinkedListEntity {
-  get list(): number {
+  get list(): string {
     throw new Error('Method not implemented.');
   }
   @Column()

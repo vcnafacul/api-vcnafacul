@@ -61,7 +61,7 @@ export class UserRoleService extends BaseService<UserRole> {
   }
 
   async checkUserPermission(
-    userId: number,
+    userId: string,
     roleName: string,
   ): Promise<boolean> {
     const userRole = await this.userRoleRepository.findOneBy({ userId });

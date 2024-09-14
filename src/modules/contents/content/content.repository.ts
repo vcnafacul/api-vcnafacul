@@ -84,7 +84,7 @@ export class ContentRepository extends NodeRepository<Content> {
     };
   }
 
-  async getBytSubject(subjectId: number) {
+  async getBytSubject(subjectId: string) {
     const query = this.repository
       .createQueryBuilder('demand')
       .select([
@@ -106,7 +106,7 @@ export class ContentRepository extends NodeRepository<Content> {
     return query.getMany();
   }
 
-  async getByIdToRemove(id: number) {
+  async getByIdToRemove(id: string) {
     const query = this.repository
       .createQueryBuilder('content')
       .select(['content.id', 'content.next', 'content.prev'])
@@ -119,7 +119,7 @@ export class ContentRepository extends NodeRepository<Content> {
 
   async getOrderContent(
     nodes: Content[],
-    start: number,
+    start: string,
     status?: StatusContent,
   ) {
     const orderedNodes: Content[] = [];
@@ -137,11 +137,11 @@ export class ContentRepository extends NodeRepository<Content> {
     return orderedNodes;
   }
 
-  async getNodes(list: number) {
+  async getNodes(list: string) {
     return this.repository.findBy({ list });
   }
 
-  async IsUnique(subjectId: number, title: string) {
+  async IsUnique(subjectId: string, title: string) {
     const count = await this.repository
       .createQueryBuilder('demand')
       .select(['demand.id', 'demand.title'])
@@ -154,7 +154,7 @@ export class ContentRepository extends NodeRepository<Content> {
     return count === 0;
   }
 
-  async findByUpload(id: number): Promise<Content> {
+  async findByUpload(id: string): Promise<Content> {
     const query = this.repository
       .createQueryBuilder('content')
       .leftJoin('content.subject', 'subject')

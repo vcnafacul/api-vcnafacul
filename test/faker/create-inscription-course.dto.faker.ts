@@ -1,8 +1,9 @@
 import { faker } from '@faker-js/faker';
 import { CreateInscriptionCourseInput } from 'src/modules/prepCourse/InscriptionCourse/dtos/create-inscription-course.dto.input';
+import { v4 as uuidv4 } from 'uuid';
 
 export function CreateInscriptionCourseDTOInputFaker(
-  partnerPrepCourseId?: number | undefined,
+  partnerPrepCourseId?: string | undefined,
 ): CreateInscriptionCourseInput {
   return {
     name: faker.company.name(),
@@ -11,7 +12,6 @@ export function CreateInscriptionCourseDTOInputFaker(
     endDate: faker.date.future(),
     actived: true,
     expectedOpening: faker.number.int({ min: 1, max: 100 }),
-    partnerPrepCourse:
-      partnerPrepCourseId ?? faker.number.int({ min: 1, max: 100 }),
+    partnerPrepCourse: partnerPrepCourseId ?? uuidv4(),
   };
 }

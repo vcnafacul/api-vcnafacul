@@ -16,7 +16,7 @@ import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.enti
 @Entity('student_course')
 export class StudentCourse extends BaseEntity {
   @Column({ name: 'user_id' })
-  userId: number;
+  userId: string;
 
   @Column()
   rg: string;

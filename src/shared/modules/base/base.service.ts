@@ -21,7 +21,7 @@ export class BaseService<T> {
     });
   }
 
-  async delete(id: number) {
+  async delete(id: string) {
     await this._repository.delete(id);
   }
 

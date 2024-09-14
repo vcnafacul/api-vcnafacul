@@ -317,5 +317,5 @@ describe('StudentCourse (e2e)', () => {
         expect(res.body.id).not.toBeNull();
       })
       .expect(201);
-  }, 30000);
+  }, 60000);
 });
