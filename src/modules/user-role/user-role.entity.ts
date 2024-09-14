@@ -6,10 +6,10 @@ import { User } from '../user/user.entity';
 @Entity('user_roles')
 export class UserRole extends BaseEntity {
   @Column({ name: 'user_id' })
-  userId: number;
+  userId: string;
 
   @Column({ name: 'role_id' })
-  roleId: number;
+  roleId: string;
 
   @ManyToOne(() => User, (user) => user.userRole)
   @JoinColumn({ name: 'user_id' })

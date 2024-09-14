@@ -57,7 +57,7 @@ export class ContentService extends BaseService<Content> {
     return await this.repository.findAllBy(query);
   }
 
-  async getAllOrder(subjectId: number, status?: StatusContent) {
+  async getAllOrder(subjectId: string, status?: StatusContent) {
     const subject = await this.subjectRepository.findOneBy({ id: subjectId });
     const nodes = await this.repository.getBytSubject(subjectId);
     return await this.repository.getOrderContent(nodes, subject.head, status);
@@ -84,7 +84,7 @@ export class ContentService extends BaseService<Content> {
     );
   }
 
-  async changeStatus(id: number, status: StatusContent, user: User) {
+  async changeStatus(id: string, status: StatusContent, user: User) {
     const demand = await this.repository.findOneBy({ id });
     demand.status = status;
     await this.repository.update(demand);
@@ -96,7 +96,7 @@ export class ContentService extends BaseService<Content> {
     });
   }
 
-  async reset(id: number, user: User) {
+  async reset(id: string, user: User) {
     const demand = await this.repository.findOneBy({ id });
     demand.status = StatusContent.Pending_Upload;
     demand.filename = null;
@@ -109,7 +109,7 @@ export class ContentService extends BaseService<Content> {
     });
   }
 
-  async uploadFile(id: number, user: User, file: any) {
+  async uploadFile(id: string, user: User, file: any) {
     const demand = await this.repository.findByUpload(id);
     if (!demand) {
       throw new HttpException('demand not found', HttpStatus.NOT_FOUND);
@@ -138,7 +138,7 @@ export class ContentService extends BaseService<Content> {
     });
   }
 
-  async delete(id: number) {
+  async delete(id: string) {
     const content = await this.repository.getByIdToRemove(id);
     if (!content) {
       throw new HttpException(
@@ -150,7 +150,7 @@ export class ContentService extends BaseService<Content> {
     await this.repository.delete(id);
   }
 
-  private async IsUnique(subjectId: number, title: string) {
+  private async IsUnique(subjectId: string, title: string) {
     return this.repository.IsUnique(subjectId, title);
   }
 

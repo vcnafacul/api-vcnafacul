@@ -3,10 +3,10 @@ import { BaseEntity } from '../base/entity.base';
 
 export abstract class NodeEntity extends BaseEntity {
   @Column({ nullable: true })
-  prev?: number;
+  prev?: string;
 
   @Column({ nullable: true })
-  next?: number;
+  next?: string;
 
-  abstract get list(): number;
+  abstract get list(): string;
 }

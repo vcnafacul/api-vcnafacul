@@ -38,7 +38,7 @@ export class UserRepository extends BaseRepository<User> {
     });
   }
 
-  override async update(user: User) {
+  async update(user: User) {
     user.updatedAt = new Date();
     await this.repository.save(user);
   }
@@ -68,6 +68,7 @@ export class UserRepository extends BaseRepository<User> {
         'volunteer.collaboratorPhoto',
         'volunteer.firstName',
         'volunteer.lastName',
+        'volunteer.socialName',
         'volunteer.collaboratorDescription',
       ])
       .where('volunteer.collaborator = true')

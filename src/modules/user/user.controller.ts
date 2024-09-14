@@ -41,7 +41,7 @@ export class UserController {
 
   @Post()
   async createUser(@Body() userDto: CreateUserDtoInput) {
-    return await this.userService.createUser(userDto);
+    return await this.userService.create(userDto);
   }
 
   @Post('login')
@@ -132,7 +132,7 @@ export class UserController {
   @Get(':id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  async findById(@Param('id') id: number) {
+  async findById(@Param('id') id: string) {
     return await this.userService.findUserById(id);
   }
 }

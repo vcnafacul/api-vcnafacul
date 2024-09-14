@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import {
   IsBoolean,
   IsDateString,
@@ -5,11 +6,11 @@ import {
   IsEnum,
   IsNotEmpty,
   IsOptional,
+  IsString,
   MinLength,
 } from 'class-validator';
 import { Gender } from '../enum/gender';
 import { EmailUnique } from '../validator/email-unique.validator';
-import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateUserDtoInput {
   @IsEmail()
@@ -32,6 +33,11 @@ export class CreateUserDtoInput {
   @IsNotEmpty()
   @ApiProperty()
   lastName: string;
+
+  @ApiProperty()
+  @IsOptional()
+  @IsString()
+  socialName?: string | undefined;
 
   @IsNotEmpty()
   @ApiProperty()

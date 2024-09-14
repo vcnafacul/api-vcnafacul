@@ -15,6 +15,7 @@ jobs:
           - 3306:3306
         env:
           MYSQL_ROOT_PASSWORD: 123456
+          MYSQL_DATABASE: vcnafacul
     steps:
       - uses: actions/checkout@v3
       - name: Iniciando CI
@@ -30,6 +31,8 @@ jobs:
         run: yarn build
       - name: Install Dotenv-cli
         run: npm install -g dotenv-cli
+      - name: Run Migrations
+        run: dotenv -e ./test/.env.test -- yarn typeorm migration:run
       - name: Run tests
         run: dotenv -e ./test/.env.test -- yarn test
   PUSH:
@@ -48,8 +51,6 @@ jobs:
         run: yarn
       - name: Build app vCnafacul
         run: yarn build
-      - name: Run tests
-        run: yarn test
       - name: Build Image
         run: docker build -t vcnafacul -f node.dockerfile .
       - name: docker tags

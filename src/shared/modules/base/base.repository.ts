@@ -50,11 +50,11 @@ export class BaseRepository<T> implements IBaseRepository<T> {
     await this.repository.save(entity); //bloqquear o insert se não existir
   }
 
-  async softDelete(id: number) {
+  async softDelete(id: string) {
     await this.repository.softDelete(id);
   }
 
-  async delete(id: number) {
+  async delete(id: string) {
     await this.repository.delete(id);
   }
 }

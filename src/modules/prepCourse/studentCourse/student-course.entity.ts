@@ -2,9 +2,10 @@ import {
   Column,
   Entity,
   JoinColumn,
+  JoinTable,
   ManyToMany,
   ManyToOne,
-  OneToOne,
+  OneToMany,
 } from 'typeorm';
 import { BaseEntity } from '../../../shared/modules/base/entity.base';
 import { User } from '../../user/user.entity';
@@ -14,17 +15,26 @@ import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.enti
 //Representa o Estudante do Cursinho
 @Entity('student_course')
 export class StudentCourse extends BaseEntity {
-  @Column()
-  rg: number;
+  @Column({ name: 'user_id' })
+  userId: string;
 
   @Column()
-  cpf: number;
+  rg: string;
+
+  @Column()
+  uf: string;
+
+  @Column()
+  cpf: string;
 
   // Em caso de menor de idade, esse telefone será os do responsável
   @Column({ nullable: true })
   urgencyPhone?: string;
 
-  @OneToOne(() => User)
+  @Column('text', { nullable: true })
+  documents: string;
+
+  @OneToMany(() => User, (user) => user.studentCourse)
   @JoinColumn({ name: 'user_id' })
   public user: User;
 
@@ -39,5 +49,6 @@ export class StudentCourse extends BaseEntity {
     () => InscriptionCourse,
     (inscriptionCourse) => inscriptionCourse.students,
   )
+  @JoinTable()
   public inscriptionCourses: InscriptionCourse[];
 }

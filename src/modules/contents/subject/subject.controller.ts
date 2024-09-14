@@ -48,7 +48,7 @@ export class SubjectController {
   @Get('order')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
-  async getAllOrder(@Query('frenteId') frenteId?: number) {
+  async getAllOrder(@Query('frenteId') frenteId?: string) {
     return await this.subjectService.getAllOrder(frenteId);
   }
 
@@ -62,7 +62,7 @@ export class SubjectController {
   @Get('frente/:frente')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.visualizarDemanda)
-  async getByMateria(@Param('frente') frente: number) {
+  async getByMateria(@Param('frente') frente: string) {
     return await this.subjectService.getByFrente(frente);
   }
 
@@ -76,7 +76,7 @@ export class SubjectController {
   @Delete(':id')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
-  async delete(@Param('id') id: number) {
+  async delete(@Param('id') id: string) {
     return await this.subjectService.delete(id);
   }
 }

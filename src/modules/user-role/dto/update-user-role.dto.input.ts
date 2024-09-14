@@ -5,8 +5,8 @@ import { UserExist } from 'src/modules/user/validator/user-exist.validator';
 export class UpdateUserRoleInput {
   @UserExist({ message: 'User not exist' })
   @ApiProperty()
-  userId: number;
+  userId: string;
   @RoleExist({ message: 'Role not exist' })
   @ApiProperty()
-  roleId: number;
+  roleId: string;
 }

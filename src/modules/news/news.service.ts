@@ -18,7 +18,7 @@ export class NewsService extends BaseService<News> {
     super(repository);
   }
 
-  async create(request: CreateNewsDtoInput, file: any, userId: number) {
+  async create(request: CreateNewsDtoInput, file: any, userId: string) {
     const fileName = await uploadFileFTP(
       file,
       this.configService.get<string>('FTP_TEMP_FILE'),

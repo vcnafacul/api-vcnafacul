@@ -19,9 +19,9 @@ import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { Permissions } from '../role/role.entity';
 import { User } from '../user/user.entity';
 import { UpdateUserRoleInput } from './dto/update-user-role.dto.input';
+import { UserRoleDTO } from './dto/user-role.dto.output';
 import { UserRole } from './user-role.entity';
 import { UserRoleService } from './user-role.service';
-import { UserRoleDTO } from './dto/user-role.dto.output';
 
 @ApiTags('UserRole')
 @Controller('userrole')

@@ -1,10 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsString } from 'class-validator';
+import { IsString } from 'class-validator';
 
 export class UpdateFrenteDTOInput {
   @ApiProperty()
-  @IsNumber()
-  id: number;
+  @IsString()
+  id: string;
 
   @ApiProperty()
   @IsString()

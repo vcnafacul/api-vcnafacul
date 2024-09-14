@@ -47,18 +47,18 @@ export class SimuladoService {
     await this.axios.delete(`v1/simulado/${id}`);
   }
 
-  public async answer(dto: AnswerSimulado, userId: number) {
+  public async answer(dto: AnswerSimulado, userId: string) {
     await this.axios.post(`v1/simulado/answer`, {
       ...dto,
       idEstudante: userId,
     });
   }
 
-  public async report(reportDto: ReportDTO, userId: number) {
+  public async report(reportDto: ReportDTO, userId: string) {
     if (reportDto.entity === ReportEntity.Simulado) {
       await this.auditLod.create({
         entityType: 'Simulado',
-        entityId: 0,
+        entityId: '',
         changes: { message: reportDto.message },
         updatedBy: userId,
       });
