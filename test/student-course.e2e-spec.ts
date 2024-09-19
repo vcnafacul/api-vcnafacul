@@ -17,7 +17,7 @@ import * as request from 'supertest';
 import { CreateGeoDTOInputFaker } from './faker/create-geo.dto.input.faker';
 import { CreateInscriptionCourseDTOInputFaker } from './faker/create-inscription-course.dto.faker';
 import { createStudentCourseDTOInputFaker } from './faker/create-student-course.dto.input.faker';
-import { CreateUserDtoInputFaker } from './faker/create.dto..input.faker';
+import { CreateUserDtoInputFaker } from './faker/create-user.dto.input.faker';
 import { createNestAppTest } from './utils/createNestAppTest';
 
 // Mock the EmailService globally
@@ -317,5 +317,105 @@ describe('StudentCourse (e2e)', () => {
         expect(res.body.id).not.toBeNull();
       })
       .expect(201);
-  }, 60000);
+  }, 30000);
+
+  it('should create a new StudentCourse with legal guardian for minors', async () => {
+    const geoDto = CreateGeoDTOInputFaker();
+    const geo = await geoService.create(geoDto);
+
+    const representativeDTO = CreateUserDtoInputFaker();
+    await userService.create(representativeDTO);
+    const representative = await userRepository.findOneBy({
+      email: representativeDTO.email,
+    });
+
+    const partnerPrepCourseDto = {
+      geoId: geo.id,
+      userId: representative.id,
+    };
+
+    const partnerPrepCourse =
+      await partnerPrepCourseService.create(partnerPrepCourseDto);
+
+    const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker(
+      partnerPrepCourse.id,
+    );
+
+    await request(app.getHttpServer())
+      .post('/inscription-course')
+      .send(inscriptionCourseDto)
+      .expect(201)
+      .expect((res) => {
+        expect(res.body.id).not.toBeNull();
+      });
+
+    const userDto = CreateUserDtoInputFaker();
+    await userService.create(userDto);
+    const user = await userRepository.findOneBy({ email: userDto.email });
+
+    const dto = createStudentCourseDTOInputFaker(user.id, partnerPrepCourse.id);
+
+    const today = new Date();
+    const birthDate = new Date(today.setFullYear(today.getFullYear() - 17));
+    dto.birthday = birthDate;
+
+    return request(app.getHttpServer())
+      .post('/student-course')
+      .send(dto)
+      .expect(201)
+      .expect((res) => {
+        expect(res.body.id).not.toBeNull();
+      });
+  }, 30000);
+
+  it('should return 400 if a minor does not have a legal guardian', async () => {
+    const geoDto = CreateGeoDTOInputFaker();
+    const geo = await geoService.create(geoDto);
+
+    const representativeDTO = CreateUserDtoInputFaker();
+    await userService.create(representativeDTO);
+    const representative = await userRepository.findOneBy({
+      email: representativeDTO.email,
+    });
+
+    const partnerPrepCourseDto = {
+      geoId: geo.id,
+      userId: representative.id,
+    };
+
+    const partnerPrepCourse =
+      await partnerPrepCourseService.create(partnerPrepCourseDto);
+
+    const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker(
+      partnerPrepCourse.id,
+    );
+
+    await request(app.getHttpServer())
+      .post('/inscription-course')
+      .send(inscriptionCourseDto)
+      .expect(201)
+      .expect((res) => {
+        expect(res.body.id).not.toBeNull();
+      });
+
+    const userDto = CreateUserDtoInputFaker();
+    await userService.create(userDto);
+    const user = await userRepository.findOneBy({ email: userDto.email });
+
+    const dto = createStudentCourseDTOInputFaker(user.id, partnerPrepCourse.id);
+    const today = new Date();
+    const birthDate = new Date(today.setFullYear(today.getFullYear() - 17));
+    dto.birthday = birthDate;
+    dto.legalGuardian = null;
+
+    return request(app.getHttpServer())
+      .post('/student-course')
+      .send(dto)
+      .expect(400)
+      .expect((res) => {
+        expect(res.body.message).toContain(
+          'The full Legal guardian information is required for minors',
+        );
+      });
+  }, 30000);
 });

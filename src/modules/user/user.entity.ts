@@ -33,6 +33,18 @@ export class User extends BaseEntity {
   @Column()
   public birthday: Date;
 
+  @Column({ nullable: true })
+  public street?: string;
+
+  @Column({ nullable: true })
+  public number?: number;
+
+  @Column({ nullable: true })
+  public PostalCode?: string;
+
+  @Column({ nullable: true })
+  public neighborhood?: string;
+
   @Column()
   public state: string;
 

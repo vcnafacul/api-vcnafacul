@@ -12,8 +12,8 @@ import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { EmailService } from 'src/shared/services/email/email.service';
 import * as request from 'supertest';
 import { CreateGeoDTOInputFaker } from 'test/faker/create-geo.dto.input.faker';
-import { CreateUserDtoInputFaker } from 'test/faker/create.dto..input.faker';
 import { createNestAppTest } from './utils/createNestAppTest';
+import { CreateUserDtoInputFaker } from './faker/create-user.dto.input.faker';
 
 // Mock the EmailService globally
 jest.mock('src/shared/services/email/email.service');
