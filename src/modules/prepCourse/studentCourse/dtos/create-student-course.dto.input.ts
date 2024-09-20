@@ -75,7 +75,12 @@ export class CreateStudentCourseInput {
 
   @IsString()
   @ApiProperty()
-  PostalCode: string;
+  postalCode: string;
+
+  @IsString()
+  @IsOptional()
+  @ApiProperty()
+  complement?: string | undefined;
 
   @IsString()
   @ApiProperty()

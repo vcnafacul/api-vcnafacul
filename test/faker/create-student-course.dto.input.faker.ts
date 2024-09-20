@@ -1,4 +1,4 @@
-import { faker } from '@faker-js/faker';
+import { fa, faker } from '@faker-js/faker';
 import { CreateStudentCourseInput } from 'src/modules/prepCourse/studentCourse/dtos/create-student-course.dto.input';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -22,7 +22,8 @@ export function createStudentCourseDTOInputFaker(
     neighborhood: faker.location.country(),
     street: faker.location.street(),
     number: Math.floor(Math.random() * 1000),
-    PostalCode: faker.location.zipCode(),
+    postalCode: faker.location.zipCode(),
+    complement: faker.lorem.sentence(),
     socialName: faker.person.firstName(),
     whatsapp: faker.phone.number(),
     legalGuardian: {

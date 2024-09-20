@@ -40,7 +40,10 @@ export class User extends BaseEntity {
   public number?: number;
 
   @Column({ nullable: true })
-  public PostalCode?: string;
+  public postalCode?: string;
+
+  @Column({ nullable: true })
+  public complement?: string;
 
   @Column({ nullable: true })
   public neighborhood?: string;

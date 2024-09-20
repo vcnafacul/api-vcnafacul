@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AjusteInfoUserStudent1726775545898 implements MigrationInterface {
-  name = 'AjusteInfoUserStudent1726775545898';
+export class AjusteInfoUserStudent1726852216787 implements MigrationInterface {
+  name = 'AjusteInfoUserStudent1726852216787';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
@@ -24,7 +24,10 @@ export class AjusteInfoUserStudent1726775545898 implements MigrationInterface {
     );
     await queryRunner.query(`ALTER TABLE \`users\` ADD \`number\` int NULL`);
     await queryRunner.query(
-      `ALTER TABLE \`users\` ADD \`PostalCode\` varchar(255) NULL`,
+      `ALTER TABLE \`users\` ADD \`postalCode\` varchar(255) NULL`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`users\` ADD \`complement\` varchar(255) NULL`,
     );
     await queryRunner.query(
       `ALTER TABLE \`users\` ADD \`neighborhood\` varchar(255) NULL`,
@@ -53,7 +56,8 @@ export class AjusteInfoUserStudent1726775545898 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE \`users\` DROP COLUMN \`neighborhood\``,
     );
-    await queryRunner.query(`ALTER TABLE \`users\` DROP COLUMN \`PostalCode\``);
+    await queryRunner.query(`ALTER TABLE \`users\` DROP COLUMN \`complement\``);
+    await queryRunner.query(`ALTER TABLE \`users\` DROP COLUMN \`postalCode\``);
     await queryRunner.query(`ALTER TABLE \`users\` DROP COLUMN \`number\``);
     await queryRunner.query(`ALTER TABLE \`users\` DROP COLUMN \`street\``);
     await queryRunner.query(
