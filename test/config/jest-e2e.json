@@ -24,7 +24,7 @@
   "coverageDirectory": "./coverage",
   "coverageThreshold": {
     "global": {
-      "lines": 67
+      "lines": 68
     }
   },
   "coverageReporters": [
