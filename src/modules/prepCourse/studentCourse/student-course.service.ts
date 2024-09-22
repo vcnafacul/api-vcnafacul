@@ -224,6 +224,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       whatsapp: dto.whatsapp,
       urgencyPhone: dto.urgencyPhone,
       partnerPrepCourse: partnerPrepCourse,
+      socioeconomic: dto.socioeconomic,
     });
 
     studentCourse.inscriptionCourses = [inscriptionCourse];

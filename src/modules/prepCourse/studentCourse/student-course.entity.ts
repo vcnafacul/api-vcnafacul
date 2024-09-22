@@ -40,6 +40,9 @@ export class StudentCourse extends BaseEntity {
   @Column({ nullable: true })
   whatsapp?: string;
 
+  @Column({ nullable: true })
+  socioeconomic?: string;
+
   @OneToMany(
     () => DocumentStudent,
     (documentStudent) => documentStudent.studentCourse,

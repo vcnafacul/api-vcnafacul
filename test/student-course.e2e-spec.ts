@@ -1,6 +1,5 @@
 import { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from 'src/app.module';
 import { RoleSeedService } from 'src/db/seeds/1-role.seed';
@@ -69,7 +68,6 @@ describe('StudentCourse (e2e)', () => {
     inscriptionCourseService = moduleFixture.get<InscriptionCourseService>(
       InscriptionCourseService,
     );
-    jwtService = moduleFixture.get<JwtService>(JwtService);
 
     jest
       .spyOn(emailService, 'sendCreateUser')

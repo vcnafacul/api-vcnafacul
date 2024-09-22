@@ -104,4 +104,9 @@ export class CreateStudentCourseInput {
   @ValidateNested()
   @Type(() => CreateLegalGuardianInput)
   legalGuardian?: CreateLegalGuardianInput;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  socioeconomic?: string | undefined;
 }
