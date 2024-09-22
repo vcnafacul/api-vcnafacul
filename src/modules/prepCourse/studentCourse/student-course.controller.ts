@@ -15,6 +15,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
+import { UserDtoOutput } from 'src/modules/user/dto/user.dto.output';
 import { User } from 'src/modules/user/user.entity';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
@@ -61,6 +62,7 @@ export class StudentCourseController {
 
   @Get('document/:fileKey')
   @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @ApiResponse({
     status: 200,
     description: 'upload de documento de estudante',
@@ -76,5 +78,18 @@ export class StudentCourseController {
       'Content-Disposition': `attachment; filename="${fileKey}"`,
     });
     return res.status(HttpStatus.OK).send(file);
+  }
+
+  @Get('get-user-info/:idPrepPartner')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async getUserInfo(
+    @Param('idPrepPartner') idPrepPartner: string,
+    @Req() req: Request,
+  ): Promise<UserDtoOutput> {
+    return await this.service.getUserInfoToInscription(
+      idPrepPartner,
+      (req.user as User).id,
+    );
   }
 }

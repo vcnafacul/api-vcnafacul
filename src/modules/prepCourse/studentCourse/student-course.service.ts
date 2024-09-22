@@ -147,6 +147,34 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     return file;
   }
 
+  async getUserInfoToInscription(idPrepCourse: string, userId: string) {
+    const prepCourse = await this.partnerPrepCourseService.findOneBy({
+      id: idPrepCourse,
+    });
+    const activedInscription = prepCourse.inscriptionCourses.find(
+      (i) => i.actived === true,
+    );
+
+    if (!activedInscription) {
+      throw new HttpException(
+        'No active inscription course',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const inscription = await this.inscriptionCourseService.findOneBy({
+      id: activedInscription.id,
+    });
+
+    const hasUser = inscription.students.some(
+      (student) => student.userId === userId,
+    );
+    if (hasUser) {
+      throw new HttpException('User already inscribed', HttpStatus.BAD_REQUEST);
+    }
+    return this.userService.me(userId);
+  }
+
   private ensureStudentNotAlreadyEnrolled(
     inscriptionCourse: InscriptionCourse,
     userId: string,

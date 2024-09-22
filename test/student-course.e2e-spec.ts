@@ -1,10 +1,12 @@
 import { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from 'src/app.module';
 import { RoleSeedService } from 'src/db/seeds/1-role.seed';
 import { RoleUpdateAdminSeedService } from 'src/db/seeds/2-role-update-admin.seed';
 import { GeoService } from 'src/modules/geo/geo.service';
+import { InscriptionCourseService } from 'src/modules/prepCourse/InscriptionCourse/inscription-course.service';
 import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
 import { GetAllStudentDtoInput } from 'src/modules/prepCourse/studentCourse/dtos/get-all-student.dto.input';
 import { StudentCourseService } from 'src/modules/prepCourse/studentCourse/student-course.service';
@@ -33,6 +35,7 @@ describe('StudentCourse (e2e)', () => {
   let studentCourseService: StudentCourseService;
   let partnerPrepCourseService: PartnerPrepCourseService;
   let geoService: GeoService;
+  let inscriptionCourseService: InscriptionCourseService;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -63,6 +66,10 @@ describe('StudentCourse (e2e)', () => {
       PartnerPrepCourseService,
     );
     geoService = moduleFixture.get<GeoService>(GeoService);
+    inscriptionCourseService = moduleFixture.get<InscriptionCourseService>(
+      InscriptionCourseService,
+    );
+    jwtService = moduleFixture.get<JwtService>(JwtService);
 
     jest
       .spyOn(emailService, 'sendCreateUser')
@@ -190,14 +197,7 @@ describe('StudentCourse (e2e)', () => {
     const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker(
       partnerPrepCourse.id,
     );
-
-    await request(app.getHttpServer())
-      .post('/inscription-course')
-      .send(inscriptionCourseDto)
-      .expect(201)
-      .expect((res) => {
-        expect(res.body.id).not.toBeNull();
-      });
+    await inscriptionCourseService.create(inscriptionCourseDto);
 
     for (let index = 0; index < 10; index++) {
       const userDto = CreateUserDtoInputFaker();
@@ -265,14 +265,7 @@ describe('StudentCourse (e2e)', () => {
     const inscriptionCourseDto1 = CreateInscriptionCourseDTOInputFaker(
       partnerPrepCourse1.id,
     );
-
-    await request(app.getHttpServer())
-      .post('/inscription-course')
-      .send(inscriptionCourseDto1)
-      .expect(201)
-      .expect((res) => {
-        expect(res.body.id).not.toBeNull();
-      });
+    await inscriptionCourseService.create(inscriptionCourseDto1);
 
     const partnerPrepCourse2 = await partnerPrepCourseService.create(
       partnerPrepCourseDto2,
@@ -281,14 +274,7 @@ describe('StudentCourse (e2e)', () => {
     const inscriptionCourseDto2 = CreateInscriptionCourseDTOInputFaker(
       partnerPrepCourse2.id,
     );
-
-    await request(app.getHttpServer())
-      .post('/inscription-course')
-      .send(inscriptionCourseDto2)
-      .expect(201)
-      .expect((res) => {
-        expect(res.body.id).not.toBeNull();
-      });
+    await inscriptionCourseService.create(inscriptionCourseDto2);
 
     const userDto = CreateUserDtoInputFaker();
     await userService.create(userDto);
@@ -340,14 +326,7 @@ describe('StudentCourse (e2e)', () => {
     const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker(
       partnerPrepCourse.id,
     );
-
-    await request(app.getHttpServer())
-      .post('/inscription-course')
-      .send(inscriptionCourseDto)
-      .expect(201)
-      .expect((res) => {
-        expect(res.body.id).not.toBeNull();
-      });
+    await inscriptionCourseService.create(inscriptionCourseDto);
 
     const userDto = CreateUserDtoInputFaker();
     await userService.create(userDto);
@@ -389,14 +368,7 @@ describe('StudentCourse (e2e)', () => {
     const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker(
       partnerPrepCourse.id,
     );
-
-    await request(app.getHttpServer())
-      .post('/inscription-course')
-      .send(inscriptionCourseDto)
-      .expect(201)
-      .expect((res) => {
-        expect(res.body.id).not.toBeNull();
-      });
+    await inscriptionCourseService.create(inscriptionCourseDto);
 
     const userDto = CreateUserDtoInputFaker();
     await userService.create(userDto);
