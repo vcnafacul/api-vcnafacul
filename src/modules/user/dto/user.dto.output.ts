@@ -18,6 +18,12 @@ export class UserDtoOutput {
   lastName: string = '';
 
   @IsNotEmpty()
+  email: string = '';
+
+  @IsNotEmpty()
+  socialName: string = '';
+
+  @IsNotEmpty()
   phone: string = '';
 
   @IsEnum(Gender)
@@ -25,6 +31,21 @@ export class UserDtoOutput {
 
   @IsDateString()
   birthday: Date = new Date();
+
+  @IsNotEmpty()
+  street: string = '';
+
+  @IsNotEmpty()
+  number: number = 0;
+
+  @IsNotEmpty()
+  postalCode: string = '';
+
+  @IsNotEmpty()
+  complement: string = '';
+
+  @IsNotEmpty()
+  neighborhood: string = '';
 
   @IsNotEmpty()
   state: string = '';
