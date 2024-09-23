@@ -24,8 +24,8 @@ export class PartnerPrepCourseController {
   }
 
   @Get(':id/has-active-inscription')
-  // @ApiBearerAuth()
-  // @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @ApiResponse({
     status: 201,
     description: 'verifica se há inscrição ativa para o cursinho parceiro',
