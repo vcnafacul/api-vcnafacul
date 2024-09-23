@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AjusteInfoUserStudent1727044926744 implements MigrationInterface {
-  name = 'AjusteInfoUserStudent1727044926744';
+export class AjusteInfoUserStudent1727050042754 implements MigrationInterface {
+  name = 'AjusteInfoUserStudent1727050042754';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
@@ -14,7 +14,7 @@ export class AjusteInfoUserStudent1727044926744 implements MigrationInterface {
       `ALTER TABLE \`student_course\` ADD \`whatsapp\` varchar(255) NULL`,
     );
     await queryRunner.query(
-      `ALTER TABLE \`student_course\` ADD \`socioeconomic\` varchar(255) NULL`,
+      `ALTER TABLE \`student_course\` ADD \`socioeconomic\` text NULL`,
     );
     await queryRunner.query(
       `ALTER TABLE \`student_course\` ADD \`legal_guardian_id\` varchar(36) NULL`,
