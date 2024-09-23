@@ -1,33 +1,44 @@
+import { faker } from '@faker-js/faker';
 import { CreateStudentCourseInput } from 'src/modules/prepCourse/studentCourse/dtos/create-student-course.dto.input';
 import { v4 as uuidv4 } from 'uuid';
 
 export function createStudentCourseDTOInputFaker(
   userId?: string | undefined,
   partnerPrepCourseId?: string | undefined,
+  rg?: string,
 ): CreateStudentCourseInput {
   return {
-    rg: generateRandomRG(),
+    rg: rg || generateRandomRG(),
     uf: generateRandomUF(),
     cpf: generateRandomCPF(),
     userId: userId ?? uuidv4(),
+    email: faker.internet.email(),
+    firstName: faker.person.firstName(),
+    lastName: faker.person.lastName(),
+    urgencyPhone: faker.phone.number(),
+    birthday: faker.date.birthdate(),
+    state: faker.location.state(),
+    city: faker.location.city(),
+    neighborhood: faker.location.country(),
+    street: faker.location.street(),
+    number: Math.floor(Math.random() * 1000),
+    postalCode: faker.location.zipCode(),
+    complement: faker.lorem.sentence(),
+    socialName: faker.person.firstName(),
+    whatsapp: faker.phone.number(),
+    legalGuardian: {
+      fullName: faker.person.firstName(),
+      cpf: generateRandomCPF(),
+      rg: generateRandomRG(),
+      phone: faker.phone.number(),
+      uf: generateRandomUF(),
+    },
     partnerPrepCourse: partnerPrepCourseId ?? uuidv4(),
   };
 }
 
 function generateRandomRG(): string {
-  const length = Math.floor(Math.random() * 3) + 7; // Tamanho entre 7 e 9 dígitos
-  let rg = '';
-
-  // Gerar os dígitos numéricos
-  for (let i = 0; i < length - 1; i++) {
-    rg += Math.floor(Math.random() * 10); // Número entre 0 e 9
-  }
-
-  // Adicionar o último dígito, que pode ser um número ou 'X'
-  const lastChar = Math.random() > 0.8 ? 'X' : Math.floor(Math.random() * 10); // 20% de chance de ser 'X'
-  rg += lastChar;
-
-  return rg;
+  return '45.123.456-7';
 }
 
 function generateRandomCPF(): string {

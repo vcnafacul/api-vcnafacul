@@ -34,7 +34,7 @@ jobs:
       - name: Run Migrations
         run: dotenv -e ./test/.env.test -- yarn typeorm migration:run
       - name: Run tests
-        run: dotenv -e ./test/.env.test -- yarn test
+        run: dotenv -e ./test/.env.test -- yarn test:cov
   PUSH:
     if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
     runs-on: ubuntu-latest

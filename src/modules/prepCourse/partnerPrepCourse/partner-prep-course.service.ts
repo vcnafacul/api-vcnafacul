@@ -20,4 +20,12 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
   async update(entity: PartnerPrepCourse): Promise<void> {
     await this.repository.update(entity);
   }
+
+  async hasActiveInscription(id: string): Promise<boolean> {
+    const prep = await this.repository.findOneBy({ id });
+    if (!prep) {
+      return false;
+    }
+    return prep.inscriptionCourses.some((i) => i.actived);
+  }
 }

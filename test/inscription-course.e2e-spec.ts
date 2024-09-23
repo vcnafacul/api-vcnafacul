@@ -13,7 +13,7 @@ import { EmailService } from 'src/shared/services/email/email.service';
 import * as request from 'supertest';
 import { CreateGeoDTOInputFaker } from './faker/create-geo.dto.input.faker';
 import { CreateInscriptionCourseDTOInputFaker } from './faker/create-inscription-course.dto.faker';
-import { CreateUserDtoInputFaker } from './faker/create.dto..input.faker';
+import { CreateUserDtoInputFaker } from './faker/create-user.dto.input.faker';
 import { createNestAppTest } from './utils/createNestAppTest';
 
 // Mock the EmailService globally

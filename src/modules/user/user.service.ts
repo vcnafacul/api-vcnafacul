@@ -45,7 +45,6 @@ export class UserService extends BaseService<User> {
         throw new HttpException('role not found', HttpStatus.BAD_REQUEST);
       }
       const user = await this.userRepository.createWithRole(newUser, role);
-
       await this.emailService.sendCreateUser(user);
     } catch (error) {
       if (error.code === '23505') {
@@ -238,10 +237,6 @@ export class UserService extends BaseService<User> {
   private convertDtoToDomain(userDto: CreateUserDtoInput): User {
     const newUser = new User();
     return Object.assign(newUser, userDto) as User;
-  }
-
-  private MapListUsertoUserDTO(users: User[]): UserDtoOutput[] {
-    return users.map((user) => this.MapUsertoUserDTO(user));
   }
 
   private async getAccessToken(domain: User) {
