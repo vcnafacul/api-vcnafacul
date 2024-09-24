@@ -41,8 +41,6 @@ export class StudentCourseController {
   }
 
   @Post('user/:hashPrepCourse')
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
   async createUser(
     @Body() userDto: CreateUserDtoInput,
     @Param('hashPrepCourse') hashPrepCourse: string,
