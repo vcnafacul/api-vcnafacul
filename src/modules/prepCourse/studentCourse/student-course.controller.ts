@@ -15,6 +15,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
+import { CreateUserDtoInput } from 'src/modules/user/dto/create.dto.input';
 import { UserDtoOutput } from 'src/modules/user/dto/user.dto.output';
 import { User } from 'src/modules/user/user.entity';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
@@ -37,6 +38,16 @@ export class StudentCourseController {
     @Body() dto: CreateStudentCourseInput,
   ): Promise<CreateStudentCourseOutput> {
     return await this.service.create(dto);
+  }
+
+  @Post('user/:hashPrepCourse')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async createUser(
+    @Body() userDto: CreateUserDtoInput,
+    @Param('hashPrepCourse') hashPrepCourse: string,
+  ): Promise<void> {
+    return await this.service.createUser(userDto, hashPrepCourse);
   }
 
   @Get()

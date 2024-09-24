@@ -1,9 +1,13 @@
 import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { CreateUserDtoInput } from 'src/modules/user/dto/create.dto.input';
+import { CreateFlow } from 'src/modules/user/enum/create-flow';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { BlobService } from 'src/shared/services/blob/blob-service';
+import { EmailService } from 'src/shared/services/email/email.service';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
 import { InscriptionCourseService } from '../InscriptionCourse/inscription-course.service';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
@@ -35,6 +39,8 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     private readonly userService: UserService,
     private readonly userRepository: UserRepository,
     private readonly legalGuardianRepository: LegalGuardianRepository,
+    private readonly jwtService: JwtService,
+    private readonly emailService: EmailService,
   ) {
     super(repository);
   }
@@ -91,6 +97,17 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     await this.userRepository.update(user);
 
     return { id: studentCourse.id } as CreateStudentCourseOutput;
+  }
+
+  async createUser(userDto: CreateUserDtoInput, hashPrepCourse: string) {
+    const user = await this.userService.createUser(userDto);
+    const token = await this.jwtService.signAsync(
+      {
+        user: { id: user.id, flow: CreateFlow.CREATE_STUDENT, hashPrepCourse },
+      },
+      { expiresIn: '2h' },
+    );
+    await this.emailService.sendCreateUser(user, token);
   }
 
   async findAllByStudent({
