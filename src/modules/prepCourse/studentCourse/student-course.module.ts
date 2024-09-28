@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { UserModule } from 'src/modules/user/user.module';
 import { BlobModule } from 'src/shared/services/blob/blob.module';
+import { EmailService } from 'src/shared/services/email/email.service';
 import { InscriptionCourseRepository } from '../InscriptionCourse/inscription-course.repository';
 import { InscriptionCourseService } from '../InscriptionCourse/inscription-course.service';
 import { PartnerPrepCourseRepository } from '../partnerPrepCourse/partner-prep-course.repository';
@@ -23,6 +24,7 @@ import { StudentCourseService } from './student-course.service';
     PartnerPrepCourseService,
     PartnerPrepCourseRepository,
     LegalGuardianRepository,
+    EmailService,
   ],
   exports: [StudentCourseService, StudentCourseRepository],
 })
