@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PartnerPrepCourseDtoInput } from './dtos/create-partner-prep-course.input.dto';
+import { HasInscriptionActiveDtoOutput } from './dtos/has-inscription-active.output.dto';
 import { PartnerPrepCourse } from './partner-prep-course.entity';
 import { PartnerPrepCourseService } from './partner-prep-course.service';
 
@@ -30,7 +31,9 @@ export class PartnerPrepCourseController {
     status: 201,
     description: 'verifica se há inscrição ativa para o cursinho parceiro',
   })
-  async hasActiveInscription(@Param('id') id: string): Promise<boolean> {
+  async hasActiveInscription(
+    @Param('id') id: string,
+  ): Promise<HasInscriptionActiveDtoOutput> {
     return await this.service.hasActiveInscription(id);
   }
 }

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { PartnerPrepCourseDtoInput } from './dtos/create-partner-prep-course.input.dto';
+import { HasInscriptionActiveDtoOutput } from './dtos/has-inscription-active.output.dto';
 import { PartnerPrepCourse } from './partner-prep-course.entity';
 import { PartnerPrepCourseRepository } from './partner-prep-course.repository';
 
@@ -21,11 +22,19 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     await this.repository.update(entity);
   }
 
-  async hasActiveInscription(id: string): Promise<boolean> {
+  async hasActiveInscription(
+    id: string,
+  ): Promise<HasInscriptionActiveDtoOutput> {
     const prep = await this.repository.findOneBy({ id });
     if (!prep) {
-      return false;
+      return {
+        prepCourseName: '',
+        hasActiveInscription: false,
+      };
     }
-    return prep.inscriptionCourses.some((i) => i.actived);
+    return {
+      prepCourseName: prep.geo.name,
+      hasActiveInscription: prep.inscriptionCourses.some((i) => i.actived),
+    };
   }
 }
