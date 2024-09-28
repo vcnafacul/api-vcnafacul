@@ -10,7 +10,6 @@ import {
 } from 'class-validator';
 import { UserExist } from 'src/modules/user/validator/user-exist.validator';
 import { CPF } from 'src/shared/validator/cpf.validator';
-import { RG } from 'src/shared/validator/rg.validator';
 import { UF } from 'src/shared/validator/uf.validator';
 import { PartnerPrepCourseExist } from '../../partnerPrepCourse/validator/partner-pret-course-exist.validator';
 import { CreateLegalGuardianInput } from './create-legal-guardian.dto.input';
@@ -47,7 +46,6 @@ export class CreateStudentCourseInput {
 
   @IsString()
   @ApiProperty()
-  @RG({ message: 'Invalid RG' })
   rg: string;
 
   @IsString()
