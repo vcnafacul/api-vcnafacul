@@ -1,6 +1,16 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  SetMetadata,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Permissions } from 'src/modules/role/role.entity';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
+import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { PartnerPrepCourseDtoInput } from './dtos/create-partner-prep-course.input.dto';
 import { HasInscriptionActiveDtoOutput } from './dtos/has-inscription-active.output.dto';
 import { PartnerPrepCourse } from './partner-prep-course.entity';
@@ -13,7 +23,8 @@ export class PartnerPrepCourseController {
 
   @Post()
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
   @ApiResponse({
     status: 201,
     description: 'criar cursinho parceiro',

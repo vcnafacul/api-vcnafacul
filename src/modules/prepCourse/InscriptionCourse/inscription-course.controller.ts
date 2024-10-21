@@ -17,7 +17,6 @@ import { Request } from 'express';
 import { Permissions } from 'src/modules/role/role.entity';
 import { User } from 'src/modules/user/user.entity';
 import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
-import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { StudentCourse } from '../studentCourse/student-course.entity';
@@ -34,8 +33,11 @@ export class InscriptionCourseController {
 
   @Post()
   @ApiBearerAuth()
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(
+    PermissionsGuard.name,
+    Permissions.gerenciarInscricoesCursinhoParceiro,
+  )
   async create(
     @Body() dto: CreateInscriptionCourseInput,
     @Req() req: Request,
@@ -45,7 +47,11 @@ export class InscriptionCourseController {
 
   @Get()
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(
+    PermissionsGuard.name,
+    Permissions.gerenciarInscricoesCursinhoParceiro,
+  )
   async getAll(
     @Query() dto: GetAllDtoInput,
     @Req() req: Request,
@@ -59,14 +65,22 @@ export class InscriptionCourseController {
 
   @Get('subscribers/:id')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(
+    PermissionsGuard.name,
+    Permissions.gerenciarInscricoesCursinhoParceiro,
+  )
   async getSubcribers(@Param('id') id: string): Promise<StudentCourse[]> {
     return await this.service.getSubscribers(id);
   }
 
   @Get(':id')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(
+    PermissionsGuard.name,
+    Permissions.gerenciarInscricoesCursinhoParceiro,
+  )
   async getById(@Param('id') id: string): Promise<InscriptionCourse> {
     return await this.service.getById(id);
   }
@@ -84,15 +98,22 @@ export class InscriptionCourseController {
 
   @Patch()
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(
+    PermissionsGuard.name,
+    Permissions.gerenciarInscricoesCursinhoParceiro,
+  )
   async update(@Body() dto: UpdateInscriptionCourseDTOInput) {
     await this.service.updateFromDTO(dto);
   }
 
   @Delete(':id')
   @ApiBearerAuth()
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(
+    PermissionsGuard.name,
+    Permissions.gerenciarInscricoesCursinhoParceiro,
+  )
   async cancel(@Param('id') id: string): Promise<void> {
     await this.service.cancelInscriptionCourse(id);
   }
