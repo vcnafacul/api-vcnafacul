@@ -68,7 +68,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
       createdAt: result.createdAt,
       updatedAt: result.updatedAt,
       partnerPrepCourseId: parnetPrepCourse.id,
-      partnerPrepCourseName: result.partnerPrepCourse.geo.name,
+      partnerPrepCourseName: parnetPrepCourse.geo.name,
     };
   }
 

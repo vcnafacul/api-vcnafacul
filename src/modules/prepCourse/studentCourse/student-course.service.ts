@@ -87,13 +87,13 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       inscriptionCourse,
     );
 
-    await this.addStudentToInscriptionCourse(inscriptionCourse, studentCourse);
+    // await this.addStudentToInscriptionCourse(inscriptionCourse, studentCourse);
 
     if (this.isMinor(user.birthday)) {
       await this.createLegalGuardian(dto.legalGuardian, studentCourse);
     }
 
-    await this.inscriptionCourseService.update(inscriptionCourse);
+    // await this.inscriptionCourseService.update(inscriptionCourse);
     await this.userRepository.update(user);
 
     return { id: studentCourse.id } as CreateStudentCourseOutput;
