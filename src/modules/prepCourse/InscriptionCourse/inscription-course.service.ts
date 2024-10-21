@@ -1,8 +1,11 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { BaseService } from 'src/shared/modules/base/base.service';
+import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
 import { PartnerPrepCourseService } from '../partnerPrepCourse/partner-prep-course.service';
 import { CreateInscriptionCourseInput } from './dtos/create-inscription-course.dto.input';
+import { InscriptionCourseDtoOutput } from './dtos/get-all-inscription.dto.output';
+import { UpdateInscriptionCourseDTOInput } from './dtos/update-inscription-course.dto.input';
 import { InscriptionCourse } from './inscription-course.entity';
 import { InscriptionCourseRepository } from './inscription-course.repository';
 
@@ -15,9 +18,12 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     super(repository);
   }
 
-  async create(dto: CreateInscriptionCourseInput): Promise<InscriptionCourse> {
+  async create(
+    dto: CreateInscriptionCourseInput,
+    userId: string,
+  ): Promise<InscriptionCourseDtoOutput> {
     const parnetPrepCourse = await this.partnerPrepCourseService.findOneBy({
-      id: dto.partnerPrepCourse,
+      userId,
     });
     const currentInscriptionCourse =
       await this.findOneActived(parnetPrepCourse);
@@ -28,7 +34,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
         await this.repository.update(currentInscriptionCourse);
       } else {
         throw new HttpException(
-          'already exists an active inscription course',
+          'Já existe uma inscrição ativa para este curso',
           HttpStatus.BAD_REQUEST,
         );
       }
@@ -38,6 +44,11 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
       dto,
     );
 
+    const activedInscription = await this.findOneActived(parnetPrepCourse);
+    if (activedInscription) {
+      inscriptionCourse.actived = false;
+    }
+
     const result = await this.repository.create(inscriptionCourse);
     if (parnetPrepCourse.inscriptionCourses) {
       parnetPrepCourse.inscriptionCourses.push(result);
@@ -45,7 +56,53 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
       parnetPrepCourse.inscriptionCourses = [result];
     }
     await this.partnerPrepCourseService.update(parnetPrepCourse);
-    return result;
+    return {
+      id: result.id,
+      name: result.name,
+      description: result.description,
+      startDate: result.startDate,
+      endDate: result.endDate,
+      actived: result.actived,
+      openingsCount: result.expectedOpening,
+      subscribersCount: 0,
+      createdAt: result.createdAt,
+      updatedAt: result.updatedAt,
+      partnerPrepCourseId: parnetPrepCourse.id,
+      partnerPrepCourseName: result.partnerPrepCourse.geo.name,
+    };
+  }
+
+  async getAll(
+    page: number,
+    limit: number,
+    userId: string,
+  ): Promise<GetAllOutput<InscriptionCourseDtoOutput>> {
+    const partner = await this.partnerPrepCourseService.findOneBy({ userId });
+
+    const inscription = await this.repository.findAllBy({
+      page: page,
+      limit: limit,
+      where: { partnerPrepCourse: partner },
+    });
+    return {
+      data: inscription.data.map((i) => ({
+        id: i.id,
+        name: i.name,
+        description: i.description,
+        startDate: i.startDate,
+        endDate: i.endDate,
+        actived: i.actived,
+        openingsCount: i.expectedOpening,
+        subscribersCount: i.students?.length || 0,
+        createdAt: i.createdAt,
+        updatedAt: i.updatedAt,
+        partnerPrepCourseId: i.partnerPrepCourse.id,
+        partnerPrepCourseName: i.partnerPrepCourse.geo.name,
+      })),
+      page: inscription.page,
+      limit: inscription.limit,
+      totalItems: inscription.totalItems,
+    };
   }
 
   async getById(id: string): Promise<InscriptionCourse> {
@@ -65,6 +122,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
       );
     }
     inscriptionCourse.actived = false;
+    inscriptionCourse.deletedAt = new Date();
     await this.repository.update(inscriptionCourse);
   }
 
@@ -84,5 +142,26 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
 
   async update(entity: InscriptionCourse) {
     return this.repository.update(entity);
+  }
+
+  async updateFromDTO(dto: UpdateInscriptionCourseDTOInput) {
+    const inscriptionCourse = await this.repository.findOneBy({ id: dto.id });
+    if (!inscriptionCourse) {
+      throw new HttpException(
+        'Inscrição não encontrada',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    inscriptionCourse.name = dto.name;
+    inscriptionCourse.description = dto.description;
+    inscriptionCourse.startDate = dto.startDate;
+    inscriptionCourse.endDate = dto.endDate;
+    inscriptionCourse.expectedOpening = dto.expectedOpening;
+    await this.repository.update(inscriptionCourse);
+  }
+
+  async getSubscribers(inscriptionId: string) {
+    const inscription = await this.repository.getSubscribers(inscriptionId);
+    return inscription.students;
   }
 }

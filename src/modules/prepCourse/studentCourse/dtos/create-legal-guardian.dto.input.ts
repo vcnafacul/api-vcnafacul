@@ -1,7 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsOptional, IsString } from 'class-validator';
 import { CPF } from 'src/shared/validator/cpf.validator';
-import { RG } from 'src/shared/validator/rg.validator';
 import { UF } from 'src/shared/validator/uf.validator';
 
 export class CreateLegalGuardianInput {
@@ -11,7 +10,6 @@ export class CreateLegalGuardianInput {
 
   @IsString()
   @ApiProperty()
-  @RG({ message: 'Invalid RG' })
   rg: string;
 
   @IsString()

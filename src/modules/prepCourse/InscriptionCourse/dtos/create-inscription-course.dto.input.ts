@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsDateString, IsNumber, IsOptional, IsString } from 'class-validator';
-import { PartnerPrepCourseExist } from '../../partnerPrepCourse/validator/partner-pret-course-exist.validator';
 
 export class CreateInscriptionCourseInput {
   @ApiProperty()
@@ -8,8 +7,8 @@ export class CreateInscriptionCourseInput {
   name: string;
 
   @ApiProperty()
-  @IsString()
-  description: string;
+  @IsOptional()
+  description?: string;
 
   @ApiProperty()
   @IsDateString()
@@ -29,9 +28,4 @@ export class CreateInscriptionCourseInput {
   })
   @IsNumber()
   expectedOpening: number;
-
-  @ApiProperty()
-  @PartnerPrepCourseExist({ message: 'O curso de preparação não existe' })
-  @IsString()
-  partnerPrepCourse: string;
 }
