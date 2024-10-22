@@ -22,6 +22,7 @@ const dataSourceOptions: DataSourceOptions = {
   entities: [__dirname + '/../**/*.entity.{js,ts}'],
   migrations: [__dirname + '/migrations/*.{js,ts}'],
   synchronize: true,
+  timezone: 'Z',
   extra: {
     connectionLimit: 10,
   },
