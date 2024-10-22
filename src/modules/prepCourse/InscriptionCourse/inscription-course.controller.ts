@@ -103,8 +103,11 @@ export class InscriptionCourseController {
     PermissionsGuard.name,
     Permissions.gerenciarInscricoesCursinhoParceiro,
   )
-  async update(@Body() dto: UpdateInscriptionCourseDTOInput) {
-    await this.service.updateFromDTO(dto);
+  async update(
+    @Body() dto: UpdateInscriptionCourseDTOInput,
+    @Req() req: Request,
+  ) {
+    await this.service.updateFromDTO(dto, (req.user as User).id);
   }
 
   @Delete(':id')

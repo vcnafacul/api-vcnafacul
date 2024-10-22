@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { Status } from 'src/modules/simulado/enum/status.enum';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
@@ -22,32 +23,41 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     dto: CreateInscriptionCourseInput,
     userId: string,
   ): Promise<InscriptionCourseDtoOutput> {
+    if (new Date(dto.endDate) < new Date()) {
+      throw new HttpException(
+        'Data de término do curso não pode ser menor que a data atual',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const parnetPrepCourse = await this.partnerPrepCourseService.findOneBy({
       userId,
     });
-    const currentInscriptionCourse =
-      await this.findOneActived(parnetPrepCourse);
+    await this.updateInfosInscription(parnetPrepCourse);
 
-    if (currentInscriptionCourse) {
-      if (currentInscriptionCourse.endDate < new Date()) {
-        currentInscriptionCourse.actived = false;
-        await this.repository.update(currentInscriptionCourse);
-      } else {
-        throw new HttpException(
-          'Já existe uma inscrição ativa para este curso',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
+    const allInscription = await this.findAllBy({
+      page: 1,
+      limit: 9999,
+      where: { partnerPrepCourse: parnetPrepCourse },
+    });
+    const currentInscriptionCourse = allInscription.data.find(
+      (ins) => ins.actived === Status.Approved,
+    );
+
+    this.checkDateConflictWithInscription(
+      allInscription.data,
+      new Date(dto.startDate),
+      new Date(dto.endDate),
+    );
+
+    if (currentInscriptionCourse || new Date(dto.startDate) > new Date()) {
+      dto.actived = Status.Pending;
     }
+
     const inscriptionCourse: InscriptionCourse = Object.assign(
       new InscriptionCourse(),
       dto,
     );
-
-    const activedInscription = await this.findOneActived(parnetPrepCourse);
-    if (activedInscription) {
-      inscriptionCourse.actived = false;
-    }
 
     const result = await this.repository.create(inscriptionCourse);
     if (parnetPrepCourse.inscriptionCourses) {
@@ -78,6 +88,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     userId: string,
   ): Promise<GetAllOutput<InscriptionCourseDtoOutput>> {
     const partner = await this.partnerPrepCourseService.findOneBy({ userId });
+    await this.updateInfosInscription(partner);
 
     const inscription = await this.repository.findAllBy({
       page: page,
@@ -121,7 +132,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
         HttpStatus.BAD_REQUEST,
       );
     }
-    inscriptionCourse.actived = false;
+    inscriptionCourse.actived = Status.Rejected;
     inscriptionCourse.deletedAt = new Date();
     await this.repository.update(inscriptionCourse);
   }
@@ -136,7 +147,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
         HttpStatus.BAD_REQUEST,
       );
     }
-    inscriptionCourse.actived = true;
+    inscriptionCourse.actived = Status.Approved;
     await this.repository.update(inscriptionCourse);
   }
 
@@ -144,7 +155,14 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     return this.repository.update(entity);
   }
 
-  async updateFromDTO(dto: UpdateInscriptionCourseDTOInput) {
+  async updateFromDTO(dto: UpdateInscriptionCourseDTOInput, userId: string) {
+    const parnetPrepCourse = await this.partnerPrepCourseService.findOneBy({
+      userId,
+    });
+    await this.updateInfosInscription(parnetPrepCourse);
+    const activeInscription =
+      await this.repository.findActived(parnetPrepCourse);
+
     const inscriptionCourse = await this.repository.findOneBy({ id: dto.id });
     if (!inscriptionCourse) {
       throw new HttpException(
@@ -152,6 +170,30 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
         HttpStatus.BAD_REQUEST,
       );
     }
+
+    if (activeInscription && activeInscription.id !== dto.id) {
+      throw new HttpException(
+        'Não é permitido alterar uma inscrição enquanto houver um processo seletivo ativo',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    await this.checkDateConflict(
+      parnetPrepCourse,
+      new Date(dto.startDate),
+      new Date(dto.endDate),
+    );
+
+    if (new Date(dto.endDate) < new Date()) {
+      inscriptionCourse.actived = Status.Rejected;
+    } else if (
+      new Date(dto.startDate) < new Date() &&
+      new Date(dto.endDate) > new Date()
+    ) {
+      inscriptionCourse.actived = Status.Approved;
+    } else {
+      inscriptionCourse.actived = Status.Pending;
+    }
+
     inscriptionCourse.name = dto.name;
     inscriptionCourse.description = dto.description;
     inscriptionCourse.startDate = dto.startDate;
@@ -163,5 +205,65 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
   async getSubscribers(inscriptionId: string) {
     const inscription = await this.repository.getSubscribers(inscriptionId);
     return inscription.students;
+  }
+
+  async updateInfosInscription(partner: PartnerPrepCourse) {
+    const inscriptions = await this.repository.findAllBy({
+      page: 1,
+      limit: 9999,
+      where: { partnerPrepCourse: partner },
+    });
+
+    await Promise.all(
+      inscriptions.data.map(async (ins) => {
+        if (ins.endDate < new Date()) {
+          ins.actived = Status.Rejected;
+          await this.repository.update(ins);
+        } else if (ins.startDate < new Date() && ins.endDate > new Date()) {
+          ins.actived = Status.Approved;
+          await this.repository.update(ins);
+        } else {
+          ins.actived = Status.Pending;
+          await this.repository.update(ins);
+        }
+      }),
+    );
+  }
+
+  async checkDateConflict(
+    partner: PartnerPrepCourse,
+    startDate: Date,
+    endDate: Date,
+  ) {
+    const allInscription = await this.findAllBy({
+      page: 1,
+      limit: 9999,
+      where: { partnerPrepCourse: partner },
+    });
+    this.checkDateConflictWithInscription(
+      allInscription.data,
+      startDate,
+      endDate,
+    );
+  }
+
+  checkDateConflictWithInscription(
+    inscription: InscriptionCourse[],
+    startDate: Date,
+    endDate: Date,
+  ) {
+    inscription.forEach((ins) => {
+      if (startDate >= ins.startDate && startDate <= ins.endDate) {
+        throw new HttpException(
+          'Já existe um processo seletivo neste período',
+          HttpStatus.BAD_REQUEST,
+        );
+      } else if (endDate >= ins.startDate && endDate <= ins.endDate) {
+        throw new HttpException(
+          'Já existe um processo seletivo neste período',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    });
   }
 }

@@ -100,9 +100,7 @@ describe('StudentCourse (e2e)', () => {
     const partnerPrepCourse =
       await partnerPrepCourseService.create(partnerPrepCourseDto);
 
-    const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker(
-      partnerPrepCourse.id,
-    );
+    const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker();
 
     await request(app.getHttpServer())
       .post('/inscription-course')
@@ -192,10 +190,11 @@ describe('StudentCourse (e2e)', () => {
     const partnerPrepCourse =
       await partnerPrepCourseService.create(partnerPrepCourseDto);
 
-    const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker(
-      partnerPrepCourse.id,
+    const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker();
+    await inscriptionCourseService.create(
+      inscriptionCourseDto,
+      representative.id,
     );
-    await inscriptionCourseService.create(inscriptionCourseDto);
 
     for (let index = 0; index < 10; index++) {
       const userDto = CreateUserDtoInputFaker();
@@ -260,19 +259,21 @@ describe('StudentCourse (e2e)', () => {
       partnerPrepCourseDto1,
     );
 
-    const inscriptionCourseDto1 = CreateInscriptionCourseDTOInputFaker(
-      partnerPrepCourse1.id,
+    const inscriptionCourseDto1 = CreateInscriptionCourseDTOInputFaker();
+    await inscriptionCourseService.create(
+      inscriptionCourseDto1,
+      representative1.id,
     );
-    await inscriptionCourseService.create(inscriptionCourseDto1);
 
     const partnerPrepCourse2 = await partnerPrepCourseService.create(
       partnerPrepCourseDto2,
     );
 
-    const inscriptionCourseDto2 = CreateInscriptionCourseDTOInputFaker(
-      partnerPrepCourse2.id,
+    const inscriptionCourseDto2 = CreateInscriptionCourseDTOInputFaker();
+    await inscriptionCourseService.create(
+      inscriptionCourseDto2,
+      representative2.id,
     );
-    await inscriptionCourseService.create(inscriptionCourseDto2);
 
     const userDto = CreateUserDtoInputFaker();
     await userService.create(userDto);
@@ -321,10 +322,11 @@ describe('StudentCourse (e2e)', () => {
     const partnerPrepCourse =
       await partnerPrepCourseService.create(partnerPrepCourseDto);
 
-    const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker(
-      partnerPrepCourse.id,
+    const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker();
+    await inscriptionCourseService.create(
+      inscriptionCourseDto,
+      representative.id,
     );
-    await inscriptionCourseService.create(inscriptionCourseDto);
 
     const userDto = CreateUserDtoInputFaker();
     await userService.create(userDto);
@@ -363,10 +365,11 @@ describe('StudentCourse (e2e)', () => {
     const partnerPrepCourse =
       await partnerPrepCourseService.create(partnerPrepCourseDto);
 
-    const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker(
-      partnerPrepCourse.id,
+    const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker();
+    await inscriptionCourseService.create(
+      inscriptionCourseDto,
+      representative.id,
     );
-    await inscriptionCourseService.create(inscriptionCourseDto);
 
     const userDto = CreateUserDtoInputFaker();
     await userService.create(userDto);
