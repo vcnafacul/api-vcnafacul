@@ -1,5 +1,23 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpStatus,
+  Param,
+  Post,
+  Query,
+  Req,
+  Res,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Request, Response } from 'express';
+import { CreateUserDtoInput } from 'src/modules/user/dto/create.dto.input';
+import { UserDtoOutput } from 'src/modules/user/dto/user.dto.output';
+import { User } from 'src/modules/user/user.entity';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { CreateStudentCourseInput } from './dtos/create-student-course.dto.input';
@@ -16,11 +34,18 @@ export class StudentCourseController {
   @Post()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async create(
     @Body() dto: CreateStudentCourseInput,
   ): Promise<CreateStudentCourseOutput> {
     return await this.service.create(dto);
+  }
+
+  @Post('user/:hashPrepCourse')
+  async createUser(
+    @Body() userDto: CreateUserDtoInput,
+    @Param('hashPrepCourse') hashPrepCourse: string,
+  ): Promise<void> {
+    return await this.service.createUser(userDto, hashPrepCourse);
   }
 
   @Get()
@@ -30,5 +55,50 @@ export class StudentCourseController {
     @Query() query: GetAllStudentDtoInput,
   ): Promise<GetAllOutput<GetAllStudentDtoOutput>> {
     return await this.service.findAllByStudent(query);
+  }
+
+  @Post('upload')
+  @ApiResponse({
+    status: 200,
+    description: 'upload de documento de estudante',
+  })
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  public async uploadImage(@UploadedFile() file, @Req() req: Request) {
+    await this.service.uploadDocument(file, (req.user as User).id);
+  }
+
+  @Get('document/:fileKey')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: 'upload de documento de estudante',
+  })
+  public async getDocument(
+    @Param('fileKey') fileKey: string,
+    @Res() res: Response,
+  ) {
+    const file = await this.service.getDocument(fileKey);
+
+    res.set({
+      'Content-Type': 'application/octet-stream',
+      'Content-Disposition': `attachment; filename="${fileKey}"`,
+    });
+    return res.status(HttpStatus.OK).send(file);
+  }
+
+  @Get('get-user-info/:idPrepPartner')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async getUserInfo(
+    @Param('idPrepPartner') idPrepPartner: string,
+    @Req() req: Request,
+  ): Promise<UserDtoOutput> {
+    return await this.service.getUserInfoToInscription(
+      idPrepPartner,
+      (req.user as User).id,
+    );
   }
 }

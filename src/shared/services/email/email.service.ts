@@ -67,11 +67,7 @@ export class EmailService {
     console.log('E-mail enviado: %s', info.messageId);
   }
 
-  async sendCreateUser(user: User) {
-    const token = await this.jwtService.signAsync(
-      { user: { id: user.id } },
-      { expiresIn: '2h' },
-    );
+  async sendCreateUser(user: User, token: string) {
     const confirmeEmailUrl = `${this.configService.get<string>(
       'FRONT_URL',
     )}/confirmEmail?token=${token}`;

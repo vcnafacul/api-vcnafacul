@@ -50,7 +50,7 @@ export class NewsController {
     return await this.newService.create(body, file, (req.user as User).id);
   }
 
-  @Get()
+  @Get('all')
   @ApiBearerAuth()
   @ApiResponse({
     status: 200,

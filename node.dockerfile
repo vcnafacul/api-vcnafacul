@@ -15,6 +15,6 @@ ENV NODE_ENV=$NODE_ENV
 
 RUN yarn add sharp --ignore-engines
 
-RUN yarn
+RUN yarn install --production
 
 CMD ./node_modules/pm2/bin/pm2-runtime main.js --name vcnafacul

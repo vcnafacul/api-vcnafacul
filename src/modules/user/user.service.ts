@@ -15,6 +15,7 @@ import { LoginDtoInput } from './dto/login.dto.input';
 import { ResetPasswordDtoInput } from './dto/reset-password.dto.input';
 import { UpdateUserDTOInput } from './dto/update.dto.input';
 import { UserDtoOutput } from './dto/user.dto.output';
+import { CreateFlow } from './enum/create-flow';
 import { User } from './user.entity';
 import { UserRepository } from './user.repository';
 
@@ -32,6 +33,15 @@ export class UserService extends BaseService<User> {
   }
 
   async create(userDto: CreateUserDtoInput): Promise<void> {
+    const user = await this.createUser(userDto);
+    const token = await this.jwtService.signAsync(
+      { user: { id: user.id, flow: CreateFlow.DEFAULT } },
+      { expiresIn: '2h' },
+    );
+    await this.emailService.sendCreateUser(user, token);
+  }
+
+  async createUser(userDto: CreateUserDtoInput) {
     try {
       if (userDto.password !== userDto.password_confirmation) {
         throw new HttpException(
@@ -44,9 +54,7 @@ export class UserService extends BaseService<User> {
       if (!role) {
         throw new HttpException('role not found', HttpStatus.BAD_REQUEST);
       }
-      const user = await this.userRepository.createWithRole(newUser, role);
-
-      await this.emailService.sendCreateUser(user);
+      return await this.userRepository.createWithRole(newUser, role);
     } catch (error) {
       if (error.code === '23505') {
         // código de erro para violação de restrição única no PostgreSQL
@@ -91,7 +99,11 @@ export class UserService extends BaseService<User> {
         HttpStatus.UNAUTHORIZED,
       );
     else {
-      await this.emailService.sendCreateUser(userFullInfo);
+      const token = await this.jwtService.signAsync(
+        { user: { id: userFullInfo.id, flow: CreateFlow.DEFAULT } },
+        { expiresIn: '2h' },
+      );
+      await this.emailService.sendCreateUser(userFullInfo, token);
       userFullInfo.password = undefined;
       userFullInfo.emailConfirmSended = new Date();
       await this._repository.update(userFullInfo);
@@ -238,10 +250,6 @@ export class UserService extends BaseService<User> {
   private convertDtoToDomain(userDto: CreateUserDtoInput): User {
     const newUser = new User();
     return Object.assign(newUser, userDto) as User;
-  }
-
-  private MapListUsertoUserDTO(users: User[]): UserDtoOutput[] {
-    return users.map((user) => this.MapUsertoUserDTO(user));
   }
 
   private async getAccessToken(domain: User) {
