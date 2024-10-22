@@ -18,10 +18,12 @@ export class BaseRepository<T> implements IBaseRepository<T> {
         .skip((page - 1) * limit)
         .take(limit)
         .where({ ...where })
+        .andWhere('entity.deletedAt IS NULL')
         .getMany(),
       this.repository
         .createQueryBuilder('entity')
         .where({ ...where })
+        .andWhere('entity.deletedAt IS NULL')
         .getCount(),
     ]);
     return {

@@ -27,6 +27,7 @@ import { LegalGuardian } from './legal-guardian/legal-guardian.entity';
 import { LegalGuardianRepository } from './legal-guardian/legal-guardian.repository';
 import { StudentCourse } from './student-course.entity';
 import { StudentCourseRepository } from './student-course.repository';
+import { Status } from 'src/modules/simulado/enum/status.enum';
 
 @Injectable()
 export class StudentCourseService extends BaseService<StudentCourse> {
@@ -87,13 +88,13 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       inscriptionCourse,
     );
 
-    await this.addStudentToInscriptionCourse(inscriptionCourse, studentCourse);
+    // await this.addStudentToInscriptionCourse(inscriptionCourse, studentCourse);
 
     if (this.isMinor(user.birthday)) {
       await this.createLegalGuardian(dto.legalGuardian, studentCourse);
     }
 
-    await this.inscriptionCourseService.update(inscriptionCourse);
+    // await this.inscriptionCourseService.update(inscriptionCourse);
     await this.userRepository.update(user);
 
     return { id: studentCourse.id } as CreateStudentCourseOutput;
@@ -169,7 +170,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       id: idPrepCourse,
     });
     const activedInscription = prepCourse.inscriptionCourses.find(
-      (i) => i.actived === true,
+      (i) => i.actived === Status.Approved,
     );
 
     if (!activedInscription) {

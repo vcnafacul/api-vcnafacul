@@ -21,6 +21,10 @@ const dataSourceOptions: DataSourceOptions = {
   database: process.env.MY_DB_NAME,
   entities: [__dirname + '/../**/*.entity.{js,ts}'],
   migrations: [__dirname + '/migrations/*.{js,ts}'],
+  synchronize: true,
+  extra: {
+    connectionLimit: 10,
+  },
 };
 
 const dataSource = new DataSource(dataSourceOptions);

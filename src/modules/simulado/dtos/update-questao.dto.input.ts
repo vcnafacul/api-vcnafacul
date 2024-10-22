@@ -5,7 +5,7 @@ import { CreateQuestaoDTOInput } from './create-questao.dto.input';
 export class UpdateDTOInput extends PartialType(CreateQuestaoDTOInput) {
   @IsString()
   @ApiProperty()
-  _id: number;
+  _id: string;
 
   @IsBoolean()
   @ApiProperty({ required: false })
