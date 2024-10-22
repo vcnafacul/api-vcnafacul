@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsNumber, IsOptional, IsString } from 'class-validator';
+import {
+  IsDateString,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 import { Status } from 'src/modules/simulado/enum/status.enum';
 
 export class CreateInscriptionCourseInput {
@@ -28,5 +34,6 @@ export class CreateInscriptionCourseInput {
       'Representa o numero de vagas esperada para o periodo de inscrição',
   })
   @IsNumber()
+  @Min(1)
   expectedOpening: number;
 }
