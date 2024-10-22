@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Status } from 'src/modules/simulado/enum/status.enum';
 
 export class InscriptionCourseDtoOutput {
   @ApiProperty()
@@ -17,7 +18,7 @@ export class InscriptionCourseDtoOutput {
   endDate: Date;
 
   @ApiProperty()
-  actived: boolean;
+  actived: Status;
 
   @ApiProperty()
   openingsCount: number;
