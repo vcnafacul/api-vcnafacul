@@ -119,10 +119,11 @@ describe('StudentCourse-JWT (e2e)', () => {
       userId: representative.id,
     });
 
-    const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker(
-      partnerPrepCourse.id,
+    const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker();
+    await inscriptionCourseService.create(
+      inscriptionCourseDto,
+      representative.id,
     );
-    await inscriptionCourseService.create(inscriptionCourseDto);
 
     const userDto = CreateUserDtoInputFaker();
     await userService.create(userDto);
@@ -157,10 +158,11 @@ describe('StudentCourse-JWT (e2e)', () => {
       userId: representative.id,
     });
 
-    const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker(
-      partnerPrepCourse.id,
+    const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker();
+    await inscriptionCourseService.create(
+      inscriptionCourseDto,
+      representative.id,
     );
-    await inscriptionCourseService.create(inscriptionCourseDto);
 
     const userDto = CreateUserDtoInputFaker();
     await userService.create(userDto);
