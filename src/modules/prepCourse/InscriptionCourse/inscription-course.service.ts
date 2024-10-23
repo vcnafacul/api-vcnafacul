@@ -43,11 +43,14 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     const currentInscriptionCourse = allInscription.data.find(
       (ins) => ins.actived === Status.Approved,
     );
+    dto.endDate = new Date(dto.endDate);
+    dto.startDate = new Date(dto.startDate);
+    dto.endDate.setHours(23, 59, 59, 999);
 
     this.checkDateConflictWithInscription(
       allInscription.data,
-      new Date(dto.startDate),
-      new Date(dto.endDate),
+      dto.startDate,
+      dto.endDate,
     );
 
     if (currentInscriptionCourse || new Date(dto.startDate) > new Date()) {
@@ -235,7 +238,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     startDate: Date,
     endDate: Date,
   ) {
-    const allInscription = await this.findAllBy({
+    const allInscription = await this.repository.findAllBy({
       page: 1,
       limit: 9999,
       where: { partnerPrepCourse: partner },
