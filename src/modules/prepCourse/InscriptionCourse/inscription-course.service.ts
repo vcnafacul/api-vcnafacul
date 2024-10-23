@@ -53,7 +53,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
       dto.endDate,
     );
 
-    if (currentInscriptionCourse || new Date(dto.startDate) > new Date()) {
+    if (currentInscriptionCourse || dto.startDate > new Date()) {
       dto.actived = Status.Pending;
     }
 
@@ -187,12 +187,9 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
 
     await this.checkDateConflict(parnetPrepCourse, dto.startDate, dto.endDate);
 
-    if (new Date(dto.endDate) < new Date()) {
+    if (dto.endDate < new Date()) {
       inscriptionCourse.actived = Status.Rejected;
-    } else if (
-      new Date(dto.startDate) < new Date() &&
-      new Date(dto.endDate) > new Date()
-    ) {
+    } else if (dto.startDate < new Date() && dto.endDate > new Date()) {
       inscriptionCourse.actived = Status.Approved;
     } else {
       inscriptionCourse.actived = Status.Pending;
