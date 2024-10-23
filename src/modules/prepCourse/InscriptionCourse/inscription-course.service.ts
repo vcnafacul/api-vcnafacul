@@ -43,14 +43,17 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     const currentInscriptionCourse = allInscription.data.find(
       (ins) => ins.actived === Status.Approved,
     );
+    dto.endDate = new Date(dto.endDate);
+    dto.startDate = new Date(dto.startDate);
+    dto.endDate.setHours(23, 59, 59, 999);
 
     this.checkDateConflictWithInscription(
       allInscription.data,
-      new Date(dto.startDate),
-      new Date(dto.endDate),
+      dto.startDate,
+      dto.endDate,
     );
 
-    if (currentInscriptionCourse || new Date(dto.startDate) > new Date()) {
+    if (currentInscriptionCourse || dto.startDate > new Date()) {
       dto.actived = Status.Pending;
     }
 
@@ -177,18 +180,16 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
         HttpStatus.BAD_REQUEST,
       );
     }
-    await this.checkDateConflict(
-      parnetPrepCourse,
-      new Date(dto.startDate),
-      new Date(dto.endDate),
-    );
 
-    if (new Date(dto.endDate) < new Date()) {
+    dto.endDate = new Date(dto.endDate);
+    dto.startDate = new Date(dto.startDate);
+    dto.endDate.setHours(23, 59, 59, 999);
+
+    await this.checkDateConflict(parnetPrepCourse, dto.startDate, dto.endDate);
+
+    if (dto.endDate < new Date()) {
       inscriptionCourse.actived = Status.Rejected;
-    } else if (
-      new Date(dto.startDate) < new Date() &&
-      new Date(dto.endDate) > new Date()
-    ) {
+    } else if (dto.startDate < new Date() && dto.endDate > new Date()) {
       inscriptionCourse.actived = Status.Approved;
     } else {
       inscriptionCourse.actived = Status.Pending;
@@ -235,7 +236,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     startDate: Date,
     endDate: Date,
   ) {
-    const allInscription = await this.findAllBy({
+    const allInscription = await this.repository.findAllBy({
       page: 1,
       limit: 9999,
       where: { partnerPrepCourse: partner },
@@ -259,6 +260,11 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
           HttpStatus.BAD_REQUEST,
         );
       } else if (endDate >= ins.startDate && endDate <= ins.endDate) {
+        throw new HttpException(
+          'Já existe um processo seletivo neste período',
+          HttpStatus.BAD_REQUEST,
+        );
+      } else if (startDate <= ins.startDate && endDate >= ins.endDate) {
         throw new HttpException(
           'Já existe um processo seletivo neste período',
           HttpStatus.BAD_REQUEST,
