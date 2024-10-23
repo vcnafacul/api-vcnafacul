@@ -180,11 +180,12 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
         HttpStatus.BAD_REQUEST,
       );
     }
-    await this.checkDateConflict(
-      parnetPrepCourse,
-      new Date(dto.startDate),
-      new Date(dto.endDate),
-    );
+
+    dto.endDate = new Date(dto.endDate);
+    dto.startDate = new Date(dto.startDate);
+    dto.endDate.setHours(23, 59, 59, 999);
+
+    await this.checkDateConflict(parnetPrepCourse, dto.startDate, dto.endDate);
 
     if (new Date(dto.endDate) < new Date()) {
       inscriptionCourse.actived = Status.Rejected;
