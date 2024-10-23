@@ -264,6 +264,11 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
           'Já existe um processo seletivo neste período',
           HttpStatus.BAD_REQUEST,
         );
+      } else if (startDate <= ins.startDate && endDate >= ins.endDate) {
+        throw new HttpException(
+          'Já existe um processo seletivo neste período',
+          HttpStatus.BAD_REQUEST,
+        );
       }
     });
   }
