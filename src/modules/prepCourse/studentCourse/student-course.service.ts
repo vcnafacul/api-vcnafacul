@@ -1,5 +1,6 @@
 import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Status } from 'src/modules/simulado/enum/status.enum';
 import { CreateUserDtoInput } from 'src/modules/user/dto/create.dto.input';
 import { CreateFlow } from 'src/modules/user/enum/create-flow';
 import { UserRepository } from 'src/modules/user/user.repository';
@@ -27,7 +28,6 @@ import { LegalGuardian } from './legal-guardian/legal-guardian.entity';
 import { LegalGuardianRepository } from './legal-guardian/legal-guardian.repository';
 import { StudentCourse } from './student-course.entity';
 import { StudentCourseRepository } from './student-course.repository';
-import { Status } from 'src/modules/simulado/enum/status.enum';
 
 @Injectable()
 export class StudentCourseService extends BaseService<StudentCourse> {
@@ -175,7 +175,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
     if (!activedInscription) {
       throw new HttpException(
-        'No active inscription course',
+        'Não existe inscrição ativa para este curso',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -188,7 +188,10 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       (student) => student.userId === userId,
     );
     if (hasUser) {
-      throw new HttpException('User already inscribed', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'Você já realizou a inscrição neste Processo Seletivo.',
+        HttpStatus.BAD_REQUEST,
+      );
     }
     return this.userService.me(userId);
   }
