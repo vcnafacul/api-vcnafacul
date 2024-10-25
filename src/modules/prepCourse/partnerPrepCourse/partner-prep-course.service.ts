@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { Permissions } from 'src/modules/role/role.entity';
 import { RoleService } from 'src/modules/role/role.service';
 import { UserRoleRepository } from 'src/modules/user-role/user-role.repository';
@@ -45,14 +45,18 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
   ): Promise<HasInscriptionActiveDtoOutput> {
     const prep = await this.repository.findOneBy({ id });
     if (!prep) {
-      return {
-        prepCourseName: '',
-        hasActiveInscription: false,
-      };
+      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
+    }
+    const activedInscription = prep.inscriptionCourses.find((i) => i.actived);
+    if (!activedInscription) {
+      throw new HttpException(
+        'Não há inscrições ativas para esse cursinho no momento',
+        HttpStatus.NOT_FOUND,
+      );
     }
     return {
       prepCourseName: prep.geo.name,
-      hasActiveInscription: prep.inscriptionCourses.some((i) => i.actived),
+      hasActiveInscription: true,
     };
   }
 }
