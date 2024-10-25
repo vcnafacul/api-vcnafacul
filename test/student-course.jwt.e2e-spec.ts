@@ -102,7 +102,9 @@ describe('StudentCourse-JWT (e2e)', () => {
       })
       .expect(400)
       .expect((res) => {
-        expect(res.body.message).toContain('No active inscription course');
+        expect(res.body.message).toContain(
+          'Não existe inscrição ativa para este curso',
+        );
       });
   }, 30000);
 
@@ -184,7 +186,9 @@ describe('StudentCourse-JWT (e2e)', () => {
       })
       .expect(400)
       .expect((res) => {
-        expect(res.body.message).toContain('User already inscribed');
+        expect(res.body.message).toContain(
+          'Você já realizou a inscrição neste Processo Seletivo.',
+        );
       });
   }, 30000);
 });
