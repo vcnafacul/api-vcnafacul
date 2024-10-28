@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <h1>Projeto Você na facul & {{nome_cursinho}}</h1>
+  <h2>Confirmamos o recebimento de sua inscrição</h2>
+  <p>Verifique as informações abaixo:</p>
+  <ul>
+    {{#each student}}
+      <li><strong>{{@key}}:</strong> {{this}}</li>
+    {{/each}}
+  </ul>
+</body>
+</html>
