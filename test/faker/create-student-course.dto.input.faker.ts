@@ -34,6 +34,7 @@ export function createStudentCourseDTOInputFaker(
       uf: generateRandomUF(),
     },
     partnerPrepCourse: partnerPrepCourseId ?? uuidv4(),
+    socioeconomic: '[]',
   };
 }
 
