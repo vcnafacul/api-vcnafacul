@@ -54,46 +54,46 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       id: dto.partnerPrepCourse,
     });
 
-    // const inscriptionCourse =
-    //   await this.inscriptionCourseService.findOneActived(partnerPrepCourse);
+    const inscriptionCourse =
+      await this.inscriptionCourseService.findOneActived(partnerPrepCourse);
 
-    // if (!inscriptionCourse) {
-    //   throw new HttpException(
-    //     'No active inscription course for this partner prep course',
-    //     HttpStatus.BAD_REQUEST,
-    //   );
-    // }
+    if (!inscriptionCourse) {
+      throw new HttpException(
+        'No active inscription course for this partner prep course',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
 
-    // this.ensureStudentNotAlreadyEnrolled(inscriptionCourse, dto.userId);
+    this.ensureStudentNotAlreadyEnrolled(inscriptionCourse, dto.userId);
 
-    // if (
-    //   this.isMinor(dto.birthday) &&
-    //   (!dto.legalGuardian ||
-    //     !dto.legalGuardian.fullName ||
-    //     !dto.legalGuardian.rg ||
-    //     !dto.legalGuardian.uf ||
-    //     !dto.legalGuardian.cpf ||
-    //     !dto.legalGuardian.phone)
-    // ) {
-    //   throw new HttpException(
-    //     'The full Legal guardian information is required for minors',
-    //     HttpStatus.BAD_REQUEST,
-    //   );
-    // }
+    if (
+      this.isMinor(dto.birthday) &&
+      (!dto.legalGuardian ||
+        !dto.legalGuardian.fullName ||
+        !dto.legalGuardian.rg ||
+        !dto.legalGuardian.uf ||
+        !dto.legalGuardian.cpf ||
+        !dto.legalGuardian.phone)
+    ) {
+      throw new HttpException(
+        'The full Legal guardian information is required for minors',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
 
-    // const user = await this.updateUserInformation(dto);
+    const user = await this.updateUserInformation(dto);
 
-    // const studentCourse = await this.createStudentCourse(
-    //   dto,
-    //   partnerPrepCourse,
-    //   inscriptionCourse,
-    // );
+    const studentCourse = await this.createStudentCourse(
+      dto,
+      partnerPrepCourse,
+      inscriptionCourse,
+    );
 
-    // if (this.isMinor(user.birthday)) {
-    //   await this.createLegalGuardian(dto.legalGuardian, studentCourse);
-    // }
+    if (this.isMinor(user.birthday)) {
+      await this.createLegalGuardian(dto.legalGuardian, studentCourse);
+    }
 
-    // await this.userRepository.update(user);
+    await this.userRepository.update(user);
     const represent = await this.userService.findOneBy({ id: dto.userId });
     await this.sendEmailConfirmation(
       dto,
