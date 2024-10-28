@@ -100,7 +100,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       represent.email,
       partnerPrepCourse.geo.name,
     );
-    return { id: 'studentCourse.id' } as CreateStudentCourseOutput;
+    return { id: studentCourse.id } as CreateStudentCourseOutput;
   }
 
   async createUser(userDto: CreateUserDtoInput, hashPrepCourse: string) {
