@@ -185,7 +185,12 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     dto.startDate = new Date(dto.startDate);
     dto.endDate.setHours(23, 59, 59, 999);
 
-    await this.checkDateConflict(parnetPrepCourse, dto.startDate, dto.endDate);
+    await this.checkDateConflict(
+      parnetPrepCourse,
+      dto.startDate,
+      dto.endDate,
+      dto.id,
+    );
 
     if (dto.endDate < new Date()) {
       inscriptionCourse.actived = Status.Rejected;
@@ -235,6 +240,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     partner: PartnerPrepCourse,
     startDate: Date,
     endDate: Date,
+    inscriptionId?: string,
   ) {
     const allInscription = await this.repository.findAllBy({
       page: 1,
@@ -245,6 +251,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
       allInscription.data,
       startDate,
       endDate,
+      inscriptionId,
     );
   }
 
@@ -252,23 +259,26 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     inscription: InscriptionCourse[],
     startDate: Date,
     endDate: Date,
+    inscriptionId?: string,
   ) {
     inscription.forEach((ins) => {
-      if (startDate >= ins.startDate && startDate <= ins.endDate) {
-        throw new HttpException(
-          'Já existe um processo seletivo neste período',
-          HttpStatus.BAD_REQUEST,
-        );
-      } else if (endDate >= ins.startDate && endDate <= ins.endDate) {
-        throw new HttpException(
-          'Já existe um processo seletivo neste período',
-          HttpStatus.BAD_REQUEST,
-        );
-      } else if (startDate <= ins.startDate && endDate >= ins.endDate) {
-        throw new HttpException(
-          'Já existe um processo seletivo neste período',
-          HttpStatus.BAD_REQUEST,
-        );
+      if (ins.id !== inscriptionId) {
+        if (startDate >= ins.startDate && startDate <= ins.endDate) {
+          throw new HttpException(
+            'Já existe um processo seletivo neste período',
+            HttpStatus.BAD_REQUEST,
+          );
+        } else if (endDate >= ins.startDate && endDate <= ins.endDate) {
+          throw new HttpException(
+            'Já existe um processo seletivo neste período',
+            HttpStatus.BAD_REQUEST,
+          );
+        } else if (startDate <= ins.startDate && endDate >= ins.endDate) {
+          throw new HttpException(
+            'Já existe um processo seletivo neste período',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
       }
     });
   }
