@@ -1,5 +1,6 @@
 import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Status } from 'src/modules/simulado/enum/status.enum';
 import { CreateUserDtoInput } from 'src/modules/user/dto/create.dto.input';
 import { CreateFlow } from 'src/modules/user/enum/create-flow';
 import { UserRepository } from 'src/modules/user/user.repository';
@@ -27,7 +28,7 @@ import { LegalGuardian } from './legal-guardian/legal-guardian.entity';
 import { LegalGuardianRepository } from './legal-guardian/legal-guardian.repository';
 import { StudentCourse } from './student-course.entity';
 import { StudentCourseRepository } from './student-course.repository';
-import { Status } from 'src/modules/simulado/enum/status.enum';
+import { SocioeconomicAnswer } from './types/student-course-full';
 
 @Injectable()
 export class StudentCourseService extends BaseService<StudentCourse> {
@@ -53,51 +54,53 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       id: dto.partnerPrepCourse,
     });
 
-    const inscriptionCourse =
-      await this.inscriptionCourseService.findOneActived(partnerPrepCourse);
+    // const inscriptionCourse =
+    //   await this.inscriptionCourseService.findOneActived(partnerPrepCourse);
 
-    if (!inscriptionCourse) {
-      throw new HttpException(
-        'No active inscription course for this partner prep course',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    // if (!inscriptionCourse) {
+    //   throw new HttpException(
+    //     'No active inscription course for this partner prep course',
+    //     HttpStatus.BAD_REQUEST,
+    //   );
+    // }
 
-    this.ensureStudentNotAlreadyEnrolled(inscriptionCourse, dto.userId);
+    // this.ensureStudentNotAlreadyEnrolled(inscriptionCourse, dto.userId);
 
-    if (
-      this.isMinor(dto.birthday) &&
-      (!dto.legalGuardian ||
-        !dto.legalGuardian.fullName ||
-        !dto.legalGuardian.rg ||
-        !dto.legalGuardian.uf ||
-        !dto.legalGuardian.cpf ||
-        !dto.legalGuardian.phone)
-    ) {
-      throw new HttpException(
-        'The full Legal guardian information is required for minors',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    // if (
+    //   this.isMinor(dto.birthday) &&
+    //   (!dto.legalGuardian ||
+    //     !dto.legalGuardian.fullName ||
+    //     !dto.legalGuardian.rg ||
+    //     !dto.legalGuardian.uf ||
+    //     !dto.legalGuardian.cpf ||
+    //     !dto.legalGuardian.phone)
+    // ) {
+    //   throw new HttpException(
+    //     'The full Legal guardian information is required for minors',
+    //     HttpStatus.BAD_REQUEST,
+    //   );
+    // }
 
-    const user = await this.updateUserInformation(dto);
+    // const user = await this.updateUserInformation(dto);
 
-    const studentCourse = await this.createStudentCourse(
+    // const studentCourse = await this.createStudentCourse(
+    //   dto,
+    //   partnerPrepCourse,
+    //   inscriptionCourse,
+    // );
+
+    // if (this.isMinor(user.birthday)) {
+    //   await this.createLegalGuardian(dto.legalGuardian, studentCourse);
+    // }
+
+    // await this.userRepository.update(user);
+    const represent = await this.userService.findOneBy({ id: dto.userId });
+    await this.sendEmailConfirmation(
       dto,
-      partnerPrepCourse,
-      inscriptionCourse,
+      represent.email,
+      partnerPrepCourse.geo.name,
     );
-
-    // await this.addStudentToInscriptionCourse(inscriptionCourse, studentCourse);
-
-    if (this.isMinor(user.birthday)) {
-      await this.createLegalGuardian(dto.legalGuardian, studentCourse);
-    }
-
-    // await this.inscriptionCourseService.update(inscriptionCourse);
-    await this.userRepository.update(user);
-
-    return { id: studentCourse.id } as CreateStudentCourseOutput;
+    return { id: 'studentCourse.id' } as CreateStudentCourseOutput;
   }
 
   async createUser(userDto: CreateUserDtoInput, hashPrepCourse: string) {
@@ -296,5 +299,103 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     }
 
     return age;
+  }
+
+  private getUniqueQuestions = (socioeconomic: SocioeconomicAnswer[]) => {
+    const questions = new Set();
+
+    socioeconomic.forEach((socioItem) => {
+      questions.add(socioItem.question);
+    });
+
+    return Array.from(questions) as string[]; // Converte o Set para array
+  };
+
+  private flattenData = (student: CreateStudentCourseInput) => {
+    const flattenedItem: any = { ...student };
+
+    // Remover o campo "socioeconomic" original se não quiser mantê-lo
+    delete flattenedItem.socioeconomic;
+    delete flattenedItem.partnerPrepCourse;
+    delete flattenedItem.userId;
+    flattenedItem['Nome'] = flattenedItem.firstName;
+    delete flattenedItem.firstName;
+    flattenedItem['Sobrenome'] = flattenedItem.lastName;
+    delete flattenedItem.lastName;
+    flattenedItem['Nome Social'] = flattenedItem.socialName;
+    delete flattenedItem.socialName;
+    flattenedItem['Data de Nascimento'] = flattenedItem.birthday;
+    delete flattenedItem.birthday;
+    flattenedItem['RG'] = flattenedItem.rg;
+    delete flattenedItem.rg;
+    flattenedItem['UF'] = flattenedItem.uf;
+    delete flattenedItem.uf;
+    flattenedItem['CPF'] = flattenedItem.cpf;
+    delete flattenedItem.cpf;
+    flattenedItem['E-mail'] = flattenedItem.email;
+    delete flattenedItem.email;
+    flattenedItem['WhatsApp'] = flattenedItem.whatsapp;
+    delete flattenedItem.whatsapp;
+    flattenedItem['Telefone de Emergência'] = flattenedItem.urgencyPhone;
+    delete flattenedItem.urgencyPhone;
+    flattenedItem['Rua'] = flattenedItem.street;
+    delete flattenedItem.street;
+    flattenedItem['Número'] = flattenedItem.number;
+    delete flattenedItem.number;
+    flattenedItem['Complemento'] = flattenedItem.complement;
+    delete flattenedItem.complement;
+    flattenedItem['CEP'] = flattenedItem.postalCode;
+    delete flattenedItem.postalCode;
+    flattenedItem['Cidade'] = flattenedItem.city;
+    delete flattenedItem.city;
+    flattenedItem['Estado'] = flattenedItem.state;
+    delete flattenedItem.state;
+    flattenedItem['Bairro'] = flattenedItem.neighborhood;
+    delete flattenedItem.neighborhood;
+
+    const socioeconomic: SocioeconomicAnswer[] = JSON.parse(
+      student.socioeconomic,
+    );
+    const questions = this.getUniqueQuestions(socioeconomic);
+
+    // Preenche as respostas socioeconômicas
+    questions.forEach((question) => {
+      // Encontra a resposta para a pergunta atual
+      const socioItem = socioeconomic.find(
+        (item) => item.question === question,
+      );
+
+      // Se a pergunta tiver uma resposta, coloca-a na coluna, senão deixa vazio
+      if (!socioItem) flattenedItem[question] = '';
+      else {
+        const answer =
+          typeof socioItem.answer === 'object'
+            ? socioItem.answer.join(', ')
+            : socioItem.answer;
+        flattenedItem[question] = flattenedItem[question]
+          ? `${flattenedItem[question]}, ${answer}`
+          : answer;
+      }
+    });
+
+    return flattenedItem as object;
+  };
+
+  private async sendEmailConfirmation(
+    student: CreateStudentCourseInput,
+    emailRepresentant: string,
+    nome_cursinho: string,
+  ) {
+    const emailList = [
+      student.email,
+      emailRepresentant,
+      'cleyton.biffe@vcnafacul.com.br',
+    ];
+    const studentFull = this.flattenData(student);
+    await this.emailService.sendConfirmationStudentRegister(
+      emailList,
+      studentFull,
+      nome_cursinho,
+    );
   }
 }

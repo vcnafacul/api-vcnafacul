@@ -96,4 +96,25 @@ export class EmailService {
 
     await this.transporter.sendMail(mailOptions);
   }
+
+  async sendConfirmationStudentRegister(
+    listEmail: string[],
+    student: object,
+    nomeCursinho: string,
+  ) {
+    const nome_cursinho = nomeCursinho.includes('Cursinho')
+      ? nomeCursinho
+      : `Cursinho ${nomeCursinho}`;
+    const mailOptions = {
+      from: this.configService.get<string>('SMTP_USERNAME'),
+      to: listEmail,
+      subject: 'Confirmação de Email - Você na Facul',
+      template: 'confirmation-student-register',
+      context: {
+        student,
+        nome_cursinho,
+      },
+    };
+    await this.transporter.sendMail(mailOptions);
+  }
 }
