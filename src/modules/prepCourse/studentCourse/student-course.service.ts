@@ -178,7 +178,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
     if (!activedInscription) {
       throw new HttpException(
-        'No active inscription course',
+        'Não existe inscrição ativa para este curso',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -191,7 +191,10 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       (student) => student.userId === userId,
     );
     if (hasUser) {
-      throw new HttpException('User already inscribed', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'Você já realizou a inscrição neste Processo Seletivo.',
+        HttpStatus.BAD_REQUEST,
+      );
     }
     return this.userService.me(userId);
   }
