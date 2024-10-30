@@ -46,12 +46,14 @@ export class CreateStudentCourseInput {
 
   @IsString()
   @ApiProperty()
-  rg: string;
+  @IsOptional()
+  rg?: string;
 
   @IsString()
   @ApiProperty()
   @UF({ message: 'Invalid UF' })
-  uf: string;
+  @IsOptional()
+  uf?: string;
 
   @IsString()
   @ApiProperty()

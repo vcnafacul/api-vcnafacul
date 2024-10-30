@@ -32,6 +32,7 @@ export function createStudentCourseDTOInputFaker(
       rg: generateRandomRG(),
       phone: faker.phone.number(),
       uf: generateRandomUF(),
+      family_relationship: faker.person.firstName(),
     },
     partnerPrepCourse: partnerPrepCourseId ?? uuidv4(),
     socioeconomic: '[]',
