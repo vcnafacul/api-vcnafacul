@@ -277,6 +277,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       cpf: guardianDto.cpf,
       phone: guardianDto.phone,
       studentCourse: studentCourse,
+      family_relationship: guardianDto.family_relationship,
     });
 
     await this.legalGuardianRepository.create(legalGuardian);
