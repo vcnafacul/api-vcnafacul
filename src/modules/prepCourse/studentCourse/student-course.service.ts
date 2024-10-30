@@ -70,10 +70,9 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       this.isMinor(dto.birthday) &&
       (!dto.legalGuardian ||
         !dto.legalGuardian.fullName ||
-        !dto.legalGuardian.rg ||
-        !dto.legalGuardian.uf ||
         !dto.legalGuardian.cpf ||
-        !dto.legalGuardian.phone)
+        !dto.legalGuardian.phone ||
+        !dto.legalGuardian.family_relationship)
     ) {
       throw new HttpException(
         'The full Legal guardian information is required for minors',
@@ -278,6 +277,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       cpf: guardianDto.cpf,
       phone: guardianDto.phone,
       studentCourse: studentCourse,
+      family_relationship: guardianDto.family_relationship,
     });
 
     await this.legalGuardianRepository.create(legalGuardian);

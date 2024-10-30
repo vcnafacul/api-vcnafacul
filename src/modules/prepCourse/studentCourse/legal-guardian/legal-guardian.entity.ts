@@ -10,14 +10,17 @@ export class LegalGuardian extends BaseEntity {
   @Column()
   phone: string;
 
-  @Column()
-  rg: string;
+  @Column({ nullable: true })
+  rg?: string;
 
-  @Column()
-  uf: string;
+  @Column({ nullable: true })
+  uf?: string;
 
   @Column()
   cpf: string;
+
+  @Column()
+  family_relationship: string;
 
   @OneToOne(() => StudentCourse, (studentCourse) => studentCourse.legalGuardian)
   @JoinColumn({ name: 'student_course_id' })
