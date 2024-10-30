@@ -19,6 +19,9 @@ export class LegalGuardian extends BaseEntity {
   @Column()
   cpf: string;
 
+  @Column()
+  family_relationship: string;
+
   @OneToOne(() => StudentCourse, (studentCourse) => studentCourse.legalGuardian)
   @JoinColumn({ name: 'student_course_id' })
   studentCourse: StudentCourse;

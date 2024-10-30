@@ -10,12 +10,14 @@ export class CreateLegalGuardianInput {
 
   @IsString()
   @ApiProperty()
-  rg: string;
+  @IsOptional()
+  rg?: string;
 
   @IsString()
   @ApiProperty()
   @UF({ message: 'Invalid UF' })
-  uf: string;
+  @IsOptional()
+  uf?: string;
 
   @IsString()
   @ApiProperty()
@@ -26,4 +28,9 @@ export class CreateLegalGuardianInput {
   @ApiProperty()
   @IsOptional()
   phone?: string;
+
+  @IsString()
+  @ApiProperty()
+  @IsOptional()
+  family_relationship?: string;
 }
