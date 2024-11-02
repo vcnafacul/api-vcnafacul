@@ -72,7 +72,6 @@ export class InscriptionCourseRepository extends BaseRepository<InscriptionCours
         .take(limit)
         .where({ ...where })
         .andWhere('entity.deletedAt IS NULL')
-        .andWhere('entity.actived <> 2')
         .leftJoin('entity.students', 'student_course')
         .addSelect('student_course.id')
         .leftJoin('entity.partnerPrepCourse', 'partner_prep_course')
