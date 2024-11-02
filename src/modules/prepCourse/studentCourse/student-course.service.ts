@@ -1,5 +1,6 @@
 import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import * as dayjs from 'dayjs';
 import { Status } from 'src/modules/simulado/enum/status.enum';
 import { CreateUserDtoInput } from 'src/modules/user/dto/create.dto.input';
 import { CreateFlow } from 'src/modules/user/enum/create-flow';
@@ -317,6 +318,8 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   private flattenData = (student: CreateStudentCourseInput) => {
     const flattenedItem: any = { ...student };
 
+    const birthday = dayjs(flattenedItem.birthday).format('DD/MM/YYYY');
+
     // Remover o campo "socioeconomic" original se não quiser mantê-lo
     delete flattenedItem.socioeconomic;
     delete flattenedItem.partnerPrepCourse;
@@ -327,7 +330,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     delete flattenedItem.lastName;
     flattenedItem['Nome Social'] = flattenedItem.socialName;
     delete flattenedItem.socialName;
-    flattenedItem['Data de Nascimento'] = flattenedItem.birthday;
+    flattenedItem['Data de Nascimento'] = birthday;
     delete flattenedItem.birthday;
     flattenedItem['RG'] = flattenedItem.rg;
     delete flattenedItem.rg;
