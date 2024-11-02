@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import dayjs from 'dayjs';
+import * as dayjs from 'dayjs';
 import { Status } from 'src/modules/simulado/enum/status.enum';
 import { CreateUserDtoInput } from 'src/modules/user/dto/create.dto.input';
 import { CreateFlow } from 'src/modules/user/enum/create-flow';
