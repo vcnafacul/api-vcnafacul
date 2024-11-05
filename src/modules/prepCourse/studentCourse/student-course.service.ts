@@ -360,6 +360,16 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     delete flattenedItem.state;
     flattenedItem['Bairro'] = flattenedItem.neighborhood;
     delete flattenedItem.neighborhood;
+    flattenedItem['Nome do Responsável'] =
+      flattenedItem.legalGuardian?.fullName;
+    flattenedItem['RG do Responsável'] = flattenedItem.legalGuardian?.rg;
+    flattenedItem['UF do Responsável'] = flattenedItem.legalGuardian?.uf;
+    flattenedItem['CPF do Responsável'] = flattenedItem.legalGuardian?.cpf;
+    flattenedItem['Telefone do Responsável'] =
+      flattenedItem.legalGuardian?.phone;
+    flattenedItem['Parentesco'] =
+      flattenedItem.legalGuardian?.family_relationship;
+    delete flattenedItem.legalGuardian;
 
     const socioeconomic: SocioeconomicAnswer[] = JSON.parse(
       student.socioeconomic,
