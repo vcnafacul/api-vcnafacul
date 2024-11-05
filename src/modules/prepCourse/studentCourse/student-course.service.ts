@@ -94,7 +94,9 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     }
 
     await this.userRepository.update(user);
-    const represent = await this.userService.findOneBy({ id: dto.userId });
+    const represent = await this.userService.findOneBy({
+      id: partnerPrepCourse.userId,
+    });
     await this.sendEmailConfirmation(
       dto,
       represent.email,
