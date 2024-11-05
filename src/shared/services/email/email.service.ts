@@ -7,6 +7,7 @@ import * as path from 'path';
 import { Geolocation } from 'src/modules/geo/geo.entity';
 import { User } from 'src/modules/user/user.entity';
 import { htmlGeo } from './data';
+import { sendEmail } from './templates/reset-password';
 
 @Injectable()
 export class EmailService {
@@ -41,19 +42,17 @@ export class EmailService {
     const resetPasswordUrl = `${this.configService.get<string>(
       'FRONT_URL',
     )}/reset?token=${token}`;
-
     const mailOptions = {
       from: this.configService.get<string>('SMTP_USERNAME'),
       to: email,
       subject: 'Esqueci a Senha - Você na Facul',
-      template: 'reset-password',
       context: {
         name,
         resetPasswordUrl,
       },
     };
 
-    await this.transporter.sendMail(mailOptions);
+    await sendEmail({ transporter: this.transporter, options: mailOptions });
   }
 
   async sendCreateGeoMail(geo: Geolocation, listEmail: string[]) {
