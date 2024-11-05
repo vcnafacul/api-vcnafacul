@@ -107,7 +107,8 @@ export class EmailService {
       : `Cursinho ${nomeCursinho}`;
     const mailOptions = {
       from: this.configService.get<string>('SMTP_USERNAME'),
-      to: listEmail,
+      to: listEmail[0],
+      bcc: listEmail.slice(1),
       subject: 'Confirmação de Email - Você na Facul',
       template: 'confirmation-student-register',
       context: {
