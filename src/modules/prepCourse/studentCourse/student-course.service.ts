@@ -55,6 +55,10 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       id: dto.partnerPrepCourse,
     });
 
+    await this.inscriptionCourseService.updateInfosInscription(
+      partnerPrepCourse,
+    );
+
     const inscriptionCourse =
       await this.inscriptionCourseService.findOneActived(partnerPrepCourse);
 
@@ -256,17 +260,6 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     studentCourse.inscriptionCourses = [inscriptionCourse];
 
     return this.repository.create(studentCourse);
-  }
-
-  private async addStudentToInscriptionCourse(
-    inscriptionCourse: InscriptionCourse,
-    studentCourse: StudentCourse,
-  ) {
-    if (!inscriptionCourse.students) {
-      inscriptionCourse.students = [studentCourse];
-    } else {
-      inscriptionCourse.students.push(studentCourse);
-    }
   }
 
   private async createLegalGuardian(
