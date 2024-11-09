@@ -124,6 +124,7 @@ export class InscriptionCourseRepository extends BaseRepository<InscriptionCours
         'user.complement',
         'user.postalCode',
       ])
+      .leftJoinAndSelect('student_course.legalGuardian', 'legalGuardian')
       .getOne();
   }
 }
