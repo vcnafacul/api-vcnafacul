@@ -42,10 +42,7 @@ function Email(props) {
 
 export async function sendEmail({ transporter, options }) {
   const emailHtml = await render(
-    <Email
-      url={options.context.resetPasswordUrl}
-      name={options.context.name}
-    />,
+    Email({ url: options.context.usr, name: options.context.name }),
   );
 
   const myoptions = {
