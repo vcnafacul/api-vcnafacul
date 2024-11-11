@@ -3,10 +3,6 @@ import { IsString } from 'class-validator';
 
 export class inviteMembersInputDto {
   @ApiProperty()
-  @IsString()
-  userId: string;
-
-  @ApiProperty()
-  @IsString()
+  @IsString({ message: 'O email deve ser uma string' })
   email: string;
 }

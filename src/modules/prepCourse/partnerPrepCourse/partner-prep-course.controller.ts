@@ -16,6 +16,7 @@ import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { PartnerPrepCourseDtoInput } from './dtos/create-partner-prep-course.input.dto';
 import { HasInscriptionActiveDtoOutput } from './dtos/has-inscription-active.output.dto';
+import { inviteMembersInputDto } from './dtos/invite-members.input.dto';
 import { PartnerPrepCourse } from './partner-prep-course.entity';
 import { PartnerPrepCourseService } from './partner-prep-course.service';
 
@@ -65,16 +66,13 @@ export class PartnerPrepCourseController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @ApiResponse({
-    status: 201,
+    status: 200,
     description: 'convidar membros para o cursinho parceiro',
   })
   async inviteMembers(
-    @Body() { email }: { email: string },
+    @Body() dto: inviteMembersInputDto,
     @Req() req: Request,
   ): Promise<void> {
-    return await this.service.inviteMember({
-      email,
-      userId: (req.user as User).id,
-    });
+    return await this.service.inviteMember(dto.email, (req.user as User).id);
   }
 }

@@ -8,7 +8,6 @@ import { BaseService } from 'src/shared/modules/base/base.service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { PartnerPrepCourseDtoInput } from './dtos/create-partner-prep-course.input.dto';
 import { HasInscriptionActiveDtoOutput } from './dtos/has-inscription-active.output.dto';
-import { inviteMembersInputDto } from './dtos/invite-members.input.dto';
 import { PartnerPrepCourse } from './partner-prep-course.entity';
 import { PartnerPrepCourseRepository } from './partner-prep-course.repository';
 
@@ -67,7 +66,7 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     };
   }
 
-  async inviteMember({ userId, email }: inviteMembersInputDto) {
+  async inviteMember(email: string, userId: string) {
     const prepCourse = await this.repository.findOneBy({ userId });
     if (!prepCourse) {
       throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
