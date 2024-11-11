@@ -1,4 +1,3 @@
-import { NotFoundException } from '@nestjs/common';
 import { IBaseRepository } from './interfaces/base.repository';
 import { GetAllWhereInput } from './interfaces/get-all.input';
 import { GetAllOutput } from './interfaces/get-all.output';
@@ -27,9 +26,6 @@ export class BaseService<T> {
 
   async findOneBy(filter: object) {
     const entity = await this._repository.findOneBy(filter);
-    if (!entity) {
-      throw new NotFoundException(`Entity not found`);
-    }
     return entity;
   }
 }

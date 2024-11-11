@@ -33,4 +33,7 @@ export class PartnerPrepCourse extends BaseEntity {
     (studentCourse) => studentCourse.partnerPrepCourse,
   )
   students: StudentCourse[];
+
+  @OneToMany(() => User, (user) => user.partnerPrepCourse)
+  members: User[];
 }

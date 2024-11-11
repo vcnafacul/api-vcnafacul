@@ -10,7 +10,7 @@ export class InscriptionCourse extends BaseEntity {
   @Column()
   name: string;
 
-  @Column()
+  @Column({ default: '' })
   description: string;
 
   @Column({ name: 'start_date' })
