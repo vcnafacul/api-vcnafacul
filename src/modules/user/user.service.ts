@@ -138,6 +138,10 @@ export class UserService extends BaseService<User> {
     return false;
   }
 
+  async updateEntity(user: User) {
+    await this.userRepository.update(user);
+  }
+
   async deleteUser(id: string) {
     const user = await this.findUserById(id);
     await this.userRepository.deleteUser(user);
@@ -245,6 +249,14 @@ export class UserService extends BaseService<User> {
     return this.MapUsertoUserDTO(
       await this.userRepository.findOneBy({ id: userId }),
     );
+  }
+
+  async getPartnerPrepCourse(userId: string) {
+    const user = await this.userRepository.getPartnerPrepCourse(userId);
+    if (!user) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
+    return user.partnerPrepCourse;
   }
 
   private convertDtoToDomain(userDto: CreateUserDtoInput): User {

@@ -9,9 +9,19 @@ import {
   Text,
 } from '@react-email/components';
 
-function Email(props) {
-  const { resetPasswordUrl, name } = props;
+interface InviteMemberPrepCourseProps {
+  name: string;
+  nameManager: string;
+  prepCourseName: string;
+  acceptInviteUrl: string;
+}
 
+function InviteMemberPrepCourse({
+  name,
+  nameManager,
+  prepCourseName,
+  acceptInviteUrl,
+}: InviteMemberPrepCourseProps) {
   return (
     <Html>
       <Body style={main}>
@@ -24,14 +34,14 @@ function Email(props) {
           />
           <Text style={paragraph}>Olá {name}!</Text>
           <Text style={paragraph}>
-            Parace que você esqueceu sua senha. Caso queira prosseguir clique no
-            link abaixo:
+            Você foi convidado por {nameManager} para participar do{' '}
+            {prepCourseName}. Clique no link abaixo para aceitar o convite:
           </Text>
-          <Button style={button} href={resetPasswordUrl}>
-            Recuperar senha
+          <Button style={button} href={acceptInviteUrl}>
+            Aceitar convite
           </Button>
           <Text style={paragraph}>
-            Caso você não fez essa solicitação, desconsidere esse email
+            Caso você não tenha feito essa solicitação, desconsidere esse email
           </Text>
           <Text style={paragraphTeam}>Equipe vCnaFacul</Text>
         </Container>
@@ -40,12 +50,13 @@ function Email(props) {
   );
 }
 
-export async function sendEmail({ transporter, options }) {
-  console.log('options', options.context);
+export async function sendEmailInviteMember({ transporter, options }) {
   const emailHtml = await render(
-    Email({
-      resetPasswordUrl: options.context.resetPasswordUrl,
+    InviteMemberPrepCourse({
+      acceptInviteUrl: options.context.acceptInviteUrl,
       name: options.context.name,
+      nameManager: options.context.nameManager,
+      prepCourseName: options.context.prepCourseName,
     }),
   );
 
@@ -69,6 +80,7 @@ const container = {
   margin: '30px auto',
   backgroundColor: '#ffffff',
   padding: '20px',
+  borderRadius: '7px',
 };
 
 const paragraph = {

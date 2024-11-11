@@ -1,7 +1,16 @@
 import { Exclude } from 'class-transformer';
-import { BeforeInsert, Column, Entity, OneToMany, OneToOne } from 'typeorm';
+import {
+  BeforeInsert,
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  OneToOne,
+} from 'typeorm';
 import { BaseEntity } from '../../shared/modules/base/entity.base';
 import { Content } from '../contents/content/content.entity';
+import { PartnerPrepCourse } from '../prepCourse/partnerPrepCourse/partner-prep-course.entity';
 import { StudentCourse } from '../prepCourse/studentCourse/student-course.entity';
 import { UserRole } from '../user-role/user-role.entity';
 import { Gender } from './enum/gender';
@@ -88,6 +97,13 @@ export class User extends BaseEntity {
     (studentCourse) => studentCourse.inscriptionCourses,
   )
   studentCourse: StudentCourse[];
+
+  @ManyToOne(
+    () => PartnerPrepCourse,
+    (partnerInscription) => partnerInscription.members,
+  )
+  @JoinColumn({ name: 'partner_prep_course_id' })
+  partnerPrepCourse?: PartnerPrepCourse;
 
   @BeforeInsert()
   async hashPassword() {
