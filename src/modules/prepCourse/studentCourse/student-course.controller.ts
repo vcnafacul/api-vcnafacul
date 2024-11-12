@@ -65,8 +65,11 @@ export class StudentCourseController {
   @UseInterceptors(FileInterceptor('file'))
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  public async uploadImage(@UploadedFile() file, @Req() req: Request) {
-    await this.service.uploadDocument(file, (req.user as User).id);
+  public async uploadImage(
+    @UploadedFile() files: Array<Express.Multer.File>,
+    @Req() req: Request,
+  ) {
+    await this.service.uploadDocument(files, (req.user as User).id);
   }
 
   @Get('document/:fileKey')

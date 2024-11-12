@@ -137,25 +137,24 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     } as GetAllOutput<GetAllStudentDtoOutput>;
   }
 
-  async uploadDocument(file: any, userId: string) {
-    const resultStudentCourse = await this.repository.findAllBy({
-      where: { userId },
-      limit: 1000,
-      page: 1,
-    });
+  async uploadDocument(files: Array<Express.Multer.File>, userId: string) {
+    const student = await this.repository.findOneBy({ id: userId });
+    if (!student) {
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+    }
     const exprires = new Date(Date.now() + 1000 * 60 * 60 * 24 * 180);
-    const fileKey = await this.blobService.uploadFile(
-      file,
-      S3Buckets.STUDENT_COURSE,
-      exprires,
-    );
     await Promise.all(
-      resultStudentCourse.data.map(async (studentCourse) => {
+      files.map(async (file) => {
+        const fileKey = await this.blobService.uploadFile(
+          file,
+          S3Buckets.STUDENT_COURSE,
+          exprires,
+        );
         const document: DocumentStudent = new DocumentStudent();
         document.key = fileKey;
         document.exprires = exprires;
         document.name = file.originalname;
-        document.studentCourse = studentCourse.id;
+        document.studentCourse = student.id;
 
         await this.documentRepository.create(document);
       }),
