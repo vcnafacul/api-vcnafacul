@@ -1,9 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsString } from 'class-validator';
+import { IsString } from 'class-validator';
 
 export class CreateContentDTOInput {
   @ApiProperty()
-  @IsNumber()
+  @IsString()
   subjectId: string; //precisa verificar se o subject existe
 
   @ApiProperty()

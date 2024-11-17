@@ -1,8 +1,8 @@
-import { Column, Entity, JoinColumn, ManyToMany, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../../shared/modules/base/entity.base';
+import { Status } from '../../simulado/enum/status.enum';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
 import { StudentCourse } from '../studentCourse/student-course.entity';
-import { Status } from '../../simulado/enum/status.enum';
 
 //Representa o Período de Inscrição de um cursinho
 @Entity('inscription_course')
@@ -10,7 +10,7 @@ export class InscriptionCourse extends BaseEntity {
   @Column()
   name: string;
 
-  @Column()
+  @Column({ default: '' })
   description: string;
 
   @Column({ name: 'start_date' })
@@ -33,9 +33,9 @@ export class InscriptionCourse extends BaseEntity {
   @JoinColumn({ name: 'partner_prep_course_id' })
   partnerPrepCourse: PartnerPrepCourse;
 
-  @ManyToMany(
+  @OneToMany(
     () => StudentCourse,
-    (studentCourse) => studentCourse.inscriptionCourses,
+    (studentCourse) => studentCourse.inscriptionCourse,
   )
   students: StudentCourse[];
 }

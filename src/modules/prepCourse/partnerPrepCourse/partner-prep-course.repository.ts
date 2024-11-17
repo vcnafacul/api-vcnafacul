@@ -20,6 +20,9 @@ export class PartnerPrepCourseRepository extends BaseRepository<PartnerPrepCours
       .leftJoin('partner_prep_course.inscriptionCourses', 'inscription_course')
       .addSelect(['inscription_course.id', 'inscription_course.actived'])
       .innerJoinAndSelect('partner_prep_course.geo', 'geo')
+      .leftJoin('partner_prep_course.members', 'members')
+      .addSelect(['members.email', 'members.id'])
+      .leftJoinAndSelect('partner_prep_course.user', 'user')
       .getOne();
   }
 }

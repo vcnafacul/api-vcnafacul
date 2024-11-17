@@ -7,6 +7,8 @@ import * as path from 'path';
 import { Geolocation } from 'src/modules/geo/geo.entity';
 import { User } from 'src/modules/user/user.entity';
 import { htmlGeo } from './data';
+import { sendEmailInviteMember } from './templates/invite-member-prep-course';
+import { sendEmail } from './templates/reset-password';
 
 @Injectable()
 export class EmailService {
@@ -41,19 +43,17 @@ export class EmailService {
     const resetPasswordUrl = `${this.configService.get<string>(
       'FRONT_URL',
     )}/reset?token=${token}`;
-
     const mailOptions = {
       from: this.configService.get<string>('SMTP_USERNAME'),
       to: email,
       subject: 'Esqueci a Senha - Você na Facul',
-      template: 'reset-password',
       context: {
         name,
         resetPasswordUrl,
       },
     };
 
-    await this.transporter.sendMail(mailOptions);
+    await sendEmail({ transporter: this.transporter, options: mailOptions });
   }
 
   async sendCreateGeoMail(geo: Geolocation, listEmail: string[]) {
@@ -117,5 +117,36 @@ export class EmailService {
       },
     };
     await this.transporter.sendMail(mailOptions);
+  }
+
+  async sendInviteMember(
+    email: string,
+    name: string,
+    nameManager: string,
+    nomeCursinho: string,
+    token: string,
+  ) {
+    const prepCourseName = nomeCursinho.includes('Cursinho')
+      ? nomeCursinho
+      : `Cursinho ${nomeCursinho}`;
+    const acceptInviteUrl = `${this.configService.get<string>(
+      'FRONT_URL',
+    )}/convidar-membro?token=${token}`;
+
+    const mailOptions = {
+      from: this.configService.get<string>('SMTP_USERNAME'),
+      to: email,
+      subject: 'Esqueci a Senha - Você na Facul',
+      context: {
+        name,
+        nameManager,
+        prepCourseName,
+        acceptInviteUrl,
+      },
+    };
+    await sendEmailInviteMember({
+      transporter: this.transporter,
+      options: mailOptions,
+    });
   }
 }

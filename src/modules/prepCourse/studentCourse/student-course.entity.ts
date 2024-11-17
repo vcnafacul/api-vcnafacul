@@ -2,8 +2,6 @@ import {
   Column,
   Entity,
   JoinColumn,
-  JoinTable,
-  ManyToMany,
   ManyToOne,
   OneToMany,
   OneToOne,
@@ -60,14 +58,12 @@ export class StudentCourse extends BaseEntity {
   @JoinColumn({ name: 'partner_prep_course_id' })
   partnerPrepCourse: PartnerPrepCourse;
 
-  @ManyToMany(
+  @ManyToOne(
     () => InscriptionCourse,
     (inscriptionCourse) => inscriptionCourse.students,
   )
-  @JoinTable()
-  public inscriptionCourses: InscriptionCourse[];
+  public inscriptionCourse: InscriptionCourse;
 
   @OneToOne(() => LegalGuardian, (legalGuardian) => legalGuardian.studentCourse)
-  @JoinColumn({ name: 'legal_guardian_id' })
   public legalGuardian: LegalGuardian;
 }

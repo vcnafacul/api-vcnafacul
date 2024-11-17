@@ -29,10 +29,9 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
         HttpStatus.BAD_REQUEST,
       );
     }
+    const parnetPrepCourse =
+      await this.partnerPrepCourseService.getByUserId(userId);
 
-    const parnetPrepCourse = await this.partnerPrepCourseService.findOneBy({
-      userId,
-    });
     await this.updateInfosInscription(parnetPrepCourse);
 
     const allInscription = await this.findAllBy({
@@ -61,7 +60,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
       new InscriptionCourse(),
       dto,
     );
-
+    inscriptionCourse.description = '';
     const result = await this.repository.create(inscriptionCourse);
     if (parnetPrepCourse.inscriptionCourses) {
       parnetPrepCourse.inscriptionCourses.push(result);
@@ -90,7 +89,8 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     limit: number,
     userId: string,
   ): Promise<GetAllOutput<InscriptionCourseDtoOutput>> {
-    const partner = await this.partnerPrepCourseService.findOneBy({ userId });
+    const partner = await this.partnerPrepCourseService.getByUserId(userId);
+
     await this.updateInfosInscription(partner);
 
     const inscription = await this.repository.findAllBy({
@@ -159,9 +159,8 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
   }
 
   async updateFromDTO(dto: UpdateInscriptionCourseDTOInput, userId: string) {
-    const parnetPrepCourse = await this.partnerPrepCourseService.findOneBy({
-      userId,
-    });
+    const parnetPrepCourse =
+      await this.partnerPrepCourseService.getByUserId(userId);
     await this.updateInfosInscription(parnetPrepCourse);
     const activeInscription =
       await this.repository.findActived(parnetPrepCourse);
