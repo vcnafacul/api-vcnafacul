@@ -252,7 +252,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       socioeconomic: dto.socioeconomic,
     });
 
-    studentCourse.inscriptionCourses = [inscriptionCourse];
+    studentCourse.inscriptionCourse = inscriptionCourse;
 
     return this.repository.create(studentCourse);
   }
