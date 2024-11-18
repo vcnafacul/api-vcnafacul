@@ -136,7 +136,7 @@ export class EmailService {
     const mailOptions = {
       from: this.configService.get<string>('SMTP_USERNAME'),
       to: email,
-      subject: 'Esqueci a Senha - Você na Facul',
+      subject: `Convite Membro ${prepCourseName} - Você na Facul`,
       context: {
         name,
         nameManager,
