@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:20-slim
 
 COPY dist /var/www
 
@@ -8,6 +8,7 @@ COPY src/shared/services/assets/* shared/services/assets/
 COPY src/shared/services/email/templates/* shared/services/email/templates/
 
 COPY package.json .
+COPY yarn.lock .
 
 EXPOSE 3333
 
