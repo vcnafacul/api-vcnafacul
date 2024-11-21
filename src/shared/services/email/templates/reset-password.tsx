@@ -41,7 +41,6 @@ function Email(props) {
 }
 
 export async function sendEmail({ transporter, options }) {
-  console.log('options', options.context);
   const emailHtml = await render(
     Email({
       resetPasswordUrl: options.context.resetPasswordUrl,

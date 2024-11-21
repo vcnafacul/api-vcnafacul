@@ -65,7 +65,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       );
     }
 
-    this.ensureStudentNotAlreadyEnrolled(inscriptionCourse, dto.userId);
+    this.ensureStudentNotAlreadySubscribe(inscriptionCourse, dto.userId);
 
     if (
       this.isMinor(dto.birthday) &&
@@ -200,7 +200,68 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     return this.userService.me(userId);
   }
 
-  private ensureStudentNotAlreadyEnrolled(
+  async updateIsFreeInfo(id: string, isFree: boolean) {
+    const student = await this.repository.findOneBy({ id });
+    if (!student) {
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+    }
+    student.isFree = isFree;
+    await this.repository.update(student);
+  }
+
+  async updateApplicationStatusInfo(id: string, status: Status) {
+    const student = await this.repository.findOneBy({ id });
+    if (!student) {
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+    }
+    if (status === Status.Rejected) {
+      student.enrolled = undefined;
+      student.selectEnrolled = false;
+      if (student.waitingList) {
+        const inscription = await this.inscriptionCourseService.findOneBy({
+          id: student.inscriptionCourse.id,
+        });
+        await this.inscriptionCourseService.removeStudentWaitingList(
+          student,
+          inscription,
+        );
+        student.waitingList = false;
+      }
+    }
+    student.applicationStatus = status;
+    await this.repository.update(student);
+  }
+
+  async updateSelectEnrolled(id: string, enrolled: boolean) {
+    const student = await this.repository.findOneBy({ id });
+    if (!student) {
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+    }
+    const inscription = await this.inscriptionCourseService.findOneBy({
+      id: student.inscriptionCourse.id,
+    });
+    if (!inscription) {
+      throw new HttpException('Inscrição não encontrada', HttpStatus.NOT_FOUND);
+    }
+    if (!enrolled) {
+      student.enrolled = undefined;
+      student.selectEnrolled = false;
+    } else {
+      student.selectEnrolled = true;
+      student.applicationStatus = Status.Approved;
+    }
+    if (student.waitingList) {
+      await this.inscriptionCourseService.removeStudentWaitingList(
+        student,
+        inscription,
+      );
+      student.waitingList = false;
+    }
+
+    await this.repository.update(student);
+  }
+
+  private ensureStudentNotAlreadySubscribe(
     inscriptionCourse: InscriptionCourse,
     userId: string,
   ) {
@@ -208,7 +269,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       inscriptionCourse.students?.some((student) => student.userId === userId)
     ) {
       throw new HttpException(
-        'Student already enrolled in this inscription course',
+        'Student already subscribe in this inscription course',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -255,17 +316,6 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     studentCourse.inscriptionCourse = inscriptionCourse;
 
     return this.repository.create(studentCourse);
-  }
-
-  private async addStudentToInscriptionCourse(
-    inscriptionCourse: InscriptionCourse,
-    studentCourse: StudentCourse,
-  ) {
-    if (!inscriptionCourse.students) {
-      inscriptionCourse.students = [studentCourse];
-    } else {
-      inscriptionCourse.students.push(studentCourse);
-    }
   }
 
   private async createLegalGuardian(

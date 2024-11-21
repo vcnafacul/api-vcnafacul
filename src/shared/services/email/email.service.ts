@@ -9,6 +9,7 @@ import { User } from 'src/modules/user/user.entity';
 import { htmlGeo } from './data';
 import { sendEmailInviteMember } from './templates/invite-member-prep-course';
 import { sendEmail } from './templates/reset-password';
+import { sendEmailWaitingList } from './templates/waiting-list';
 
 @Injectable()
 export class EmailService {
@@ -145,6 +146,36 @@ export class EmailService {
       },
     };
     await sendEmailInviteMember({
+      transporter: this.transporter,
+      options: mailOptions,
+    });
+  }
+
+  async sendWaitingList(
+    students: {
+      position: number;
+      name: string;
+      email: string;
+    }[],
+    prepCourse: string,
+  ) {
+    const prepCourseName = prepCourse.includes('Cursinho')
+      ? prepCourse
+      : `Cursinho ${prepCourse}`;
+
+    const emails = students.map((s) => s.email);
+
+    const mailOptions = {
+      from: this.configService.get<string>('SMTP_USERNAME'),
+      to: emails,
+      subject: `Atualização Lista de Espera ${prepCourseName} - Você na Facul`,
+      context: {
+        students,
+        prepCourseName,
+      },
+    };
+
+    await sendEmailWaitingList({
       transporter: this.transporter,
       options: mailOptions,
     });

@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
-import { BaseRepository } from 'src/shared/modules/base/base.repository';
 import { GetAllWhereInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { NodeRepository } from 'src/shared/modules/node/node.repository';
 import { EntityManager } from 'typeorm';
 import { StudentCourse } from './student-course.entity';
 
 @Injectable()
-export class StudentCourseRepository extends BaseRepository<StudentCourse> {
+export class StudentCourseRepository extends NodeRepository<StudentCourse> {
   constructor(
     @InjectEntityManager()
     protected readonly _entityManager: EntityManager,
@@ -50,5 +50,13 @@ export class StudentCourseRepository extends BaseRepository<StudentCourse> {
       limit,
       totalItems,
     };
+  }
+
+  override async findOneBy(where: object): Promise<StudentCourse> {
+    return await this.repository
+      .createQueryBuilder('entity')
+      .where({ ...where })
+      .leftJoinAndSelect('entity.inscriptionCourse', 'inscriptionCourse')
+      .getOne();
   }
 }

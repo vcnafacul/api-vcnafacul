@@ -4,10 +4,12 @@ import {
   Get,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Query,
   Req,
   Res,
+  SetMetadata,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -15,10 +17,13 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
+import { Permissions } from 'src/modules/role/role.entity';
+import { Status } from 'src/modules/simulado/enum/status.enum';
 import { CreateUserDtoInput } from 'src/modules/user/dto/create.dto.input';
 import { UserDtoOutput } from 'src/modules/user/dto/user.dto.output';
 import { User } from 'src/modules/user/user.entity';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
+import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { CreateStudentCourseInput } from './dtos/create-student-course.dto.input';
 import { CreateStudentCourseOutput } from './dtos/create-student-course.dto.output';
@@ -103,5 +108,47 @@ export class StudentCourseController {
       idPrepPartner,
       (req.user as User).id,
     );
+  }
+
+  @Patch('update-is-free')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(
+    PermissionsGuard.name,
+    Permissions.gerenciarInscricoesCursinhoParceiro,
+  )
+  async updateIsFree(
+    @Body() dto: { idStudentCourse: string; isFree: boolean },
+  ): Promise<void> {
+    await this.service.updateIsFreeInfo(dto.idStudentCourse, dto.isFree);
+  }
+
+  @Patch('update-application-status')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(
+    PermissionsGuard.name,
+    Permissions.gerenciarInscricoesCursinhoParceiro,
+  )
+  async updateApplicationStatus(
+    @Body() dto: { idStudentCourse: string; applicationStatus: Status },
+  ): Promise<void> {
+    await this.service.updateApplicationStatusInfo(
+      dto.idStudentCourse,
+      dto.applicationStatus,
+    );
+  }
+
+  @Patch('update-enrolled')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(
+    PermissionsGuard.name,
+    Permissions.gerenciarInscricoesCursinhoParceiro,
+  )
+  async updateEnrolledInfo(
+    @Body() dto: { idStudentCourse: string; enrolled: boolean },
+  ): Promise<void> {
+    await this.service.updateSelectEnrolled(dto.idStudentCourse, dto.enrolled);
   }
 }

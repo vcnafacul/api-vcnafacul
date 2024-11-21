@@ -1,3 +1,4 @@
+import { NodeEntity } from '../../../shared/modules/node/node.entity';
 import {
   Column,
   Entity,
@@ -6,7 +7,7 @@ import {
   OneToMany,
   OneToOne,
 } from 'typeorm';
-import { BaseEntity } from '../../../shared/modules/base/entity.base';
+import { Status } from '../../../modules/simulado/enum/status.enum';
 import { User } from '../../user/user.entity';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
@@ -15,7 +16,7 @@ import { LegalGuardian } from './legal-guardian/legal-guardian.entity';
 
 //Representa o Estudante do Cursinho
 @Entity('student_course')
-export class StudentCourse extends BaseEntity {
+export class StudentCourse extends NodeEntity {
   @Column({ name: 'user_id' })
   userId: string;
 
@@ -66,4 +67,32 @@ export class StudentCourse extends BaseEntity {
 
   @OneToOne(() => LegalGuardian, (legalGuardian) => legalGuardian.studentCourse)
   public legalGuardian: LegalGuardian;
+
+  @ManyToOne(
+    () => InscriptionCourse,
+    (inscriptionCourse) => inscriptionCourse.enrolled,
+  )
+  public enrolled?: InscriptionCourse;
+
+  @Column({ default: false })
+  public selectEnrolled: boolean; // Se ele está sendo selecionado
+
+  @Column({ nullable: true })
+  public selectEnrolledAt?: Date;
+
+  @Column({ default: false })
+  public alreadySelectEnrolled: boolean; // Se já foi selecionado alguma vez
+
+  @Column({ default: false })
+  public waitingList: boolean;
+
+  @Column({ default: true })
+  isFree: boolean; // isento
+
+  @Column({ default: Status.Pending })
+  public applicationStatus: Status;
+
+  get list(): string {
+    return this.enrolled.head;
+  }
 }

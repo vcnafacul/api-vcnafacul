@@ -1,34 +1,35 @@
 import { Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
-import { BaseRepository } from 'src/shared/modules/base/base.repository';
 import { GetAllWhereInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { LinkedListRepository } from 'src/shared/modules/linked/linked-list.repository';
 import { EntityManager } from 'typeorm';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
+import { StudentCourse } from '../studentCourse/student-course.entity';
 import { InscriptionCourse } from './inscription-course.entity';
 
 @Injectable()
-export class InscriptionCourseRepository extends BaseRepository<InscriptionCourse> {
+export class InscriptionCourseRepository extends LinkedListRepository<
+  InscriptionCourse,
+  StudentCourse
+> {
   constructor(
     @InjectEntityManager()
     protected readonly _entityManager: EntityManager,
   ) {
-    super(_entityManager.getRepository(InscriptionCourse));
+    super(_entityManager, InscriptionCourse, StudentCourse);
   }
 
-  override async findOneBy(where: object): Promise<InscriptionCourse> {
+  async findOneBy(where: object): Promise<InscriptionCourse> {
     return await this.repository
       .createQueryBuilder('inscription_course')
       .where({ ...where })
-      .leftJoin('inscription_course.students', 'student_course')
-      .addSelect([
-        'student_course.id',
-        'student_course.userId',
-        'student_course.rg',
-        'student_course.uf',
-        'student_course.cpf',
-        'student_course.urgencyPhone',
-      ])
+      .innerJoinAndSelect(
+        'inscription_course.partnerPrepCourse',
+        'partnerPrepCourse',
+      )
+      .innerJoinAndSelect('partnerPrepCourse.geo', 'geo')
+      .leftJoinAndSelect('inscription_course.students', 'student_course')
       .leftJoin('student_course.user', 'user')
       .addSelect([
         'user.id',
@@ -97,34 +98,36 @@ export class InscriptionCourseRepository extends BaseRepository<InscriptionCours
     return await this.repository
       .createQueryBuilder('inscription_course')
       .where({ id: inscriptionId })
-      .leftJoin('inscription_course.students', 'student_course')
-      .addSelect([
-        'student_course.createdAt',
-        'student_course.email',
-        'student_course.cpf',
-        'student_course.rg',
-        'student_course.uf',
-        'student_course.urgencyPhone',
-        'student_course.socioeconomic',
-        'student_course.whatsapp',
-      ])
-      .leftJoin('student_course.user', 'user')
-      .addSelect([
-        'user.firstName',
-        'user.lastName',
-        'user.socialName',
-        'user.birthday',
-        'user.phone',
-        'user.gender',
-        'user.neighborhood',
-        'user.city',
-        'user.state',
-        'user.street',
-        'user.number',
-        'user.complement',
-        'user.postalCode',
-      ])
+      .leftJoinAndSelect('inscription_course.students', 'student_course')
+      .leftJoinAndSelect('student_course.user', 'user')
       .leftJoinAndSelect('student_course.legalGuardian', 'legalGuardian')
       .getOne();
+  }
+
+  async getWaitingList(id: string) {
+    const inscription = await this.findOneBy({ id });
+    const orderStudent: {
+      position: number;
+      name: string;
+      email: string;
+    }[] = [];
+    let currentNode = inscription.students.find(
+      (n) => n.id === inscription.head,
+    );
+    let position: number = 1;
+    while (currentNode) {
+      orderStudent.push({
+        position,
+        name: `${
+          currentNode.user.socialName
+            ? currentNode.user.socialName
+            : currentNode.user.firstName
+        } ${currentNode.user.lastName}`,
+        email: currentNode.user.email,
+      });
+      position = position + 1;
+      currentNode = inscription.students.find((n) => n.id === currentNode.next);
+    }
+    return orderStudent;
   }
 }
