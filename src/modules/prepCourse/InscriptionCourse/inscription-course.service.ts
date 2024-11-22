@@ -340,13 +340,19 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     if (!student) {
       throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
+    if (student.enrolled) {
+      throw new HttpException(
+        'Não é possível alterar status de lista de espera de estudantes matriculados',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     if (!waitingList) {
       student.waitingList = false;
-      await this.repository.removeNode(student, inscription);
+      await this.removeStudentWaitingList(student, inscription);
     } else {
       student.waitingList = true;
-      student.enrolled = undefined;
-      await this.repository.addList(student, inscription);
+      student.selectEnrolled = false;
+      await this.addStudentWaitingList(student, inscription);
     }
   }
 

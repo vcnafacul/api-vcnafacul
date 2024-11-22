@@ -139,7 +139,7 @@ export class StudentCourseController {
     );
   }
 
-  @Patch('update-enrolled')
+  @Patch('update-select-enrolled')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(
