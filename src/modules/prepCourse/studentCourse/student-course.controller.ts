@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   HttpStatus,
   Param,
   Patch,
@@ -18,7 +19,6 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { Permissions } from 'src/modules/role/role.entity';
-import { Status } from 'src/modules/simulado/enum/status.enum';
 import { CreateUserDtoInput } from 'src/modules/user/dto/create.dto.input';
 import { UserDtoOutput } from 'src/modules/user/dto/user.dto.output';
 import { User } from 'src/modules/user/user.entity';
@@ -29,6 +29,7 @@ import { CreateStudentCourseInput } from './dtos/create-student-course.dto.input
 import { CreateStudentCourseOutput } from './dtos/create-student-course.dto.output';
 import { GetAllStudentDtoInput } from './dtos/get-all-student.dto.input';
 import { GetAllStudentDtoOutput } from './dtos/get-all-student.dto.output';
+import { ScheduleEnrolledDtoInput } from './dtos/schedule-enrolled.dto.input';
 import { StudentCourseService } from './student-course.service';
 
 @ApiTags('StudentCourse')
@@ -51,6 +52,13 @@ export class StudentCourseController {
     @Param('hashPrepCourse') hashPrepCourse: string,
   ): Promise<void> {
     return await this.service.createUser(userDto, hashPrepCourse);
+  }
+
+  @Get('confirm-enrolled/:id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async confirmEnrolled(@Param('id') id: string): Promise<void> {
+    return await this.service.confirmEnrolled(id);
   }
 
   @Get()
@@ -123,22 +131,6 @@ export class StudentCourseController {
     await this.service.updateIsFreeInfo(dto.idStudentCourse, dto.isFree);
   }
 
-  @Patch('update-application-status')
-  @ApiBearerAuth()
-  @UseGuards(PermissionsGuard)
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
-  async updateApplicationStatus(
-    @Body() dto: { idStudentCourse: string; applicationStatus: Status },
-  ): Promise<void> {
-    await this.service.updateApplicationStatusInfo(
-      dto.idStudentCourse,
-      dto.applicationStatus,
-    );
-  }
-
   @Patch('update-select-enrolled')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
@@ -150,5 +142,17 @@ export class StudentCourseController {
     @Body() dto: { idStudentCourse: string; enrolled: boolean },
   ): Promise<void> {
     await this.service.updateSelectEnrolled(dto.idStudentCourse, dto.enrolled);
+  }
+
+  @Post('schedule-enrolled')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @HttpCode(200) // Define explicitamente o código de status
+  @SetMetadata(
+    PermissionsGuard.name,
+    Permissions.gerenciarInscricoesCursinhoParceiro,
+  )
+  async scheduleEnrolled(@Body() dto: ScheduleEnrolledDtoInput): Promise<void> {
+    await this.service.scheduleEnrolled(dto);
   }
 }

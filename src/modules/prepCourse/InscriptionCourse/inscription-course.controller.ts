@@ -85,6 +85,7 @@ export class InscriptionCourseController {
   )
   async getWaitingList(@Param('id') id: string): Promise<
     {
+      id: string;
       position: number;
       name: string;
     }[]
@@ -165,5 +166,18 @@ export class InscriptionCourseController {
       dto.studentId,
       dto.waitingList,
     );
+  }
+
+  @Patch('update-order-waiting-list')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(
+    PermissionsGuard.name,
+    Permissions.gerenciarInscricoesCursinhoParceiro,
+  )
+  async updateOrderWaitingList(
+    @Body() dto: { id: string; studentsId: string[] },
+  ) {
+    await this.service.updateOrderWaitingList(dto.id, dto.studentsId);
   }
 }

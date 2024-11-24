@@ -107,6 +107,7 @@ export class InscriptionCourseRepository extends LinkedListRepository<
   async getWaitingList(id: string) {
     const inscription = await this.findOneBy({ id });
     const orderStudent: {
+      id: string;
       position: number;
       name: string;
       email: string;
@@ -117,6 +118,7 @@ export class InscriptionCourseRepository extends LinkedListRepository<
     let position: number = 1;
     while (currentNode) {
       orderStudent.push({
+        id: currentNode.id,
         position,
         name: `${
           currentNode.user.socialName

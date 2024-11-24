@@ -1,10 +1,13 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { Status } from 'src/modules/simulado/enum/status.enum';
+import { Gender } from 'src/modules/user/enum/gender';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { EmailService } from 'src/shared/services/email/email.service';
+import { adjustDate } from 'src/utils/adjustDate';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
 import { PartnerPrepCourseService } from '../partnerPrepCourse/partner-prep-course.service';
+import { StatusApplication } from '../studentCourse/enums/stastusApplication';
 import { StudentCourse } from '../studentCourse/student-course.entity';
 import { StudentCourseRepository } from '../studentCourse/student-course.repository';
 import { CreateInscriptionCourseInput } from './dtos/create-inscription-course.dto.input';
@@ -222,13 +225,14 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
         return {
           id: student.id,
           cadastrado_em: student.createdAt,
-          isento: student.isFree,
-          matriculado: student.enrolled !== undefined,
-          convocado: student.selectEnrolled,
-          convocado_em: student.selectEnrolledAt,
-          convocado_antes: student.alreadySelectEnrolled,
-          lista_de_espera: student.waitingList,
-          deferido: student.applicationStatus,
+          isento: student.isFree ? 'Sim' : 'Não',
+          convocar: student.selectEnrolled ? 'Sim' : 'Não',
+          data_convocacao: student.selectEnrolledAt,
+          data_limite_convocacao: student.limitEnrolledAt
+            ? adjustDate(student.limitEnrolledAt, -1)
+            : null,
+          lista_de_espera: student.waitingList ? 'Sim' : 'Não',
+          status: student.applicationStatus,
           email: student.user.email,
           cpf: student.cpf,
           rg: student.rg,
@@ -240,7 +244,12 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
           sobrenome: student.user.lastName,
           nome_social: student.user.socialName,
           data_nascimento: student.user.birthday,
-          genero: student.user.gender,
+          genero:
+            student.user.gender === Gender.Male
+              ? 'Masculino'
+              : student.user.gender === Gender.Female
+              ? 'Feminino'
+              : 'Outro',
           telefone: student.user.phone,
           bairro: student.user.neighborhood,
           rua: student.user.street,
@@ -249,12 +258,13 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
           CEP: student.user.postalCode,
           cidade: student.user.city,
           estado: student.user.state,
-          nome_guardiao_legal: student.legalGuardian?.fullName,
-          telefone_guardiao_legal: student.legalGuardian?.phone,
-          rg_guardiao_legal: student.legalGuardian?.rg,
-          uf_guardiao_legal: student.legalGuardian?.uf,
-          cpf_guardiao_legal: student.legalGuardian?.cpf,
-          parentesco_guardiao_legal: student.legalGuardian?.family_relationship,
+          nome_guardiao_legal: student.legalGuardian?.fullName || '',
+          telefone_guardiao_legal: student.legalGuardian?.phone || '',
+          rg_guardiao_legal: student.legalGuardian?.rg || '',
+          uf_guardiao_legal: student.legalGuardian?.uf || '',
+          cpf_guardiao_legal: student.legalGuardian?.cpf || '',
+          parentesco_guardiao_legal:
+            student.legalGuardian?.family_relationship || '',
         };
       },
     );
@@ -340,19 +350,27 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     if (!student) {
       throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
-    if (student.enrolled) {
+    if (student.applicationStatus === StatusApplication.UnderReview) {
+      if (student.enrolled) {
+        throw new HttpException(
+          'Não é possível alterar status de lista de espera de estudantes matriculados',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      student.applicationStatus = StatusApplication.UnderReview;
+      if (!waitingList) {
+        student.waitingList = false;
+        await this.removeStudentWaitingList(student, inscription);
+      } else {
+        student.waitingList = true;
+        student.selectEnrolled = false;
+        await this.addStudentWaitingList(student, inscription);
+      }
+    } else {
       throw new HttpException(
-        'Não é possível alterar status de lista de espera de estudantes matriculados',
+        'Não é possível alterar informações do estudantes. Status Block',
         HttpStatus.BAD_REQUEST,
       );
-    }
-    if (!waitingList) {
-      student.waitingList = false;
-      await this.removeStudentWaitingList(student, inscription);
-    } else {
-      student.waitingList = true;
-      student.selectEnrolled = false;
-      await this.addStudentWaitingList(student, inscription);
     }
   }
 
@@ -368,6 +386,38 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     inscription: InscriptionCourse,
   ) {
     await this.repository.addList(student, inscription);
+  }
+
+  async updateOrderWaitingList(id: string, studentsId: string[]) {
+    if (studentsId.length > 0) {
+      const inscription = await this.repository.findOneBy({ id });
+      if (!inscription) {
+        throw new HttpException(
+          'Inscrição não encontrada',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+      inscription.head = studentsId[0];
+      await Promise.all(
+        studentsId.map(async (studentId, index) => {
+          const student = await this.studentRepository.findOneBy({
+            id: studentId,
+          });
+          student.prev = index > 0 ? studentsId[index - 1] : null;
+          student.next =
+            index < studentsId.length - 1 ? studentsId[index + 1] : null;
+
+          await this.studentRepository.update(student);
+        }),
+      );
+      if (studentsId.length > 1) {
+        inscription.tail = studentsId[studentsId.length - 1];
+      } else {
+        inscription.tail = studentsId[0];
+      }
+      inscription.lenght = studentsId.length;
+      await this.repository.update(inscription);
+    }
   }
 
   async getWaitingList(id: string) {

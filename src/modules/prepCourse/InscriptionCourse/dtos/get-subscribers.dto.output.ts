@@ -1,17 +1,15 @@
-import { Status } from 'src/modules/simulado/enum/status.enum';
-import { Gender } from 'src/modules/user/enum/gender';
+import { StatusApplication } from '../../studentCourse/enums/stastusApplication';
 
 export class GetSubscribersDtoOutput {
   //pt-br
   id: string;
   cadastrado_em: Date;
-  isento: boolean;
-  matriculado: boolean;
-  convocado: boolean;
-  convocado_em: Date;
-  convocado_antes: boolean;
-  lista_de_espera: boolean;
-  deferido: Status;
+  isento: string;
+  convocar: string;
+  data_convocacao: Date;
+  data_limite_convocacao: Date;
+  lista_de_espera: string;
+  status: StatusApplication;
   email: string;
   cpf: string;
   rg: string;
@@ -23,7 +21,7 @@ export class GetSubscribersDtoOutput {
   sobrenome: string;
   nome_social: string;
   data_nascimento: Date;
-  genero: Gender;
+  genero: string;
   telefone: string;
   bairro: string;
   rua: string;

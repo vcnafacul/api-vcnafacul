@@ -1,4 +1,3 @@
-import { NodeEntity } from '../../../shared/modules/node/node.entity';
 import {
   Column,
   Entity,
@@ -7,11 +6,12 @@ import {
   OneToMany,
   OneToOne,
 } from 'typeorm';
-import { Status } from '../../../modules/simulado/enum/status.enum';
+import { NodeEntity } from '../../../shared/modules/node/node.entity';
 import { User } from '../../user/user.entity';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
 import { DocumentStudent } from './documents/document-students.entity';
+import { StatusApplication } from './enums/stastusApplication';
 import { LegalGuardian } from './legal-guardian/legal-guardian.entity';
 
 //Representa o Estudante do Cursinho
@@ -80,8 +80,8 @@ export class StudentCourse extends NodeEntity {
   @Column({ nullable: true })
   public selectEnrolledAt?: Date;
 
-  @Column({ default: false })
-  public alreadySelectEnrolled: boolean; // Se já foi selecionado alguma vez
+  @Column({ nullable: true })
+  public limitEnrolledAt?: Date;
 
   @Column({ default: false })
   public waitingList: boolean;
@@ -89,8 +89,11 @@ export class StudentCourse extends NodeEntity {
   @Column({ default: true })
   isFree: boolean; // isento
 
-  @Column({ default: Status.Pending })
-  public applicationStatus: Status;
+  @Column({ default: StatusApplication.UnderReview })
+  public applicationStatus: StatusApplication;
+
+  @Column({ nullable: true, unique: true })
+  public cod_enrolled: string;
 
   get list(): string {
     return this.enrolled.head;

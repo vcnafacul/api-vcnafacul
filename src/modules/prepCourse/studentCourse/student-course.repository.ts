@@ -59,4 +59,37 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .leftJoinAndSelect('entity.inscriptionCourse', 'inscriptionCourse')
       .getOne();
   }
+
+  async scheduleEnrolled(
+    studentsId: string[],
+    data_start: Date,
+    data_end: Date,
+  ) {
+    if (!studentsId || studentsId.length === 0) {
+      throw new Error('The studentsId list cannot be empty.');
+    }
+
+    await this.repository
+      .createQueryBuilder('entity')
+      .update()
+      .set({
+        selectEnrolledAt: data_start,
+        limitEnrolledAt: data_end,
+        selectEnrolled: false,
+      })
+      .where('id IN (:...studentsId)', { studentsId })
+      .execute();
+  }
+
+  async getLastEnrollmentCode(): Promise<string | null> {
+    const lastCode = await this.repository
+      .createQueryBuilder('student_course')
+      .select('student_course.cod_enrolled')
+      .where('student_course.cod_enrolled IS NOT NULL') // Certifique-se de buscar apenas códigos existentes
+      .orderBy('student_course.cod_enrolled', 'DESC') // Ordena decrescente
+      .limit(1) // Apenas o último registro
+      .getOne();
+
+    return lastCode ? lastCode.cod_enrolled : null;
+  }
 }

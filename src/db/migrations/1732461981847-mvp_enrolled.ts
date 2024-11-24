@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class MvpEnrolled1731811860520 implements MigrationInterface {
-  name = 'MvpEnrolled1731811860520';
+export class MvpEnrolled1732461981847 implements MigrationInterface {
+  name = 'MvpEnrolled1732461981847';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
@@ -20,7 +20,7 @@ export class MvpEnrolled1731811860520 implements MigrationInterface {
       `ALTER TABLE \`student_course\` ADD \`selectEnrolledAt\` datetime NULL`,
     );
     await queryRunner.query(
-      `ALTER TABLE \`student_course\` ADD \`alreadySelectEnrolled\` tinyint NOT NULL DEFAULT 0`,
+      `ALTER TABLE \`student_course\` ADD \`limitEnrolledAt\` datetime NULL`,
     );
     await queryRunner.query(
       `ALTER TABLE \`student_course\` ADD \`waitingList\` tinyint NOT NULL DEFAULT 0`,
@@ -29,7 +29,10 @@ export class MvpEnrolled1731811860520 implements MigrationInterface {
       `ALTER TABLE \`student_course\` ADD \`isFree\` tinyint NOT NULL DEFAULT 1`,
     );
     await queryRunner.query(
-      `ALTER TABLE \`student_course\` ADD \`applicationStatus\` int NOT NULL DEFAULT '0'`,
+      `ALTER TABLE \`student_course\` ADD \`applicationStatus\` varchar(255) NOT NULL DEFAULT 'Em Análise'`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`student_course\` ADD \`cod_enrolled\` varchar(255) NULL`,
     );
     await queryRunner.query(
       `ALTER TABLE \`student_course\` ADD \`enrolledId\` varchar(36) NULL`,
@@ -89,6 +92,9 @@ export class MvpEnrolled1731811860520 implements MigrationInterface {
       `ALTER TABLE \`student_course\` DROP COLUMN \`enrolledId\``,
     );
     await queryRunner.query(
+      `ALTER TABLE \`student_course\` DROP COLUMN \`cod_enrolled\``,
+    );
+    await queryRunner.query(
       `ALTER TABLE \`student_course\` DROP COLUMN \`applicationStatus\``,
     );
     await queryRunner.query(
@@ -98,7 +104,7 @@ export class MvpEnrolled1731811860520 implements MigrationInterface {
       `ALTER TABLE \`student_course\` DROP COLUMN \`waitingList\``,
     );
     await queryRunner.query(
-      `ALTER TABLE \`student_course\` DROP COLUMN \`alreadySelectEnrolled\``,
+      `ALTER TABLE \`student_course\` DROP COLUMN \`limitEnrolledAt\``,
     );
     await queryRunner.query(
       `ALTER TABLE \`student_course\` DROP COLUMN \`selectEnrolledAt\``,
