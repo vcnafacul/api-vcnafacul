@@ -43,7 +43,7 @@ function InviteMemberPrepCourse({
           <Text style={paragraph}>
             Caso você não tenha feito essa solicitação, desconsidere esse email
           </Text>
-          <Text style={paragraphTeam}>Equipe vCnaFacul</Text>
+          <Text style={paragraphTeam}>Equipe Você na Facul</Text>
         </Container>
       </Body>
     </Html>

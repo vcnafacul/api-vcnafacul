@@ -35,7 +35,7 @@ function Email({ students_name, declaredInterestUrl, prepCourseName }: Props) {
           <Button style={button} href={declaredInterestUrl}>
             Declarar Interesse
           </Button>
-          <Text style={paragraphTeam}>Equipe vCnaFacul</Text>
+          <Text style={paragraphTeam}>Equipe Você na Facul</Text>
         </Container>
       </Body>
     </Html>

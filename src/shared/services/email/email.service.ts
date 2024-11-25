@@ -7,6 +7,7 @@ import * as path from 'path';
 import { Geolocation } from 'src/modules/geo/geo.entity';
 import { User } from 'src/modules/user/user.entity';
 import { htmlGeo } from './data';
+import { sendEmailConfirmEmail } from './templates/confirm-email';
 import { sendEmailDeclaredInterest } from './templates/declared-interest';
 import { sendEmailInviteMember } from './templates/invite-member-prep-course';
 import { sendEmail } from './templates/reset-password';
@@ -70,33 +71,23 @@ export class EmailService {
   }
 
   async sendCreateUser(user: User, token: string) {
-    const confirmeEmailUrl = `${this.configService.get<string>(
+    const confirmEmailUrl = `${this.configService.get<string>(
       'FRONT_URL',
     )}/confirmEmail?token=${token}`;
-    const logo = path.join(
-      path.resolve(this.configService.get<string>('TEMPLATE_EMAIL_ASSET')),
-      'logo.png',
-    );
     const mailOptions = {
       from: this.configService.get<string>('SMTP_USERNAME'),
       to: user.email,
       subject: 'Confirmação de Email - Você na Facul',
-      template: 'create-user',
       context: {
         name: user.firstName,
-        confirmeEmailUrl,
+        confirmEmailUrl,
       },
-
-      attachments: [
-        {
-          filename: 'imagename.svg',
-          path: logo,
-          cid: 'imagename',
-        },
-      ],
     };
 
-    await this.transporter.sendMail(mailOptions);
+    await sendEmailConfirmEmail({
+      transporter: this.transporter,
+      options: mailOptions,
+    });
   }
 
   async sendConfirmationStudentRegister(

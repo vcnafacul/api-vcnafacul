@@ -60,7 +60,7 @@ function Email({ students, prepCourseName }: Props) {
             Continuaremos acompanhando a evolução das inscrições e informaremos
             qualquer mudança em sua posição.
           </Text>
-          <Text style={paragraphTeam}>Equipe vCnaFacul</Text>
+          <Text style={paragraphTeam}>Equipe Você na Facul</Text>
         </Container>
       </Body>
     </Html>
