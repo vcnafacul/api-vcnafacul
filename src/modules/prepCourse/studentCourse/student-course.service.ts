@@ -1,5 +1,6 @@
 import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import * as dayjs from 'dayjs';
 import { Status } from 'src/modules/simulado/enum/status.enum';
 import { CreateUserDtoInput } from 'src/modules/user/dto/create.dto.input';
@@ -316,6 +317,35 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       student.cod_enrolled = await this.generateEnrolledCode();
       await this.repository.update(student);
     }
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async sendEmailDeclaredInterest() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const currentTimeInSeconds = Math.floor(today.getTime() / 1000);
+    const students = await this.repository.findAllCompletedBy({
+      selectEnrolledAt: today,
+    });
+    await Promise.all(
+      students.map(async (stu) => {
+        const payload = {
+          user: { id: stu.id },
+        };
+        const limitTimeInSeconds = Math.floor(
+          stu.limitEnrolledAt.getTime() / 1000,
+        );
+        const expiresIn = limitTimeInSeconds - currentTimeInSeconds;
+        const token = await this.jwtService.signAsync(payload, { expiresIn });
+        const student_name = `${stu.user.firstName} ${stu.user.lastName}`;
+        await this.emailService.sendDeclaredInterest(
+          student_name,
+          stu.user.email,
+          token,
+          stu.partnerPrepCourse.geo.name,
+        );
+      }),
+    );
   }
 
   private async generateEnrolledCode() {

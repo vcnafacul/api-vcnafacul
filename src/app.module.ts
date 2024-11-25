@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { TypeOrmOptions } from './config/db.config';
@@ -20,8 +21,8 @@ import { RoleModule } from './modules/role/role.module';
 import { SimuladoModule } from './modules/simulado/simulado.module';
 import { UserRoleModule } from './modules/user-role/user-role.module';
 import { UserModule } from './modules/user/user.module';
-import { JwtStrategy } from './shared/strategy/jwt.strategy';
 import { BlobModule } from './shared/services/blob/blob.module';
+import { JwtStrategy } from './shared/strategy/jwt.strategy';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { BlobModule } from './shared/services/blob/blob.module';
         maxRedirects: 3,
       }),
     }),
+    ScheduleModule.forRoot(),
     UserModule,
     RoleModule,
     UserRoleModule,

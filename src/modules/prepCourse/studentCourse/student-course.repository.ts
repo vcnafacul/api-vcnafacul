@@ -92,4 +92,20 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
 
     return lastCode ? lastCode.cod_enrolled : null;
   }
+
+  async findAllCompletedBy(where: object): Promise<StudentCourse[]> {
+    return await this.repository
+      .createQueryBuilder('entity')
+      .where({ ...where })
+      .innerJoin('entity.user', 'users')
+      .addSelect([
+        'users.firstName',
+        'users.lastName',
+        'users.socialName',
+        'users.email',
+      ])
+      .innerJoinAndSelect('entity.partnerPrepCourse', 'partnerPrepCourse')
+      .innerJoinAndSelect('partnerPrepCourse.geo', 'geo')
+      .getMany();
+  }
 }

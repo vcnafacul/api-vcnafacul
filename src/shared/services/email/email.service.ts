@@ -7,6 +7,7 @@ import * as path from 'path';
 import { Geolocation } from 'src/modules/geo/geo.entity';
 import { User } from 'src/modules/user/user.entity';
 import { htmlGeo } from './data';
+import { sendEmailDeclaredInterest } from './templates/declared-interest';
 import { sendEmailInviteMember } from './templates/invite-member-prep-course';
 import { sendEmail } from './templates/reset-password';
 import { sendEmailWaitingList } from './templates/waiting-list';
@@ -176,6 +177,36 @@ export class EmailService {
     };
 
     await sendEmailWaitingList({
+      transporter: this.transporter,
+      options: mailOptions,
+    });
+  }
+
+  async sendDeclaredInterest(
+    students_name: string,
+    students_email: string,
+    token: string,
+    prepCourse: string,
+  ) {
+    const prepCourseName = prepCourse.includes('Cursinho')
+      ? prepCourse
+      : `Cursinho ${prepCourse}`;
+
+    const declaredInterestUrl = `${this.configService.get<string>(
+      'FRONT_URL',
+    )}/declarar-interesse?token=${token}`;
+    const mailOptions = {
+      from: this.configService.get<string>('SMTP_USERNAME'),
+      to: students_email,
+      subject: `Declaração de Interesse ${prepCourseName} - Vocé na Facul`,
+      context: {
+        students_name,
+        declaredInterestUrl,
+        prepCourseName,
+      },
+    };
+
+    await sendEmailDeclaredInterest({
       transporter: this.transporter,
       options: mailOptions,
     });
