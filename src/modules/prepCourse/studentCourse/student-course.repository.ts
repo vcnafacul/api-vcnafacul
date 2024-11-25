@@ -78,6 +78,7 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
         limitEnrolledAt: data_end,
         applicationStatus: StatusApplication.CalledForEnrollment,
         selectEnrolled: false,
+        updatedAt: new Date(),
       })
       .where('id IN (:...studentsId)', { studentsId })
       .execute();
@@ -120,6 +121,7 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .update()
       .set({
         applicationStatus: StatusApplication.MissedDeadline,
+        updatedAt: new Date(),
       })
       .where('limitEnrolledAt = :today', { today })
       .andWhere('applicationStatus = :status', {
