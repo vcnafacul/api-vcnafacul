@@ -326,6 +326,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     const currentTimeInSeconds = Math.floor(today.getTime() / 1000);
     const students = await this.repository.findAllCompletedBy({
       selectEnrolledAt: today,
+      applicationStatus: StatusApplication.CalledForEnrollment,
     });
     await Promise.all(
       students.map(async (stu) => {
@@ -346,6 +347,10 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         );
       }),
     );
+  }
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async verifyLostEnrolled() {
+    await this.repository.notConfirmedEnrolled();
   }
 
   private async generateEnrolledCode() {

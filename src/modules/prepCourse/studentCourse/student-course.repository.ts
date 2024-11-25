@@ -4,6 +4,7 @@ import { GetAllWhereInput } from 'src/shared/modules/base/interfaces/get-all.inp
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { NodeRepository } from 'src/shared/modules/node/node.repository';
 import { EntityManager } from 'typeorm';
+import { StatusApplication } from './enums/stastusApplication';
 import { StudentCourse } from './student-course.entity';
 
 @Injectable()
@@ -75,6 +76,7 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .set({
         selectEnrolledAt: data_start,
         limitEnrolledAt: data_end,
+        applicationStatus: StatusApplication.CalledForEnrollment,
         selectEnrolled: false,
       })
       .where('id IN (:...studentsId)', { studentsId })
@@ -107,5 +109,22 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .innerJoinAndSelect('entity.partnerPrepCourse', 'partnerPrepCourse')
       .innerJoinAndSelect('partnerPrepCourse.geo', 'geo')
       .getMany();
+  }
+
+  async notConfirmedEnrolled() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    await this.repository
+      .createQueryBuilder('entity')
+      .update()
+      .set({
+        applicationStatus: StatusApplication.MissedDeadline,
+      })
+      .where('limitEnrolledAt = :today', { today })
+      .andWhere('applicationStatus = :status', {
+        status: StatusApplication.CalledForEnrollment,
+      })
+      .execute();
   }
 }
