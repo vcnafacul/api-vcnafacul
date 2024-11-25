@@ -56,14 +56,22 @@ export class StudentCourseController {
 
   @Get('confirm-enrolled/:id')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(
+    PermissionsGuard.name,
+    Permissions.gerenciarInscricoesCursinhoParceiro,
+  )
   async confirmEnrolled(@Param('id') id: string): Promise<void> {
     return await this.service.confirmEnrolled(id);
   }
 
   @Get()
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(
+    PermissionsGuard.name,
+    Permissions.gerenciarInscricoesCursinhoParceiro,
+  )
   async findAllByStudent(
     @Query() query: GetAllStudentDtoInput,
   ): Promise<GetAllOutput<GetAllStudentDtoOutput>> {
@@ -87,7 +95,11 @@ export class StudentCourseController {
 
   @Get('document/:fileKey')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(
+    PermissionsGuard.name,
+    Permissions.gerenciarInscricoesCursinhoParceiro,
+  )
   @ApiResponse({
     status: 200,
     description: 'upload de documento de estudante',
@@ -154,5 +166,15 @@ export class StudentCourseController {
   )
   async scheduleEnrolled(@Body() dto: ScheduleEnrolledDtoInput): Promise<void> {
     await this.service.scheduleEnrolled(dto);
+  }
+
+  @Patch('declared-interest')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(200) // Define explicitamente o código de status
+  async declaredInterest(
+    @Body() { studentId }: { studentId: string },
+  ): Promise<void> {
+    await this.service.declaredInterest(studentId);
   }
 }

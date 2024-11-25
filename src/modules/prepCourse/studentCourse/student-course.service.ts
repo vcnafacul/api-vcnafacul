@@ -302,6 +302,27 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     );
   }
 
+  async declaredInterest(id: string) {
+    const student = await this.repository.findOneBy({ id });
+    if (!student) {
+      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+    }
+    if (student.applicationStatus === StatusApplication.DeclaredInterest) {
+      throw new HttpException(
+        'Você já declarou interesse neste Processo Seletivo.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (student.applicationStatus !== StatusApplication.CalledForEnrollment) {
+      throw new HttpException(
+        'Apenas estudantes convocados para matricular podem declarar interesse',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    student.applicationStatus = StatusApplication.DeclaredInterest;
+    await this.repository.update(student);
+  }
+
   async confirmEnrolled(id: string) {
     const student = await this.repository.findOneBy({ id });
     if (!student) {
