@@ -13,9 +13,15 @@ interface Props {
   students_name: string;
   declaredInterestUrl: string;
   prepCourseName: string;
+  limitDate: string;
 }
 
-function Email({ students_name, declaredInterestUrl, prepCourseName }: Props) {
+function Email({
+  students_name,
+  declaredInterestUrl,
+  prepCourseName,
+  limitDate,
+}: Props) {
   return (
     <Html>
       <Body style={main}>
@@ -26,8 +32,10 @@ function Email({ students_name, declaredInterestUrl, prepCourseName }: Props) {
             style={{ margin: '0 auto' }}
             src="https://avatars.githubusercontent.com/u/128550116?s=400&u=b6ec73808233749eb515c2a93f55fe25ed9631d4&v=4"
           />
-          <Text style={paragraph}>Olá {students_name},</Text>
-          <Text style={paragraph}>
+          <Text style={{ ...paragraph, textAlign: 'center' }}>
+            Olá {students_name}
+          </Text>
+          <Text style={{ ...paragraph, textAlign: 'center' }}>
             Estamos felizes em anunciar que você foi selecionado para fazer
             parte do {prepCourseName}. Clique no botão abaixo para declarar
             interesse na vaga:
@@ -35,7 +43,12 @@ function Email({ students_name, declaredInterestUrl, prepCourseName }: Props) {
           <Button style={button} href={declaredInterestUrl}>
             Declarar Interesse
           </Button>
-          <Text style={paragraphTeam}>Equipe Você na Facul</Text>
+          <Text style={{ ...paragraph, textAlign: 'center' }}>
+            Atenção, o prazo para declarar interesse termina em {limitDate}.
+          </Text>
+          <Text style={{ ...paragraphTeam, textAlign: 'end' }}>
+            Equipe Você na Facul
+          </Text>
         </Container>
       </Body>
     </Html>
@@ -48,6 +61,7 @@ export async function sendEmailDeclaredInterest({ transporter, options }) {
       students_name: options.context.students_name,
       declaredInterestUrl: options.context.declaredInterestUrl,
       prepCourseName: options.context.prepCourseName,
+      limitDate: options.context.date,
     }),
   );
 

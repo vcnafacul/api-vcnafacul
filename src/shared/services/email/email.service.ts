@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { format } from 'date-fns';
 import * as nodemailer from 'nodemailer';
 import * as hbs from 'nodemailer-express-handlebars';
 import * as path from 'path';
@@ -176,13 +177,14 @@ export class EmailService {
   async sendDeclaredInterest(
     students_name: string,
     students_email: string,
-    token: string,
     prepCourse: string,
+    limitDate: Date,
+    token: string,
   ) {
     const prepCourseName = prepCourse.includes('Cursinho')
       ? prepCourse
       : `Cursinho ${prepCourse}`;
-
+    const date = format(limitDate, 'dd/MM/yyyy');
     const declaredInterestUrl = `${this.configService.get<string>(
       'FRONT_URL',
     )}/declarar-interesse?token=${token}`;
@@ -194,6 +196,7 @@ export class EmailService {
         students_name,
         declaredInterestUrl,
         prepCourseName,
+        date,
       },
     };
 

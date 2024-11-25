@@ -363,8 +363,9 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         await this.emailService.sendDeclaredInterest(
           student_name,
           stu.user.email,
-          token,
           stu.partnerPrepCourse.geo.name,
+          stu.limitEnrolledAt,
+          token,
         );
       }),
     );
