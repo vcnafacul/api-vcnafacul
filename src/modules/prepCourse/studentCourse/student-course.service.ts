@@ -231,7 +231,12 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     if (!inscription) {
       throw new HttpException('Inscrição não encontrada', HttpStatus.NOT_FOUND);
     }
-    if (student.applicationStatus === StatusApplication.UnderReview) {
+    if (
+      student.applicationStatus === StatusApplication.UnderReview ||
+      (student.applicationStatus === StatusApplication.CalledForEnrollment &&
+        student.selectEnrolledAt >= new Date())
+    ) {
+      console.log(enrolled);
       if (student.enrolled) {
         throw new HttpException(
           'Não é possível alterar status de convocação de estudantes matriculados',
@@ -244,6 +249,8 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         student.selectEnrolled = true;
       }
       student.applicationStatus = StatusApplication.UnderReview;
+      student.selectEnrolledAt = null;
+      student.limitEnrolledAt = null;
       if (student.waitingList) {
         student.waitingList = false;
         await this.inscriptionCourseService.removeStudentWaitingList(
@@ -338,6 +345,51 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       student.cod_enrolled = await this.generateEnrolledCode();
       await this.repository.update(student);
     }
+  }
+
+  async resetStudent(id: string) {
+    const student = await this.repository.findOneBy({ id });
+    if (!student) {
+      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+    }
+    if (student.applicationStatus === StatusApplication.Enrolled) {
+      throw new HttpException(
+        'Estudante matriculado, impossivel resetar',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (student.waitingList) {
+      const inscription = await this.inscriptionCourseService.findOneBy({
+        id: student.inscriptionCourse.id,
+      });
+      student.waitingList = false;
+      await this.inscriptionCourseService.removeStudentWaitingList(
+        student,
+        inscription,
+      );
+    }
+    student.applicationStatus = StatusApplication.UnderReview;
+    student.selectEnrolled = false;
+    student.waitingList = false;
+    student.isFree = true;
+    student.selectEnrolledAt = null;
+    student.limitEnrolledAt = null;
+    await this.repository.update(student);
+  }
+
+  async rejectStudent(id: string) {
+    const student = await this.repository.findOneBy({ id });
+    if (!student) {
+      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+    }
+    if (student.applicationStatus === StatusApplication.Enrolled) {
+      throw new HttpException(
+        'Estudante matriculado, impossivel resetar',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    student.applicationStatus = StatusApplication.Rejected;
+    await this.repository.update(student);
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)

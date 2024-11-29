@@ -177,4 +177,24 @@ export class StudentCourseController {
   ): Promise<void> {
     await this.service.declaredInterest(studentId);
   }
+
+  @Patch('reset-student')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(200) // Define explicitamente o código de status
+  async resetStudent(
+    @Body() { studentId }: { studentId: string },
+  ): Promise<void> {
+    await this.service.resetStudent(studentId);
+  }
+
+  @Patch('reject-student')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(200) // Define explicitamente o código de status
+  async rejectStudent(
+    @Body() { studentId }: { studentId: string },
+  ): Promise<void> {
+    await this.service.rejectStudent(studentId);
+  }
 }
