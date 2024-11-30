@@ -10,7 +10,7 @@ import {
 } from '@react-email/components';
 
 function Email(props) {
-  const { resetPasswordUrl, name } = props;
+  const { confirmEmailUrl, name } = props;
 
   return (
     <Html>
@@ -22,17 +22,16 @@ function Email(props) {
             style={{ margin: '0 auto' }}
             src="https://avatars.githubusercontent.com/u/128550116?s=400&u=b6ec73808233749eb515c2a93f55fe25ed9631d4&v=4"
           />
-          <Text style={paragraph}>Olá {name}!</Text>
           <Text style={paragraph}>
-            Parace que você esqueceu sua senha. Caso queira prosseguir clique no
-            link abaixo:
+            Olá {name}!, Bem-vindo(a) ao Você na Facul,
           </Text>
-          <Button style={button} href={resetPasswordUrl}>
-            Recuperar senha
+          <Text style={paragraph}>
+            Obrigado por se cadastrar em nossa plataforma. Para confirmar seu
+            email, clique no link abaixo:
+          </Text>
+          <Button style={button} href={confirmEmailUrl}>
+            Confirmar Email
           </Button>
-          <Text style={paragraph}>
-            Caso você não fez essa solicitação, desconsidere esse email
-          </Text>
           <Text style={paragraphTeam}>Equipe Você na Facul</Text>
         </Container>
       </Body>
@@ -40,10 +39,10 @@ function Email(props) {
   );
 }
 
-export async function sendEmail({ transporter, options }) {
+export async function sendEmailConfirmEmail({ transporter, options }) {
   const emailHtml = await render(
     Email({
-      resetPasswordUrl: options.context.resetPasswordUrl,
+      confirmEmailUrl: options.context.confirmEmailUrl,
       name: options.context.name,
     }),
   );

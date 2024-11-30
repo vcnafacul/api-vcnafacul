@@ -1,5 +1,6 @@
 import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import * as dayjs from 'dayjs';
 import { Status } from 'src/modules/simulado/enum/status.enum';
 import { CreateUserDtoInput } from 'src/modules/user/dto/create.dto.input';
@@ -24,7 +25,9 @@ import {
   GetAllStudentDtoOutput,
   toGetAllStudentDtoOutput,
 } from './dtos/get-all-student.dto.output';
+import { ScheduleEnrolledDtoInput } from './dtos/schedule-enrolled.dto.input';
 import { S3Buckets } from './enums/s3-buckets';
+import { StatusApplication } from './enums/stastusApplication';
 import { LegalGuardian } from './legal-guardian/legal-guardian.entity';
 import { LegalGuardianRepository } from './legal-guardian/legal-guardian.repository';
 import { StudentCourse } from './student-course.entity';
@@ -65,7 +68,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       );
     }
 
-    this.ensureStudentNotAlreadyEnrolled(inscriptionCourse, dto.userId);
+    this.ensureStudentNotAlreadySubscribe(inscriptionCourse, dto.userId);
 
     if (
       this.isMinor(dto.birthday) &&
@@ -200,7 +203,241 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     return this.userService.me(userId);
   }
 
-  private ensureStudentNotAlreadyEnrolled(
+  async updateIsFreeInfo(id: string, isFree: boolean) {
+    const student = await this.repository.findOneBy({ id });
+    if (!student) {
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+    }
+    if (student.applicationStatus === StatusApplication.UnderReview) {
+      student.isFree = isFree;
+      student.applicationStatus = StatusApplication.UnderReview;
+      await this.repository.update(student);
+    } else {
+      throw new HttpException(
+        'Não é possível alterar informações do estudantes. Status Block',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  async updateSelectEnrolled(id: string, enrolled: boolean) {
+    const student = await this.repository.findOneBy({ id });
+    if (!student) {
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+    }
+    const inscription = await this.inscriptionCourseService.findOneBy({
+      id: student.inscriptionCourse.id,
+    });
+    if (!inscription) {
+      throw new HttpException('Inscrição não encontrada', HttpStatus.NOT_FOUND);
+    }
+    if (
+      student.applicationStatus === StatusApplication.UnderReview ||
+      (student.applicationStatus === StatusApplication.CalledForEnrollment &&
+        student.selectEnrolledAt >= new Date())
+    ) {
+      console.log(enrolled);
+      if (student.enrolled) {
+        throw new HttpException(
+          'Não é possível alterar status de convocação de estudantes matriculados',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      if (!enrolled) {
+        student.selectEnrolled = false;
+      } else {
+        student.selectEnrolled = true;
+      }
+      student.applicationStatus = StatusApplication.UnderReview;
+      student.selectEnrolledAt = null;
+      student.limitEnrolledAt = null;
+      if (student.waitingList) {
+        student.waitingList = false;
+        await this.inscriptionCourseService.removeStudentWaitingList(
+          student,
+          inscription,
+        );
+      }
+
+      await this.repository.update(student);
+    } else {
+      throw new HttpException(
+        'Não é possível alterar informações do estudantes. Status Block',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  /*************  ✨ Codeium Command ⭐  *************/
+  /**
+ * Schedules enrolled students for a given inscription course within the specified date range.
+ * 
+ * @param inscriptionId - The ID of the inscription course for which students are to be scheduled.
+ * @param data_start - The start date of the scheduling period.
+ * @param data_end - The end date of the scheduling period.
+ * 
+ * This method retrieves all students who have been selected as enrolled for the specified
+/******  2841cc7f-0642-4e69-8de6-526055053514  *******/
+  async scheduleEnrolled({
+    inscriptionId,
+    data_start,
+    data_end,
+  }: ScheduleEnrolledDtoInput) {
+    const inscription = await this.inscriptionCourseService.findOneBy({
+      id: inscriptionId,
+    });
+    const students = await this.repository.findAllBy({
+      page: 1,
+      limit: 9999,
+      where: { selectEnrolled: true, inscriptionCourse: inscription },
+    });
+    if (students.data.length === 0) {
+      throw new HttpException(
+        'Nenhum estudante selecionado',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const data_convocacao = new Date(data_start);
+    data_convocacao.setHours(0, 0, 0, 0);
+
+    const data_limite_convocacao = new Date(data_end);
+    data_limite_convocacao.setHours(23, 59, 59, 999);
+    await this.repository.scheduleEnrolled(
+      students.data.map((student) => student.id),
+      data_convocacao,
+      data_limite_convocacao,
+    );
+  }
+
+  async declaredInterest(id: string) {
+    const student = await this.repository.findOneBy({ id });
+    if (!student) {
+      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+    }
+    if (student.applicationStatus === StatusApplication.DeclaredInterest) {
+      throw new HttpException(
+        'Você já declarou interesse neste Processo Seletivo.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (student.applicationStatus !== StatusApplication.CalledForEnrollment) {
+      throw new HttpException(
+        'Apenas estudantes convocados para matricular podem declarar interesse',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    student.applicationStatus = StatusApplication.DeclaredInterest;
+    await this.repository.update(student);
+  }
+
+  async confirmEnrolled(id: string) {
+    const student = await this.repository.findOneBy({ id });
+    if (!student) {
+      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+    }
+    if (student.applicationStatus !== StatusApplication.DeclaredInterest) {
+      throw new HttpException(
+        'Não é possível confirmar estudantes matriculados que não declarou interesse',
+        HttpStatus.NOT_FOUND,
+      );
+    } else {
+      student.applicationStatus = StatusApplication.Enrolled;
+      student.cod_enrolled = await this.generateEnrolledCode();
+      await this.repository.update(student);
+    }
+  }
+
+  async resetStudent(id: string) {
+    const student = await this.repository.findOneBy({ id });
+    if (!student) {
+      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+    }
+    if (student.applicationStatus === StatusApplication.Enrolled) {
+      throw new HttpException(
+        'Estudante matriculado, impossivel resetar',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (student.waitingList) {
+      const inscription = await this.inscriptionCourseService.findOneBy({
+        id: student.inscriptionCourse.id,
+      });
+      student.waitingList = false;
+      await this.inscriptionCourseService.removeStudentWaitingList(
+        student,
+        inscription,
+      );
+    }
+    student.applicationStatus = StatusApplication.UnderReview;
+    student.selectEnrolled = false;
+    student.waitingList = false;
+    student.isFree = true;
+    student.selectEnrolledAt = null;
+    student.limitEnrolledAt = null;
+    await this.repository.update(student);
+  }
+
+  async rejectStudent(id: string) {
+    const student = await this.repository.findOneBy({ id });
+    if (!student) {
+      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+    }
+    if (student.applicationStatus === StatusApplication.Enrolled) {
+      throw new HttpException(
+        'Estudante matriculado, impossivel resetar',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    student.applicationStatus = StatusApplication.Rejected;
+    await this.repository.update(student);
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async sendEmailDeclaredInterest() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const currentTimeInSeconds = Math.floor(today.getTime() / 1000);
+    const students = await this.repository.findAllCompletedBy({
+      selectEnrolledAt: today,
+      applicationStatus: StatusApplication.CalledForEnrollment,
+    });
+    await Promise.all(
+      students.map(async (stu) => {
+        const payload = {
+          user: { id: stu.id },
+        };
+        const limitTimeInSeconds = Math.floor(
+          stu.limitEnrolledAt.getTime() / 1000,
+        );
+        const expiresIn = limitTimeInSeconds - currentTimeInSeconds;
+        const token = await this.jwtService.signAsync(payload, { expiresIn });
+        const student_name = `${stu.user.firstName} ${stu.user.lastName}`;
+        await this.emailService.sendDeclaredInterest(
+          student_name,
+          stu.user.email,
+          stu.partnerPrepCourse.geo.name,
+          stu.limitEnrolledAt,
+          token,
+        );
+      }),
+    );
+  }
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async verifyLostEnrolled() {
+    await this.repository.notConfirmedEnrolled();
+  }
+
+  private async generateEnrolledCode() {
+    const year = new Date().getFullYear();
+    const lastCode = await this.repository.getLastEnrollmentCode();
+    if (!lastCode) {
+      return `${year}0001`;
+    }
+    const code = parseInt(lastCode.slice(4)) + 1;
+    return `${year}${code.toString().padStart(4, '0')}`;
+  }
+
+  private ensureStudentNotAlreadySubscribe(
     inscriptionCourse: InscriptionCourse,
     userId: string,
   ) {
@@ -208,7 +445,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       inscriptionCourse.students?.some((student) => student.userId === userId)
     ) {
       throw new HttpException(
-        'Student already enrolled in this inscription course',
+        'Student already subscribe in this inscription course',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -255,17 +492,6 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     studentCourse.inscriptionCourse = inscriptionCourse;
 
     return this.repository.create(studentCourse);
-  }
-
-  private async addStudentToInscriptionCourse(
-    inscriptionCourse: InscriptionCourse,
-    studentCourse: StudentCourse,
-  ) {
-    if (!inscriptionCourse.students) {
-      inscriptionCourse.students = [studentCourse];
-    } else {
-      inscriptionCourse.students.push(studentCourse);
-    }
   }
 
   private async createLegalGuardian(

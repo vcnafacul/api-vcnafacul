@@ -9,9 +9,19 @@ import {
   Text,
 } from '@react-email/components';
 
-function Email(props) {
-  const { resetPasswordUrl, name } = props;
+interface Props {
+  students_name: string;
+  declaredInterestUrl: string;
+  prepCourseName: string;
+  limitDate: string;
+}
 
+function Email({
+  students_name,
+  declaredInterestUrl,
+  prepCourseName,
+  limitDate,
+}: Props) {
   return (
     <Html>
       <Body style={main}>
@@ -22,29 +32,36 @@ function Email(props) {
             style={{ margin: '0 auto' }}
             src="https://avatars.githubusercontent.com/u/128550116?s=400&u=b6ec73808233749eb515c2a93f55fe25ed9631d4&v=4"
           />
-          <Text style={paragraph}>Olá {name}!</Text>
-          <Text style={paragraph}>
-            Parace que você esqueceu sua senha. Caso queira prosseguir clique no
-            link abaixo:
+          <Text style={{ ...paragraph, textAlign: 'center' }}>
+            Olá {students_name}
           </Text>
-          <Button style={button} href={resetPasswordUrl}>
-            Recuperar senha
+          <Text style={{ ...paragraph, textAlign: 'center' }}>
+            Estamos felizes em anunciar que você foi selecionado para fazer
+            parte do {prepCourseName}. Clique no botão abaixo para declarar
+            interesse na vaga:
+          </Text>
+          <Button style={button} href={declaredInterestUrl}>
+            Declarar Interesse
           </Button>
-          <Text style={paragraph}>
-            Caso você não fez essa solicitação, desconsidere esse email
+          <Text style={{ ...paragraph, textAlign: 'center' }}>
+            Atenção, o prazo para declarar interesse termina em {limitDate}.
           </Text>
-          <Text style={paragraphTeam}>Equipe Você na Facul</Text>
+          <Text style={{ ...paragraphTeam, textAlign: 'end' }}>
+            Equipe Você na Facul
+          </Text>
         </Container>
       </Body>
     </Html>
   );
 }
 
-export async function sendEmail({ transporter, options }) {
+export async function sendEmailDeclaredInterest({ transporter, options }) {
   const emailHtml = await render(
     Email({
-      resetPasswordUrl: options.context.resetPasswordUrl,
-      name: options.context.name,
+      students_name: options.context.students_name,
+      declaredInterestUrl: options.context.declaredInterestUrl,
+      prepCourseName: options.context.prepCourseName,
+      limitDate: options.context.date,
     }),
   );
 
