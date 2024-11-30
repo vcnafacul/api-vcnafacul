@@ -1,16 +1,16 @@
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
-import { BaseEntity } from '../../../shared/modules/base/entity.base';
+import { LinkedListEntity } from '../../../shared/modules/linked/linked-list.entity';
 import { Status } from '../../simulado/enum/status.enum';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
 import { StudentCourse } from '../studentCourse/student-course.entity';
 
 //Representa o Período de Inscrição de um cursinho
 @Entity('inscription_course')
-export class InscriptionCourse extends BaseEntity {
+export class InscriptionCourse extends LinkedListEntity {
   @Column()
   name: string;
 
-  @Column({ default: '' })
+  @Column({ nullable: true })
   description: string;
 
   @Column({ name: 'start_date' })
@@ -38,4 +38,14 @@ export class InscriptionCourse extends BaseEntity {
     (studentCourse) => studentCourse.inscriptionCourse,
   )
   students: StudentCourse[];
+
+  @OneToMany(
+    () => StudentCourse,
+    (studentCourse) => studentCourse.inscriptionCourse,
+  )
+  enrolled: StudentCourse[]; // Matriculados
+
+  get list(): string {
+    throw new Error('Method not implemented.');
+  }
 }

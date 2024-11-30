@@ -29,7 +29,6 @@ export class LinkedListRepository<
       // Se a lista não está vazia, adicione o novo subject no final
       // Atualize o 'prev' do novo subject para ser o 'tail' atual
       data.prev = entity.tail;
-      await this.repositoryNodeChild.update(data);
       if (entity.tail) {
         const tail = await this.repositoryNodeChild.findOneBy({
           id: entity.tail,
@@ -43,6 +42,7 @@ export class LinkedListRepository<
     }
     entity.lenght += 1;
     await this.repository.save(entity);
+    await this.repositoryNodeChild.update(data);
     return true;
   }
 
@@ -106,13 +106,23 @@ export class LinkedListRepository<
     return entity;
   }
 
-  async removeNode(listId: string, id: string): Promise<NodeEntity> {
-    const node = await this.getNode(id);
-    const entity = await this.getEntityList({ id: listId });
+  async removeNode(
+    dataNode: K | string,
+    dataEntity: T | string,
+  ): Promise<NodeEntity> {
+    let node = null;
+    let entity = null;
+    if (typeof dataNode === 'string') node = await this.getNode(dataNode);
+    else node = dataNode;
+
+    if (typeof dataEntity === 'string')
+      entity = await this.getEntityList({ id: dataEntity });
+    else entity = dataEntity;
+
     if (!node.prev) {
       if (entity.head !== node.id) {
         throw new HttpException(
-          `Erro ao tentar remover. No ${node.id} não é a cabeça da lista ${listId}`,
+          `Erro ao tentar remover. No ${node.id} não é a cabeça da lista ${entity.id}`,
           HttpStatus.CONFLICT,
         );
       }
