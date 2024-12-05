@@ -3,10 +3,6 @@ import { IsOptional, IsString } from 'class-validator';
 
 export class ReportMapHome {
   @ApiProperty()
-  @IsString()
-  entity: string;
-
-  @ApiProperty()
   @IsOptional()
   updatedBy?: string;
 

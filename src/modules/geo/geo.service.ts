@@ -16,6 +16,8 @@ import { UpdateGeoDTOInput } from './dto/update-geo.dto.input';
 import { Geolocation } from './geo.entity';
 import { GeoRepository } from './geo.repository';
 
+const TypeAuditLog = 'geolocations';
+
 @Injectable()
 export class GeoService extends BaseService<Geolocation> {
   constructor(
@@ -83,7 +85,7 @@ export class GeoService extends BaseService<Geolocation> {
     }
     await this.geoRepository.update(oldGeo);
     await this.auditLogService.create({
-      entityType: 'geolocations',
+      entityType: TypeAuditLog,
       entityId: oldGeo.id,
       changes: changes,
       updatedBy: user.id,
@@ -103,7 +105,7 @@ export class GeoService extends BaseService<Geolocation> {
     }
 
     await this.auditLogService.create({
-      entityType: 'geolocations',
+      entityType: TypeAuditLog,
       entityId: geo.id,
       changes: changes,
       updatedBy: user.id,
@@ -132,7 +134,7 @@ export class GeoService extends BaseService<Geolocation> {
     await this.geoRepository.update(geo);
 
     const auditLog = new AuditLog();
-    auditLog.entityType = request.entity;
+    auditLog.entityType = TypeAuditLog;
     auditLog.entityId = request.entityId;
     auditLog.changes = request.message;
     auditLog.updatedBy = request.updatedBy ? user.id : null;
