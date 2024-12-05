@@ -3,15 +3,20 @@ import { BaseService } from 'src/shared/modules/base/base.service';
 import { OrConditional } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { EmailService } from 'src/shared/services/email/email.service';
+import { AuditLog } from '../audit-log/audit-log.entity';
+import { AuditLogRepository } from '../audit-log/audit-log.repository';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { User } from '../user/user.entity';
 import { UserService } from '../user/user.service';
 import { CreateGeoDTOInput } from './dto/create-geo.dto.input';
 import { GeoStatusChangeDTOInput } from './dto/geo-status.dto.input';
 import { ListGeoDTOInput } from './dto/list-geo.dto.input';
+import { ReportMapHome } from './dto/report-map-home';
 import { UpdateGeoDTOInput } from './dto/update-geo.dto.input';
 import { Geolocation } from './geo.entity';
 import { GeoRepository } from './geo.repository';
+
+const TypeAuditLog = 'geolocations';
 
 @Injectable()
 export class GeoService extends BaseService<Geolocation> {
@@ -20,6 +25,7 @@ export class GeoService extends BaseService<Geolocation> {
     private readonly userService: UserService,
     private readonly emailService: EmailService,
     private readonly auditLogService: AuditLogService,
+    private readonly auditLogRepository: AuditLogRepository,
   ) {
     super(geoRepository);
   }
@@ -43,13 +49,13 @@ export class GeoService extends BaseService<Geolocation> {
     const where: any = { status };
 
     const or = this.generateTextCombinations(text);
-
-    return await this.geoRepository.findAllBy({
+    const data = await this.geoRepository.findAllBy({
       page: page,
       limit: limit,
       where,
       or,
     });
+    return data;
   }
 
   async findOneById(id: string): Promise<Geolocation> {
@@ -79,7 +85,7 @@ export class GeoService extends BaseService<Geolocation> {
     }
     await this.geoRepository.update(oldGeo);
     await this.auditLogService.create({
-      entityType: 'geolocations',
+      entityType: TypeAuditLog,
       entityId: oldGeo.id,
       changes: changes,
       updatedBy: user.id,
@@ -99,11 +105,41 @@ export class GeoService extends BaseService<Geolocation> {
     }
 
     await this.auditLogService.create({
-      entityType: 'geolocations',
+      entityType: TypeAuditLog,
       entityId: geo.id,
       changes: changes,
       updatedBy: user.id,
     });
+  }
+
+  async reportMapHome(request: ReportMapHome): Promise<void> {
+    let user;
+    if (request.updatedBy) {
+      user = await this.userService.findOneBy({
+        email: request.updatedBy,
+      });
+    }
+    const geo = await this.geoRepository.findOneBy({
+      id: request.entityId,
+    });
+    if (!geo) {
+      throw new HttpException(
+        `Cursinho com não encontrado`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    geo.reportAddress = geo.reportAddress ? true : request.address;
+    geo.reportContact = geo.reportContact ? true : request.contact;
+    geo.reportOther = geo.reportOther ? true : request.other;
+    await this.geoRepository.update(geo);
+
+    const auditLog = new AuditLog();
+    auditLog.entityType = TypeAuditLog;
+    auditLog.entityId = request.entityId;
+    auditLog.changes = request.message;
+    auditLog.updatedBy = request.updatedBy ? user.id : null;
+
+    await this.auditLogRepository.create(auditLog);
   }
 
   private convertDtoToDomain(dto: CreateGeoDTOInput): Geolocation {
