@@ -111,6 +111,12 @@ export class GeoService extends BaseService<Geolocation> {
   }
 
   async reportMapHome(request: ReportMapHome): Promise<void> {
+    let user;
+    if (request.updatedBy) {
+      user = await this.userService.findOneBy({
+        email: request.updatedBy,
+      });
+    }
     const geo = await this.geoRepository.findOneBy({
       id: request.entityId,
     });
@@ -120,7 +126,7 @@ export class GeoService extends BaseService<Geolocation> {
         HttpStatus.NOT_FOUND,
       );
     }
-    geo.reportAddress = geo.reportAddress ? true : request.adrress;
+    geo.reportAddress = geo.reportAddress ? true : request.address;
     geo.reportContact = geo.reportContact ? true : request.contact;
     geo.reportOther = geo.reportOther ? true : request.other;
     await this.geoRepository.update(geo);
@@ -129,7 +135,7 @@ export class GeoService extends BaseService<Geolocation> {
     auditLog.entityType = request.entity;
     auditLog.entityId = request.entityId;
     auditLog.changes = request.message;
-    auditLog.updatedBy = request.userId;
+    auditLog.updatedBy = request.updatedBy ? user.id : null;
 
     await this.auditLogRepository.create(auditLog);
   }

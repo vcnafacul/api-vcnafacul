@@ -7,6 +7,10 @@ export class ReportMapHome {
   entity: string;
 
   @ApiProperty()
+  @IsOptional()
+  updatedBy?: string;
+
+  @ApiProperty()
   @IsString()
   entityId: string;
 
@@ -16,17 +20,13 @@ export class ReportMapHome {
 
   @ApiProperty()
   @IsOptional()
-  userId?: string;
+  address: boolean;
 
   @ApiProperty()
   @IsOptional()
-  adrress: boolean = false;
+  contact: boolean;
 
   @ApiProperty()
   @IsOptional()
-  contact: boolean = false;
-
-  @ApiProperty()
-  @IsOptional()
-  other: boolean = false;
+  other: boolean;
 }
