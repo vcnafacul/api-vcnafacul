@@ -10,8 +10,4 @@ export class GetAllDtoInput implements GetAllInput {
   @ApiProperty({ default: 30, required: false })
   @IsOptional()
   limit: number = 30;
-
-  @ApiProperty({ default: '', required: false })
-  @IsOptional()
-  name: string = '';
 }

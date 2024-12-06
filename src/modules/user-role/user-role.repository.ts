@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
-import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { EntityManager } from 'typeorm';
 import { BaseRepository } from '../../shared/modules/base/base.repository';
+import { GetUserDtoInput } from './dto/get-user.dto.input';
 import { UserRole } from './user-role.entity';
 
 @Injectable()
@@ -31,7 +31,7 @@ export class UserRoleRepository extends BaseRepository<UserRole> {
     page,
     limit,
     name,
-  }: GetAllDtoInput): Promise<GetAllOutput<UserRole>> {
+  }: GetUserDtoInput): Promise<GetAllOutput<UserRole>> {
     const query = this.repository
       .createQueryBuilder('entity')
       .leftJoinAndSelect('entity.user', 'user')

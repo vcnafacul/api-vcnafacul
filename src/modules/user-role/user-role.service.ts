@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 import { GetAllDtoOutput } from 'src/shared/dtos/get-all.dto.output';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { User } from '../user/user.entity';
+import { GetUserDtoInput } from './dto/get-user.dto.input';
 import { UpdateUserRoleInput } from './dto/update-user-role.dto.input';
 import { UserRoleDTO } from './dto/user-role.dto.output';
 import { UserRole } from './user-role.entity';
@@ -47,7 +47,7 @@ export class UserRoleService extends BaseService<UserRole> {
     page,
     limit,
     name,
-  }: GetAllDtoInput): Promise<GetAllDtoOutput<UserRoleDTO>> {
+  }: GetUserDtoInput): Promise<GetAllDtoOutput<UserRoleDTO>> {
     const where = {};
     if (name) {
       where['entity.user.name'] = name;
