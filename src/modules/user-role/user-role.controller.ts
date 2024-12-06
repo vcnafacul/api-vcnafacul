@@ -18,6 +18,7 @@ import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { Permissions } from '../role/role.entity';
 import { User } from '../user/user.entity';
+import { GetUserDtoInput } from './dto/get-user.dto.input';
 import { UpdateUserRoleInput } from './dto/update-user-role.dto.input';
 import { UserRoleDTO } from './dto/user-role.dto.output';
 import { UserRole } from './user-role.entity';
@@ -66,7 +67,7 @@ export class UserRoleController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async findUser(
-    @Query() query: GetAllDtoInput,
+    @Query() query: GetUserDtoInput,
   ): Promise<GetAllDtoOutput<UserRoleDTO>> {
     return await this.userRoleService.findUserRole(query);
   }
