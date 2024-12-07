@@ -236,7 +236,6 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       (student.applicationStatus === StatusApplication.CalledForEnrollment &&
         student.selectEnrolledAt >= new Date())
     ) {
-      console.log(enrolled);
       if (student.enrolled) {
         throw new HttpException(
           'Não é possível alterar status de convocação de estudantes matriculados',
@@ -301,7 +300,8 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     data_convocacao.setHours(0, 0, 0, 0);
 
     const data_limite_convocacao = new Date(data_end);
-    data_limite_convocacao.setHours(23, 59, 59, 999);
+    data_limite_convocacao.setDate(data_limite_convocacao.getDate() + 1);
+    data_limite_convocacao.setHours(0, 0, 0, 0);
     await this.repository.scheduleEnrolled(
       students.data.map((student) => student.id),
       data_convocacao,
