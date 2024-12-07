@@ -1,4 +1,4 @@
-import { Column, Entity, OneToMany } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../../shared/modules/base/entity.base';
 import { StatusApplication } from '../enums/stastusApplication';
 import { StudentCourse } from '../student-course.entity';
@@ -14,6 +14,9 @@ export class LogStudent extends BaseEntity {
   @Column({ type: 'text', nullable: true })
   description: string;
 
-  @OneToMany(() => StudentCourse, (student) => student.logs)
+  @ManyToOne(() => StudentCourse, (studentCourse) => studentCourse.logs, {
+    eager: false,
+  })
+  @JoinColumn({ name: 'student_id' }) // Ensures the join column is correctly mapped
   student: StudentCourse;
 }

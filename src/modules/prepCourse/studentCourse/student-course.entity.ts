@@ -96,7 +96,7 @@ export class StudentCourse extends NodeEntity {
   @Column({ nullable: true, unique: true })
   public cod_enrolled: string;
 
-  @ManyToOne(() => LogStudent, (logStudent) => logStudent.student)
+  @OneToMany(() => LogStudent, (logStudent) => logStudent.student)
   public logs: LogStudent[];
 
   get list(): string {
