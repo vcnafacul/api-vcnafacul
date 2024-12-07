@@ -13,6 +13,7 @@ import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.enti
 import { DocumentStudent } from './documents/document-students.entity';
 import { StatusApplication } from './enums/stastusApplication';
 import { LegalGuardian } from './legal-guardian/legal-guardian.entity';
+import { LogStudent } from './log-student/log-student.entity';
 
 //Representa o Estudante do Cursinho
 @Entity('student_course')
@@ -94,6 +95,9 @@ export class StudentCourse extends NodeEntity {
 
   @Column({ nullable: true, unique: true })
   public cod_enrolled: string;
+
+  @ManyToOne(() => LogStudent, (logStudent) => logStudent.student)
+  public logs: LogStudent[];
 
   get list(): string {
     return this.enrolled.head;

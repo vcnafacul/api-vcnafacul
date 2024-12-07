@@ -193,8 +193,8 @@ export class StudentCourseController {
   @UseGuards(JwtAuthGuard)
   @HttpCode(200) // Define explicitamente o código de status
   async rejectStudent(
-    @Body() { studentId }: { studentId: string },
+    @Body() { studentId, reason }: { studentId: string; reason: string },
   ): Promise<void> {
-    await this.service.rejectStudent(studentId);
+    await this.service.rejectStudent(studentId, reason);
   }
 }
