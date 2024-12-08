@@ -112,6 +112,18 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .getMany();
   }
 
+  async getNotConfirmedEnrolled(): Promise<StudentCourse[]> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return await this.repository
+      .createQueryBuilder('entity')
+      .where('limitEnrolledAt = :today', { today })
+      .andWhere('applicationStatus = :status', {
+        status: StatusApplication.CalledForEnrollment,
+      })
+      .getMany();
+  }
+
   async notConfirmedEnrolled() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);

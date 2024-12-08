@@ -7,4 +7,5 @@ export enum StatusApplication {
   MissedDeadline = 'Não declarou interesse',
   EnrollmentNotConfirmed = 'Matrícula não confirmada',
   EnrollmentCancelled = 'Matrícula Cancelada',
+  SendedDocument = 'Enviado Documento',
 }

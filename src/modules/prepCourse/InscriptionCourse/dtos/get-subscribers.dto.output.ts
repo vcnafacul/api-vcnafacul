@@ -1,4 +1,6 @@
+import { DocumentStudentDtoOutput } from '../../studentCourse/dtos/document-student.dto.output';
 import { StatusApplication } from '../../studentCourse/enums/stastusApplication';
+import { LogStudent } from '../../studentCourse/log-student/log-student.entity';
 
 export class GetSubscribersDtoOutput {
   //pt-br
@@ -36,4 +38,6 @@ export class GetSubscribersDtoOutput {
   uf_guardiao_legal: string;
   cpf_guardiao_legal: string;
   parentesco_guardiao_legal: string;
+  logs: LogStudent[];
+  documents: DocumentStudentDtoOutput[];
 }

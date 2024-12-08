@@ -13,6 +13,7 @@ import { LegalGuardianRepository } from './legal-guardian/legal-guardian.reposit
 import { StudentCourseController } from './student-course.controller';
 import { StudentCourseRepository } from './student-course.repository';
 import { StudentCourseService } from './student-course.service';
+import { LogStudentRepository } from './log-student/log-student.repository';
 
 @Module({
   controllers: [StudentCourseController],
@@ -27,6 +28,7 @@ import { StudentCourseService } from './student-course.service';
     PartnerPrepCourseRepository,
     LegalGuardianRepository,
     EmailService,
+    LogStudentRepository,
   ],
   exports: [StudentCourseService, StudentCourseRepository],
 })
