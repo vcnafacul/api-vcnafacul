@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import * as dayjs from 'dayjs';
@@ -50,6 +51,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly logStudentRepository: LogStudentRepository,
+    private configService: ConfigService,
   ) {
     super(repository);
   }
@@ -155,12 +157,12 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     if (!student) {
       throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
-    const exprires = new Date(Date.now() + 1000 * 60 * 60 * 24 * 180);
+    const exprires = new Date(Date.now() + 1000 * 60 * 60 * 24 * 90);
     await Promise.all(
       files.map(async (file) => {
         const fileKey = await this.blobService.uploadFile(
           file,
-          S3Buckets.STUDENT_COURSE,
+          this.configService.get<string>('BUCKET_DOC'),
           exprires,
         );
         const document: DocumentStudent = new DocumentStudent();
@@ -178,6 +180,19 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         await this.logStudentRepository.create(log);
       }),
     );
+  }
+
+  async profilePhoto(file: Express.Multer.File, userId: string) {
+    const student = await this.repository.findOneBy({ id: userId });
+    if (!student) {
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+    }
+    const fileKey = await this.blobService.uploadFile(
+      file,
+      this.configService.get<string>('BUCKET_PROFILE'),
+    );
+    student.photo = fileKey;
+    await this.repository.update(student);
   }
 
   async getDocument(fileKey: string) {
@@ -459,6 +474,20 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     log.applicationStatus = StatusApplication.Rejected;
     log.description = reason || 'Estudante indeferido';
     await this.logStudentRepository.create(log);
+  }
+
+  async verifyDeclaredInterest(studentId: string) {
+    const student = await this.repository.findOneBy({ id: studentId });
+    if (!student) {
+      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+    }
+    if (
+      student.applicationStatus === StatusApplication.DeclaredInterest ||
+      student.applicationStatus === StatusApplication.Enrolled
+    ) {
+      return true;
+    }
+    return false;
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)

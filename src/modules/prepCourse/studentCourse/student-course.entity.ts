@@ -99,6 +99,9 @@ export class StudentCourse extends NodeEntity {
   @OneToMany(() => LogStudent, (logStudent) => logStudent.student)
   public logs: LogStudent[];
 
+  @Column({ nullable: true })
+  public photo: string;
+
   get list(): string {
     return this.enrolled.head;
   }
