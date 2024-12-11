@@ -27,7 +27,6 @@ import {
   toGetAllStudentDtoOutput,
 } from './dtos/get-all-student.dto.output';
 import { ScheduleEnrolledDtoInput } from './dtos/schedule-enrolled.dto.input';
-import { S3Buckets } from './enums/s3-buckets';
 import { StatusApplication } from './enums/stastusApplication';
 import { LegalGuardian } from './legal-guardian/legal-guardian.entity';
 import { LegalGuardianRepository } from './legal-guardian/legal-guardian.repository';
@@ -198,7 +197,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   async getDocument(fileKey: string) {
     const file = await this.blobService.getFile(
       fileKey,
-      S3Buckets.STUDENT_COURSE,
+      this.configService.get<string>('BUCKET_DOC'),
     );
     return file;
   }

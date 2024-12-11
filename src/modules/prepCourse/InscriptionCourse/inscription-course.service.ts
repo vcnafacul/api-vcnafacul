@@ -270,6 +270,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
             student.legalGuardian?.family_relationship || '',
           logs: student.logs,
           documents: student.documents.map((d) => ({
+            createdAt: d.createdAt,
             name: d.name,
             key: d.key,
           })),

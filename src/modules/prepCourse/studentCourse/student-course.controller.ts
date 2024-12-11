@@ -118,19 +118,26 @@ export class StudentCourseController {
   )
   @ApiResponse({
     status: 200,
-    description: 'upload de documento de estudante',
+    description: 'Upload de documento de estudante',
   })
   public async getDocument(
     @Param('fileKey') fileKey: string,
     @Res() res: Response,
   ) {
-    const file = await this.service.getDocument(fileKey);
+    const { buffer, contentType } = await this.service.getDocument(fileKey);
 
     res.set({
-      'Content-Type': 'application/octet-stream',
-      'Content-Disposition': `attachment; filename="${fileKey}"`,
+      'Content-Type': contentType,
+      'Content-Disposition': `inline; filename="${fileKey}"`,
     });
-    return res.status(HttpStatus.OK).send(file);
+
+    // Codifique o buffer em Base64
+    const base64Buffer = buffer.toString('base64');
+
+    return res.status(HttpStatus.OK).json({
+      buffer: base64Buffer,
+      contentType,
+    });
   }
 
   @Get('get-user-info/:idPrepPartner')
