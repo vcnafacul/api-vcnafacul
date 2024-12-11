@@ -29,7 +29,7 @@ export class S3Service implements BlobService {
   async uploadFile(
     file: any,
     bucketName: string,
-    exprires: Date,
+    exprires?: Date,
   ): Promise<string> {
     const typeFile = file.originalname.split('.')[1];
     const fileKey = `${uuidv4()}.${typeFile}`;

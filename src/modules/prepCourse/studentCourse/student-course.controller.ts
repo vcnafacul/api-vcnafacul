@@ -12,10 +12,11 @@ import {
   Res,
   SetMetadata,
   UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { Permissions } from 'src/modules/role/role.entity';
@@ -83,14 +84,29 @@ export class StudentCourseController {
     status: 200,
     description: 'upload de documento de estudante',
   })
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FilesInterceptor('files', 10)) // Limite de 10 arquivos
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   public async uploadImage(
-    @UploadedFile() files: Array<Express.Multer.File>,
+    @UploadedFiles() files: Express.Multer.File[],
     @Req() req: Request,
   ) {
     await this.service.uploadDocument(files, (req.user as User).id);
+  }
+
+  @Post('profile-photo')
+  @ApiResponse({
+    status: 200,
+    description: 'upload de foto da carteira estudantil',
+  })
+  @UseInterceptors(FileInterceptor('file')) // Limite de 10 arquivos
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  public async profilePhoto(
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: Request,
+  ) {
+    await this.service.profilePhoto(file, (req.user as User).id);
   }
 
   @Get('document/:fileKey')
@@ -128,6 +144,13 @@ export class StudentCourseController {
       idPrepPartner,
       (req.user as User).id,
     );
+  }
+
+  @Get('declared-interest/:id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async verifyDeclaredInterest(@Param('id') id: string): Promise<boolean> {
+    return await this.service.verifyDeclaredInterest(id);
   }
 
   @Patch('update-is-free')
