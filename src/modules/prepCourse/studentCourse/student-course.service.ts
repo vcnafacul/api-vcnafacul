@@ -368,7 +368,11 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     );
   }
 
-  async declaredInterest(id: string) {
+  async declaredInterest(
+    id: string,
+    areaInterest: string[],
+    selectedCourses: string[],
+  ) {
     const student = await this.repository.findOneBy({ id });
     if (!student) {
       throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
@@ -386,6 +390,8 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       );
     }
     student.applicationStatus = StatusApplication.DeclaredInterest;
+    student.areaInterest = JSON.stringify(areaInterest);
+    student.selectedCourses = JSON.stringify(selectedCourses);
     await this.repository.update(student);
 
     const log = new LogStudent();

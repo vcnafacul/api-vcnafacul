@@ -203,9 +203,22 @@ export class StudentCourseController {
   @UseGuards(JwtAuthGuard)
   @HttpCode(200) // Define explicitamente o código de status
   async declaredInterest(
-    @Body() { studentId }: { studentId: string },
+    @Body()
+    {
+      studentId,
+      areaInterest,
+      selectedCourses,
+    }: {
+      studentId: string;
+      areaInterest: string[];
+      selectedCourses: string[];
+    },
   ): Promise<void> {
-    await this.service.declaredInterest(studentId);
+    await this.service.declaredInterest(
+      studentId,
+      areaInterest,
+      selectedCourses,
+    );
   }
 
   @Patch('reset-student')
@@ -213,7 +226,8 @@ export class StudentCourseController {
   @UseGuards(JwtAuthGuard)
   @HttpCode(200) // Define explicitamente o código de status
   async resetStudent(
-    @Body() { studentId }: { studentId: string },
+    @Body()
+    { studentId }: { studentId: string },
   ): Promise<void> {
     await this.service.resetStudent(studentId);
   }
