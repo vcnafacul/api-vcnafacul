@@ -52,14 +52,21 @@ export class S3Service implements BlobService {
     });
     const res = await this.s3Client.send(command);
 
-    // O Body é um stream, precisamos convertê-lo para um Buffer
     const stream = res.Body as Readable;
     const chunks: any[] = [];
 
-    return new Promise((resolve, reject) => {
+    // Verifique o tipo MIME nos metadados do arquivo (caso disponível)
+    const contentType = res.ContentType || 'application/octet-stream';
+
+    const buffer = await new Promise<Buffer>((resolve, reject) => {
       stream.on('data', (chunk) => chunks.push(chunk));
       stream.on('end', () => resolve(Buffer.concat(chunks)));
       stream.on('error', reject);
     });
+
+    return {
+      buffer,
+      contentType, // Inclua o tipo MIME
+    };
   }
 }
