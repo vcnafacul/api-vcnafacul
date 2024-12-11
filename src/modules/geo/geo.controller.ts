@@ -24,6 +24,7 @@ import { ListGeoDTOInput } from './dto/list-geo.dto.input';
 import { UpdateGeoDTOInput } from './dto/update-geo.dto.input';
 import { Geolocation } from './geo.entity';
 import { GeoService } from './geo.service';
+import { ReportMapHome } from './dto/report-map-home';
 
 @ApiTags('Geolocation')
 @Controller('geo')
@@ -89,5 +90,10 @@ export class GeoController {
       geoStatus,
       req.user as User,
     );
+  }
+
+  @Post('report-map-home')
+  async reportMapHome(@Body() request: ReportMapHome) {
+    return await this.geoService.reportMapHome(request);
   }
 }

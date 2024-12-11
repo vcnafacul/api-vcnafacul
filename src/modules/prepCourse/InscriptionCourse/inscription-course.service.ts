@@ -8,6 +8,8 @@ import { adjustDate } from 'src/utils/adjustDate';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
 import { PartnerPrepCourseService } from '../partnerPrepCourse/partner-prep-course.service';
 import { StatusApplication } from '../studentCourse/enums/stastusApplication';
+import { LogStudent } from '../studentCourse/log-student/log-student.entity';
+import { LogStudentRepository } from '../studentCourse/log-student/log-student.repository';
 import { StudentCourse } from '../studentCourse/student-course.entity';
 import { StudentCourseRepository } from '../studentCourse/student-course.repository';
 import { CreateInscriptionCourseInput } from './dtos/create-inscription-course.dto.input';
@@ -24,6 +26,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     private readonly studentRepository: StudentCourseRepository,
     private readonly partnerPrepCourseService: PartnerPrepCourseService,
     private readonly emailService: EmailService,
+    private readonly logStudentRepository: LogStudentRepository,
   ) {
     super(repository);
   }
@@ -265,6 +268,12 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
           cpf_guardiao_legal: student.legalGuardian?.cpf || '',
           parentesco_guardiao_legal:
             student.legalGuardian?.family_relationship || '',
+          logs: student.logs,
+          documents: student.documents.map((d) => ({
+            createdAt: d.createdAt,
+            name: d.name,
+            key: d.key,
+          })),
         };
       },
     );
@@ -357,15 +366,24 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
           HttpStatus.BAD_REQUEST,
         );
       }
+      const log = new LogStudent();
+      log.studentId = student.id;
+      log.applicationStatus = StatusApplication.UnderReview;
+      if (!waitingList) {
+      } else {
+      }
       student.applicationStatus = StatusApplication.UnderReview;
       if (!waitingList) {
         student.waitingList = false;
+        log.description = 'Removeu estudante da lista de espera';
         await this.removeStudentWaitingList(student, inscription);
       } else {
+        log.description = 'Adicionou estudante na lista de espera';
         student.waitingList = true;
         student.selectEnrolled = false;
         await this.addStudentWaitingList(student, inscription);
       }
+      await this.logStudentRepository.create(log);
     } else {
       throw new HttpException(
         'Não é possível alterar informações do estudantes. Status Block',
@@ -430,6 +448,15 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     await this.emailService.sendWaitingList(
       list,
       inscription.partnerPrepCourse.geo.name,
+    );
+    await Promise.all(
+      list.map(async (student) => {
+        const log = new LogStudent();
+        log.studentId = student.id;
+        log.applicationStatus = StatusApplication.UnderReview;
+        log.description = 'Enviou email de lista de espera';
+        await this.logStudentRepository.create(log);
+      }),
     );
   }
 }

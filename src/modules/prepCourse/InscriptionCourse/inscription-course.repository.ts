@@ -101,6 +101,10 @@ export class InscriptionCourseRepository extends LinkedListRepository<
       .leftJoinAndSelect('inscription_course.students', 'student_course')
       .leftJoinAndSelect('student_course.user', 'user')
       .leftJoinAndSelect('student_course.legalGuardian', 'legalGuardian')
+      .leftJoinAndSelect('student_course.logs', 'logs')
+      .leftJoinAndSelect('student_course.documents', 'documents')
+      .orderBy('logs.created_at', 'DESC') // Ordena os logs do mais recente para o mais antigo
+      .orderBy('documents.created_at', 'DESC') // Ordena os logs do mais recente para o mais antigo
       .getOne();
   }
 

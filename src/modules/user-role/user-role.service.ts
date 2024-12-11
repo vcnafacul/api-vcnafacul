@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { GetAllDtoOutput } from 'src/shared/dtos/get-all.dto.output';
 import { BaseService } from 'src/shared/modules/base/base.service';
-import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { User } from '../user/user.entity';
+import { GetUserDtoInput } from './dto/get-user.dto.input';
 import { UpdateUserRoleInput } from './dto/update-user-role.dto.input';
 import { UserRoleDTO } from './dto/user-role.dto.output';
 import { UserRole } from './user-role.entity';
@@ -46,8 +46,17 @@ export class UserRoleService extends BaseService<UserRole> {
   async findUserRole({
     page,
     limit,
-  }: GetAllInput): Promise<GetAllDtoOutput<UserRoleDTO>> {
-    const userRole = await this._repository.findAllBy({ page, limit });
+    name,
+  }: GetUserDtoInput): Promise<GetAllDtoOutput<UserRoleDTO>> {
+    const where = {};
+    if (name) {
+      where['entity.user.name'] = name;
+    }
+    const userRole = await this.userRoleRepository.findAllBy({
+      page,
+      limit,
+      name,
+    });
     return {
       data: userRole.data.map((ur) => ({
         user: ur.user,

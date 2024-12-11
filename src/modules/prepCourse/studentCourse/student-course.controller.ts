@@ -12,10 +12,11 @@ import {
   Res,
   SetMetadata,
   UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { Permissions } from 'src/modules/role/role.entity';
@@ -83,14 +84,29 @@ export class StudentCourseController {
     status: 200,
     description: 'upload de documento de estudante',
   })
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FilesInterceptor('files', 10)) // Limite de 10 arquivos
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   public async uploadImage(
-    @UploadedFile() files: Array<Express.Multer.File>,
+    @UploadedFiles() files: Express.Multer.File[],
     @Req() req: Request,
   ) {
     await this.service.uploadDocument(files, (req.user as User).id);
+  }
+
+  @Post('profile-photo')
+  @ApiResponse({
+    status: 200,
+    description: 'upload de foto da carteira estudantil',
+  })
+  @UseInterceptors(FileInterceptor('file')) // Limite de 10 arquivos
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  public async profilePhoto(
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: Request,
+  ) {
+    await this.service.profilePhoto(file, (req.user as User).id);
   }
 
   @Get('document/:fileKey')
@@ -102,19 +118,26 @@ export class StudentCourseController {
   )
   @ApiResponse({
     status: 200,
-    description: 'upload de documento de estudante',
+    description: 'Upload de documento de estudante',
   })
   public async getDocument(
     @Param('fileKey') fileKey: string,
     @Res() res: Response,
   ) {
-    const file = await this.service.getDocument(fileKey);
+    const { buffer, contentType } = await this.service.getDocument(fileKey);
 
     res.set({
-      'Content-Type': 'application/octet-stream',
-      'Content-Disposition': `attachment; filename="${fileKey}"`,
+      'Content-Type': contentType,
+      'Content-Disposition': `inline; filename="${fileKey}"`,
     });
-    return res.status(HttpStatus.OK).send(file);
+
+    // Codifique o buffer em Base64
+    const base64Buffer = buffer.toString('base64');
+
+    return res.status(HttpStatus.OK).json({
+      buffer: base64Buffer,
+      contentType,
+    });
   }
 
   @Get('get-user-info/:idPrepPartner')
@@ -128,6 +151,13 @@ export class StudentCourseController {
       idPrepPartner,
       (req.user as User).id,
     );
+  }
+
+  @Get('declared-interest/:id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async verifyDeclaredInterest(@Param('id') id: string): Promise<boolean> {
+    return await this.service.verifyDeclaredInterest(id);
   }
 
   @Patch('update-is-free')
@@ -193,8 +223,8 @@ export class StudentCourseController {
   @UseGuards(JwtAuthGuard)
   @HttpCode(200) // Define explicitamente o código de status
   async rejectStudent(
-    @Body() { studentId }: { studentId: string },
+    @Body() { studentId, reason }: { studentId: string; reason: string },
   ): Promise<void> {
-    await this.service.rejectStudent(studentId);
+    await this.service.rejectStudent(studentId, reason);
   }
 }

@@ -84,4 +84,13 @@ export class Geolocation extends BaseEntity {
 
   @Column({ default: Status.Pending })
   public status: Status;
+
+  @Column({ default: false })
+  public reportAddress: boolean;
+
+  @Column({ default: false })
+  public reportContact: boolean;
+
+  @Column({ default: false })
+  public reportOther: boolean;
 }
