@@ -43,6 +43,12 @@ export class StudentCourse extends NodeEntity {
   @Column({ nullable: true, type: 'text' })
   socioeconomic?: string;
 
+  @Column({ nullable: true, type: 'text' })
+  areaInterest?: string;
+
+  @Column({ nullable: true, type: 'text' })
+  selectedCourses?: string;
+
   @OneToMany(
     () => DocumentStudent,
     (documentStudent) => documentStudent.studentCourse,

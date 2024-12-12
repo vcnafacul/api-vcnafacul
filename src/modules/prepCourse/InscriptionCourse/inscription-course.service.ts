@@ -274,6 +274,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
             name: d.name,
             key: d.key,
           })),
+          photo: student.photo,
         };
       },
     );
