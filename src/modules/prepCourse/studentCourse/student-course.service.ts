@@ -181,6 +181,14 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     );
   }
 
+  async getDocument(fileKey: string) {
+    const file = await this.blobService.getFile(
+      fileKey,
+      this.configService.get<string>('BUCKET_DOC'),
+    );
+    return file;
+  }
+
   async profilePhoto(file: Express.Multer.File, userId: string) {
     const student = await this.repository.findOneBy({ id: userId });
     if (!student) {
@@ -194,10 +202,10 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     await this.repository.update(student);
   }
 
-  async getDocument(fileKey: string) {
+  async getProfilePhoto(fileKey: string) {
     const file = await this.blobService.getFile(
       fileKey,
-      this.configService.get<string>('BUCKET_DOC'),
+      this.configService.get<string>('BUCKET_PROFILE'),
     );
     return file;
   }

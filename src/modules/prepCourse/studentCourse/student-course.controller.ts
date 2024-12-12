@@ -118,13 +118,44 @@ export class StudentCourseController {
   )
   @ApiResponse({
     status: 200,
-    description: 'Upload de documento de estudante',
+    description: 'Busca de documento de estudante',
   })
   public async getDocument(
     @Param('fileKey') fileKey: string,
     @Res() res: Response,
   ) {
     const { buffer, contentType } = await this.service.getDocument(fileKey);
+
+    res.set({
+      'Content-Type': contentType,
+      'Content-Disposition': `inline; filename="${fileKey}"`,
+    });
+
+    // Codifique o buffer em Base64
+    const base64Buffer = buffer.toString('base64');
+
+    return res.status(HttpStatus.OK).json({
+      buffer: base64Buffer,
+      contentType,
+    });
+  }
+
+  @Get('profile-photo/:fileKey')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(
+    PermissionsGuard.name,
+    Permissions.gerenciarInscricoesCursinhoParceiro,
+  )
+  @ApiResponse({
+    status: 200,
+    description: 'Busca de documento de estudante',
+  })
+  public async getProfilePhoto(
+    @Param('fileKey') fileKey: string,
+    @Res() res: Response,
+  ) {
+    const { buffer, contentType } = await this.service.getProfilePhoto(fileKey);
 
     res.set({
       'Content-Type': contentType,
