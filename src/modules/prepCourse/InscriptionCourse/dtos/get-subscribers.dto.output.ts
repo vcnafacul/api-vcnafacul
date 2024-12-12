@@ -40,4 +40,5 @@ export class GetSubscribersDtoOutput {
   parentesco_guardiao_legal: string;
   logs: LogStudent[];
   documents: DocumentStudentDtoOutput[];
+  photo: string;
 }
