@@ -2,6 +2,7 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Permissions } from 'src/modules/role/role.entity';
 import { RoleService } from 'src/modules/role/role.service';
+import { Status } from 'src/modules/simulado/enum/status.enum';
 import { UserRoleRepository } from 'src/modules/user-role/user-role.repository';
 import { UserService } from 'src/modules/user/user.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
@@ -53,7 +54,9 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     if (!prep) {
       throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
     }
-    const activedInscription = prep.inscriptionCourses.find((i) => i.actived);
+    const activedInscription = prep.inscriptionCourses.find(
+      (i) => i.actived === Status.Approved,
+    );
     if (!activedInscription) {
       throw new HttpException(
         'Não há inscrições ativas para esse cursinho no momento',
