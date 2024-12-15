@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
+import { Status } from 'src/modules/simulado/enum/status.enum';
 import { GetAllWhereInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { LinkedListRepository } from 'src/shared/modules/linked/linked-list.repository';
@@ -53,7 +54,7 @@ export class InscriptionCourseRepository extends LinkedListRepository<
       .createQueryBuilder('inscription_course')
       .where({
         partnerPrepCourse,
-        actived: true,
+        actived: Status.Approved,
       })
       .leftJoin('inscription_course.students', 'student_course')
       .addSelect(['student_course.userId'])
