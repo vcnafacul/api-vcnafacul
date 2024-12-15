@@ -200,19 +200,25 @@ export class UserService extends BaseService<User> {
     });
   }
 
-  async uploadImage(file: any, userId: string): Promise<string> {
+  async uploadImage(
+    file: Express.Multer.File,
+    userId: string,
+  ): Promise<string> {
     const user = await this.userRepository.findOneBy({ id: userId });
     if (user.collaboratorPhoto) {
-      await removeFileFTP(
-        user.collaboratorPhoto,
-        this.configService.get<string>('FTP_HOST'),
-        this.configService.get<string>('FTP_PROFILE'),
-        this.configService.get<string>('FTP_PASSWORD'),
-      );
+      try {
+        await removeFileFTP(
+          user.collaboratorPhoto,
+          this.configService.get<string>('FTP_HOST'),
+          this.configService.get<string>('FTP_PROFILE'),
+          this.configService.get<string>('FTP_PASSWORD'),
+        );
+      } catch (error) {
+        console.log(error);
+      }
     }
     const fileName = await uploadFileFTP(
       file,
-      this.configService.get<string>('FTP_TEMP_FILE'),
       this.configService.get<string>('FTP_HOST'),
       this.configService.get<string>('FTP_PROFILE'),
       this.configService.get<string>('FTP_PASSWORD'),
