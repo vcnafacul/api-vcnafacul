@@ -206,12 +206,16 @@ export class UserService extends BaseService<User> {
   ): Promise<string> {
     const user = await this.userRepository.findOneBy({ id: userId });
     if (user.collaboratorPhoto) {
-      await removeFileFTP(
-        user.collaboratorPhoto,
-        this.configService.get<string>('FTP_HOST'),
-        this.configService.get<string>('FTP_PROFILE'),
-        this.configService.get<string>('FTP_PASSWORD'),
-      );
+      try {
+        await removeFileFTP(
+          user.collaboratorPhoto,
+          this.configService.get<string>('FTP_HOST'),
+          this.configService.get<string>('FTP_PROFILE'),
+          this.configService.get<string>('FTP_PASSWORD'),
+        );
+      } catch (error) {
+        console.log(error);
+      }
     }
     const fileName = await uploadFileFTP(
       file,

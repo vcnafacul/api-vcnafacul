@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-import sharp from 'sharp';
+const sharp = require('sharp');
 
 export const compressImage = async (
   file: Buffer,
