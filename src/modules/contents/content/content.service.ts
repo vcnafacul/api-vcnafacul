@@ -117,7 +117,6 @@ export class ContentService extends BaseService<Content> {
     const diretory = this.getDiretory(demand);
     const fileName = await uploadFileFTP(
       file,
-      this.configService.get<string>('FTP_TEMP_FILE'),
       this.configService.get<string>('FTP_HOST'),
       this.configService.get<string>('FTP_CONTENT'),
       this.configService.get<string>('FTP_PASSWORD'),

@@ -16,7 +16,6 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
@@ -33,6 +32,7 @@ import { ResetPasswordDtoInput } from './dto/reset-password.dto.input';
 import { UpdateUserDTOInput } from './dto/update.dto.input';
 import { User } from './user.entity';
 import { UserService } from './user.service';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('User')
 @Controller('user')
@@ -113,7 +113,10 @@ export class UserController {
   @Post(`collaborator`)
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor('file'))
-  async uploadImage(@UploadedFile() file, @Req() req: Request) {
+  async uploadImage(
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: Request,
+  ) {
     return await this.userService.uploadImage(file, (req.user as User).id);
   }
 
