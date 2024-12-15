@@ -1,12 +1,9 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-const sharp = require('sharp');
+import sharp from 'sharp';
 
 export const compressImage = async (
-  outputPath: string,
-  imagePath: string,
+  file: Buffer,
   quality: number = 50,
-): Promise<void> => {
-  await sharp(imagePath)
-    .jpeg({ quality }) // Configura a qualidade da imagem JPEG
-    .toFile(outputPath);
+): Promise<Buffer> => {
+  return await sharp(file).jpeg({ quality }).toBuffer(); // Configura a qualidade da imagem JPEG
 };
