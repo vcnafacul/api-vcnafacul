@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class CreateGeoDTOInput {
   @IsNumber()
@@ -129,4 +135,19 @@ export class CreateGeoDTOInput {
   @IsNotEmpty()
   @ApiProperty({ required: false })
   userEmail: string;
+
+  @IsBoolean()
+  @ApiProperty({ required: false })
+  @IsOptional()
+  reportAddress?: boolean = false;
+
+  @IsBoolean()
+  @ApiProperty({ required: false })
+  @IsOptional()
+  reportContact?: boolean = false;
+
+  @IsBoolean()
+  @ApiProperty({ required: false })
+  @IsOptional()
+  reportOther?: boolean = false;
 }
