@@ -139,15 +139,15 @@ export class CreateGeoDTOInput {
   @IsBoolean()
   @ApiProperty({ required: false })
   @IsOptional()
-  reportAddress: boolean = false;
+  reportAddress?: boolean = false;
 
   @IsBoolean()
   @ApiProperty({ required: false })
   @IsOptional()
-  reportContact: boolean = false;
+  reportContact?: boolean = false;
 
   @IsBoolean()
   @ApiProperty({ required: false })
   @IsOptional()
-  reportOther: boolean = false;
+  reportOther?: boolean = false;
 }
