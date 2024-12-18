@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { Status } from 'src/modules/simulado/enum/status.enum';
 import { Gender } from 'src/modules/user/enum/gender';
 import { BaseService } from 'src/shared/modules/base/base.service';
@@ -43,8 +44,6 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     }
     const parnetPrepCourse =
       await this.partnerPrepCourseService.getByUserId(userId);
-
-    await this.updateInfosInscription(parnetPrepCourse);
 
     const allInscription = await this.findAllBy({
       page: 1,
@@ -102,8 +101,6 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     userId: string,
   ): Promise<GetAllOutput<InscriptionCourseDtoOutput>> {
     const partner = await this.partnerPrepCourseService.getByUserId(userId);
-
-    await this.updateInfosInscription(partner);
 
     const inscription = await this.repository.findAllBy({
       page: page,
@@ -173,7 +170,6 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
   async updateFromDTO(dto: UpdateInscriptionCourseDTOInput, userId: string) {
     const parnetPrepCourse =
       await this.partnerPrepCourseService.getByUserId(userId);
-    await this.updateInfosInscription(parnetPrepCourse);
     const activeInscription =
       await this.repository.findActived(parnetPrepCourse);
 
@@ -281,27 +277,11 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     return subscribers;
   }
 
-  async updateInfosInscription(partner: PartnerPrepCourse) {
-    const inscriptions = await this.repository.findAllBy({
-      page: 1,
-      limit: 9999,
-      where: { partnerPrepCourse: partner },
-    });
-
-    await Promise.all(
-      inscriptions.data.map(async (ins) => {
-        if (ins.endDate < new Date()) {
-          ins.actived = Status.Rejected;
-          await this.repository.update(ins);
-        } else if (ins.startDate < new Date() && ins.endDate > new Date()) {
-          ins.actived = Status.Approved;
-          await this.repository.update(ins);
-        } else {
-          ins.actived = Status.Pending;
-          await this.repository.update(ins);
-        }
-      }),
-    );
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
+    timeZone: 'America/Sao_Paulo',
+  })
+  async updateInfosInscription() {
+    await this.repository.updateAllInscriptionsStatus();
   }
 
   async checkDateConflict(
