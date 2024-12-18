@@ -137,4 +137,25 @@ export class InscriptionCourseRepository extends LinkedListRepository<
     }
     return orderStudent;
   }
+
+  async updateAllInscriptionsStatus(): Promise<void> {
+    await this.repository.query(
+      `
+      UPDATE inscription_course
+      SET actived = CASE
+        WHEN end_date < ? THEN ?
+        WHEN start_date <= ? AND end_date >= ? THEN ?
+        ELSE ?
+      END
+      `,
+      [
+        new Date(), // Para ? (agora)
+        Status.Rejected, // Para ? (status rejeitado)
+        new Date(), // Para ? (agora, novamente)
+        new Date(), // Para ? (agora, novamente)
+        Status.Approved, // Para ? (status aprovado)
+        Status.Pending, // Para ? (status pendente)
+      ],
+    );
+  }
 }

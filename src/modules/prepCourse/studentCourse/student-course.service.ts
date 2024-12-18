@@ -503,7 +503,9 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     return false;
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
+    timeZone: 'America/Sao_Paulo',
+  })
   async sendEmailDeclaredInterest() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -539,7 +541,9 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     );
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
+    timeZone: 'America/Sao_Paulo',
+  })
   async verifyLostEnrolled() {
     const students = await this.repository.getNotConfirmedEnrolled();
     await this.repository.notConfirmedEnrolled();
