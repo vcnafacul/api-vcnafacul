@@ -19,8 +19,8 @@ async function bootstrap() {
   );
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
   app.useGlobalFilters(new ControllerExceptionsFilter());
-  app.use(json({ limit: '10mb' }));
-  app.use(urlencoded({ limit: '10mb' }));
+  app.use(json({ limit: '30mb' }));
+  app.use(urlencoded({ limit: '30mb', extended: true }));
   SwaggerModule.setup('api', app, document(app));
   await app.listen(process.env.API_PORT, process.env.HOST);
   console.log(`Application is running on: ${await app.getUrl()}`);
