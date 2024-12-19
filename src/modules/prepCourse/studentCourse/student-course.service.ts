@@ -503,7 +503,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     return false;
   }
 
-  @Cron(CronExpression.EVERY_MINUTE, {
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
     timeZone: 'America/Sao_Paulo',
   })
   async sendEmailDeclaredInterest() {
