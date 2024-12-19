@@ -133,7 +133,11 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
   }
 
   async findOneActived(partnerPrepCourse: PartnerPrepCourse) {
-    return await this.repository.findActived(partnerPrepCourse);
+    const inscription = await this.repository.findActived(partnerPrepCourse);
+    if (!inscription || inscription.endDate < new Date()) {
+      return null;
+    }
+    return inscription;
   }
 
   async cancelInscriptionCourse(id: string) {
@@ -170,8 +174,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
   async updateFromDTO(dto: UpdateInscriptionCourseDTOInput, userId: string) {
     const parnetPrepCourse =
       await this.partnerPrepCourseService.getByUserId(userId);
-    const activeInscription =
-      await this.repository.findActived(parnetPrepCourse);
+    const activeInscription = await this.findOneActived(parnetPrepCourse);
 
     const inscriptionCourse = await this.repository.findOneBy({ id: dto.id });
     if (!inscriptionCourse) {
