@@ -280,7 +280,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     return subscribers;
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
+  @Cron(CronExpression.EVERY_6_HOURS, {
     timeZone: 'America/Sao_Paulo',
   })
   async updateInfosInscription() {
