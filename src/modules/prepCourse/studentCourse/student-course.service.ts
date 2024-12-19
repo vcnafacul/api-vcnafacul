@@ -171,14 +171,14 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         document.studentCourse = student.id;
 
         await this.documentRepository.create(document);
-
-        const log = new LogStudent();
-        log.studentId = student.id;
-        log.applicationStatus = StatusApplication.SendedDocument;
-        log.description = 'Documento enviado';
-        await this.logStudentRepository.create(log);
       }),
-    );
+    ).then(async () => {
+      const log = new LogStudent();
+      log.studentId = student.id;
+      log.applicationStatus = StatusApplication.SendedDocument;
+      log.description = 'Documento enviado';
+      await this.logStudentRepository.create(log);
+    });
   }
 
   async getDocument(fileKey: string) {
@@ -503,7 +503,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     return false;
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
+  @Cron(CronExpression.EVERY_MINUTE, {
     timeZone: 'America/Sao_Paulo',
   })
   async sendEmailDeclaredInterest() {
