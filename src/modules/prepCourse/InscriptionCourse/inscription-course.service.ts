@@ -272,6 +272,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
             createdAt: d.createdAt,
             name: d.name,
             key: d.key,
+            expiredAt: d.exprires,
           })),
           photo: student.photo,
         };
