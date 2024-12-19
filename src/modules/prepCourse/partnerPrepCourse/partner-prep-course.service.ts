@@ -55,7 +55,7 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
       throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
     }
     const activedInscription = prep.inscriptionCourses.find(
-      (i) => i.actived === Status.Approved,
+      (i) => i.actived === Status.Approved && i.endDate > new Date(),
     );
     if (!activedInscription) {
       throw new HttpException(

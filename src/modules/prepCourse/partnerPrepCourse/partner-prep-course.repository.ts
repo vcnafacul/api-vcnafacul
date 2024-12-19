@@ -18,7 +18,11 @@ export class PartnerPrepCourseRepository extends BaseRepository<PartnerPrepCours
       .createQueryBuilder('partner_prep_course')
       .where({ ...where })
       .leftJoin('partner_prep_course.inscriptionCourses', 'inscription_course')
-      .addSelect(['inscription_course.id', 'inscription_course.actived'])
+      .addSelect([
+        'inscription_course.id',
+        'inscription_course.actived',
+        'inscription_course.endDate',
+      ])
       .innerJoinAndSelect('partner_prep_course.geo', 'geo')
       .leftJoin('partner_prep_course.members', 'members')
       .addSelect(['members.email', 'members.id'])
