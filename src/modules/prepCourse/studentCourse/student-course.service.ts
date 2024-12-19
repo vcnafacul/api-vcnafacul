@@ -525,6 +525,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         const expiresIn = limitTimeInSeconds - currentTimeInSeconds;
         const token = await this.jwtService.signAsync(payload, { expiresIn });
         const student_name = `${stu.user.firstName} ${stu.user.lastName}`;
+        stu.limitEnrolledAt.setDate(stu.limitEnrolledAt.getDate() - 1);
         await this.emailService.sendDeclaredInterest(
           student_name,
           stu.user.email,
