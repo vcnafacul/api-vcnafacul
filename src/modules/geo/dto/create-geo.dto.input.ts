@@ -156,7 +156,7 @@ export class CreateGeoDTOInput {
   @IsString()
   @IsNotEmpty()
   @ApiProperty({ required: false })
-  campus: string;
+  campus?: string;
 
   @IsEnum(TypeGeo)
   @ApiProperty({ enum: TypeGeo })
