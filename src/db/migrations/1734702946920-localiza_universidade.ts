@@ -1,14 +1,14 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class LocalizaUniversidade1734702789744 implements MigrationInterface {
-  name = 'LocalizaUniversidade1734702789744';
+export class LocalizaUniversidade1734702946920 implements MigrationInterface {
+  name = 'LocalizaUniversidade1734702946920';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
       `ALTER TABLE \`geolocations\` ADD \`campus\` varchar(255) NULL`,
     );
     await queryRunner.query(
-      `ALTER TABLE \`geolocations\` ADD \`type\` int NOT NULL`,
+      `ALTER TABLE \`geolocations\` ADD \`type\` int NOT NULL DEFAULT '0'`,
     );
   }
 

@@ -98,6 +98,6 @@ export class Geolocation extends BaseEntity {
   @Column({ nullable: true })
   public campus?: string;
 
-  @Column()
+  @Column({ default: TypeGeo.PREP_COURSE })
   public type: TypeGeo;
 }
