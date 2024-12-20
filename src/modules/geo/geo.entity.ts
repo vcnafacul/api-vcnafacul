@@ -1,6 +1,7 @@
 import { Column, Entity } from 'typeorm';
 import { BaseEntity } from '../../shared/modules/base/entity.base';
 import { Status } from '../simulado/enum/status.enum';
+import { TypeGeo } from './enum/typeGeo';
 
 @Entity('geolocations')
 export class Geolocation extends BaseEntity {
@@ -93,4 +94,10 @@ export class Geolocation extends BaseEntity {
 
   @Column({ default: false })
   public reportOther: boolean;
+
+  @Column({ nullable: true })
+  public campus?: string;
+
+  @Column()
+  public type: TypeGeo;
 }
