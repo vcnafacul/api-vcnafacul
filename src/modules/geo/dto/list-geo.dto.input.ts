@@ -14,7 +14,8 @@ export class ListGeoDTOInput extends GetAllDtoInput {
   @IsNumberString()
   status: Status = Status.Pending;
 
-  @ApiProperty({ default: TypeGeo.PREP_COURSE })
+  @ApiProperty()
   @IsEnum(TypeGeo)
-  type: TypeGeo = TypeGeo.PREP_COURSE;
+  @IsOptional()
+  type?: TypeGeo;
 }
