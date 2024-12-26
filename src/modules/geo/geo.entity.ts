@@ -29,8 +29,8 @@ export class Geolocation extends BaseEntity {
   @Column()
   public street: string;
 
-  @Column()
-  public number: string;
+  @Column({ nullable: true })
+  public number?: string;
 
   @Column({ nullable: true })
   public complement?: string;
@@ -97,6 +97,9 @@ export class Geolocation extends BaseEntity {
 
   @Column({ nullable: true })
   public campus?: string;
+
+  @Column({ nullable: true })
+  public alias?: string;
 
   @Column({ default: TypeGeo.PREP_COURSE })
   public type: TypeGeo;
