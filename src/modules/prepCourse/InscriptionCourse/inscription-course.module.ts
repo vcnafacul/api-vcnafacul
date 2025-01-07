@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { UserRoleModule } from 'src/modules/user-role/user-role.module';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { PartnerPrepCourseModule } from '../partnerPrepCourse/partner-prep-course.module';
@@ -19,4 +19,9 @@ import { InscriptionCourseService } from './inscription-course.service';
   ],
   exports: [InscriptionCourseService, InscriptionCourseRepository],
 })
-export class InscriptionCourseModule {}
+export class InscriptionCourseModule implements OnModuleInit {
+  constructor(private readonly service: InscriptionCourseService) {}
+  async onModuleInit() {
+    await this.service.updateInfosInscription();
+  }
+}
