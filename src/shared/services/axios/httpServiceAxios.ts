@@ -46,7 +46,7 @@ export class HttpServiceAxios {
   }
 
   public async delete<T>(url: string) {
-    this.http.delete<T>(url).pipe(
+    return this.http.delete<T>(url).pipe(
       catchError((error: AxiosError) => {
         throw error.response?.data;
       }),
