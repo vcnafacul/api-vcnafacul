@@ -1,7 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { AxiosError } from 'axios';
-import { Observable, catchError, map } from 'rxjs';
+import { Observable, catchError, firstValueFrom, map } from 'rxjs';
 
 @Injectable()
 export class HttpServiceAxios {
@@ -46,11 +46,18 @@ export class HttpServiceAxios {
   }
 
   public async delete<T>(url: string) {
-    return this.http.delete<T>(url).pipe(
-      catchError((error: AxiosError) => {
-        throw error.response?.data;
-      }),
-    );
+    try {
+      return await firstValueFrom(
+        this.http.delete<T>(url).pipe(
+          catchError((error: AxiosError) => {
+            throw error.response?.data;
+          }),
+        ),
+      )
+    } catch (error) {
+      console.error('Erro ao apagar:', error);
+      throw error; 
+    }
   }
 
   public async patch<T>(url: string, req?: any) {
