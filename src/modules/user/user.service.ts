@@ -3,12 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { EmailService } from 'src/shared/services/email/email.service';
-import { removeFileFTP } from 'src/utils/removeFileFtp';
-import { uploadFileFTP } from 'src/utils/uploadFileFtp';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { Role } from '../role/role.entity';
 import { RoleRepository } from '../role/role.repository';
-import { CollaboratorDtoInput } from './dto/collaboratorDto';
 import { CreateUserDtoInput } from './dto/create.dto.input';
 import { LoginTokenDTO } from './dto/login-token.dto.input';
 import { LoginDtoInput } from './dto/login.dto.input';
@@ -176,93 +173,14 @@ export class UserService extends BaseService<User> {
     );
   }
 
-  async collaborator(data: CollaboratorDtoInput, userId: string) {
-    const user = await this.userRepository.findOneBy({ id: data.userId });
-    const changes = {
-      before: {
-        collaborador: user.collaborator,
-        description: user.collaboratorDescription,
-      },
-      after: {
-        collaborador: data.collaborator,
-        description: data.description,
-      },
-    };
-    user.collaborator = data.collaborator;
-    user.collaboratorDescription = data.description;
-    await this.userRepository.update(user);
-
-    await this.auditLogService.create({
-      entityType: User.name,
-      entityId: data.userId,
-      updatedBy: userId,
-      changes: changes,
-    });
-  }
-
-  async uploadImage(
-    file: Express.Multer.File,
-    userId: string,
-  ): Promise<string> {
-    const user = await this.userRepository.findOneBy({ id: userId });
-    if (user.collaboratorPhoto) {
-      try {
-        await removeFileFTP(
-          user.collaboratorPhoto,
-          this.configService.get<string>('FTP_HOST'),
-          this.configService.get<string>('FTP_PROFILE'),
-          this.configService.get<string>('FTP_PASSWORD'),
-        );
-      } catch (error) {
-        console.log(error);
-      }
-    }
-    const fileName = await uploadFileFTP(
-      file,
-      this.configService.get<string>('FTP_HOST'),
-      this.configService.get<string>('FTP_PROFILE'),
-      this.configService.get<string>('FTP_PASSWORD'),
-    );
-    if (!fileName) {
-      throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);
-    }
-    user.collaboratorPhoto = fileName;
-    await this.userRepository.update(user);
-    return fileName;
-  }
-
   async getVolunteers() {
     return await this.userRepository.getVolunteers();
-  }
-
-  async removeImage(userId: string): Promise<boolean> {
-    const user = await this.userRepository.findOneBy({ id: userId });
-    const deleted = await removeFileFTP(
-      user.collaboratorPhoto,
-      this.configService.get<string>('FTP_HOST'),
-      this.configService.get<string>('FTP_PROFILE'),
-      this.configService.get<string>('FTP_PASSWORD'),
-    );
-    if (deleted) {
-      user.collaboratorPhoto = null;
-      await this.userRepository.update(user);
-      return true;
-    }
-    return false;
   }
 
   async me(userId: string) {
     return this.MapUsertoUserDTO(
       await this.userRepository.findOneBy({ id: userId }),
     );
-  }
-
-  async getPartnerPrepCourse(userId: string) {
-    const user = await this.userRepository.getPartnerPrepCourse(userId);
-    if (!user) {
-      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
-    }
-    return user.partnerPrepCourse;
   }
 
   private convertDtoToDomain(userDto: CreateUserDtoInput): User {

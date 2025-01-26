@@ -58,10 +58,7 @@ export class StudentCourseController {
   @Get('confirm-enrolled/:id')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async confirmEnrolled(@Param('id') id: string): Promise<void> {
     return await this.service.confirmEnrolled(id);
   }
@@ -69,10 +66,7 @@ export class StudentCourseController {
   @Get()
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async findAllByStudent(
     @Query() query: GetAllStudentDtoInput,
   ): Promise<GetAllOutput<GetAllStudentDtoOutput>> {
@@ -112,10 +106,7 @@ export class StudentCourseController {
   @Get('document/:fileKey')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   @ApiResponse({
     status: 200,
     description: 'Busca de documento de estudante',
@@ -143,10 +134,7 @@ export class StudentCourseController {
   @Get('profile-photo/:fileKey')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   @ApiResponse({
     status: 200,
     description: 'Busca de documento de estudante',
@@ -194,10 +182,7 @@ export class StudentCourseController {
   @Patch('update-is-free')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async updateIsFree(
     @Body() dto: { idStudentCourse: string; isFree: boolean },
   ): Promise<void> {
@@ -207,10 +192,7 @@ export class StudentCourseController {
   @Patch('update-select-enrolled')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async updateEnrolledInfo(
     @Body() dto: { idStudentCourse: string; enrolled: boolean },
   ): Promise<void> {
@@ -221,10 +203,7 @@ export class StudentCourseController {
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @HttpCode(200) // Define explicitamente o código de status
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async scheduleEnrolled(@Body() dto: ScheduleEnrolledDtoInput): Promise<void> {
     await this.service.scheduleEnrolled(dto);
   }
