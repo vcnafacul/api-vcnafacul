@@ -1,7 +1,9 @@
 import {
+  Body,
   Controller,
   Delete,
   Get,
+  Param,
   Patch,
   Query,
   Req,
@@ -49,5 +51,25 @@ export class CollaboratorController {
   @UseGuards(JwtAuthGuard)
   async removeImage(@Req() req: Request) {
     return await this.service.removeImage((req.user as User).id);
+  }
+
+  @Patch(':id/active')
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarColaboradores)
+  async changeActive(@Param('id') id: string) {
+    return await this.service.changeActive(id);
+  }
+
+  @Patch(':id/description')
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarColaboradores)
+  async changeDescription(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      description: string;
+    },
+  ) {
+    return await this.service.changeDescription(id, body.description);
   }
 }

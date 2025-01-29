@@ -86,4 +86,18 @@ export class CollaboratorService extends BaseService<Collaborator> {
     }
     return false;
   }
+
+  async changeActive(id: string) {
+    const collaborator = await this.repository.findOneBy({ id });
+    collaborator.actived = !collaborator.actived;
+    await this.repository.update(collaborator);
+    return collaborator;
+  }
+
+  async changeDescription(id: string, description: string) {
+    const collaborator = await this.repository.findOneBy({ id });
+    collaborator.description = description;
+    await this.repository.update(collaborator);
+    return collaborator;
+  }
 }
