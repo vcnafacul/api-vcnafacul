@@ -5,5 +5,5 @@ import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 export class GetAllCollaboratorDtoInput extends GetAllDtoInput {
   @IsString()
   @ApiProperty()
-  prepCourse: string;
+  userId: string;
 }

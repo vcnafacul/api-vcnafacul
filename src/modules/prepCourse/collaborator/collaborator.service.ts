@@ -22,11 +22,10 @@ export class CollaboratorService extends BaseService<Collaborator> {
   async getCollaborator({
     page,
     limit,
-    prepCourse,
+    userId,
   }: GetAllCollaboratorDtoInput): Promise<GetAllOutput<Collaborator>> {
-    const partnerPrepCourse = await this.partnerPrepCourseService.findOneBy({
-      id: prepCourse,
-    });
+    const partnerPrepCourse =
+      await this.partnerPrepCourseService.getByUserId(userId);
     if (!partnerPrepCourse) {
       throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
     }
