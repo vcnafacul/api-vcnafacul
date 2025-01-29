@@ -1,5 +1,6 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { InjectDataSource } from '@nestjs/typeorm';
 import { Status } from 'src/modules/simulado/enum/status.enum';
 import { UserService } from 'src/modules/user/user.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
@@ -11,7 +12,6 @@ import { PartnerPrepCourseDtoInput } from './dtos/create-partner-prep-course.inp
 import { HasInscriptionActiveDtoOutput } from './dtos/has-inscription-active.output.dto';
 import { PartnerPrepCourse } from './partner-prep-course.entity';
 import { PartnerPrepCourseRepository } from './partner-prep-course.repository';
-import { InjectDataSource } from '@nestjs/typeorm';
 
 @Injectable()
 export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
@@ -27,7 +27,8 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     super(repository);
   }
 
-  async create(dto: PartnerPrepCourseDtoInput): Promise<void> {
+  async create(dto: PartnerPrepCourseDtoInput): Promise<PartnerPrepCourse> {
+    let partnerPrepCourse = null;
     await this.dataSource.transaction(async (manager) => {
       const existingCourse = await manager
         .getRepository(PartnerPrepCourse)
@@ -44,7 +45,7 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
         throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
       }
 
-      const partnerPrepCourse = new PartnerPrepCourse();
+      partnerPrepCourse = new PartnerPrepCourse();
       partnerPrepCourse.geoId = dto.geoId;
 
       let collaborator = await manager
@@ -65,6 +66,13 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
       await manager.getRepository(PartnerPrepCourse).save(partnerPrepCourse);
       await manager.getRepository(Collaborator).save(collaborator);
     });
+    if (partnerPrepCourse) {
+      return partnerPrepCourse;
+    }
+    throw new HttpException(
+      'Erro ao criar cursinho parceiro',
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
   }
 
   async update(entity: PartnerPrepCourse): Promise<void> {
