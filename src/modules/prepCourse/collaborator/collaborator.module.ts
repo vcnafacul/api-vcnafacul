@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { UserRoleModule } from 'src/modules/user-role/user-role.module';
 import { UserModule } from 'src/modules/user/user.module';
 import { EmailService } from 'src/shared/services/email/email.service';
@@ -18,7 +17,6 @@ import { CollaboratorService } from './collaborator.service';
     PartnerPrepCourseService,
     PartnerPrepCourseRepository,
     EmailService,
-    JwtService,
   ],
   exports: [CollaboratorRepository, CollaboratorService],
 })
