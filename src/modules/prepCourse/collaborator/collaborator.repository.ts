@@ -67,6 +67,15 @@ export class CollaboratorRepository extends BaseRepository<Collaborator> {
       .getOne();
   }
 
+  async findOneByPrepPartner(id: string): Promise<Collaborator[]> {
+    return await this.repository
+      .createQueryBuilder('entity')
+      .leftJoinAndSelect('entity.user', 'user')
+      .leftJoinAndSelect('entity.partnerPrepCourse', 'prep')
+      .where('prep.id = :id', { id })
+      .getMany();
+  }
+
   async findCollaboratorsByPermission(
     permission: Permissions,
   ): Promise<Collaborator[]> {

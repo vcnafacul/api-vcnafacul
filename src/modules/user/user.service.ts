@@ -1,9 +1,8 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { EmailService } from 'src/shared/services/email/email.service';
-import { AuditLogService } from '../audit-log/audit-log.service';
+import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
 import { Role } from '../role/role.entity';
 import { RoleRepository } from '../role/role.repository';
 import { CreateUserDtoInput } from './dto/create.dto.input';
@@ -23,8 +22,7 @@ export class UserService extends BaseService<User> {
     private readonly roleRepository: RoleRepository,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
-    private readonly auditLogService: AuditLogService,
-    private readonly configService: ConfigService,
+    private readonly collaboratorRepository: CollaboratorRepository,
   ) {
     super(userRepository);
   }
@@ -178,9 +176,17 @@ export class UserService extends BaseService<User> {
   }
 
   async me(userId: string) {
-    return this.MapUsertoUserDTO(
+    const collaborator =
+      await this.collaboratorRepository.findOneByUserId(userId);
+    const userDto = this.MapUsertoUserDTO(
       await this.userRepository.findOneBy({ id: userId }),
     );
+    if (collaborator) {
+      userDto.collaborator = true;
+      userDto.collaboratorPhoto = collaborator.photo;
+      userDto.collaboratorDescription = collaborator.description;
+    }
+    return userDto;
   }
 
   private convertDtoToDomain(userDto: CreateUserDtoInput): User {

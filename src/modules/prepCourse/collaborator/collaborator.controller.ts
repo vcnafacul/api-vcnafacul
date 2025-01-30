@@ -37,6 +37,11 @@ export class CollaboratorController {
     });
   }
 
+  @Get(':id/prepCourse')
+  async getCollaboratorByPrepPartner(@Param('id') id: string) {
+    return await this.service.getCollaboratorByPrepPartner(id);
+  }
+
   @Patch(`photo`)
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor('file'))

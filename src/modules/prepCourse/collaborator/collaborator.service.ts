@@ -7,6 +7,7 @@ import { uploadFileFTP } from 'src/utils/uploadFileFtp';
 import { Collaborator } from '../collaborator/collaborator.entity';
 import { PartnerPrepCourseService } from '../partnerPrepCourse/partner-prep-course.service';
 import { CollaboratorRepository } from './collaborator.repository';
+import { CollaboratorVolunteerDtoOutput } from './dtos/collaborator-volunteer.dto.output';
 import { GetAllCollaboratorDtoInput } from './dtos/get-all-collaborator.dto.input';
 
 @Injectable()
@@ -38,6 +39,18 @@ export class CollaboratorService extends BaseService<Collaborator> {
       throw new HttpException('Usuário nao encontrado', HttpStatus.NOT_FOUND);
     }
     return data;
+  }
+
+  async getCollaboratorByPrepPartner(
+    id: string,
+  ): Promise<CollaboratorVolunteerDtoOutput[]> {
+    const collaborator = await this.repository.findOneByPrepPartner(id);
+    return collaborator.map((c) => ({
+      name: `${c.user.firstName} ${c.user.lastName}`,
+      description: c.description,
+      image: c.photo,
+      actived: c.actived,
+    }));
   }
 
   async uploadImage(
