@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   HttpStatus,
   Param,
@@ -11,19 +10,13 @@ import {
   Query,
   Req,
   Res,
-  SetMetadata,
-  UploadedFile,
   UseGuards,
-  UseInterceptors,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 import { GetAllDtoOutput } from 'src/shared/dtos/get-all.dto.output';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
-import { PermissionsGuard } from 'src/shared/guards/permission.guard';
-import { Permissions } from '../role/role.entity';
-import { CollaboratorDtoInput } from './dto/collaboratorDto';
 import { CreateUserDtoInput } from './dto/create.dto.input';
 import { ForgotPasswordDtoInput } from './dto/forgot-password.dto.input';
 import { HasEmailDtoInput } from './dto/has-email.dto.input';
@@ -32,7 +25,6 @@ import { ResetPasswordDtoInput } from './dto/reset-password.dto.input';
 import { UpdateUserDTOInput } from './dto/update.dto.input';
 import { User } from './user.entity';
 import { UserService } from './user.service';
-import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('User')
 @Controller('user')
@@ -101,29 +93,6 @@ export class UserController {
   @UseGuards(JwtAuthGuard)
   async confirmEmail(@Req() req: Request) {
     return await this.userService.confirmEmail((req.user as User).id);
-  }
-
-  @Patch(`collaborator`)
-  @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
-  async collaborator(@Body() data: CollaboratorDtoInput, @Req() req: Request) {
-    return await this.userService.collaborator(data, (req.user as User).id);
-  }
-
-  @Post(`collaborator`)
-  @UseGuards(JwtAuthGuard)
-  @UseInterceptors(FileInterceptor('file'))
-  async uploadImage(
-    @UploadedFile() file: Express.Multer.File,
-    @Req() req: Request,
-  ) {
-    return await this.userService.uploadImage(file, (req.user as User).id);
-  }
-
-  @Delete('collaborator')
-  @UseGuards(JwtAuthGuard)
-  async removeImage(@Req() req: Request) {
-    return await this.userService.removeImage((req.user as User).id);
   }
 
   @Get('me')

@@ -44,5 +44,8 @@ export class CreateRoleDtoInput {
   gerenciadorDemanda: boolean;
 
   @IsBoolean()
-  gerenciarInscricoesCursinhoParceiro: boolean;
+  gerenciarProcessoSeletivo: boolean;
+
+  @IsBoolean()
+  gerenciarColaboradores: boolean;
 }

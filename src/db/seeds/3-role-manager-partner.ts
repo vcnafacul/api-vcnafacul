@@ -3,8 +3,8 @@ import { Permissions, Role } from 'src/modules/role/role.entity';
 import { RoleRepository } from 'src/modules/role/role.repository';
 
 const ManagerPartner = {
-  name: Permissions.gerenciarInscricoesCursinhoParceiro,
-  gerenciarInscricoesCursinhoParceiro: true,
+  name: Permissions.gerenciarProcessoSeletivo,
+  gerenciarProcessoSeletivo: true,
 };
 
 @Injectable()

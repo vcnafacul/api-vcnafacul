@@ -1,16 +1,7 @@
 import { Exclude } from 'class-transformer';
-import {
-  BeforeInsert,
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
-  OneToOne,
-} from 'typeorm';
+import { BeforeInsert, Column, Entity, OneToMany, OneToOne } from 'typeorm';
 import { BaseEntity } from '../../shared/modules/base/entity.base';
 import { Content } from '../contents/content/content.entity';
-import { PartnerPrepCourse } from '../prepCourse/partnerPrepCourse/partner-prep-course.entity';
 import { StudentCourse } from '../prepCourse/studentCourse/student-course.entity';
 import { UserRole } from '../user-role/user-role.entity';
 import { Gender } from './enum/gender';
@@ -69,15 +60,6 @@ export class User extends BaseEntity {
   @Column()
   public lgpd: boolean;
 
-  @Column({ default: false })
-  public collaborator: boolean;
-
-  @Column({ default: null })
-  public collaboratorDescription?: string;
-
-  @Column({ default: null })
-  public collaboratorPhoto?: string;
-
   @Column({
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP',
@@ -97,13 +79,6 @@ export class User extends BaseEntity {
     (studentCourse) => studentCourse.inscriptionCourse,
   )
   studentCourse: StudentCourse[];
-
-  @ManyToOne(
-    () => PartnerPrepCourse,
-    (partnerInscription) => partnerInscription.members,
-  )
-  @JoinColumn({ name: 'partner_prep_course_id' })
-  partnerPrepCourse?: PartnerPrepCourse;
 
   @BeforeInsert()
   async hashPassword() {
