@@ -147,6 +147,7 @@ export class InscriptionCourseRepository extends LinkedListRepository<
         WHEN start_date <= ? AND end_date >= ? THEN ?
         ELSE ?
       END
+      WHERE deleted_at IS NULL AND actived != ?
       `,
       [
         new Date(), // Para ? (agora)
@@ -155,6 +156,7 @@ export class InscriptionCourseRepository extends LinkedListRepository<
         new Date(), // Para ? (agora, novamente)
         Status.Approved, // Para ? (status aprovado)
         Status.Pending, // Para ? (status pendente)
+        Status.Rejected, // Para ? (não atualizar se já for rejeitado)
       ],
     );
   }
