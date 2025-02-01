@@ -95,9 +95,16 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
         HttpStatus.NOT_FOUND,
       );
     }
+
     return {
       prepCourseName: prep.geo.name,
       hasActiveInscription: true,
+      inscription: {
+        name: activedInscription.name,
+        description: activedInscription.description,
+        startDate: activedInscription.startDate,
+        endDate: activedInscription.endDate,
+      },
     };
   }
 

@@ -71,7 +71,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
       new InscriptionCourse(),
       dto,
     );
-    inscriptionCourse.description = '';
+    inscriptionCourse.description = dto.description || '';
     const result = await this.repository.create(inscriptionCourse);
     if (parnetPrepCourse.inscriptionCourses) {
       parnetPrepCourse.inscriptionCourses.push(result);
