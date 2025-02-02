@@ -34,10 +34,7 @@ export class InscriptionCourseController {
   @Post()
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async create(
     @Body() dto: CreateInscriptionCourseInput,
     @Req() req: Request,
@@ -48,10 +45,7 @@ export class InscriptionCourseController {
   @Get()
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async getAll(
     @Query() dto: GetAllDtoInput,
     @Req() req: Request,
@@ -66,10 +60,7 @@ export class InscriptionCourseController {
   @Get('subscribers/:id')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async getSubcribers(
     @Param('id') id: string,
   ): Promise<GetSubscribersDtoOutput[]> {
@@ -79,10 +70,7 @@ export class InscriptionCourseController {
   @Get('waiting-list/:id')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async getWaitingList(@Param('id') id: string): Promise<
     {
       id: string;
@@ -96,10 +84,7 @@ export class InscriptionCourseController {
   @Get('send-waiting-list/:id')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async sendWaitingList(@Param('id') id: string): Promise<void> {
     await this.service.sendEmailWaitingList(id);
   }
@@ -107,10 +92,7 @@ export class InscriptionCourseController {
   @Get(':id')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async getById(@Param('id') id: string): Promise<InscriptionCourse> {
     return await this.service.getById(id);
   }
@@ -118,10 +100,7 @@ export class InscriptionCourseController {
   @Put('active/:id')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async active(@Param('id') id: string): Promise<void> {
     await this.service.activeInscriptionCourse(id);
   }
@@ -129,10 +108,7 @@ export class InscriptionCourseController {
   @Patch()
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async update(
     @Body() dto: UpdateInscriptionCourseDTOInput,
     @Req() req: Request,
@@ -143,10 +119,7 @@ export class InscriptionCourseController {
   @Delete(':id')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async cancel(@Param('id') id: string): Promise<void> {
     await this.service.cancelInscriptionCourse(id);
   }
@@ -154,10 +127,7 @@ export class InscriptionCourseController {
   @Patch('update-waiting-list')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async updateWaitingList(
     @Body() dto: { id: string; studentId: string; waitingList: boolean },
   ) {
@@ -171,10 +141,7 @@ export class InscriptionCourseController {
   @Patch('update-order-waiting-list')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async updateOrderWaitingList(
     @Body() dto: { id: string; studentsId: string[] },
   ) {

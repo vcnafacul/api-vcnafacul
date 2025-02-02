@@ -16,6 +16,7 @@ export class S3Service implements BlobService {
 
   constructor(private configService: ConfigService) {
     this.s3Client = new S3Client({
+      endpoint: this.configService.get<string>('AWS_ENDPOINT'),
       region: this.configService.get<string>('AWS_REGION'),
       credentials: {
         accessKeyId: this.configService.get<string>('AWS_ACCESS_KEY_ID'),
@@ -38,7 +39,9 @@ export class S3Service implements BlobService {
       Key: fileKey,
       Body: file.buffer,
       ContentType: file.mimetype,
-      StorageClass: StorageClass.ONEZONE_IA,
+      StorageClass: this.configService.get<string>(
+        'AWS_STORAGE_CLASS',
+      ) as unknown as StorageClass,
       Expires: exprires,
     });
     await this.s3Client.send(command);

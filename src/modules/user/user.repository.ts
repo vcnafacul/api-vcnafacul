@@ -78,17 +78,4 @@ export class UserRepository extends BaseRepository<User> {
       })
       .getMany();
   }
-
-  async getPartnerPrepCourse(id: string) {
-    return await this.repository
-      .createQueryBuilder('user')
-      .where({ id })
-      .leftJoinAndSelect('user.partnerPrepCourse', 'partnerPrepCourse')
-      .leftJoinAndSelect(
-        'partnerPrepCourse.inscriptionCourses',
-        'inscriptionCourses',
-      )
-      .innerJoinAndSelect('partnerPrepCourse.geo', 'geo')
-      .getOne();
-  }
 }

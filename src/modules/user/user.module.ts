@@ -9,6 +9,7 @@ import { UserService } from './user.service';
 import { EmailExistValidator } from './validator/email-exist.validator';
 import { EmailUniqueValidator } from './validator/email-unique.validator';
 import { UserExistValidator } from './validator/user-exist.validator';
+import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
 
 @Module({
   controllers: [UserController],
@@ -20,6 +21,7 @@ import { UserExistValidator } from './validator/user-exist.validator';
     UserExistValidator,
     EmailExistValidator,
     EmailService,
+    CollaboratorRepository,
   ],
   exports: [UserService, UserRepository],
 })

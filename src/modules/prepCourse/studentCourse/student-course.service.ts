@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import * as dayjs from 'dayjs';
+import { Permissions } from 'src/modules/role/role.entity';
 import { Status } from 'src/modules/simulado/enum/status.enum';
 import { CreateUserDtoInput } from 'src/modules/user/dto/create.dto.input';
 import { CreateFlow } from 'src/modules/user/enum/create-flow';
@@ -12,6 +13,7 @@ import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
+import { CollaboratorRepository } from '../collaborator/collaborator.repository';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
 import { InscriptionCourseService } from '../InscriptionCourse/inscription-course.service';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
@@ -51,6 +53,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     private readonly emailService: EmailService,
     private readonly logStudentRepository: LogStudentRepository,
     private configService: ConfigService,
+    private readonly collaboratorRepository: CollaboratorRepository,
   ) {
     super(repository);
   }
@@ -101,9 +104,10 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     }
 
     await this.userRepository.update(user);
-    const represent = await this.userService.findOneBy({
-      id: partnerPrepCourse.userId,
-    });
+    const representatives =
+      await this.collaboratorRepository.findCollaboratorsByPermission(
+        Permissions.gerenciarProcessoSeletivo,
+      );
 
     const log = new LogStudent();
     log.studentId = studentCourse.id;
@@ -113,7 +117,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
     await this.sendEmailConfirmation(
       dto,
-      represent.email,
+      representatives.map((rep) => rep.user.email),
       partnerPrepCourse.geo.name,
     );
     return { id: studentCourse.id } as CreateStudentCourseOutput;
@@ -758,12 +762,12 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
   private async sendEmailConfirmation(
     student: CreateStudentCourseInput,
-    emailRepresentant: string,
+    emailRepresentant: string[],
     nome_cursinho: string,
   ) {
     const emailList = [
       student.email,
-      emailRepresentant,
+      ...emailRepresentant,
       'cleyton.biffe@vcnafacul.com.br',
     ];
     const studentFull = this.flattenData(student);

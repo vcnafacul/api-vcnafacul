@@ -6,7 +6,7 @@ docker run --name test-mysql -e MYSQL_ROOT_PASSWORD=123456 -e MYSQL_DATABASE=vcn
 
 # Instal,ação das dependências
 echo "Instalando as dependências..."
-npm install -g dotenv-cli
+yarn global add dotenv-cli
 
 # Aguarde alguns segundos para garantir que o MySQL esteja pronto
 echo "Aguardando o MySQL iniciar..."
