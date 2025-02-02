@@ -149,41 +149,52 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
   }
 
   async inviteMemberAccept(userId: string, partnerId: string) {
-    const prepCoursePartner = await this.repository.findOneBy({
-      id: partnerId,
-    });
-    if (!prepCoursePartner) {
-      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
-    }
-    const user = await this.userService.findOneBy({ id: userId });
-    if (!user) {
-      throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
-    }
-    let collaborator: Collaborator = null;
-    collaborator = await this.collaboratorRepository.findOneByUserId(user.id);
-    if (!collaborator) {
-      collaborator = new Collaborator();
-      collaborator.user = user;
-      collaborator.partnerPrepCourse = prepCoursePartner;
-      collaborator.description = '';
-      await this.collaboratorRepository.create(collaborator);
-    }
-    if (
-      prepCoursePartner.members &&
-      prepCoursePartner.members.find((m) => m.id === collaborator.id)
-    ) {
-      throw new HttpException(
-        'Usuário já é membro desse cursinho parceiro',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-    if (!prepCoursePartner.members) {
-      prepCoursePartner.members = [collaborator];
-    } else {
-      prepCoursePartner.members = [...prepCoursePartner.members, collaborator];
-    }
+    await this.dataSource.transaction(async (manager) => {
+      const prepCoursePartner = await manager
+        .getRepository(PartnerPrepCourse)
+        .findOne({
+          where: { id: partnerId },
+          relations: ['members'],
+        });
+      if (!prepCoursePartner) {
+        throw new HttpException(
+          'Cursinho não encontrado',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+      const user = await this.userService.findOneBy({ id: userId });
+      if (!user) {
+        throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
+      }
+      let collaborator: Collaborator = null;
+      collaborator = await this.collaboratorRepository.findOneByUserId(user.id);
+      if (!collaborator) {
+        collaborator = new Collaborator();
+        collaborator.user = user;
+        collaborator.partnerPrepCourse = prepCoursePartner;
+        collaborator.description = '';
+        await manager.getRepository(Collaborator).save(collaborator);
+      }
+      if (
+        prepCoursePartner.members &&
+        prepCoursePartner.members.find((m) => m.id === collaborator.id)
+      ) {
+        throw new HttpException(
+          'Usuário já é membro desse cursinho parceiro',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      if (!prepCoursePartner.members) {
+        prepCoursePartner.members = [collaborator];
+      } else {
+        prepCoursePartner.members = [
+          ...prepCoursePartner.members,
+          collaborator,
+        ];
+      }
 
-    await this.repository.update(prepCoursePartner);
+      await manager.getRepository(PartnerPrepCourse).save(prepCoursePartner);
+    });
   }
 
   async getByUserId(userId: string): Promise<PartnerPrepCourse> {
