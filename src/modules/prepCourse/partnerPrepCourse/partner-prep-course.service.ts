@@ -134,7 +134,7 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     }
     const token = await this.jwtService.signAsync(
       {
-        user: { id: user.id },
+        user: { id: user.id, partner: prepCourse.id },
       },
       { expiresIn: '7d' },
     );
@@ -148,8 +148,10 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     );
   }
 
-  async inviteMemberAccept(userId: string) {
-    const prepCoursePartner = await this.getByUserId(userId);
+  async inviteMemberAccept(userId: string, partnerId: string) {
+    const prepCoursePartner = await this.repository.findOneBy({
+      id: partnerId,
+    });
     if (!prepCoursePartner) {
       throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
     }
