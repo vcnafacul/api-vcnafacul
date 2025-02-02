@@ -180,9 +180,7 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     if (!prepCoursePartner.members) {
       prepCoursePartner.members = [collaborator];
     } else {
-      if (!prepCoursePartner.members.find((m) => m.id === user.id)) {
-        prepCoursePartner.members.push(collaborator);
-      }
+      prepCoursePartner.members = [...prepCoursePartner.members, collaborator];
     }
 
     await this.repository.update(prepCoursePartner);
