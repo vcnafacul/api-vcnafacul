@@ -42,7 +42,10 @@ export class PartnerPrepCourseController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async inviteMemberAccept(@Req() req: Request): Promise<void> {
-    return await this.service.inviteMemberAccept((req.user as User).id);
+    return await this.service.inviteMemberAccept(
+      (req.user as User).id,
+      (req.user as any).partner as string,
+    );
   }
 
   @Get(':id/has-active-inscription')
