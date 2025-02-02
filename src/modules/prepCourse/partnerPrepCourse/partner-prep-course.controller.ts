@@ -25,9 +25,9 @@ export class PartnerPrepCourseController {
   constructor(private readonly service: PartnerPrepCourseService) {}
 
   @Post()
-  // @ApiBearerAuth()
-  // @UseGuards(PermissionsGuard)
-  // @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
   @ApiResponse({
     status: 201,
     description: 'criar cursinho parceiro',
@@ -60,6 +60,7 @@ export class PartnerPrepCourseController {
 
   @Post('invite-members')
   @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarColaboradores)
   @ApiResponse({
     status: 200,
