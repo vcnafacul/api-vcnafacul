@@ -121,10 +121,7 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     const collaborator = await this.collaboratorRepository.findOneByUserId(
       user.id,
     );
-    if (!collaborator) {
-      throw new HttpException('Usuário nao encontrado', HttpStatus.NOT_FOUND);
-    }
-    if (prepCourse.members) {
+    if (prepCourse.members && collaborator) {
       const collaborators = prepCourse.members.find(
         (m) => m.id === collaborator.id,
       );
