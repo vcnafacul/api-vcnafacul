@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { LogGeoRepository } from 'src/modules/geo/log-geo/log-geo.repository';
 import { UserRoleModule } from 'src/modules/user-role/user-role.module';
 import { UserModule } from 'src/modules/user/user.module';
 import { EmailService } from 'src/shared/services/email/email.service';
@@ -17,6 +18,7 @@ import { CollaboratorService } from './collaborator.service';
     PartnerPrepCourseService,
     PartnerPrepCourseRepository,
     EmailService,
+    LogGeoRepository,
   ],
   exports: [CollaboratorRepository, CollaboratorService],
 })

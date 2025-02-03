@@ -1,6 +1,9 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectDataSource } from '@nestjs/typeorm';
+import { StatusLogGeo } from 'src/modules/geo/enum/status-log-geo';
+import { LogGeo } from 'src/modules/geo/log-geo/log-geo.entity';
+import { LogGeoRepository } from 'src/modules/geo/log-geo/log-geo.repository';
 import { Status } from 'src/modules/simulado/enum/status.enum';
 import { UserService } from 'src/modules/user/user.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
@@ -21,14 +24,19 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     private readonly emailService: EmailService,
     private readonly jwtService: JwtService,
     private readonly collaboratorRepository: CollaboratorRepository,
+    private readonly logGeoRepository: LogGeoRepository,
     @InjectDataSource()
     private dataSource: DataSource,
   ) {
     super(repository);
   }
 
-  async create(dto: PartnerPrepCourseDtoInput): Promise<PartnerPrepCourse> {
-    let partnerPrepCourse = null;
+  async create(
+    dto: PartnerPrepCourseDtoInput,
+    userId: string,
+  ): Promise<PartnerPrepCourse> {
+    let partnerPrepCourse: PartnerPrepCourse = null;
+    const user = await this.userService.findOneBy({ id: userId });
     await this.dataSource.transaction(async (manager) => {
       const existingCourse = await manager
         .getRepository(PartnerPrepCourse)
@@ -67,6 +75,13 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
       await manager.getRepository(Collaborator).save(collaborator);
     });
     if (partnerPrepCourse) {
+      const logGeo = new LogGeo();
+      logGeo.geoId = partnerPrepCourse.geoId;
+      logGeo.status = StatusLogGeo.Partner;
+      logGeo.description = 'Criaçao de cursinho parceiro';
+      logGeo.geo = partnerPrepCourse.geo;
+      logGeo.user = user;
+      await this.logGeoRepository.create(logGeo);
       return partnerPrepCourse;
     }
     throw new HttpException(

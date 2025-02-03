@@ -155,10 +155,36 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     } as GetAllOutput<GetAllStudentDtoOutput>;
   }
 
-  async uploadDocument(files: Array<Express.Multer.File>, userId: string) {
+  async uploadProfilePhoto(file: Express.Multer.File) {
+    const fileKey = await this.blobService.uploadFile(
+      file,
+      this.configService.get<string>('BUCKET_PROFILE'),
+    );
+    return fileKey;
+  }
+
+  async declaredInterest(
+    files: Array<Express.Multer.File>,
+    photo: Express.Multer.File,
+    areaInterest: string[],
+    selectedCourses: string[],
+    userId: string,
+  ) {
     const student = await this.repository.findOneBy({ id: userId });
     if (!student) {
       throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+    }
+    if (student.applicationStatus === StatusApplication.DeclaredInterest) {
+      throw new HttpException(
+        'Você já declarou interesse neste Processo Seletivo.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (student.applicationStatus !== StatusApplication.CalledForEnrollment) {
+      throw new HttpException(
+        'Apenas estudantes convocados para matricular podem declarar interesse',
+        HttpStatus.BAD_REQUEST,
+      );
     }
     const exprires = new Date(Date.now() + 1000 * 60 * 60 * 24 * 90);
     await Promise.all(
@@ -176,13 +202,21 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
         await this.documentRepository.create(document);
       }),
-    ).then(async () => {
-      const log = new LogStudent();
-      log.studentId = student.id;
-      log.applicationStatus = StatusApplication.SendedDocument;
-      log.description = 'Documento enviado';
-      await this.logStudentRepository.create(log);
-    });
+    );
+    const fileKey = await this.uploadProfilePhoto(photo);
+
+    student.applicationStatus = StatusApplication.DeclaredInterest;
+    student.areaInterest = JSON.stringify(areaInterest);
+    student.selectedCourses = JSON.stringify(selectedCourses);
+    student.photo = fileKey;
+
+    const log = new LogStudent();
+    log.studentId = student.id;
+    log.applicationStatus = StatusApplication.DeclaredInterest;
+    log.description = 'Declarou interesse';
+    await this.logStudentRepository.create(log);
+
+    await this.repository.update(student);
   }
 
   async getDocument(fileKey: string) {
@@ -191,19 +225,6 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       this.configService.get<string>('BUCKET_DOC'),
     );
     return file;
-  }
-
-  async profilePhoto(file: Express.Multer.File, userId: string) {
-    const student = await this.repository.findOneBy({ id: userId });
-    if (!student) {
-      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
-    }
-    const fileKey = await this.blobService.uploadFile(
-      file,
-      this.configService.get<string>('BUCKET_PROFILE'),
-    );
-    student.photo = fileKey;
-    await this.repository.update(student);
   }
 
   async getProfilePhoto(fileKey: string) {
@@ -378,39 +399,6 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         await this.logStudentRepository.create(log);
       }),
     );
-  }
-
-  async declaredInterest(
-    id: string,
-    areaInterest: string[],
-    selectedCourses: string[],
-  ) {
-    const student = await this.repository.findOneBy({ id });
-    if (!student) {
-      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
-    }
-    if (student.applicationStatus === StatusApplication.DeclaredInterest) {
-      throw new HttpException(
-        'Você já declarou interesse neste Processo Seletivo.',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-    if (student.applicationStatus !== StatusApplication.CalledForEnrollment) {
-      throw new HttpException(
-        'Apenas estudantes convocados para matricular podem declarar interesse',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-    student.applicationStatus = StatusApplication.DeclaredInterest;
-    student.areaInterest = JSON.stringify(areaInterest);
-    student.selectedCourses = JSON.stringify(selectedCourses);
-    await this.repository.update(student);
-
-    const log = new LogStudent();
-    log.studentId = student.id;
-    log.applicationStatus = StatusApplication.DeclaredInterest;
-    log.description = 'Declarou interesse';
-    await this.logStudentRepository.create(log);
   }
 
   async confirmEnrolled(id: string) {
