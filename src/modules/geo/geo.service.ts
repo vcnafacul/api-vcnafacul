@@ -3,9 +3,9 @@ import { BaseService } from 'src/shared/modules/base/base.service';
 import { OrConditional } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { EmailService } from 'src/shared/services/email/email.service';
-import { AuditLog } from '../audit-log/audit-log.entity';
 import { AuditLogRepository } from '../audit-log/audit-log.repository';
 import { AuditLogService } from '../audit-log/audit-log.service';
+import { statusLabels } from '../simulado/enum/status.enum';
 import { User } from '../user/user.entity';
 import { UserService } from '../user/user.service';
 import { CreateGeoDTOInput } from './dto/create-geo.dto.input';
@@ -13,10 +13,11 @@ import { GeoStatusChangeDTOInput } from './dto/geo-status.dto.input';
 import { ListGeoDTOInput } from './dto/list-geo.dto.input';
 import { ReportMapHome } from './dto/report-map-home';
 import { UpdateGeoDTOInput } from './dto/update-geo.dto.input';
+import { StatusLogGeo } from './enum/status-log-geo';
 import { Geolocation } from './geo.entity';
 import { GeoRepository } from './geo.repository';
-
-const TypeAuditLog = 'geolocations';
+import { LogGeo } from './log-geo/log-geo.entity';
+import { LogGeoRepository } from './log-geo/log-geo.repository';
 
 @Injectable()
 export class GeoService extends BaseService<Geolocation> {
@@ -26,6 +27,7 @@ export class GeoService extends BaseService<Geolocation> {
     private readonly emailService: EmailService,
     private readonly auditLogService: AuditLogService,
     private readonly auditLogRepository: AuditLogRepository,
+    private readonly log: LogGeoRepository,
   ) {
     super(geoRepository);
   }
@@ -34,6 +36,13 @@ export class GeoService extends BaseService<Geolocation> {
     const newGeo = await this.geoRepository.create(
       this.convertDtoToDomain(geoDTOInput),
     );
+    const logGeo = new LogGeo();
+    logGeo.geoId = newGeo.id;
+    logGeo.status = StatusLogGeo.Created;
+    logGeo.description = 'Entidade Criada';
+    logGeo.geo = newGeo;
+    await this.log.create(logGeo);
+
     const listEmail = await this.userService.getvalidateGeo();
     await this.emailService.sendCreateGeoMail(newGeo, listEmail);
 
@@ -76,20 +85,24 @@ export class GeoService extends BaseService<Geolocation> {
     const changes = {};
     Object.keys(updateDTO).forEach((key) => {
       if (updateDTO[key] !== undefined && updateDTO[key] !== oldGeo[key]) {
-        changes[key] = { old: oldGeo[key], new: updateDTO[key] };
+        changes[key] = `${oldGeo[key]} -> ${updateDTO[key]}`;
         oldGeo[key] = updateDTO[key];
       }
     });
     if (Object.keys(changes).length === 0) {
       return false;
     }
+
     await this.geoRepository.update(oldGeo);
-    await this.auditLogService.create({
-      entityType: TypeAuditLog,
-      entityId: oldGeo.id,
-      changes: changes,
-      updatedBy: user.id,
-    });
+
+    const logGeo = new LogGeo();
+    logGeo.geoId = oldGeo.id;
+    logGeo.status = StatusLogGeo.Changed;
+    logGeo.description = JSON.stringify(changes);
+    logGeo.geo = oldGeo;
+    logGeo.user = user;
+    await this.log.create(logGeo);
+
     return true;
   }
 
@@ -99,17 +112,17 @@ export class GeoService extends BaseService<Geolocation> {
     geo.status = geoStatus.status;
     await this.geoRepository.update(geo);
 
-    const changes = { old: { status: oldStatus }, new: { status: geo.status } };
-    if (geoStatus.refuseReason) {
-      changes['refuseReason'] = geoStatus.refuseReason;
-    }
+    const changes = `Status: ${statusLabels[oldStatus]} -> ${
+      statusLabels[geoStatus.status]
+    }`;
 
-    await this.auditLogService.create({
-      entityType: TypeAuditLog,
-      entityId: geo.id,
-      changes: changes,
-      updatedBy: user.id,
-    });
+    const logGeo = new LogGeo();
+    logGeo.geoId = geo.id;
+    logGeo.status = StatusLogGeo.StautsChanged;
+    logGeo.description = JSON.stringify(changes);
+    logGeo.geo = geo;
+    logGeo.user = user;
+    await this.log.create(logGeo);
   }
 
   async reportMapHome(request: ReportMapHome): Promise<void> {
@@ -133,13 +146,13 @@ export class GeoService extends BaseService<Geolocation> {
     geo.reportOther = geo.reportOther ? true : request.other;
     await this.geoRepository.update(geo);
 
-    const auditLog = new AuditLog();
-    auditLog.entityType = TypeAuditLog;
-    auditLog.entityId = request.entityId;
-    auditLog.changes = request.message;
-    auditLog.updatedBy = request.updatedBy ? user.id : null;
-
-    await this.auditLogRepository.create(auditLog);
+    const logGeo = new LogGeo();
+    logGeo.geoId = geo.id;
+    logGeo.status = StatusLogGeo.StautsChanged;
+    logGeo.description = request.message;
+    logGeo.geo = geo;
+    logGeo.user = user;
+    await this.log.create(logGeo);
   }
 
   private convertDtoToDomain(dto: CreateGeoDTOInput): Geolocation {
