@@ -55,7 +55,16 @@ export class GeoRepository extends BaseRepository<Geolocation> {
     }
 
     const totalItems = await queryTotalItems.getCount();
-    const data = await query.getMany();
+    const data = await query
+      .leftJoinAndSelect('entity.logs', 'logs')
+      .leftJoin('logs.user', 'user')
+      .addSelect([
+        'user.firstName',
+        'user.lastName',
+        'user.email',
+        'user.phone',
+      ])
+      .getMany();
     return {
       data,
       page,

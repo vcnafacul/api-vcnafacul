@@ -34,8 +34,9 @@ export class PartnerPrepCourseController {
   })
   async createPartnerPrepCourse(
     @Body() dto: PartnerPrepCourseDtoInput,
+    @Req() req: Request,
   ): Promise<void> {
-    await this.service.create(dto);
+    await this.service.create(dto, (req.user as User).id);
   }
 
   @Get('invite-members-accept')
