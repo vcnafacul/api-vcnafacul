@@ -44,6 +44,9 @@ function Email({
             Declarar Interesse
           </Button>
           <Text style={{ ...paragraph, textAlign: 'center' }}>
+            Caso você já tenha declarado, desconsidere essa mensagem.
+          </Text>
+          <Text style={{ ...paragraph, textAlign: 'center' }}>
             Atenção, você deve declarar o interesse até o dia {limitDate}.
           </Text>
           <Text style={{ ...paragraphTeam, textAlign: 'end' }}>

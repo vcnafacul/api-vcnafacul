@@ -495,7 +495,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     return false;
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
+  @Cron(CronExpression.EVERY_DAY_AT_11AM, {
     timeZone: 'America/Sao_Paulo',
   })
   async sendEmailDeclaredInterest() {
@@ -506,32 +506,36 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       selectEnrolledAt: today,
       applicationStatus: StatusApplication.CalledForEnrollment,
     });
-    await Promise.all(
-      students.map(async (stu) => {
-        const payload = {
-          user: { id: stu.id },
-        };
-        const limitTimeInSeconds = Math.floor(
-          stu.limitEnrolledAt.getTime() / 1000,
-        );
-        const expiresIn = limitTimeInSeconds - currentTimeInSeconds;
-        const token = await this.jwtService.signAsync(payload, { expiresIn });
-        const student_name = `${stu.user.firstName} ${stu.user.lastName}`;
-        stu.limitEnrolledAt.setDate(stu.limitEnrolledAt.getDate() - 1);
-        await this.emailService.sendDeclaredInterest(
-          student_name,
-          stu.user.email,
-          stu.partnerPrepCourse.geo.name,
-          stu.limitEnrolledAt,
-          token,
-        );
-        const log = new LogStudent();
-        log.studentId = stu.id;
-        log.applicationStatus = StatusApplication.CalledForEnrollment;
-        log.description = 'Email de convocação enviado';
-        await this.logStudentRepository.create(log);
-      }),
-    );
+    for (const stu of students) {
+      const payload = {
+        user: { id: stu.id },
+      };
+      const limitTimeInSeconds = Math.floor(
+        stu.limitEnrolledAt.getTime() / 1000,
+      );
+      const expiresIn = limitTimeInSeconds - currentTimeInSeconds;
+      const token = await this.jwtService.signAsync(payload, { expiresIn });
+
+      const student_name = `${stu.user.firstName} ${stu.user.lastName}`;
+      stu.limitEnrolledAt.setDate(stu.limitEnrolledAt.getDate() - 1);
+
+      await this.emailService.sendDeclaredInterest(
+        student_name,
+        stu.user.email,
+        stu.partnerPrepCourse.geo.name,
+        stu.limitEnrolledAt,
+        token,
+      );
+
+      const log = new LogStudent();
+      log.studentId = stu.id;
+      log.applicationStatus = StatusApplication.CalledForEnrollment;
+      log.description = 'Email de convocação enviado';
+      await this.logStudentRepository.create(log);
+
+      // Delay de 2 segundos entre os envios
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
