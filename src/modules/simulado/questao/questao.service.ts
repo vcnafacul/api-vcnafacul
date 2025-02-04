@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { AuditLogService } from 'src/modules/audit-log/audit-log.service';
 import { User } from 'src/modules/user/user.entity';
 import { UserService } from 'src/modules/user/user.service';
+import { EnvService } from 'src/shared/modules/env/env.service';
 import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
 import { CreateQuestaoDTOInput } from '../dtos/create-questao.dto.input';
 import {
@@ -17,11 +17,11 @@ import { Status } from '../enum/status.enum';
 export class QuestaoService {
   constructor(
     private readonly axios: HttpServiceAxios,
-    private readonly configService: ConfigService,
+    private readonly env: EnvService,
     private readonly auditLod: AuditLogService,
     private readonly userService: UserService,
   ) {
-    this.axios.setBaseURL(this.configService.get<string>('SIMULADO_URL'));
+    this.axios.setBaseURL(this.env.get('SIMULADO_URL'));
   }
 
   public async getAllQuestoes(query: QuestaoDTOInput) {

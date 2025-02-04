@@ -21,6 +21,7 @@ import { RoleModule } from './modules/role/role.module';
 import { SimuladoModule } from './modules/simulado/simulado.module';
 import { UserRoleModule } from './modules/user-role/user-role.module';
 import { UserModule } from './modules/user/user.module';
+import { EnvModule } from './shared/modules/env/env.module';
 import { BlobModule } from './shared/services/blob/blob.module';
 import { JwtStrategy } from './shared/strategy/jwt.strategy';
 
@@ -45,6 +46,7 @@ import { JwtStrategy } from './shared/strategy/jwt.strategy';
         maxRedirects: 3,
       }),
     }),
+    EnvModule,
     ScheduleModule.forRoot(),
     UserModule,
     RoleModule,

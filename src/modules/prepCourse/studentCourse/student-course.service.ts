@@ -1,5 +1,4 @@
 import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import * as dayjs from 'dayjs';
@@ -10,6 +9,7 @@ import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { EnvService } from 'src/shared/modules/env/env.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
@@ -50,7 +50,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly logStudentRepository: LogStudentRepository,
-    private configService: ConfigService,
+    private readonly env: EnvService,
   ) {
     super(repository);
   }
@@ -156,17 +156,17 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     if (!student) {
       throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
-    const exprires = new Date(Date.now() + 1000 * 60 * 60 * 24 * 90);
+    const expires = new Date(Date.now() + 1000 * 60 * 60 * 24 * 90);
     await Promise.all(
       files.map(async (file) => {
         const fileKey = await this.blobService.uploadFile(
           file,
-          this.configService.get<string>('BUCKET_DOC'),
-          exprires,
+          this.env.get('BUCKET_DOC'),
+          expires,
         );
         const document: DocumentStudent = new DocumentStudent();
         document.key = fileKey;
-        document.exprires = exprires;
+        document.exprires = expires;
         document.name = file.originalname;
         document.studentCourse = student.id;
 
@@ -184,7 +184,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   async getDocument(fileKey: string) {
     const file = await this.blobService.getFile(
       fileKey,
-      this.configService.get<string>('BUCKET_DOC'),
+      this.env.get('BUCKET_DOC'),
     );
     return file;
   }
@@ -196,7 +196,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     }
     const fileKey = await this.blobService.uploadFile(
       file,
-      this.configService.get<string>('BUCKET_PROFILE'),
+      this.env.get('BUCKET_PROFILE'),
     );
     student.photo = fileKey;
     await this.repository.update(student);
@@ -205,7 +205,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   async getProfilePhoto(fileKey: string) {
     const file = await this.blobService.getFile(
       fileKey,
-      this.configService.get<string>('BUCKET_PROFILE'),
+      this.env.get('BUCKET_PROFILE'),
     );
     return file;
   }

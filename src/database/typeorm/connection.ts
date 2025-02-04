@@ -12,7 +12,7 @@ import { DataSource, DataSourceOptions } from 'typeorm';
 //   migrations: [__dirname + '/migrations/pg/*.{js,ts}'],
 // };
 
-const dataSourceOptions: DataSourceOptions = {
+const options: DataSourceOptions = {
   type: 'mysql',
   host: process.env.MY_HOST,
   port: Number(process.env.MY_PORT),
@@ -28,8 +28,6 @@ const dataSourceOptions: DataSourceOptions = {
   },
 };
 
-console.log({ dataSourceOptions });
+console.log({ databaseConnection: options });
 
-const dataSource = new DataSource(dataSourceOptions);
-
-export default dataSource;
+export default new DataSource(options);

@@ -1,5 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { EnvService } from 'src/shared/modules/env/env.service';
 import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
 import { uploadFileFTP } from 'src/utils/uploadFileFtp';
 import { CreateProvaDTORequest } from '../dtos/prova-create.dto.request';
@@ -9,18 +9,18 @@ import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
 export class ProvaService {
   constructor(
     private readonly axios: HttpServiceAxios,
-    private readonly configService: ConfigService,
+    private readonly env: EnvService,
   ) {
-    this.axios.setBaseURL(this.configService.get<string>('SIMULADO_URL'));
+    this.axios.setBaseURL(this.env.get('SIMULADO_URL'));
   }
 
   public async createProva(prova: CreateProvaDTOInput, file: any) {
     const fileName = await uploadFileFTP(
       file,
-      this.configService.get<string>('FTP_TEMP_FILE'),
-      this.configService.get<string>('FTP_HOST'),
-      this.configService.get<string>('FTP_USER'),
-      this.configService.get<string>('FTP_PASSWORD'),
+      this.env.get('FTP_TEMP_FILE'),
+      this.env.get('FTP_HOST'),
+      this.env.get('FTP_USER'),
+      this.env.get('FTP_PASSWORD'),
     );
     if (!fileName) {
       throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);

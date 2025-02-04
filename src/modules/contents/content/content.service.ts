@@ -1,9 +1,9 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { AuditLogService } from 'src/modules/audit-log/audit-log.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { EnvService } from 'src/shared/modules/env/env.service';
 import { ChangeOrderDTOInput } from 'src/shared/modules/node/dtos/change-order.dto.input';
 import { cleanString } from 'src/utils/cleanString';
 import { uploadFileFTP } from 'src/utils/uploadFileFtp';
@@ -21,7 +21,7 @@ export class ContentService extends BaseService<Content> {
   constructor(
     private readonly repository: ContentRepository,
     private readonly subjectRepository: SubjectRepository,
-    private readonly configService: ConfigService,
+    private readonly env: EnvService,
     private readonly auditLog: AuditLogService,
   ) {
     super(repository);
@@ -117,9 +117,9 @@ export class ContentService extends BaseService<Content> {
     const diretory = this.getDiretory(demand);
     const fileName = await uploadFileFTP(
       file,
-      this.configService.get<string>('FTP_HOST'),
-      this.configService.get<string>('FTP_CONTENT'),
-      this.configService.get<string>('FTP_PASSWORD'),
+      this.env.get('FTP_HOST'),
+      this.env.get('FTP_CONTENT'),
+      this.env.get('FTP_PASSWORD'),
       diretory,
     );
     if (!fileName) {

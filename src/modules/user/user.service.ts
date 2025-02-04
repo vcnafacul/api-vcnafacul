@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { BaseService } from 'src/shared/modules/base/base.service';
+import { EnvService } from 'src/shared/modules/env/env.service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { removeFileFTP } from 'src/utils/removeFileFtp';
 import { uploadFileFTP } from 'src/utils/uploadFileFtp';
@@ -27,7 +27,7 @@ export class UserService extends BaseService<User> {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly auditLogService: AuditLogService,
-    private readonly configService: ConfigService,
+    private readonly env: EnvService,
   ) {
     super(userRepository);
   }
@@ -209,9 +209,9 @@ export class UserService extends BaseService<User> {
       try {
         await removeFileFTP(
           user.collaboratorPhoto,
-          this.configService.get<string>('FTP_HOST'),
-          this.configService.get<string>('FTP_PROFILE'),
-          this.configService.get<string>('FTP_PASSWORD'),
+          this.env.get('FTP_HOST'),
+          this.env.get('FTP_PROFILE'),
+          this.env.get('FTP_PASSWORD'),
         );
       } catch (error) {
         console.log(error);
@@ -219,9 +219,9 @@ export class UserService extends BaseService<User> {
     }
     const fileName = await uploadFileFTP(
       file,
-      this.configService.get<string>('FTP_HOST'),
-      this.configService.get<string>('FTP_PROFILE'),
-      this.configService.get<string>('FTP_PASSWORD'),
+      this.env.get('FTP_HOST'),
+      this.env.get('FTP_PROFILE'),
+      this.env.get('FTP_PASSWORD'),
     );
     if (!fileName) {
       throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);
@@ -239,9 +239,9 @@ export class UserService extends BaseService<User> {
     const user = await this.userRepository.findOneBy({ id: userId });
     const deleted = await removeFileFTP(
       user.collaboratorPhoto,
-      this.configService.get<string>('FTP_HOST'),
-      this.configService.get<string>('FTP_PROFILE'),
-      this.configService.get<string>('FTP_PASSWORD'),
+      this.env.get('FTP_HOST'),
+      this.env.get('FTP_PROFILE'),
+      this.env.get('FTP_PASSWORD'),
     );
     if (deleted) {
       user.collaboratorPhoto = null;

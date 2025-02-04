@@ -5,7 +5,7 @@ import {
   StorageClass,
 } from '@aws-sdk/client-s3';
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { EnvService } from 'src/shared/modules/env/env.service';
 import { Readable } from 'stream';
 import { v4 as uuidv4 } from 'uuid';
 import { BlobService } from './blob-service';
@@ -14,15 +14,13 @@ import { BlobService } from './blob-service';
 export class S3Service implements BlobService {
   private s3Client: S3Client;
 
-  constructor(private configService: ConfigService) {
+  constructor(private readonly env: EnvService) {
     this.s3Client = new S3Client({
-      endpoint: this.configService.get<string>('AWS_ENDPOINT'),
-      region: this.configService.get<string>('AWS_REGION'),
+      endpoint: this.env.get('AWS_ENDPOINT'),
+      region: this.env.get('AWS_REGION'),
       credentials: {
-        accessKeyId: this.configService.get<string>('AWS_ACCESS_KEY_ID'),
-        secretAccessKey: this.configService.get<string>(
-          'AWS_SECRET_ACCESS_KEY',
-        ),
+        accessKeyId: this.env.get('AWS_ACCESS_KEY_ID'),
+        secretAccessKey: this.env.get('AWS_SECRET_ACCESS_KEY'),
       },
     });
   }
@@ -39,9 +37,7 @@ export class S3Service implements BlobService {
       Key: fileKey,
       Body: file.buffer,
       ContentType: file.mimetype,
-      StorageClass: this.configService.get<string>(
-        'AWS_STORAGE_CLASS',
-      ) as unknown as StorageClass,
+      StorageClass: this.env.get('AWS_STORAGE_CLASS') as StorageClass,
       Expires: exprires,
     });
     await this.s3Client.send(command);
