@@ -17,7 +17,6 @@ import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { PartnerPrepCourseDtoInput } from './dtos/create-partner-prep-course.input.dto';
 import { HasInscriptionActiveDtoOutput } from './dtos/has-inscription-active.output.dto';
 import { inviteMembersInputDto } from './dtos/invite-members.input.dto';
-import { PartnerPrepCourse } from './partner-prep-course.entity';
 import { PartnerPrepCourseService } from './partner-prep-course.service';
 
 @ApiTags('PartnerPrepCourse')
@@ -35,8 +34,9 @@ export class PartnerPrepCourseController {
   })
   async createPartnerPrepCourse(
     @Body() dto: PartnerPrepCourseDtoInput,
-  ): Promise<PartnerPrepCourse> {
-    return await this.service.create(dto);
+    @Req() req: Request,
+  ): Promise<void> {
+    await this.service.create(dto, (req.user as User).id);
   }
 
   @Get('invite-members-accept')
@@ -44,8 +44,8 @@ export class PartnerPrepCourseController {
   @UseGuards(JwtAuthGuard)
   async inviteMemberAccept(@Req() req: Request): Promise<void> {
     return await this.service.inviteMemberAccept(
-      (req.user as User).partnerPrepCourse.id,
       (req.user as User).id,
+      (req.user as any).partner as string,
     );
   }
 
@@ -64,7 +64,8 @@ export class PartnerPrepCourseController {
 
   @Post('invite-members')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarColaboradores)
   @ApiResponse({
     status: 200,
     description: 'convidar membros para o cursinho parceiro',

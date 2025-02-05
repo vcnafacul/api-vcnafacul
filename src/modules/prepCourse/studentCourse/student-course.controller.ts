@@ -11,12 +11,11 @@ import {
   Req,
   Res,
   SetMetadata,
-  UploadedFile,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { Permissions } from 'src/modules/role/role.entity';
@@ -58,64 +57,71 @@ export class StudentCourseController {
   @Get('confirm-enrolled/:id')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async confirmEnrolled(@Param('id') id: string): Promise<void> {
     return await this.service.confirmEnrolled(id);
+  }
+
+  @Get(':id/declared-interest')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
+  async sendEmailDeclaredInterestById(@Param('id') id: string): Promise<void> {
+    await this.service.sendEmailDeclaredInterestById(id);
   }
 
   @Get()
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async findAllByStudent(
     @Query() query: GetAllStudentDtoInput,
   ): Promise<GetAllOutput<GetAllStudentDtoOutput>> {
     return await this.service.findAllByStudent(query);
   }
 
-  @Post('upload')
+  @Patch('declared-interest')
   @ApiResponse({
     status: 200,
-    description: 'upload de documento de estudante',
+    description: 'declaração de interesse do estudante',
   })
-  @UseInterceptors(FilesInterceptor('files', 10)) // Limite de 10 arquivos
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'files', maxCount: 10 },
+      { name: 'photo', maxCount: 1 },
+    ]),
+  )
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   public async uploadImage(
-    @UploadedFiles() files: Express.Multer.File[],
+    @UploadedFiles()
+    files: { files?: Express.Multer.File[]; photo?: Express.Multer.File[] },
     @Req() req: Request,
   ) {
-    await this.service.uploadDocument(files, (req.user as User).id);
-  }
+    const areaInterest = req.body.areaInterest
+      ? Array.isArray(req.body.areaInterest)
+        ? req.body.areaInterest
+        : [req.body.areaInterest]
+      : [];
 
-  @Post('profile-photo')
-  @ApiResponse({
-    status: 200,
-    description: 'upload de foto da carteira estudantil',
-  })
-  @UseInterceptors(FileInterceptor('file')) // Limite de 10 arquivos
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
-  public async profilePhoto(
-    @UploadedFile() file: Express.Multer.File,
-    @Req() req: Request,
-  ) {
-    await this.service.profilePhoto(file, (req.user as User).id);
+    const selectedCourses = req.body.selectedCourses
+      ? Array.isArray(req.body.selectedCourses)
+        ? req.body.selectedCourses
+        : [req.body.selectedCourses]
+      : [];
+    await this.service.declaredInterest(
+      files.files || [],
+      files.photo?.[0] || null,
+      areaInterest,
+      selectedCourses,
+      (req.user as User).id,
+    );
   }
 
   @Get('document/:fileKey')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   @ApiResponse({
     status: 200,
     description: 'Busca de documento de estudante',
@@ -143,10 +149,7 @@ export class StudentCourseController {
   @Get('profile-photo/:fileKey')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   @ApiResponse({
     status: 200,
     description: 'Busca de documento de estudante',
@@ -194,10 +197,7 @@ export class StudentCourseController {
   @Patch('update-is-free')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async updateIsFree(
     @Body() dto: { idStudentCourse: string; isFree: boolean },
   ): Promise<void> {
@@ -207,10 +207,7 @@ export class StudentCourseController {
   @Patch('update-select-enrolled')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async updateEnrolledInfo(
     @Body() dto: { idStudentCourse: string; enrolled: boolean },
   ): Promise<void> {
@@ -221,35 +218,9 @@ export class StudentCourseController {
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @HttpCode(200) // Define explicitamente o código de status
-  @SetMetadata(
-    PermissionsGuard.name,
-    Permissions.gerenciarInscricoesCursinhoParceiro,
-  )
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async scheduleEnrolled(@Body() dto: ScheduleEnrolledDtoInput): Promise<void> {
     await this.service.scheduleEnrolled(dto);
-  }
-
-  @Patch('declared-interest')
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
-  @HttpCode(200) // Define explicitamente o código de status
-  async declaredInterest(
-    @Body()
-    {
-      studentId,
-      areaInterest,
-      selectedCourses,
-    }: {
-      studentId: string;
-      areaInterest: string[];
-      selectedCourses: string[];
-    },
-  ): Promise<void> {
-    await this.service.declaredInterest(
-      studentId,
-      areaInterest,
-      selectedCourses,
-    );
   }
 
   @Patch('reset-student')

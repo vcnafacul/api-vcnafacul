@@ -12,6 +12,7 @@ import { UserModule } from '../user/user.module';
 import { GeoController } from './geo.controller';
 import { GeoRepository } from './geo.repository';
 import { GeoService } from './geo.service';
+import { LogGeoRepository } from './log-geo/log-geo.repository';
 import { GeoExistValidator } from './validator/geo-exist.validator';
 
 @Module({
@@ -27,6 +28,7 @@ import { GeoExistValidator } from './validator/geo-exist.validator';
     AuditLogRepository,
     HttpServiceAxios,
     GeoExistValidator,
+    LogGeoRepository,
   ],
 })
 export class GeoModule {}

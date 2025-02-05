@@ -2,6 +2,7 @@ import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import * as dayjs from 'dayjs';
+import { Permissions } from 'src/modules/role/role.entity';
 import { Status } from 'src/modules/simulado/enum/status.enum';
 import { CreateUserDtoInput } from 'src/modules/user/dto/create.dto.input';
 import { CreateFlow } from 'src/modules/user/enum/create-flow';
@@ -12,6 +13,7 @@ import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output'
 import { EnvService } from 'src/shared/modules/env/env.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
+import { CollaboratorRepository } from '../collaborator/collaborator.repository';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
 import { InscriptionCourseService } from '../InscriptionCourse/inscription-course.service';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
@@ -51,6 +53,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     private readonly emailService: EmailService,
     private readonly logStudentRepository: LogStudentRepository,
     private readonly env: EnvService,
+    private readonly collaboratorRepository: CollaboratorRepository,
   ) {
     super(repository);
   }
@@ -101,9 +104,10 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     }
 
     await this.userRepository.update(user);
-    const represent = await this.userService.findOneBy({
-      id: partnerPrepCourse.userId,
-    });
+    const representatives =
+      await this.collaboratorRepository.findCollaboratorsByPermission(
+        Permissions.gerenciarProcessoSeletivo,
+      );
 
     const log = new LogStudent();
     log.studentId = studentCourse.id;
@@ -113,7 +117,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
     await this.sendEmailConfirmation(
       dto,
-      represent.email,
+      representatives.map((rep) => rep.user.email),
       partnerPrepCourse.geo.name,
     );
     return { id: studentCourse.id } as CreateStudentCourseOutput;
@@ -151,10 +155,36 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     } as GetAllOutput<GetAllStudentDtoOutput>;
   }
 
-  async uploadDocument(files: Array<Express.Multer.File>, userId: string) {
+  async uploadProfilePhoto(file: Express.Multer.File) {
+    const fileKey = await this.blobService.uploadFile(
+      file,
+      this.env.get<string>('BUCKET_PROFILE'),
+    );
+    return fileKey;
+  }
+
+  async declaredInterest(
+    files: Array<Express.Multer.File>,
+    photo: Express.Multer.File,
+    areaInterest: string[],
+    selectedCourses: string[],
+    userId: string,
+  ) {
     const student = await this.repository.findOneBy({ id: userId });
     if (!student) {
       throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+    }
+    if (student.applicationStatus === StatusApplication.DeclaredInterest) {
+      throw new HttpException(
+        'Você já declarou interesse neste Processo Seletivo.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (student.applicationStatus !== StatusApplication.CalledForEnrollment) {
+      throw new HttpException(
+        'Apenas estudantes convocados para matricular podem declarar interesse',
+        HttpStatus.BAD_REQUEST,
+      );
     }
     const expires = new Date(Date.now() + 1000 * 60 * 60 * 24 * 90);
     await Promise.all(
@@ -172,13 +202,21 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
         await this.documentRepository.create(document);
       }),
-    ).then(async () => {
-      const log = new LogStudent();
-      log.studentId = student.id;
-      log.applicationStatus = StatusApplication.SendedDocument;
-      log.description = 'Documento enviado';
-      await this.logStudentRepository.create(log);
-    });
+    );
+    const fileKey = await this.uploadProfilePhoto(photo);
+
+    student.applicationStatus = StatusApplication.DeclaredInterest;
+    student.areaInterest = JSON.stringify(areaInterest);
+    student.selectedCourses = JSON.stringify(selectedCourses);
+    student.photo = fileKey;
+
+    const log = new LogStudent();
+    log.studentId = student.id;
+    log.applicationStatus = StatusApplication.DeclaredInterest;
+    log.description = 'Declarou interesse';
+    await this.logStudentRepository.create(log);
+
+    await this.repository.update(student);
   }
 
   async getDocument(fileKey: string) {
@@ -187,19 +225,6 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       this.env.get('BUCKET_DOC'),
     );
     return file;
-  }
-
-  async profilePhoto(file: Express.Multer.File, userId: string) {
-    const student = await this.repository.findOneBy({ id: userId });
-    if (!student) {
-      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
-    }
-    const fileKey = await this.blobService.uploadFile(
-      file,
-      this.env.get('BUCKET_PROFILE'),
-    );
-    student.photo = fileKey;
-    await this.repository.update(student);
   }
 
   async getProfilePhoto(fileKey: string) {
@@ -376,39 +401,6 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     );
   }
 
-  async declaredInterest(
-    id: string,
-    areaInterest: string[],
-    selectedCourses: string[],
-  ) {
-    const student = await this.repository.findOneBy({ id });
-    if (!student) {
-      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
-    }
-    if (student.applicationStatus === StatusApplication.DeclaredInterest) {
-      throw new HttpException(
-        'Você já declarou interesse neste Processo Seletivo.',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-    if (student.applicationStatus !== StatusApplication.CalledForEnrollment) {
-      throw new HttpException(
-        'Apenas estudantes convocados para matricular podem declarar interesse',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-    student.applicationStatus = StatusApplication.DeclaredInterest;
-    student.areaInterest = JSON.stringify(areaInterest);
-    student.selectedCourses = JSON.stringify(selectedCourses);
-    await this.repository.update(student);
-
-    const log = new LogStudent();
-    log.studentId = student.id;
-    log.applicationStatus = StatusApplication.DeclaredInterest;
-    log.description = 'Declarou interesse';
-    await this.logStudentRepository.create(log);
-  }
-
   async confirmEnrolled(id: string) {
     const student = await this.repository.findOneBy({ id });
     if (!student) {
@@ -503,6 +495,60 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     return false;
   }
 
+  async sendEmailDeclaredInterestById(id: string) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const currentTimeInSeconds = Math.floor(today.getTime() / 1000);
+    const students = await this.repository.findOneToSendEmail(id);
+    if (!students) {
+      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+    }
+    const lastLog = students.logs
+      .filter((log) => log.description === 'Email de convocação enviado')
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )[0];
+    const logDate: Date | undefined = lastLog?.createdAt
+      ? new Date(lastLog?.createdAt)
+      : undefined;
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+    const sended_email_recently: boolean =
+      logDate != undefined && logDate.getTime() > oneHourAgo.getTime();
+    if (sended_email_recently) {
+      throw new HttpException(
+        'Email enviado recentemente',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const payload = {
+      user: { id: students.id },
+    };
+    const limitTimeInSeconds = Math.floor(
+      students.limitEnrolledAt.getTime() / 1000,
+    );
+    const expiresIn = limitTimeInSeconds - currentTimeInSeconds;
+    const token = await this.jwtService.signAsync(payload, { expiresIn });
+
+    const student_name = `${students.user.firstName} ${students.user.lastName}`;
+    students.limitEnrolledAt.setDate(students.limitEnrolledAt.getDate() - 1);
+
+    await this.emailService.sendDeclaredInterest(
+      student_name,
+      students.user.email,
+      students.partnerPrepCourse.geo.name,
+      students.limitEnrolledAt,
+      token,
+    );
+
+    const log = new LogStudent();
+    log.studentId = students.id;
+    log.applicationStatus = StatusApplication.CalledForEnrollment;
+    log.description = 'Email de convocação enviado';
+    await this.logStudentRepository.create(log);
+  }
+
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
     timeZone: 'America/Sao_Paulo',
   })
@@ -514,32 +560,36 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       selectEnrolledAt: today,
       applicationStatus: StatusApplication.CalledForEnrollment,
     });
-    await Promise.all(
-      students.map(async (stu) => {
-        const payload = {
-          user: { id: stu.id },
-        };
-        const limitTimeInSeconds = Math.floor(
-          stu.limitEnrolledAt.getTime() / 1000,
-        );
-        const expiresIn = limitTimeInSeconds - currentTimeInSeconds;
-        const token = await this.jwtService.signAsync(payload, { expiresIn });
-        const student_name = `${stu.user.firstName} ${stu.user.lastName}`;
-        stu.limitEnrolledAt.setDate(stu.limitEnrolledAt.getDate() - 1);
-        await this.emailService.sendDeclaredInterest(
-          student_name,
-          stu.user.email,
-          stu.partnerPrepCourse.geo.name,
-          stu.limitEnrolledAt,
-          token,
-        );
-        const log = new LogStudent();
-        log.studentId = stu.id;
-        log.applicationStatus = StatusApplication.CalledForEnrollment;
-        log.description = 'Email de convocação enviado';
-        await this.logStudentRepository.create(log);
-      }),
-    );
+    for (const stu of students) {
+      const payload = {
+        user: { id: stu.id },
+      };
+      const limitTimeInSeconds = Math.floor(
+        stu.limitEnrolledAt.getTime() / 1000,
+      );
+      const expiresIn = limitTimeInSeconds - currentTimeInSeconds;
+      const token = await this.jwtService.signAsync(payload, { expiresIn });
+
+      const student_name = `${stu.user.firstName} ${stu.user.lastName}`;
+      stu.limitEnrolledAt.setDate(stu.limitEnrolledAt.getDate() - 1);
+
+      await this.emailService.sendDeclaredInterest(
+        student_name,
+        stu.user.email,
+        stu.partnerPrepCourse.geo.name,
+        stu.limitEnrolledAt,
+        token,
+      );
+
+      const log = new LogStudent();
+      log.studentId = stu.id;
+      log.applicationStatus = StatusApplication.CalledForEnrollment;
+      log.description = 'Email de convocação enviado';
+      await this.logStudentRepository.create(log);
+
+      // Delay de 2 segundos entre os envios
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
@@ -758,12 +808,12 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
   private async sendEmailConfirmation(
     student: CreateStudentCourseInput,
-    emailRepresentant: string,
+    emailRepresentant: string[],
     nome_cursinho: string,
   ) {
     const emailList = [
       student.email,
-      emailRepresentant,
+      ...emailRepresentant,
       'cleyton.biffe@vcnafacul.com.br',
     ];
     const studentFull = this.flattenData(student);

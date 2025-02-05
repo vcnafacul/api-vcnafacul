@@ -158,7 +158,7 @@ export class EmailService {
 
     const mailOptions = {
       from: this.env.get('SMTP_USERNAME'),
-      to: emails,
+      to: [...emails, 'cursinho.ufscar@vcnafacul.com.br'],
       subject: `Atualização Lista de Espera ${prepCourseName} - Você na Facul`,
       context: {
         students,
@@ -183,10 +183,13 @@ export class EmailService {
       ? prepCourse
       : `Cursinho ${prepCourse}`;
     const date = format(limitDate, 'dd/MM/yyyy');
-    const declaredInterestUrl = `${this.env.get('FRONT_URL')}/declarar-interesse?token=${token}`;
+    const declaredInterestUrl = `${this.env.get(
+      'FRONT_URL',
+    )}/declarar-interesse?token=${token}`;
     const mailOptions = {
       from: this.env.get('SMTP_USERNAME'),
       to: students_email,
+      bcc: 'cursinho.ufscar@vcnafacul.com.br',
       subject: `Declaração de Interesse ${prepCourseName} - Vocé na Facul`,
       context: {
         students_name,

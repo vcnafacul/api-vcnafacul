@@ -1,12 +1,16 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { Permissions } from 'src/modules/role/role.entity';
-import { RoleService } from 'src/modules/role/role.service';
+import { InjectDataSource } from '@nestjs/typeorm';
+import { StatusLogGeo } from 'src/modules/geo/enum/status-log-geo';
+import { LogGeo } from 'src/modules/geo/log-geo/log-geo.entity';
+import { LogGeoRepository } from 'src/modules/geo/log-geo/log-geo.repository';
 import { Status } from 'src/modules/simulado/enum/status.enum';
-import { UserRoleRepository } from 'src/modules/user-role/user-role.repository';
 import { UserService } from 'src/modules/user/user.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { EmailService } from 'src/shared/services/email/email.service';
+import { DataSource } from 'typeorm';
+import { Collaborator } from '../collaborator/collaborator.entity';
+import { CollaboratorRepository } from '../collaborator/collaborator.repository';
 import { PartnerPrepCourseDtoInput } from './dtos/create-partner-prep-course.input.dto';
 import { HasInscriptionActiveDtoOutput } from './dtos/has-inscription-active.output.dto';
 import { PartnerPrepCourse } from './partner-prep-course.entity';
@@ -16,31 +20,74 @@ import { PartnerPrepCourseRepository } from './partner-prep-course.repository';
 export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
   constructor(
     private readonly repository: PartnerPrepCourseRepository,
-    private readonly roleService: RoleService,
-    private readonly userRoleRepository: UserRoleRepository,
     private readonly userService: UserService,
     private readonly emailService: EmailService,
     private readonly jwtService: JwtService,
+    private readonly collaboratorRepository: CollaboratorRepository,
+    private readonly logGeoRepository: LogGeoRepository,
+    @InjectDataSource()
+    private dataSource: DataSource,
   ) {
     super(repository);
   }
 
-  async create(dto: PartnerPrepCourseDtoInput): Promise<PartnerPrepCourse> {
-    const partnerPrepCourse = new PartnerPrepCourse();
-    partnerPrepCourse.geoId = dto.geoId;
-    partnerPrepCourse.userId = dto.userId;
+  async create(
+    dto: PartnerPrepCourseDtoInput,
+    userId: string,
+  ): Promise<PartnerPrepCourse> {
+    let partnerPrepCourse: PartnerPrepCourse = null;
+    const user = await this.userService.findOneBy({ id: userId });
+    await this.dataSource.transaction(async (manager) => {
+      const existingCourse = await manager
+        .getRepository(PartnerPrepCourse)
+        .findOneBy({ geoId: dto.geoId });
+      if (existingCourse) {
+        throw new HttpException(
+          'Cursinho parceiro já existe',
+          HttpStatus.CONFLICT,
+        );
+      }
 
-    const role = await this.roleService.findOneBy({
-      name: Permissions.gerenciarInscricoesCursinhoParceiro,
+      const user = await this.userService.findOneBy({ id: dto.userId });
+      if (!user) {
+        throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
+      }
+
+      partnerPrepCourse = new PartnerPrepCourse();
+      partnerPrepCourse.geoId = dto.geoId;
+
+      let collaborator = await manager
+        .getRepository(Collaborator)
+        .findOneBy({ user: { id: user.id } });
+
+      if (!collaborator) {
+        collaborator = new Collaborator();
+        collaborator.user = user;
+        collaborator.description = 'Representante Cursinho';
+      }
+
+      collaborator.partnerPrepCourse = partnerPrepCourse;
+
+      partnerPrepCourse.members = [collaborator];
+
+      // Salvar cursinho e colaborador na mesma transação
+      await manager.getRepository(PartnerPrepCourse).save(partnerPrepCourse);
+      await manager.getRepository(Collaborator).save(collaborator);
     });
-
-    const userRole = await this.userRoleRepository.findOneBy({
-      userId: dto.userId,
-    });
-
-    userRole.role = role;
-    await this.userRoleRepository.update(userRole);
-    return await this.repository.create(partnerPrepCourse);
+    if (partnerPrepCourse) {
+      const logGeo = new LogGeo();
+      logGeo.geoId = partnerPrepCourse.geoId;
+      logGeo.status = StatusLogGeo.Partner;
+      logGeo.description = 'Criaçao de cursinho parceiro';
+      logGeo.geo = partnerPrepCourse.geo;
+      logGeo.user = user;
+      await this.logGeoRepository.create(logGeo);
+      return partnerPrepCourse;
+    }
+    throw new HttpException(
+      'Erro ao criar cursinho parceiro',
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
   }
 
   async update(entity: PartnerPrepCourse): Promise<void> {
@@ -63,14 +110,22 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
         HttpStatus.NOT_FOUND,
       );
     }
+
     return {
       prepCourseName: prep.geo.name,
       hasActiveInscription: true,
+      inscription: {
+        name: activedInscription.name,
+        description: activedInscription.description,
+        startDate: activedInscription.startDate,
+        endDate: activedInscription.endDate,
+      },
     };
   }
 
   async inviteMember(email: string, userId: string) {
-    const prepCourse = await this.repository.findOneBy({ userId });
+    const inviter = await this.userService.findOneBy({ id: userId });
+    const prepCourse = await this.getByUserId(userId);
     if (!prepCourse) {
       throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
     }
@@ -78,9 +133,14 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     if (!user) {
       throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
     }
-    if (prepCourse.members) {
-      const users = prepCourse.members.find((m) => m.email === user.email);
-      if (users) {
+    const collaborator = await this.collaboratorRepository.findOneByUserId(
+      user.id,
+    );
+    if (prepCourse.members && collaborator) {
+      const collaborators = prepCourse.members.find(
+        (m) => m.id === collaborator.id,
+      );
+      if (collaborators) {
         throw new HttpException(
           'Usuário já é membro desse cursinho parceiro',
           HttpStatus.BAD_REQUEST,
@@ -89,11 +149,11 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     }
     const token = await this.jwtService.signAsync(
       {
-        user: { id: user.id, partnerPrepCourse: { id: prepCourse.id } },
+        user: { id: user.id, partner: prepCourse.id },
       },
       { expiresIn: '7d' },
     );
-    const fullName = prepCourse.user.firstName + ' ' + prepCourse.user.lastName;
+    const fullName = inviter.firstName + ' ' + inviter.lastName;
     await this.emailService.sendInviteMember(
       user.email,
       user.firstName,
@@ -103,52 +163,58 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     );
   }
 
-  async inviteMemberAccept(prepCourse: string, userId: string) {
-    const prepCoursePartner = await this.repository.findOneBy({
-      id: prepCourse,
-    });
-    if (!prepCourse) {
-      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
-    }
-    const user = await this.userService.findOneBy({ id: userId });
-    if (!user) {
-      throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
-    }
-    if (
-      prepCoursePartner.members &&
-      prepCoursePartner.members.find((m) => m.id === user.id)
-    ) {
-      return;
-    }
-    if (!prepCoursePartner.members) {
-      prepCoursePartner.members = [user];
-    } else {
-      if (!prepCoursePartner.members.find((m) => m.id === user.id)) {
-        prepCoursePartner.members.push(user);
+  async inviteMemberAccept(userId: string, partnerId: string) {
+    await this.dataSource.transaction(async (manager) => {
+      const prepCoursePartner = await manager
+        .getRepository(PartnerPrepCourse)
+        .findOne({
+          where: { id: partnerId },
+          relations: ['members'],
+        });
+      if (!prepCoursePartner) {
+        throw new HttpException(
+          'Cursinho não encontrado',
+          HttpStatus.NOT_FOUND,
+        );
       }
-    }
+      const user = await this.userService.findOneBy({ id: userId });
+      if (!user) {
+        throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
+      }
+      let collaborator: Collaborator = null;
+      collaborator = await this.collaboratorRepository.findOneByUserId(user.id);
+      if (!collaborator) {
+        collaborator = new Collaborator();
+        collaborator.user = user;
+        collaborator.partnerPrepCourse = prepCoursePartner;
+        collaborator.description = '';
+        await manager.getRepository(Collaborator).save(collaborator);
+      }
+      if (
+        prepCoursePartner.members &&
+        prepCoursePartner.members.find((m) => m.id === collaborator.id)
+      ) {
+        throw new HttpException(
+          'Usuário já é membro desse cursinho parceiro',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      if (!prepCoursePartner.members) {
+        prepCoursePartner.members = [collaborator];
+      } else {
+        prepCoursePartner.members = [
+          ...prepCoursePartner.members,
+          collaborator,
+        ];
+      }
 
-    const role = await this.roleService.findOneBy({
-      name: Permissions.gerenciarInscricoesCursinhoParceiro,
+      await manager.getRepository(PartnerPrepCourse).save(prepCoursePartner);
     });
-
-    const userRole = await this.userRoleRepository.findOneBy({
-      userId: userId,
-    });
-
-    userRole.role = role;
-    user.partnerPrepCourse = prepCoursePartner;
-    await this.userRoleRepository.update(userRole);
-    await this.userService.updateEntity(user);
-    await this.repository.update(prepCoursePartner);
   }
 
   async getByUserId(userId: string): Promise<PartnerPrepCourse> {
     let parnetPrepCourse = null;
-    parnetPrepCourse = await this.repository.findOneBy({ userId });
-    if (!parnetPrepCourse) {
-      parnetPrepCourse = await this.userService.getPartnerPrepCourse(userId);
-    }
+    parnetPrepCourse = await this.repository.findOneByUserId(userId);
     if (!parnetPrepCourse) {
       throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
     }

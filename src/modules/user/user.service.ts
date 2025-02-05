@@ -1,14 +1,10 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { BaseService } from 'src/shared/modules/base/base.service';
-import { EnvService } from 'src/shared/modules/env/env.service';
 import { EmailService } from 'src/shared/services/email/email.service';
-import { removeFileFTP } from 'src/utils/removeFileFtp';
-import { uploadFileFTP } from 'src/utils/uploadFileFtp';
-import { AuditLogService } from '../audit-log/audit-log.service';
+import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
 import { Role } from '../role/role.entity';
 import { RoleRepository } from '../role/role.repository';
-import { CollaboratorDtoInput } from './dto/collaboratorDto';
 import { CreateUserDtoInput } from './dto/create.dto.input';
 import { LoginTokenDTO } from './dto/login-token.dto.input';
 import { LoginDtoInput } from './dto/login.dto.input';
@@ -26,8 +22,7 @@ export class UserService extends BaseService<User> {
     private readonly roleRepository: RoleRepository,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
-    private readonly auditLogService: AuditLogService,
-    private readonly env: EnvService,
+    private readonly collaboratorRepository: CollaboratorRepository,
   ) {
     super(userRepository);
   }
@@ -176,93 +171,22 @@ export class UserService extends BaseService<User> {
     );
   }
 
-  async collaborator(data: CollaboratorDtoInput, userId: string) {
-    const user = await this.userRepository.findOneBy({ id: data.userId });
-    const changes = {
-      before: {
-        collaborador: user.collaborator,
-        description: user.collaboratorDescription,
-      },
-      after: {
-        collaborador: data.collaborator,
-        description: data.description,
-      },
-    };
-    user.collaborator = data.collaborator;
-    user.collaboratorDescription = data.description;
-    await this.userRepository.update(user);
-
-    await this.auditLogService.create({
-      entityType: User.name,
-      entityId: data.userId,
-      updatedBy: userId,
-      changes: changes,
-    });
-  }
-
-  async uploadImage(
-    file: Express.Multer.File,
-    userId: string,
-  ): Promise<string> {
-    const user = await this.userRepository.findOneBy({ id: userId });
-    if (user.collaboratorPhoto) {
-      try {
-        await removeFileFTP(
-          user.collaboratorPhoto,
-          this.env.get('FTP_HOST'),
-          this.env.get('FTP_PROFILE'),
-          this.env.get('FTP_PASSWORD'),
-        );
-      } catch (error) {
-        console.log(error);
-      }
-    }
-    const fileName = await uploadFileFTP(
-      file,
-      this.env.get('FTP_HOST'),
-      this.env.get('FTP_PROFILE'),
-      this.env.get('FTP_PASSWORD'),
-    );
-    if (!fileName) {
-      throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);
-    }
-    user.collaboratorPhoto = fileName;
-    await this.userRepository.update(user);
-    return fileName;
-  }
-
   async getVolunteers() {
     return await this.userRepository.getVolunteers();
   }
 
-  async removeImage(userId: string): Promise<boolean> {
-    const user = await this.userRepository.findOneBy({ id: userId });
-    const deleted = await removeFileFTP(
-      user.collaboratorPhoto,
-      this.env.get('FTP_HOST'),
-      this.env.get('FTP_PROFILE'),
-      this.env.get('FTP_PASSWORD'),
-    );
-    if (deleted) {
-      user.collaboratorPhoto = null;
-      await this.userRepository.update(user);
-      return true;
-    }
-    return false;
-  }
-
   async me(userId: string) {
-    return this.MapUsertoUserDTO(
+    const collaborator =
+      await this.collaboratorRepository.findOneByUserId(userId);
+    const userDto = this.MapUsertoUserDTO(
       await this.userRepository.findOneBy({ id: userId }),
     );
-  }
-
-  async getPartnerPrepCourse(userId: string) {
-    const user = await this.userRepository.getPartnerPrepCourse(userId);
-    if (!user) {
-      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    if (collaborator) {
+      userDto.collaborator = true;
+      userDto.collaboratorPhoto = collaborator.photo;
+      userDto.collaboratorDescription = collaborator.description;
     }
-    return user.partnerPrepCourse;
+    return userDto;
   }
 
   private convertDtoToDomain(userDto: CreateUserDtoInput): User {
