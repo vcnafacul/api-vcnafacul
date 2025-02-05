@@ -62,6 +62,14 @@ export class StudentCourseController {
     return await this.service.confirmEnrolled(id);
   }
 
+  @Get(':id/declared-interest')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
+  async sendEmailDeclaredInterestById(@Param('id') id: string): Promise<void> {
+    await this.service.sendEmailDeclaredInterestById(id);
+  }
+
   @Get()
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)

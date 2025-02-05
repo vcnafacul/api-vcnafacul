@@ -112,6 +112,23 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .getMany();
   }
 
+  async findOneToSendEmail(id: string): Promise<StudentCourse> {
+    return await this.repository
+      .createQueryBuilder('entity')
+      .where({ id })
+      .innerJoin('entity.user', 'users')
+      .addSelect([
+        'users.firstName',
+        'users.lastName',
+        'users.socialName',
+        'users.email',
+      ])
+      .innerJoinAndSelect('entity.partnerPrepCourse', 'partnerPrepCourse')
+      .innerJoinAndSelect('partnerPrepCourse.geo', 'geo')
+      .leftJoinAndSelect('entity.logs', 'logs')
+      .getOne();
+  }
+
   async getNotConfirmedEnrolled(): Promise<StudentCourse[]> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
