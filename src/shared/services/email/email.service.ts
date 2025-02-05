@@ -160,7 +160,7 @@ export class EmailService {
 
     const mailOptions = {
       from: this.configService.get<string>('SMTP_USERNAME'),
-      bcc: emails,
+      bcc: [...emails, 'cursinho.ufscar@vcnafacul.com.br'],
       subject: `Atualização Lista de Espera ${prepCourseName} - Você na Facul`,
       context: {
         students,
@@ -191,6 +191,7 @@ export class EmailService {
     const mailOptions = {
       from: this.configService.get<string>('SMTP_USERNAME'),
       to: students_email,
+      bcc: 'cursinho.ufscar@vcnafacul.com.br',
       subject: `Declaração de Interesse ${prepCourseName} - Vocé na Facul`,
       context: {
         students_name,
