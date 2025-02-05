@@ -495,7 +495,61 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     return false;
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_11AM, {
+  async sendEmailDeclaredInterestById(id: string) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const currentTimeInSeconds = Math.floor(today.getTime() / 1000);
+    const students = await this.repository.findOneToSendEmail(id);
+    if (!students) {
+      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+    }
+    const lastLog = students.logs
+      .filter((log) => log.description === 'Email de convocação enviado')
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )[0];
+    const logDate: Date | undefined = lastLog?.createdAt
+      ? new Date(lastLog?.createdAt)
+      : undefined;
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+    const sended_email_recently: boolean =
+      logDate != undefined && logDate.getTime() > oneHourAgo.getTime();
+    if (sended_email_recently) {
+      throw new HttpException(
+        'Email enviado recentemente',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const payload = {
+      user: { id: students.id },
+    };
+    const limitTimeInSeconds = Math.floor(
+      students.limitEnrolledAt.getTime() / 1000,
+    );
+    const expiresIn = limitTimeInSeconds - currentTimeInSeconds;
+    const token = await this.jwtService.signAsync(payload, { expiresIn });
+
+    const student_name = `${students.user.firstName} ${students.user.lastName}`;
+    students.limitEnrolledAt.setDate(students.limitEnrolledAt.getDate() - 1);
+
+    await this.emailService.sendDeclaredInterest(
+      student_name,
+      students.user.email,
+      students.partnerPrepCourse.geo.name,
+      students.limitEnrolledAt,
+      token,
+    );
+
+    const log = new LogStudent();
+    log.studentId = students.id;
+    log.applicationStatus = StatusApplication.CalledForEnrollment;
+    log.description = 'Email de convocação enviado';
+    await this.logStudentRepository.create(log);
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
     timeZone: 'America/Sao_Paulo',
   })
   async sendEmailDeclaredInterest() {
