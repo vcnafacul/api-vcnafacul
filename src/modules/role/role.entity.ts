@@ -18,6 +18,7 @@ export enum Permissions {
   gerenciadorDemanda = 'gerenciador_demanda',
   gerenciarProcessoSeletivo = 'gerenciar_processo_seletivo',
   gerenciarColaboradores = 'gerenciar_colaboradores',
+  gerenciarTurmas = 'gerenciar_turmas',
 }
 
 @Entity('roles')
