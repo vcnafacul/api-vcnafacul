@@ -80,6 +80,12 @@ export class Role extends BaseEntity {
   })
   gerenciarColaboradores: boolean;
 
+  @Column({
+    name: Permissions.gerenciarTurmas,
+    default: false,
+  })
+  gerenciarTurmas: boolean;
+
   @OneToMany(() => UserRole, (userRole) => userRole.role)
   userRoles: UserRole[];
 }

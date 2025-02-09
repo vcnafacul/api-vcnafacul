@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class Class1739040926909 implements MigrationInterface {
-  name = 'Class1739040926909';
+export class Class1739121798332 implements MigrationInterface {
+  name = 'Class1739121798332';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
@@ -12,6 +12,9 @@ export class Class1739040926909 implements MigrationInterface {
     );
     await queryRunner.query(
       `ALTER TABLE \`student_course\` ADD \`classId\` varchar(36) NULL`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`roles\` ADD \`gerenciar_turmas\` tinyint NOT NULL DEFAULT 0`,
     );
     await queryRunner.query(
       `ALTER TABLE \`classes\` ADD CONSTRAINT \`FK_b37b924b873619cb72a96053737\` FOREIGN KEY (\`partner_prep_course_id\`) REFERENCES \`partner_prep_course\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`,
@@ -39,6 +42,9 @@ export class Class1739040926909 implements MigrationInterface {
     );
     await queryRunner.query(
       `ALTER TABLE \`classes\` DROP FOREIGN KEY \`FK_b37b924b873619cb72a96053737\``,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`roles\` DROP COLUMN \`gerenciar_turmas\``,
     );
     await queryRunner.query(
       `ALTER TABLE \`student_course\` DROP COLUMN \`classId\``,

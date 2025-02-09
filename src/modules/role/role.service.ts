@@ -64,6 +64,7 @@ export class RoleService extends BaseService<Role> {
         : roleDto.visualizarDemanda;
     role.gerenciarProcessoSeletivo = roleDto.gerenciarProcessoSeletivo;
     role.gerenciarColaboradores = roleDto.gerenciarColaboradores;
+    role.gerenciarTurmas = roleDto.gerenciarTurmas;
 
     return await this.roleRepository.create(role);
   }
