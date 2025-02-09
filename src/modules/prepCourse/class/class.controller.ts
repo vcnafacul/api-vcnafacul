@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -63,5 +64,17 @@ export class ClassController {
   })
   async getById(@Param('id') id: string): Promise<Class> {
     return await this.service.findOneById(id);
+  }
+
+  @Delete(':id')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
+  @ApiResponse({
+    status: 200,
+    description: 'deletar turma',
+  })
+  async delete(@Param('id') id: string): Promise<void> {
+    await this.service.delete(id);
   }
 }

@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from 'src/app.module';
 import { GeoService } from 'src/modules/geo/geo.service';
+import { ClassRepository } from 'src/modules/prepCourse/class/class.repository';
 import { PartnerPrepCourseDtoInput } from 'src/modules/prepCourse/partnerPrepCourse/dtos/create-partner-prep-course.input.dto';
 import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
 import { Role } from 'src/modules/role/role.entity';
@@ -29,6 +30,7 @@ describe('Class (e2e)', () => {
   let userRoleRepository: UserRoleRepository;
   let partnerService: PartnerPrepCourseService;
   let emailService: EmailService;
+  let classRepository: ClassRepository;
   let role: Role = null;
 
   beforeAll(async () => {
@@ -49,6 +51,7 @@ describe('Class (e2e)', () => {
     partnerService = moduleFixture.get<PartnerPrepCourseService>(
       PartnerPrepCourseService,
     );
+    classRepository = moduleFixture.get<ClassRepository>(ClassRepository);
 
     jest
       .spyOn(emailService, 'sendCreateGeoMail')
@@ -197,4 +200,54 @@ describe('Class (e2e)', () => {
       .set({ Authorization: `Bearer ${token}` })
       .expect(403);
   });
+
+  it('should delete a class successfully', async () => {
+    const user = await createPartnerFaker();
+
+    const token = await jwtService.signAsync(
+      { user: { id: user.id } },
+      { expiresIn: '2h' },
+    );
+
+    // Criando a classe antes de testar a deleção
+    const classDto = {
+      name: 'test class',
+      description: 'test description',
+      year: 2022,
+      startDate: new Date(),
+      endDate: new Date(),
+    };
+
+    const createdClass = await request(app.getHttpServer())
+      .post('/class')
+      .set({ Authorization: `Bearer ${token}` })
+      .send(classDto)
+      .expect(201);
+
+    const classId = createdClass.body.id;
+
+    // Testando a deleção da turma
+    await request(app.getHttpServer())
+      .delete(`/class/${classId}`)
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+
+    // Verificando se a turma foi realmente deletada (soft delete)
+    const deletedClass = await classRepository.findOneBy({ id: classId });
+    expect(deletedClass.deletedAt).not.toBeNull();
+  }, 30000);
+
+  it('should return 404 when trying to delete a non-existent class', async () => {
+    const user = await createPartnerFaker();
+
+    const token = await jwtService.signAsync(
+      { user: { id: user.id } },
+      { expiresIn: '2h' },
+    );
+
+    await request(app.getHttpServer())
+      .delete('/class/non-existent-id')
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(404);
+  }, 30000);
 });

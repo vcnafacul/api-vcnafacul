@@ -67,4 +67,15 @@ export class ClassService extends BaseService<Class> {
 
     await this.repository.update(classEntity);
   }
+
+  async delete(id: string): Promise<void> {
+    const classEntity = await this.repository.findOneBy({ id });
+    if (!classEntity) {
+      throw new HttpException(
+        `Class not found by id ${id}`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    await this.repository.delete(id);
+  }
 }
