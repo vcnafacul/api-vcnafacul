@@ -13,6 +13,7 @@ import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
+import { ClassService } from '../class/class.service';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
 import { InscriptionCourseService } from '../InscriptionCourse/inscription-course.service';
@@ -54,6 +55,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     private readonly logStudentRepository: LogStudentRepository,
     private configService: ConfigService,
     private readonly collaboratorRepository: CollaboratorRepository,
+    private readonly classService: ClassService,
   ) {
     super(repository);
   }
@@ -607,6 +609,19 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         await this.logStudentRepository.create(log);
       }),
     );
+  }
+
+  async updateClass(studentId: string, classId: string) {
+    const student = await this.repository.findOneBy({ id: studentId });
+    if (!student) {
+      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+    }
+    const class_ = await this.classService.findOneBy({ id: classId });
+    if (!class_) {
+      throw new HttpException('Turma nao encontrada', HttpStatus.NOT_FOUND);
+    }
+    student.class = class_;
+    await this.repository.update(student);
   }
 
   private async generateEnrolledCode() {

@@ -30,6 +30,7 @@ import { CreateStudentCourseOutput } from './dtos/create-student-course.dto.outp
 import { GetAllStudentDtoInput } from './dtos/get-all-student.dto.input';
 import { GetAllStudentDtoOutput } from './dtos/get-all-student.dto.output';
 import { ScheduleEnrolledDtoInput } from './dtos/schedule-enrolled.dto.input';
+import { UpdateClassDTOInput } from './dtos/update-class.dto.input';
 import { StudentCourseService } from './student-course.service';
 
 @ApiTags('StudentCourse')
@@ -242,5 +243,13 @@ export class StudentCourseController {
     @Body() { studentId, reason }: { studentId: string; reason: string },
   ): Promise<void> {
     await this.service.rejectStudent(studentId, reason);
+  }
+
+  @Patch('class')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
+  async updateClass(@Body() dto: UpdateClassDTOInput): Promise<void> {
+    await this.service.updateClass(dto.studentId, dto.classId);
   }
 }
