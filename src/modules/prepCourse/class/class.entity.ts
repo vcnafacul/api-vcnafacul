@@ -36,7 +36,9 @@ export class Class extends BaseEntity {
   @JoinColumn({ name: 'partner_prep_course_id' })
   partnerPrepCourse: PartnerPrepCourse;
 
-  @OneToMany(() => StudentCourse, (students) => students.partnerPrepCourse)
+  @OneToMany(() => StudentCourse, (students) => students.class, {
+    eager: true,
+  })
   public students: StudentCourse[];
 
   @ManyToMany(() => Collaborator, (collaborator) => collaborator)

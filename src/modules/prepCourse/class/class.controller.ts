@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   SetMetadata,
   UseGuards,
@@ -14,10 +15,13 @@ import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { Permissions } from 'src/modules/role/role.entity';
 import { User } from 'src/modules/user/user.entity';
+import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
+import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { Class } from './class.entity';
 import { ClassService } from './class.service';
+import { ClassDtoOutput } from './dtos/class.dto.output';
 import { CreateClassDtoInput } from './dtos/create-class.dto.input';
 import { UpdateClassDTOInput } from './dtos/update-class.dto.input';
 
@@ -76,5 +80,19 @@ export class ClassController {
   })
   async delete(@Param('id') id: string): Promise<void> {
     await this.service.delete(id);
+  }
+
+  @Get()
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async getAll(
+    @Query() dto: GetAllDtoInput,
+    @Req() req: Request,
+  ): Promise<GetAllOutput<ClassDtoOutput>> {
+    return await this.service.getAll(
+      dto.page,
+      dto.limit,
+      (req.user as User).id,
+    );
   }
 }

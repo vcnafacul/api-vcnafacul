@@ -4,8 +4,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from 'src/app.module';
 import { GeoService } from 'src/modules/geo/geo.service';
 import { ClassRepository } from 'src/modules/prepCourse/class/class.repository';
+import { ClassDtoOutput } from 'src/modules/prepCourse/class/dtos/class.dto.output';
+import { InscriptionCourseService } from 'src/modules/prepCourse/InscriptionCourse/inscription-course.service';
 import { PartnerPrepCourseDtoInput } from 'src/modules/prepCourse/partnerPrepCourse/dtos/create-partner-prep-course.input.dto';
 import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
+import { StudentCourseService } from 'src/modules/prepCourse/studentCourse/student-course.service';
 import { Role } from 'src/modules/role/role.entity';
 import { RoleService } from 'src/modules/role/role.service';
 import { UserRoleRepository } from 'src/modules/user-role/user-role.repository';
@@ -14,6 +17,8 @@ import { UserService } from 'src/modules/user/user.service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import * as request from 'supertest';
 import { CreateGeoDTOInputFaker } from './faker/create-geo.dto.input.faker';
+import { CreateInscriptionCourseDTOInputFaker } from './faker/create-inscription-course.dto.faker';
+import { createStudentCourseDTOInputFaker } from './faker/create-student-course.dto.input.faker';
 import { CreateUserDtoInputFaker } from './faker/create-user.dto.input.faker';
 import { createNestAppTest } from './utils/createNestAppTest';
 
@@ -31,6 +36,8 @@ describe('Class (e2e)', () => {
   let partnerService: PartnerPrepCourseService;
   let emailService: EmailService;
   let classRepository: ClassRepository;
+  let inscriptionCourseService: InscriptionCourseService;
+  let studentCourseService: StudentCourseService;
   let role: Role = null;
 
   beforeAll(async () => {
@@ -52,6 +59,11 @@ describe('Class (e2e)', () => {
       PartnerPrepCourseService,
     );
     classRepository = moduleFixture.get<ClassRepository>(ClassRepository);
+    inscriptionCourseService = moduleFixture.get<InscriptionCourseService>(
+      InscriptionCourseService,
+    );
+    studentCourseService =
+      moduleFixture.get<StudentCourseService>(StudentCourseService);
 
     jest
       .spyOn(emailService, 'sendCreateGeoMail')
@@ -93,8 +105,8 @@ describe('Class (e2e)', () => {
     await userRoleRepository.update(userRole);
 
     const dto: PartnerPrepCourseDtoInput = { geoId: geo.id, userId: user.id };
-    await partnerService.create(dto, user.id);
-    return user;
+    const partner = await partnerService.create(dto, user.id);
+    return { user, partner };
   };
 
   it('should be create a class', async () => {
@@ -106,7 +118,7 @@ describe('Class (e2e)', () => {
       endDate: new Date(),
     };
 
-    const user = await createPartnerFaker();
+    const { user } = await createPartnerFaker();
 
     const token = await jwtService.signAsync(
       { user: { id: user.id } },
@@ -123,7 +135,7 @@ describe('Class (e2e)', () => {
   }, 30000);
 
   it('should update a class successfully', async () => {
-    const user = await createPartnerFaker();
+    const { user } = await createPartnerFaker();
     const token = await jwtService.signAsync(
       { user: { id: user.id } },
       { expiresIn: '2h' },
@@ -164,7 +176,7 @@ describe('Class (e2e)', () => {
   });
 
   it('should return 404 if class does not exist', async () => {
-    const user = await createPartnerFaker();
+    const { user } = await createPartnerFaker();
     const token = await jwtService.signAsync(
       { user: { id: user.id } },
       { expiresIn: '2h' },
@@ -202,7 +214,7 @@ describe('Class (e2e)', () => {
   });
 
   it('should delete a class successfully', async () => {
-    const user = await createPartnerFaker();
+    const { user } = await createPartnerFaker();
 
     const token = await jwtService.signAsync(
       { user: { id: user.id } },
@@ -238,7 +250,7 @@ describe('Class (e2e)', () => {
   }, 30000);
 
   it('should return 404 when trying to delete a non-existent class', async () => {
-    const user = await createPartnerFaker();
+    const { user } = await createPartnerFaker();
 
     const token = await jwtService.signAsync(
       { user: { id: user.id } },
@@ -249,5 +261,59 @@ describe('Class (e2e)', () => {
       .delete('/class/non-existent-id')
       .set({ Authorization: `Bearer ${token}` })
       .expect(404);
+  }, 30000);
+
+  it('should list class with number of students', async () => {
+    const { user, partner } = await createPartnerFaker();
+
+    const token = await jwtService.signAsync(
+      { user: { id: user.id } },
+      { expiresIn: '2h' },
+    );
+
+    // Criando a classe antes de testar a deleção
+    const classDto = {
+      name: 'test class',
+      description: 'test description',
+      year: 2022,
+      startDate: new Date(),
+      endDate: new Date(),
+    };
+
+    const createdClass = await request(app.getHttpServer())
+      .post('/class')
+      .set({ Authorization: `Bearer ${token}` })
+      .send(classDto)
+      .expect(201);
+
+    const classId = createdClass.body.id;
+
+    const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker();
+    await inscriptionCourseService.create(inscriptionCourseDto, user.id);
+
+    const userDto = CreateUserDtoInputFaker();
+    await userService.create(userDto);
+    const userStudent = await userRepository.findOneBy({
+      email: userDto.email,
+    });
+
+    const dto = createStudentCourseDTOInputFaker(userStudent.id, partner.id);
+    dto.rg = '45.678.123-4';
+
+    const student = await studentCourseService.create(dto);
+
+    await studentCourseService.updateClass(student.id, classId);
+
+    return request(app.getHttpServer())
+      .get('/class')
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200)
+      .expect((res) => {
+        expect(res.body).toBeDefined();
+        expect(res.body.data.length).toBe(1);
+        const turma: ClassDtoOutput = res.body.data[0];
+        expect(turma.id).toBe(classId);
+        expect(turma.number_students).toBe(1);
+      });
   }, 30000);
 });

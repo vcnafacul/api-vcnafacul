@@ -5,9 +5,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { BaseService } from 'src/shared/modules/base/base.service';
+import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { PartnerPrepCourseRepository } from '../partnerPrepCourse/partner-prep-course.repository';
 import { Class } from './class.entity';
 import { ClassRepository } from './class.repository';
+import { ClassDtoOutput } from './dtos/class.dto.output';
 import { CreateClassDtoInput } from './dtos/create-class.dto.input';
 import { UpdateClassDTOInput } from './dtos/update-class.dto.input';
 
@@ -77,5 +79,34 @@ export class ClassService extends BaseService<Class> {
       );
     }
     await this.repository.delete(id);
+  }
+
+  async getAll(
+    page: number,
+    limit: number,
+    userId: string,
+  ): Promise<GetAllOutput<ClassDtoOutput>> {
+    const partnerPrepCourse =
+      await this.partnerRepository.findOneByUserId(userId);
+
+    const classes = await this.repository.findAllBy({
+      page: page,
+      limit: limit,
+      where: { partnerPrepCourse: partnerPrepCourse },
+    });
+    return {
+      data: classes.data.map((c) => ({
+        id: c.id,
+        name: c.name,
+        description: c.description,
+        year: c.year,
+        startDate: c.startDate,
+        endDate: c.endDate,
+        number_students: c.students.length,
+      })),
+      page: classes.page,
+      limit: classes.limit,
+      totalItems: classes.totalItems,
+    };
   }
 }
