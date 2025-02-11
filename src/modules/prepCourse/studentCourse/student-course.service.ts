@@ -14,6 +14,7 @@ import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
+import { IsNull, Not } from 'typeorm';
 import { ClassService } from '../class/class.service';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
@@ -39,7 +40,6 @@ import { LogStudentRepository } from './log-student/log-student.repository';
 import { StudentCourse } from './student-course.entity';
 import { StudentCourseRepository } from './student-course.repository';
 import { SocioeconomicAnswer } from './types/student-course-full';
-import { IsNull, Not } from 'typeorm';
 
 @Injectable()
 export class StudentCourseService extends BaseService<StudentCourse> {
@@ -624,6 +624,12 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     }
     student.class = class_;
     await this.repository.update(student);
+
+    const log = new LogStudent();
+    log.studentId = student.id;
+    log.applicationStatus = StatusApplication.Enrolled;
+    log.description = `Atribuido a Turma: ${class_.name} (${class_.year})`;
+    await this.logStudentRepository.create(log);
   }
 
   async getEnrolled({
@@ -652,6 +658,21 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       totalItems: result.totalItems,
       limit: result.limit,
     } as GetAllOutput<GetAllStudentDtoOutput>;
+  }
+
+  async cancelEnrolled(studentId: string, reason: string) {
+    const student = await this.repository.findOneBy({ id: studentId });
+    if (!student) {
+      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+    }
+    student.applicationStatus = StatusApplication.EnrollmentCancelled;
+    await this.repository.update(student);
+
+    const log = new LogStudent();
+    log.studentId = student.id;
+    log.applicationStatus = StatusApplication.EnrollmentCancelled;
+    log.description = reason || 'Matrícula cancelada';
+    await this.logStudentRepository.create(log);
   }
 
   private async generateEnrolledCode() {

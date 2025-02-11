@@ -267,4 +267,14 @@ export class StudentCourseController {
       userId: (req.user as User).id,
     });
   }
+
+  @Patch('enrollment-cancelled')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
+  async cancelEnrolled(
+    @Body() { studentId, reason }: { studentId: string; reason: string },
+  ): Promise<void> {
+    return await this.service.cancelEnrolled(studentId, reason);
+  }
 }
