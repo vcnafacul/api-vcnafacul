@@ -10,6 +10,7 @@ import { CreateFlow } from 'src/modules/user/enum/create-flow';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
+import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
@@ -38,6 +39,7 @@ import { LogStudentRepository } from './log-student/log-student.repository';
 import { StudentCourse } from './student-course.entity';
 import { StudentCourseRepository } from './student-course.repository';
 import { SocioeconomicAnswer } from './types/student-course-full';
+import { IsNull, Not } from 'typeorm';
 
 @Injectable()
 export class StudentCourseService extends BaseService<StudentCourse> {
@@ -136,7 +138,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     await this.emailService.sendCreateUser(user, token);
   }
 
-  async findAllByStudent({
+  async findAll({
     page,
     limit,
     partnerPrepCourse,
@@ -622,6 +624,34 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     }
     student.class = class_;
     await this.repository.update(student);
+  }
+
+  async getEnrolled({
+    page,
+    limit,
+    userId,
+  }: GetAllInput & { userId: string }): Promise<
+    GetAllOutput<GetAllStudentDtoOutput>
+  > {
+    const partnerPrepCourse =
+      await this.partnerPrepCourseService.getByUserId(userId);
+    if (!partnerPrepCourse) {
+      throw new HttpException('Parceiro nao encontrado', HttpStatus.NOT_FOUND);
+    }
+    const result = await this.repository.findAllBy({
+      where: { partnerPrepCourse, cod_enrolled: Not(IsNull()) },
+      limit: limit,
+      page: page,
+    });
+
+    return {
+      data: result.data.map((studentCourse) =>
+        toGetAllStudentDtoOutput(studentCourse),
+      ),
+      page: result.page,
+      totalItems: result.totalItems,
+      limit: result.limit,
+    } as GetAllOutput<GetAllStudentDtoOutput>;
   }
 
   private async generateEnrolledCode() {

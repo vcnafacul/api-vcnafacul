@@ -24,6 +24,7 @@ import { UserDtoOutput } from 'src/modules/user/dto/user.dto.output';
 import { User } from 'src/modules/user/user.entity';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
+import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { CreateStudentCourseInput } from './dtos/create-student-course.dto.input';
 import { CreateStudentCourseOutput } from './dtos/create-student-course.dto.output';
@@ -78,7 +79,7 @@ export class StudentCourseController {
   async findAllByStudent(
     @Query() query: GetAllStudentDtoInput,
   ): Promise<GetAllOutput<GetAllStudentDtoOutput>> {
-    return await this.service.findAllByStudent(query);
+    return await this.service.findAll(query);
   }
 
   @Patch('declared-interest')
@@ -251,5 +252,19 @@ export class StudentCourseController {
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
   async updateClass(@Body() dto: UpdateClassDTOInput): Promise<void> {
     await this.service.updateClass(dto.studentId, dto.classId);
+  }
+
+  @Get(':id/enrolled')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
+  async getEnrolled(
+    @Body() dto: GetAllInput,
+    @Req() req: Request,
+  ): Promise<GetAllOutput<GetAllStudentDtoOutput>> {
+    return await this.service.getEnrolled({
+      ...dto,
+      userId: (req.user as User).id,
+    });
   }
 }
