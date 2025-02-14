@@ -59,6 +59,17 @@ export class ClassService extends BaseService<Class> {
       );
     }
 
+    if (
+      classEntity.students.length > 0 &&
+      new Date(dto.startDate).getFullYear !==
+        new Date(classEntity.startDate).getFullYear
+    ) {
+      throw new HttpException(
+        `Class with students cannot be updated`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     Object.assign(classEntity, {
       name: dto.name ?? classEntity.name,
       description: dto.description ?? classEntity.description,
