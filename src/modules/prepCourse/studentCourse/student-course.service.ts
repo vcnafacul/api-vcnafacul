@@ -10,9 +10,12 @@ import { CreateFlow } from 'src/modules/user/enum/create-flow';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
+import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
+import { IsNull, Not } from 'typeorm';
+import { ClassService } from '../class/class.service';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
 import { InscriptionCourseService } from '../InscriptionCourse/inscription-course.service';
@@ -54,6 +57,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     private readonly logStudentRepository: LogStudentRepository,
     private configService: ConfigService,
     private readonly collaboratorRepository: CollaboratorRepository,
+    private readonly classService: ClassService,
   ) {
     super(repository);
   }
@@ -134,7 +138,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     await this.emailService.sendCreateUser(user, token);
   }
 
-  async findAllByStudent({
+  async findAll({
     page,
     limit,
     partnerPrepCourse,
@@ -607,6 +611,68 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         await this.logStudentRepository.create(log);
       }),
     );
+  }
+
+  async updateClass(studentId: string, classId: string) {
+    const student = await this.repository.findOneBy({ id: studentId });
+    if (!student) {
+      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+    }
+    const class_ = await this.classService.findOneBy({ id: classId });
+    if (!class_) {
+      throw new HttpException('Turma nao encontrada', HttpStatus.NOT_FOUND);
+    }
+    student.class = class_;
+    await this.repository.update(student);
+
+    const log = new LogStudent();
+    log.studentId = student.id;
+    log.applicationStatus = StatusApplication.Enrolled;
+    log.description = `Atribuido a Turma: ${class_.name} (${class_.year})`;
+    await this.logStudentRepository.create(log);
+  }
+
+  async getEnrolled({
+    page,
+    limit,
+    userId,
+  }: GetAllInput & { userId: string }): Promise<
+    GetAllOutput<GetAllStudentDtoOutput>
+  > {
+    const partnerPrepCourse =
+      await this.partnerPrepCourseService.getByUserId(userId);
+    if (!partnerPrepCourse) {
+      throw new HttpException('Parceiro nao encontrado', HttpStatus.NOT_FOUND);
+    }
+    const result = await this.repository.findAllBy({
+      where: { partnerPrepCourse, cod_enrolled: Not(IsNull()) },
+      limit: limit,
+      page: page,
+    });
+
+    return {
+      data: result.data.map((studentCourse) =>
+        toGetAllStudentDtoOutput(studentCourse),
+      ),
+      page: result.page,
+      totalItems: result.totalItems,
+      limit: result.limit,
+    } as GetAllOutput<GetAllStudentDtoOutput>;
+  }
+
+  async cancelEnrolled(studentId: string, reason: string) {
+    const student = await this.repository.findOneBy({ id: studentId });
+    if (!student) {
+      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+    }
+    student.applicationStatus = StatusApplication.EnrollmentCancelled;
+    await this.repository.update(student);
+
+    const log = new LogStudent();
+    log.studentId = student.id;
+    log.applicationStatus = StatusApplication.EnrollmentCancelled;
+    log.description = reason || 'Matrícula cancelada';
+    await this.logStudentRepository.create(log);
   }
 
   private async generateEnrolledCode() {

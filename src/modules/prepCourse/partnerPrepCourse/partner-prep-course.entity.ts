@@ -1,6 +1,7 @@
 import { Column, Entity, JoinColumn, OneToMany, OneToOne } from 'typeorm';
 import { BaseEntity } from '../../../shared/modules/base/entity.base';
 import { Geolocation } from '../../geo/geo.entity';
+import { Class } from '../class/class.entity';
 import { Collaborator } from '../collaborator/collaborator.entity';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
 import { StudentCourse } from '../studentCourse/student-course.entity';
@@ -25,11 +26,14 @@ export class PartnerPrepCourse extends BaseEntity {
     () => StudentCourse,
     (studentCourse) => studentCourse.partnerPrepCourse,
   )
-  students: StudentCourse[];
+  public students: StudentCourse[];
 
   @OneToMany(
     () => Collaborator,
     (collaborator) => collaborator.partnerPrepCourse,
   )
-  members: Collaborator[];
+  public members: Collaborator[];
+
+  @OneToMany(() => Class, (c) => c.partnerPrepCourse)
+  public classes: Class[];
 }

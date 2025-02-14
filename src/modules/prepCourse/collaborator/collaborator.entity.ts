@@ -1,12 +1,20 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToOne } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToMany,
+  ManyToOne,
+  OneToOne,
+} from 'typeorm';
 import { BaseEntity } from '../../../shared/modules/base/entity.base';
 import { User } from '../../user/user.entity';
+import { Class } from '../class/class.entity';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
 
 //Representa o Estudante do Cursinho
 @Entity('collaborators')
 export class Collaborator extends BaseEntity {
-  @OneToOne(() => User, (user) => user.studentCourse)
+  @OneToOne(() => User, (user) => user.collaborator)
   @JoinColumn({ name: 'user_id' })
   public user: User;
 
@@ -28,4 +36,7 @@ export class Collaborator extends BaseEntity {
 
   @Column({ nullable: true })
   public lastAccess: Date;
+
+  @ManyToMany(() => Class, (classes) => classes.admins)
+  public Class: Class[];
 }

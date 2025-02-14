@@ -14,6 +14,7 @@ import { FrenteModule } from './modules/contents/frente/frente.module';
 import { SubjectModule } from './modules/contents/subject/subject.module';
 import { GeoModule } from './modules/geo/geo.module';
 import { NewsModule } from './modules/news/news.module';
+import { ClassModule } from './modules/prepCourse/class/class.module';
 import { CollaboratorModule } from './modules/prepCourse/collaborator/collaborator.module';
 import { InscriptionCourseModule } from './modules/prepCourse/InscriptionCourse/inscription-course.module';
 import { PartnerPrepCourseModule } from './modules/prepCourse/partnerPrepCourse/partner-prep-course.module';
@@ -63,6 +64,7 @@ import { JwtStrategy } from './shared/strategy/jwt.strategy';
     SeederModule,
     BlobModule,
     CollaboratorModule,
+    ClassModule,
   ],
   controllers: [AppController],
   providers: [JwtStrategy],

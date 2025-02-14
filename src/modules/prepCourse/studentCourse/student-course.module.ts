@@ -5,6 +5,7 @@ import { UserRoleModule } from 'src/modules/user-role/user-role.module';
 import { UserModule } from 'src/modules/user/user.module';
 import { BlobModule } from 'src/shared/services/blob/blob.module';
 import { EmailService } from 'src/shared/services/email/email.service';
+import { ClassModule } from '../class/class.module';
 import { CollaboratorModule } from '../collaborator/collaborator.module';
 import { InscriptionCourseRepository } from '../InscriptionCourse/inscription-course.repository';
 import { InscriptionCourseService } from '../InscriptionCourse/inscription-course.service';
@@ -25,6 +26,7 @@ import { StudentCourseService } from './student-course.service';
     RoleModule,
     UserRoleModule,
     CollaboratorModule,
+    ClassModule,
   ],
   providers: [
     StudentCourseService,

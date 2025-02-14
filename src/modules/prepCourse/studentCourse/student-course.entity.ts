@@ -14,6 +14,7 @@ import { DocumentStudent } from './documents/document-students.entity';
 import { StatusApplication } from './enums/stastusApplication';
 import { LegalGuardian } from './legal-guardian/legal-guardian.entity';
 import { LogStudent } from './log-student/log-student.entity';
+import { Class } from '../class/class.entity';
 
 //Representa o Estudante do Cursinho
 @Entity('student_course')
@@ -107,6 +108,9 @@ export class StudentCourse extends NodeEntity {
 
   @Column({ nullable: true })
   public photo: string;
+
+  @ManyToOne(() => Class, (classes) => classes.students)
+  public class?: Class;
 
   get list(): string {
     return this.enrolled.head;
