@@ -18,6 +18,9 @@ export class RoleUpdateAdminSeedService {
         uploadDemanda: true,
         validarDemanda: true,
         gerenciadorDemanda: true,
+        gerenciarProcessoSeletivo: true,
+        gerenciarColaboradores: true,
+        gerenciarTurmas: true,
       })
       .catch(() => {
         // console.log(e.message);

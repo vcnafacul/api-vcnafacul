@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class Class1739121798332 implements MigrationInterface {
-  name = 'Class1739121798332';
+export class Class1739376592959 implements MigrationInterface {
+  name = 'Class1739376592959';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
@@ -17,10 +17,10 @@ export class Class1739121798332 implements MigrationInterface {
       `ALTER TABLE \`roles\` ADD \`gerenciar_turmas\` tinyint NOT NULL DEFAULT 0`,
     );
     await queryRunner.query(
-      `ALTER TABLE \`classes\` ADD CONSTRAINT \`FK_b37b924b873619cb72a96053737\` FOREIGN KEY (\`partner_prep_course_id\`) REFERENCES \`partner_prep_course\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`,
+      `ALTER TABLE \`student_course\` ADD CONSTRAINT \`FK_d6e69fccad51b8e11bb036a5522\` FOREIGN KEY (\`classId\`) REFERENCES \`classes\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`,
     );
     await queryRunner.query(
-      `ALTER TABLE \`student_course\` ADD CONSTRAINT \`FK_d6e69fccad51b8e11bb036a5522\` FOREIGN KEY (\`classId\`) REFERENCES \`classes\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`,
+      `ALTER TABLE \`classes\` ADD CONSTRAINT \`FK_b37b924b873619cb72a96053737\` FOREIGN KEY (\`partner_prep_course_id\`) REFERENCES \`partner_prep_course\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`,
     );
     await queryRunner.query(
       `ALTER TABLE \`classes_collaborators\` ADD CONSTRAINT \`FK_9dbcbd16fddbdaade4550a2a11b\` FOREIGN KEY (\`class_id\`) REFERENCES \`classes\`(\`id\`) ON DELETE CASCADE ON UPDATE CASCADE`,
@@ -38,10 +38,10 @@ export class Class1739121798332 implements MigrationInterface {
       `ALTER TABLE \`classes_collaborators\` DROP FOREIGN KEY \`FK_9dbcbd16fddbdaade4550a2a11b\``,
     );
     await queryRunner.query(
-      `ALTER TABLE \`student_course\` DROP FOREIGN KEY \`FK_d6e69fccad51b8e11bb036a5522\``,
+      `ALTER TABLE \`classes\` DROP FOREIGN KEY \`FK_b37b924b873619cb72a96053737\``,
     );
     await queryRunner.query(
-      `ALTER TABLE \`classes\` DROP FOREIGN KEY \`FK_b37b924b873619cb72a96053737\``,
+      `ALTER TABLE \`student_course\` DROP FOREIGN KEY \`FK_d6e69fccad51b8e11bb036a5522\``,
     );
     await queryRunner.query(
       `ALTER TABLE \`roles\` DROP COLUMN \`gerenciar_turmas\``,

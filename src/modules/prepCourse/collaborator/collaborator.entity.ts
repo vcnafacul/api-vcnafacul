@@ -14,7 +14,7 @@ import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.enti
 //Representa o Estudante do Cursinho
 @Entity('collaborators')
 export class Collaborator extends BaseEntity {
-  @OneToOne(() => User, (user) => user.studentCourse)
+  @OneToOne(() => User, (user) => user.collaborator)
   @JoinColumn({ name: 'user_id' })
   public user: User;
 

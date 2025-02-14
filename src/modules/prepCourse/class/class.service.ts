@@ -51,10 +51,10 @@ export class ClassService extends BaseService<Class> {
   }
 
   async update(dto: UpdateClassDTOInput): Promise<void> {
-    const classEntity = await this.repository.findOneBy({ id: dto._id });
+    const classEntity = await this.repository.findOneBy({ id: dto.id });
     if (!classEntity) {
       throw new HttpException(
-        `Class not found by id ${dto._id}`,
+        `Class not found by id ${dto.id}`,
         HttpStatus.NOT_FOUND,
       );
     }
@@ -76,6 +76,12 @@ export class ClassService extends BaseService<Class> {
       throw new HttpException(
         `Class not found by id ${id}`,
         HttpStatus.NOT_FOUND,
+      );
+    }
+    if (classEntity.students.length > 0) {
+      throw new HttpException(
+        `Class with id ${id} has students, cannot be deleted`,
+        HttpStatus.BAD_REQUEST,
       );
     }
     await this.repository.delete(id);

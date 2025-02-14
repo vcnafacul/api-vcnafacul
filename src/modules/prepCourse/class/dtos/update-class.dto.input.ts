@@ -5,5 +5,5 @@ import { CreateClassDtoInput } from './create-class.dto.input';
 export class UpdateClassDTOInput extends PartialType(CreateClassDtoInput) {
   @IsString()
   @ApiProperty()
-  _id: string;
+  id: string;
 }
