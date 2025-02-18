@@ -31,6 +31,10 @@ import {
   GetAllStudentDtoOutput,
   toGetAllStudentDtoOutput,
 } from './dtos/get-all-student.dto.output';
+import {
+  GetEnrolledDtoOutput,
+  StudentsDtoOutput,
+} from './dtos/get-enrolled.dto.output';
 import { ScheduleEnrolledDtoInput } from './dtos/schedule-enrolled.dto.input';
 import { StatusApplication } from './enums/stastusApplication';
 import { LegalGuardian } from './legal-guardian/legal-guardian.entity';
@@ -636,9 +640,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     page,
     limit,
     userId,
-  }: GetAllInput & { userId: string }): Promise<
-    GetAllOutput<GetAllStudentDtoOutput>
-  > {
+  }: GetAllInput & { userId: string }): Promise<GetEnrolledDtoOutput> {
     const partnerPrepCourse =
       await this.partnerPrepCourseService.getByUserId(userId);
     if (!partnerPrepCourse) {
@@ -651,19 +653,45 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     });
 
     return {
-      data: result.data.map((studentCourse) =>
-        toGetAllStudentDtoOutput(studentCourse),
-      ),
-      page: result.page,
-      totalItems: result.totalItems,
-      limit: result.limit,
-    } as GetAllOutput<GetAllStudentDtoOutput>;
+      name: partnerPrepCourse.geo.name,
+      students: {
+        data: result.data.map(
+          (student) =>
+            ({
+              id: student.id,
+              name: `${student.user.firstName} ${student.user.lastName}`,
+              email: student.user.email,
+              whatsapp: student.whatsapp,
+              urgencyPhone: student.urgencyPhone,
+              applicationStatus: student.applicationStatus,
+              cod_enrolled: student.cod_enrolled,
+              birthday: student.user.birthday,
+              photo: student.photo,
+              class: {
+                id: student.class?.id,
+                name: student.class?.name,
+                year: student.class?.year,
+                endDate: student.class?.endDate,
+              },
+            }) as unknown as StudentsDtoOutput,
+        ),
+        totalItems: result.totalItems,
+        page: page,
+        limit: limit,
+      },
+    };
   }
 
   async cancelEnrolled(studentId: string, reason: string) {
     const student = await this.repository.findOneBy({ id: studentId });
     if (!student) {
       throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+    }
+    if (student.applicationStatus !== StatusApplication.Enrolled) {
+      throw new HttpException(
+        'Estudante nao esta matriculado',
+        HttpStatus.BAD_REQUEST,
+      );
     }
     student.applicationStatus = StatusApplication.EnrollmentCancelled;
     await this.repository.update(student);
@@ -672,6 +700,27 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     log.studentId = student.id;
     log.applicationStatus = StatusApplication.EnrollmentCancelled;
     log.description = reason || 'Matrícula cancelada';
+    await this.logStudentRepository.create(log);
+  }
+
+  async activeEnrolled(studentId: string) {
+    const student = await this.repository.findOneBy({ id: studentId });
+    if (!student) {
+      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+    }
+    if (student.applicationStatus !== StatusApplication.EnrollmentCancelled) {
+      throw new HttpException(
+        'Estudante nao esta matriculado',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    student.applicationStatus = StatusApplication.Enrolled;
+    await this.repository.update(student);
+
+    const log = new LogStudent();
+    log.studentId = student.id;
+    log.applicationStatus = StatusApplication.Enrolled;
+    log.description = 'Matrícula reativada';
     await this.logStudentRepository.create(log);
   }
 

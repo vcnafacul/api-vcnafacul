@@ -41,7 +41,7 @@ export class ClassService extends BaseService<Class> {
   }
 
   async findOneById(id: string): Promise<Class> {
-    const classEntity = await this.repository.findOneBy({ id });
+    const classEntity = await this.repository.findOneById(id);
 
     if (!classEntity) {
       throw new NotFoundException(`Class with id ${id} not found`);

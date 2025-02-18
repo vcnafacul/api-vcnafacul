@@ -47,11 +47,6 @@ export class UserController {
     return res.status(200).json(false);
   }
 
-  @Get('volunteers')
-  async getVolunteers() {
-    return await this.userService.getVolunteers();
-  }
-
   @Get()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)

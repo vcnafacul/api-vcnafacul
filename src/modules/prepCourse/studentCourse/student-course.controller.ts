@@ -30,6 +30,7 @@ import { CreateStudentCourseInput } from './dtos/create-student-course.dto.input
 import { CreateStudentCourseOutput } from './dtos/create-student-course.dto.output';
 import { GetAllStudentDtoInput } from './dtos/get-all-student.dto.input';
 import { GetAllStudentDtoOutput } from './dtos/get-all-student.dto.output';
+import { GetEnrolledDtoOutput } from './dtos/get-enrolled.dto.output';
 import { ScheduleEnrolledDtoInput } from './dtos/schedule-enrolled.dto.input';
 import { UpdateClassDTOInput } from './dtos/update-class.dto.input';
 import { StudentCourseService } from './student-course.service';
@@ -254,16 +255,16 @@ export class StudentCourseController {
     await this.service.updateClass(dto.studentId, dto.classId);
   }
 
-  @Get(':id/enrolled')
+  @Get('enrolled')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
   async getEnrolled(
-    @Body() dto: GetAllInput,
+    @Query() query: GetAllInput,
     @Req() req: Request,
-  ): Promise<GetAllOutput<GetAllStudentDtoOutput>> {
+  ): Promise<GetEnrolledDtoOutput> {
     return await this.service.getEnrolled({
-      ...dto,
+      ...query,
       userId: (req.user as User).id,
     });
   }
@@ -276,5 +277,13 @@ export class StudentCourseController {
     @Body() { studentId, reason }: { studentId: string; reason: string },
   ): Promise<void> {
     return await this.service.cancelEnrolled(studentId, reason);
+  }
+
+  @Patch('active-enrolled')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
+  async activeEnrolled(@Body() { studentId }: { studentId: string }) {
+    return await this.service.activeEnrolled(studentId);
   }
 }

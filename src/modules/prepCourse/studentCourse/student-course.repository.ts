@@ -39,6 +39,7 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
           'users.phone',
           'users.state',
           'users.city',
+          'users.birthday',
         ])
         .getMany(),
       this.repository

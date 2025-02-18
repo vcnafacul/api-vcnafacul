@@ -56,4 +56,21 @@ export class ClassRepository extends BaseRepository<Class> {
       totalItems,
     };
   }
+
+  async findOneById(id: string): Promise<Class> {
+    return this.repository
+      .createQueryBuilder('entity')
+      .leftJoinAndSelect('entity.students', 'student_course')
+      .leftJoin('student_course.user', 'user')
+      .addSelect([
+        'user.id',
+        'user.firstName',
+        'user.lastName',
+        'user.email',
+        'user.birthday',
+      ])
+      .leftJoinAndSelect('entity.admins', 'admins')
+      .where('entity.id = :id', { id })
+      .getOne();
+  }
 }
