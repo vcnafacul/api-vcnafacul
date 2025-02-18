@@ -60,22 +60,4 @@ export class UserRepository extends BaseRepository<User> {
       .select(['user.email'])
       .getMany();
   }
-
-  async getVolunteers() {
-    return await this.repository
-      .createQueryBuilder('volunteer')
-      .select([
-        'volunteer.collaboratorPhoto',
-        'volunteer.firstName',
-        'volunteer.lastName',
-        'volunteer.socialName',
-        'volunteer.collaboratorDescription',
-      ])
-      .where('volunteer.collaborator = true')
-      .andWhere('volunteer.collaboratorPhoto IS NOT NULL')
-      .andWhere('volunteer.collaboratorPhoto <> :emptyString', {
-        emptyString: '',
-      })
-      .getMany();
-  }
 }

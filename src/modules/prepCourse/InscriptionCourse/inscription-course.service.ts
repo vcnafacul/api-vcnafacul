@@ -222,6 +222,12 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     inscriptionId: string,
   ): Promise<GetSubscribersDtoOutput[]> {
     const inscription = await this.repository.getSubscribers(inscriptionId);
+    if (!inscription) {
+      throw new HttpException(
+        'Inscrição não encontrada',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     const subscribers: GetSubscribersDtoOutput[] = inscription.students.map(
       (student) => {
         return {

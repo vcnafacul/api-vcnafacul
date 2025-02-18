@@ -2,6 +2,7 @@ import { Exclude } from 'class-transformer';
 import { BeforeInsert, Column, Entity, OneToMany, OneToOne } from 'typeorm';
 import { BaseEntity } from '../../shared/modules/base/entity.base';
 import { Content } from '../contents/content/content.entity';
+import { Collaborator } from '../prepCourse/collaborator/collaborator.entity';
 import { StudentCourse } from '../prepCourse/studentCourse/student-course.entity';
 import { UserRole } from '../user-role/user-role.entity';
 import { Gender } from './enum/gender';
@@ -79,6 +80,9 @@ export class User extends BaseEntity {
     (studentCourse) => studentCourse.inscriptionCourse,
   )
   studentCourse: StudentCourse[];
+
+  @OneToOne(() => Collaborator, (collaborator) => collaborator.user)
+  collaborator?: Collaborator;
 
   @BeforeInsert()
   async hashPassword() {
