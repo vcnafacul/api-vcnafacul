@@ -345,17 +345,17 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     if (!inscription) {
       throw new HttpException('Inscrição não encontrada', HttpStatus.NOT_FOUND);
     }
+    if (student.applicationStatus === StatusApplication.Enrolled) {
+      throw new HttpException(
+        'Não é possível alterar status de convocação de estudantes matriculados',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     if (
       student.applicationStatus === StatusApplication.UnderReview ||
       (student.applicationStatus === StatusApplication.CalledForEnrollment &&
-        student.selectEnrolledAt >= new Date())
+        new Date() < new Date(student.selectEnrolledAt))
     ) {
-      if (student.enrolled) {
-        throw new HttpException(
-          'Não é possível alterar status de convocação de estudantes matriculados',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
       const log = new LogStudent();
       log.studentId = student.id;
       if (!enrolled) {
@@ -376,10 +376,8 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         await this.inscriptionCourseService.removeStudentWaitingList(
           student,
           inscription,
-        );
+        ); // remove student from waiting list already update the student and the inscription
       }
-
-      await this.repository.update(student);
       await this.logStudentRepository.create(log);
     } else {
       throw new HttpException(
@@ -478,6 +476,11 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         HttpStatus.BAD_REQUEST,
       );
     }
+    student.applicationStatus = StatusApplication.UnderReview;
+    student.selectEnrolled = false;
+    student.isFree = true;
+    student.selectEnrolledAt = null;
+    student.limitEnrolledAt = null;
     if (student.waitingList) {
       const inscription = await this.inscriptionCourseService.findOneBy({
         id: student.inscriptionCourse.id,
@@ -486,15 +489,10 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       await this.inscriptionCourseService.removeStudentWaitingList(
         student,
         inscription,
-      );
+      ); // remove student from waiting list already update the student and the inscription
+    } else {
+      await this.repository.update(student);
     }
-    student.applicationStatus = StatusApplication.UnderReview;
-    student.selectEnrolled = false;
-    student.waitingList = false;
-    student.isFree = true;
-    student.selectEnrolledAt = null;
-    student.limitEnrolledAt = null;
-    await this.repository.update(student);
 
     const log = new LogStudent();
     log.studentId = student.id;
@@ -695,6 +693,11 @@ export class StudentCourseService extends BaseService<StudentCourse> {
             ({
               id: student.id,
               name: `${student.user.firstName} ${student.user.lastName}`,
+              socialName: student.user.socialName
+                ? `${student.user.socialName?.split(' ')[0]} ${
+                    student.user.lastName
+                  }`
+                : null,
               email: student.user.email,
               whatsapp: student.whatsapp,
               urgencyPhone: student.urgencyPhone,

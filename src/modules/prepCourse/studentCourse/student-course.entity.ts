@@ -76,12 +76,6 @@ export class StudentCourse extends NodeEntity {
   @OneToOne(() => LegalGuardian, (legalGuardian) => legalGuardian.studentCourse)
   public legalGuardian: LegalGuardian;
 
-  @ManyToOne(
-    () => InscriptionCourse,
-    (inscriptionCourse) => inscriptionCourse.enrolled,
-  )
-  public enrolled?: InscriptionCourse;
-
   @Column({ default: false })
   public selectEnrolled: boolean; // Se ele está sendo selecionado
 
@@ -113,6 +107,6 @@ export class StudentCourse extends NodeEntity {
   public class?: Class;
 
   get list(): string {
-    return this.enrolled.head;
+    throw new Error('Method not implemented.');
   }
 }

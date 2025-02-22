@@ -1,17 +1,20 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class Class1739376592959 implements MigrationInterface {
-  name = 'Class1739376592959';
+export class Class1739972656373 implements MigrationInterface {
+  name = 'Class1739972656373';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `ALTER TABLE \`student_course\` DROP FOREIGN KEY \`FK_83d46ce018a24c0c8dadc7a92f7\``,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`student_course\` CHANGE \`enrolledId\` \`classId\` varchar(36) NULL`,
+    );
     await queryRunner.query(
       `CREATE TABLE \`classes\` (\`id\` varchar(36) NOT NULL, \`created_at\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updated_at\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`deleted_at\` timestamp NULL, \`name\` varchar(255) NOT NULL, \`description\` varchar(255) NULL, \`year\` int NOT NULL, \`startDate\` datetime NOT NULL, \`endDate\` datetime NOT NULL, \`partner_prep_course_id\` varchar(36) NULL, PRIMARY KEY (\`id\`)) ENGINE=InnoDB`,
     );
     await queryRunner.query(
       `CREATE TABLE \`classes_collaborators\` (\`class_id\` varchar(36) NOT NULL, \`collaborator_id\` varchar(36) NOT NULL, INDEX \`IDX_9dbcbd16fddbdaade4550a2a11\` (\`class_id\`), INDEX \`IDX_6e3240bce0499cc1bc8e262992\` (\`collaborator_id\`), PRIMARY KEY (\`class_id\`, \`collaborator_id\`)) ENGINE=InnoDB`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE \`student_course\` ADD \`classId\` varchar(36) NULL`,
     );
     await queryRunner.query(
       `ALTER TABLE \`roles\` ADD \`gerenciar_turmas\` tinyint NOT NULL DEFAULT 0`,
@@ -47,9 +50,6 @@ export class Class1739376592959 implements MigrationInterface {
       `ALTER TABLE \`roles\` DROP COLUMN \`gerenciar_turmas\``,
     );
     await queryRunner.query(
-      `ALTER TABLE \`student_course\` DROP COLUMN \`classId\``,
-    );
-    await queryRunner.query(
       `DROP INDEX \`IDX_6e3240bce0499cc1bc8e262992\` ON \`classes_collaborators\``,
     );
     await queryRunner.query(
@@ -57,5 +57,11 @@ export class Class1739376592959 implements MigrationInterface {
     );
     await queryRunner.query(`DROP TABLE \`classes_collaborators\``);
     await queryRunner.query(`DROP TABLE \`classes\``);
+    await queryRunner.query(
+      `ALTER TABLE \`student_course\` CHANGE \`classId\` \`enrolledId\` varchar(36) NULL`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`student_course\` ADD CONSTRAINT \`FK_83d46ce018a24c0c8dadc7a92f7\` FOREIGN KEY (\`enrolledId\`) REFERENCES \`inscription_course\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`,
+    );
   }
 }
