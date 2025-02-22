@@ -11,11 +11,15 @@ import {
   Req,
   Res,
   SetMetadata,
+  UploadedFile,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { Permissions } from 'src/modules/role/role.entity';
@@ -285,5 +289,20 @@ export class StudentCourseController {
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
   async activeEnrolled(@Body() { studentId }: { studentId: string }) {
     return await this.service.activeEnrolled(studentId);
+  }
+
+  @Patch('profile-image')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
+  @UseInterceptors(FileInterceptor('file'))
+  async updateProfilePhotoByStudent(
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: Request,
+  ) {
+    return await this.service.updateProfilePhotoByStudent(
+      file,
+      req.body.studentId,
+    );
   }
 }

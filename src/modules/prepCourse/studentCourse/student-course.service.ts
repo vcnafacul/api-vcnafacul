@@ -171,6 +171,41 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     return fileKey;
   }
 
+  async updateProfilePhotoByStudent(
+    file: Express.Multer.File,
+    studentId: string,
+  ) {
+    const student = await this.repository.findOneBy({ id: studentId });
+    if (!student) {
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+    }
+    try {
+      await this.blobService.deleteFile(
+        student.photo,
+        this.configService.get<string>('BUCKET_PROFILE'),
+      );
+    } catch (error) {
+      const log = new LogStudent();
+      log.studentId = student.id;
+      log.applicationStatus = student.applicationStatus;
+      log.description = `Erro ao deletar foto de perfil antiga - ${error}`;
+      await this.logStudentRepository.create(log);
+    }
+    const fileKey = await this.blobService.uploadFile(
+      file,
+      this.configService.get<string>('BUCKET_PROFILE'),
+    );
+    student.photo = fileKey;
+
+    const log = new LogStudent();
+    log.studentId = student.id;
+    log.applicationStatus = student.applicationStatus;
+    log.description = 'Atualizou foto de perfil';
+    await this.logStudentRepository.create(log);
+
+    await this.repository.update(student);
+  }
+
   async declaredInterest(
     files: Array<Express.Multer.File>,
     photo: Express.Multer.File,
