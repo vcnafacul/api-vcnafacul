@@ -82,8 +82,7 @@ export class CollaboratorRepository extends BaseRepository<Collaborator> {
     return await this.repository
       .createQueryBuilder('collaborator')
       .innerJoin('collaborator.user', 'user')
-      .innerJoin('user_roles', 'user_role', 'user_role.user_id = user.id') // Join manual na tabela pivô
-      .innerJoin('user_role.role', 'role') // Agora podemos acessar a Role
+      .innerJoin('user.role', 'role') // Agora podemos acessar a Role
       .where(`role.${permission} = :value`, { value: true })
       .getMany();
   }

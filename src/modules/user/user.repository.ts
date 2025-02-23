@@ -73,13 +73,10 @@ export class UserRepository extends BaseRepository<User> {
   async getValidatorGeo() {
     return await this.repository
       .createQueryBuilder('user')
-      .innerJoinAndSelect('user.userRole', 'userRole')
-      .innerJoinAndSelect(
-        'userRole.role',
-        'role',
-        'role.validarCursinho = :validarCursinho',
-        { validarCursinho: true },
-      )
+      .innerJoinAndSelect('user.role', 'role')
+      .where('role.validarCursinho = :validarCursinho', {
+        validarCursinho: true,
+      })
       .select(['user.email'])
       .getMany();
   }
