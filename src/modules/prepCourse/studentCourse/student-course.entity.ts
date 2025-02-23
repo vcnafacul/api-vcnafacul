@@ -14,6 +14,7 @@ import { DocumentStudent } from './documents/document-students.entity';
 import { StatusApplication } from './enums/stastusApplication';
 import { LegalGuardian } from './legal-guardian/legal-guardian.entity';
 import { LogStudent } from './log-student/log-student.entity';
+import { Class } from '../class/class.entity';
 
 //Representa o Estudante do Cursinho
 @Entity('student_course')
@@ -75,12 +76,6 @@ export class StudentCourse extends NodeEntity {
   @OneToOne(() => LegalGuardian, (legalGuardian) => legalGuardian.studentCourse)
   public legalGuardian: LegalGuardian;
 
-  @ManyToOne(
-    () => InscriptionCourse,
-    (inscriptionCourse) => inscriptionCourse.enrolled,
-  )
-  public enrolled?: InscriptionCourse;
-
   @Column({ default: false })
   public selectEnrolled: boolean; // Se ele está sendo selecionado
 
@@ -108,7 +103,10 @@ export class StudentCourse extends NodeEntity {
   @Column({ nullable: true })
   public photo: string;
 
+  @ManyToOne(() => Class, (classes) => classes.students)
+  public class?: Class;
+
   get list(): string {
-    return this.enrolled.head;
+    throw new Error('Method not implemented.');
   }
 }

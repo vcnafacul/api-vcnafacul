@@ -39,12 +39,6 @@ export class InscriptionCourse extends LinkedListEntity {
   )
   students: StudentCourse[];
 
-  @OneToMany(
-    () => StudentCourse,
-    (studentCourse) => studentCourse.inscriptionCourse,
-  )
-  enrolled: StudentCourse[]; // Matriculados
-
   get list(): string {
     throw new Error('Method not implemented.');
   }

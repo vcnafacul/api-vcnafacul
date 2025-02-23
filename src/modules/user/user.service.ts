@@ -171,10 +171,6 @@ export class UserService extends BaseService<User> {
     );
   }
 
-  async getVolunteers() {
-    return await this.userRepository.getVolunteers();
-  }
-
   async me(userId: string) {
     const collaborator =
       await this.collaboratorRepository.findOneByUserId(userId);

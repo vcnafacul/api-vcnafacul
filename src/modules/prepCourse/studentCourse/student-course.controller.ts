@@ -11,11 +11,15 @@ import {
   Req,
   Res,
   SetMetadata,
+  UploadedFile,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { Permissions } from 'src/modules/role/role.entity';
@@ -24,12 +28,15 @@ import { UserDtoOutput } from 'src/modules/user/dto/user.dto.output';
 import { User } from 'src/modules/user/user.entity';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
+import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { CreateStudentCourseInput } from './dtos/create-student-course.dto.input';
 import { CreateStudentCourseOutput } from './dtos/create-student-course.dto.output';
 import { GetAllStudentDtoInput } from './dtos/get-all-student.dto.input';
 import { GetAllStudentDtoOutput } from './dtos/get-all-student.dto.output';
+import { GetEnrolledDtoOutput } from './dtos/get-enrolled.dto.output';
 import { ScheduleEnrolledDtoInput } from './dtos/schedule-enrolled.dto.input';
+import { UpdateClassDTOInput } from './dtos/update-class.dto.input';
 import { StudentCourseService } from './student-course.service';
 
 @ApiTags('StudentCourse')
@@ -77,7 +84,7 @@ export class StudentCourseController {
   async findAllByStudent(
     @Query() query: GetAllStudentDtoInput,
   ): Promise<GetAllOutput<GetAllStudentDtoOutput>> {
-    return await this.service.findAllByStudent(query);
+    return await this.service.findAll(query);
   }
 
   @Patch('declared-interest')
@@ -242,5 +249,60 @@ export class StudentCourseController {
     @Body() { studentId, reason }: { studentId: string; reason: string },
   ): Promise<void> {
     await this.service.rejectStudent(studentId, reason);
+  }
+
+  @Patch('class')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
+  async updateClass(@Body() dto: UpdateClassDTOInput): Promise<void> {
+    await this.service.updateClass(dto.studentId, dto.classId);
+  }
+
+  @Get('enrolled')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
+  async getEnrolled(
+    @Query() query: GetAllInput,
+    @Req() req: Request,
+  ): Promise<GetEnrolledDtoOutput> {
+    return await this.service.getEnrolled({
+      ...query,
+      userId: (req.user as User).id,
+    });
+  }
+
+  @Patch('enrollment-cancelled')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
+  async cancelEnrolled(
+    @Body() { studentId, reason }: { studentId: string; reason: string },
+  ): Promise<void> {
+    return await this.service.cancelEnrolled(studentId, reason);
+  }
+
+  @Patch('active-enrolled')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
+  async activeEnrolled(@Body() { studentId }: { studentId: string }) {
+    return await this.service.activeEnrolled(studentId);
+  }
+
+  @Patch('profile-image')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
+  @UseInterceptors(FileInterceptor('file'))
+  async updateProfilePhotoByStudent(
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: Request,
+  ) {
+    return await this.service.updateProfilePhotoByStudent(
+      file,
+      req.body.studentId,
+    );
   }
 }

@@ -1,4 +1,5 @@
 import {
+  DeleteObjectCommand,
   GetObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -25,6 +26,13 @@ export class S3Service implements BlobService {
         ),
       },
     });
+  }
+  async deleteFile(fileKey: string, bucketName: string): Promise<void> {
+    const command = new DeleteObjectCommand({
+      Bucket: bucketName,
+      Key: fileKey,
+    });
+    await this.s3Client.send(command);
   }
 
   async uploadFile(

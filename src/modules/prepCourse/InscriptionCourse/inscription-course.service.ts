@@ -222,6 +222,12 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     inscriptionId: string,
   ): Promise<GetSubscribersDtoOutput[]> {
     const inscription = await this.repository.getSubscribers(inscriptionId);
+    if (!inscription) {
+      throw new HttpException(
+        'Inscrição não encontrada',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     const subscribers: GetSubscribersDtoOutput[] = inscription.students.map(
       (student) => {
         return {
@@ -344,19 +350,20 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     if (!student) {
       throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
-    if (student.applicationStatus === StatusApplication.UnderReview) {
-      if (student.enrolled) {
-        throw new HttpException(
-          'Não é possível alterar status de lista de espera de estudantes matriculados',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
+    if (student.applicationStatus === StatusApplication.Enrolled) {
+      throw new HttpException(
+        'Não é possível alterar status de lista de espera de estudantes matriculados',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (
+      student.applicationStatus === StatusApplication.UnderReview ||
+      (student.applicationStatus === StatusApplication.CalledForEnrollment &&
+        new Date() < new Date(student.selectEnrolledAt))
+    ) {
       const log = new LogStudent();
       log.studentId = student.id;
       log.applicationStatus = StatusApplication.UnderReview;
-      if (!waitingList) {
-      } else {
-      }
       student.applicationStatus = StatusApplication.UnderReview;
       if (!waitingList) {
         student.waitingList = false;

@@ -48,4 +48,7 @@ export class CreateRoleDtoInput {
 
   @IsBoolean()
   gerenciarColaboradores: boolean;
+
+  @IsBoolean()
+  gerenciarTurmas: boolean;
 }

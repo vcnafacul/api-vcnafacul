@@ -18,6 +18,7 @@ export enum Permissions {
   gerenciadorDemanda = 'gerenciador_demanda',
   gerenciarProcessoSeletivo = 'gerenciar_processo_seletivo',
   gerenciarColaboradores = 'gerenciar_colaboradores',
+  gerenciarTurmas = 'gerenciar_turmas',
 }
 
 @Entity('roles')
@@ -78,6 +79,12 @@ export class Role extends BaseEntity {
     default: false,
   })
   gerenciarColaboradores: boolean;
+
+  @Column({
+    name: Permissions.gerenciarTurmas,
+    default: false,
+  })
+  gerenciarTurmas: boolean;
 
   @OneToMany(() => UserRole, (userRole) => userRole.role)
   userRoles: UserRole[];
