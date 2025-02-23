@@ -9,7 +9,6 @@ import { GeoService } from 'src/modules/geo/geo.service';
 import { PartnerPrepCourseDtoInput } from 'src/modules/prepCourse/partnerPrepCourse/dtos/create-partner-prep-course.input.dto';
 import { Role } from 'src/modules/role/role.entity';
 import { RoleService } from 'src/modules/role/role.service';
-import { UserRoleRepository } from 'src/modules/user-role/user-role.repository';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
@@ -32,7 +31,6 @@ describe('PartnerPrepCourse (e2e)', () => {
   let roleUpdateAdminSeedService: RoleUpdateAdminSeedService;
   let jwtService: JwtService;
   let roleService: RoleService;
-  let userRoleRepository: UserRoleRepository;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -56,8 +54,6 @@ describe('PartnerPrepCourse (e2e)', () => {
     );
     jwtService = moduleFixture.get<JwtService>(JwtService);
     roleService = moduleFixture.get<RoleService>(RoleService);
-    userRoleRepository =
-      moduleFixture.get<UserRoleRepository>(UserRoleRepository);
 
     jest
       .spyOn(emailService, 'sendCreateUser')
@@ -89,13 +85,8 @@ describe('PartnerPrepCourse (e2e)', () => {
       role = await roleService.create(newRole);
     }
 
-    const userRole = await userRoleRepository.findOneBy({
-      userId: user.id,
-    });
-
-    userRole.role = role;
-
-    await userRoleRepository.update(userRole);
+    user.role = role;
+    await userRepository.update(user);
 
     const dto: PartnerPrepCourseDtoInput = { geoId: geo.id, userId: user.id };
 

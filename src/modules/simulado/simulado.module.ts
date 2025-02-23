@@ -1,11 +1,8 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
-import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
 import { AuditLogRepository } from '../audit-log/audit-log.repository';
 import { AuditLogService } from '../audit-log/audit-log.service';
-import { UserRoleRepository } from '../user-role/user-role.repository';
-import { UserRoleService } from '../user-role/user-role.service';
 import { UserModule } from '../user/user.module';
 import { HistoricoController } from './historico/historico.controller';
 import { HistoricoService } from './historico/historico.service';
@@ -28,9 +25,6 @@ import { SimuladoService } from './simulado.service';
     SimuladoService,
     AuditLogService,
     AuditLogRepository,
-    PermissionsGuard,
-    UserRoleService,
-    UserRoleRepository,
     ProvaService,
     QuestaoService,
     HistoricoService,

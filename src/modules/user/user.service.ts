@@ -1,16 +1,19 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { BaseService } from 'src/shared/modules/base/base.service';
+import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
 import { Role } from '../role/role.entity';
 import { RoleRepository } from '../role/role.repository';
 import { CreateUserDtoInput } from './dto/create.dto.input';
+import { GetUserDtoInput } from './dto/get-user.dto.input';
 import { LoginTokenDTO } from './dto/login-token.dto.input';
 import { LoginDtoInput } from './dto/login.dto.input';
 import { ResetPasswordDtoInput } from './dto/reset-password.dto.input';
 import { UpdateUserDTOInput } from './dto/update.dto.input';
 import { UserDtoOutput } from './dto/user.dto.output';
+import { UserWithRoleName } from './dto/userWithRoleName';
 import { CreateFlow } from './enum/create-flow';
 import { User } from './user.entity';
 import { UserRepository } from './user.repository';
@@ -49,7 +52,8 @@ export class UserService extends BaseService<User> {
       if (!role) {
         throw new HttpException('role not found', HttpStatus.BAD_REQUEST);
       }
-      return await this.userRepository.createWithRole(newUser, role);
+      newUser.role = role;
+      return await this.userRepository.create(newUser);
     } catch (error) {
       if (error.code === '23505') {
         // código de erro para violação de restrição única no PostgreSQL
@@ -185,13 +189,73 @@ export class UserService extends BaseService<User> {
     return userDto;
   }
 
+  async checkUserPermission(id: string, roleName: string): Promise<boolean> {
+    try {
+      const user = await this.userRepository.findOneBy({ id });
+      return user.role[roleName];
+    } catch (error) {
+      return false;
+    }
+  }
+
+  async findAllByWithRoleName({
+    page,
+    limit,
+    name,
+  }: GetUserDtoInput): Promise<GetAllOutput<UserWithRoleName>> {
+    const result = await this.userRepository.findAllBy({
+      name,
+      page,
+      limit,
+    });
+
+    return {
+      data: result.data.map((user) => ({
+        user: {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: user.phone,
+          birthday: user.birthday,
+          about: user.about,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+          deletedAt: user.deletedAt,
+          socialName: user.socialName,
+          city: user.city,
+          state: user.state,
+          lgpd: user.lgpd,
+        },
+        roleId: user.role.id,
+        roleName: user.role.name,
+      })),
+      page: result.page,
+      limit: result.limit,
+      totalItems: result.totalItems,
+    };
+  }
+
+  async updateRole(id: string, roleId: string): Promise<void> {
+    const user = await this.userRepository.findOneBy({ id });
+    if (!user) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
+    const role = await this.roleRepository.findOneBy({ id: roleId });
+    if (!role) {
+      throw new HttpException('Role not found', HttpStatus.NOT_FOUND);
+    }
+    user.role = role;
+    await this.userRepository.update(user);
+  }
+
   private convertDtoToDomain(userDto: CreateUserDtoInput): User {
     const newUser = new User();
     return Object.assign(newUser, userDto) as User;
   }
 
   private async getAccessToken(domain: User) {
-    const roles = this.mapperRole(domain.userRole.role);
+    const roles = this.mapperRole(domain.role);
     const user = this.MapUsertoUserDTO(domain);
     return {
       access_token: await this.jwtService.signAsync({ user, roles }),

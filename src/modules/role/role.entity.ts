@@ -1,6 +1,6 @@
 import { Column, Entity, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../shared/modules/base/entity.base';
-import { UserRole } from '../user-role/user-role.entity';
+import { User } from '../user/user.entity';
 
 export enum Permissions {
   validarCursinho = 'validar_cursinho',
@@ -86,6 +86,6 @@ export class Role extends BaseEntity {
   })
   gerenciarTurmas: boolean;
 
-  @OneToMany(() => UserRole, (userRole) => userRole.role)
-  userRoles: UserRole[];
+  @OneToMany(() => User, (user) => user.role)
+  users: User[];
 }

@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
+import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { EntityManager } from 'typeorm';
 import { BaseRepository } from '../../shared/modules/base/base.repository';
-import { Role } from '../role/role.entity';
-import { UserRole } from '../user-role/user-role.entity';
+import { GetUserDtoInput } from './dto/get-user.dto.input';
 import { User } from './user.entity';
 
 @Injectable()
@@ -15,27 +15,50 @@ export class UserRepository extends BaseRepository<User> {
     super(_entityManager.getRepository(User));
   }
 
-  async createWithRole(user: User, role: Role): Promise<User> {
-    let newUser = null;
-    await this._entityManager.transaction(async (tem) => {
-      newUser = tem.getRepository(User).create(user);
-      await tem.save(User, newUser);
-
-      const newUserRole = tem.getRepository(UserRole).create({
-        userId: newUser.id,
-        roleId: role.id,
-      });
-      await tem.save(UserRole, newUserRole);
-    });
-    return this.findOneBy({ email: newUser.email });
-  }
-
   async findOneBy(where: object): Promise<User> {
     return await this.repository.findOne({
       where,
-      relations: ['userRole', 'userRole.role'],
+      relations: ['role'],
       cache: false,
     });
+  }
+
+  override async findAllBy({
+    page,
+    limit,
+    name,
+  }: GetUserDtoInput): Promise<GetAllOutput<User>> {
+    const query = this.repository
+      .createQueryBuilder('entity')
+      .orderBy('entity.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .innerJoinAndSelect('entity.role', 'role');
+
+    const count = this.repository.createQueryBuilder('entity');
+
+    if (name) {
+      query.andWhere(
+        '(entity.firstName LIKE :name OR entity.lastName LIKE :name)',
+        { name: `%${name}%` },
+      );
+      count.andWhere(
+        '(entity.firstName LIKE :name OR entity.lastName LIKE :name)',
+        { name: `%${name}%` },
+      );
+    }
+
+    const [data, totalItems] = await Promise.all([
+      query.getMany(),
+      count.getCount(),
+    ]);
+
+    return {
+      data,
+      page,
+      limit,
+      totalItems,
+    };
   }
 
   async update(user: User) {
@@ -50,13 +73,10 @@ export class UserRepository extends BaseRepository<User> {
   async getValidatorGeo() {
     return await this.repository
       .createQueryBuilder('user')
-      .innerJoinAndSelect('user.userRole', 'userRole')
-      .innerJoinAndSelect(
-        'userRole.role',
-        'role',
-        'role.validarCursinho = :validarCursinho',
-        { validarCursinho: true },
-      )
+      .innerJoinAndSelect('user.role', 'role')
+      .where('role.validarCursinho = :validarCursinho', {
+        validarCursinho: true,
+      })
       .select(['user.email'])
       .getMany();
   }

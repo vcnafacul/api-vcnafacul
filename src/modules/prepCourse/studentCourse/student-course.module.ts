@@ -1,8 +1,7 @@
 import { Module } from '@nestjs/common';
 import { LogGeoRepository } from 'src/modules/geo/log-geo/log-geo.repository';
 import { RoleModule } from 'src/modules/role/role.module';
-import { UserRoleModule } from 'src/modules/user-role/user-role.module';
-import { UserModule } from 'src/modules/user/user.module';
+import { UserService } from 'src/modules/user/user.service';
 import { BlobModule } from 'src/shared/services/blob/blob.module';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { ClassModule } from '../class/class.module';
@@ -20,14 +19,7 @@ import { StudentCourseService } from './student-course.service';
 
 @Module({
   controllers: [StudentCourseController],
-  imports: [
-    BlobModule,
-    UserModule,
-    RoleModule,
-    UserRoleModule,
-    CollaboratorModule,
-    ClassModule,
-  ],
+  imports: [BlobModule, RoleModule, CollaboratorModule, ClassModule],
   providers: [
     StudentCourseService,
     StudentCourseRepository,
@@ -40,7 +32,8 @@ import { StudentCourseService } from './student-course.service';
     EmailService,
     LogStudentRepository,
     LogGeoRepository,
+    UserService,
   ],
-  exports: [StudentCourseService, StudentCourseRepository],
+  exports: [StudentCourseService, StudentCourseRepository, UserService],
 })
 export class StudentCourseModule {}

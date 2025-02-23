@@ -153,7 +153,7 @@ describe('StudentCourse-JWT (e2e)', () => {
       });
   }, 30000);
 
-  it('should return user info', async () => {
+  it('already has student enrolled', async () => {
     const geo = await geoService.create(CreateGeoDTOInputFaker());
     const representativeDTO = CreateUserDtoInputFaker();
     await userService.create(representativeDTO);
