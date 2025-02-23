@@ -155,7 +155,7 @@ describe('Class (e2e)', () => {
       .expect(201);
 
     const updateDto = {
-      _id: createdClass.body.id,
+      id: createdClass.body.id,
       name: 'Updated Name',
       description: 'Updated Description',
     };
@@ -167,7 +167,7 @@ describe('Class (e2e)', () => {
       .expect(200);
 
     const updatedClass = await request(app.getHttpServer())
-      .get(`/class/${updateDto._id}`)
+      .get(`/class/${updateDto.id}`)
       .set({ Authorization: `Bearer ${token}` })
       .expect(200);
 
@@ -183,7 +183,7 @@ describe('Class (e2e)', () => {
     );
 
     const updateDto = {
-      _id: 'non-existing-class-id',
+      id: 'non-existing-class-id',
       name: 'Updated Name',
     };
 
