@@ -1,10 +1,17 @@
 import { Exclude } from 'class-transformer';
-import { BeforeInsert, Column, Entity, OneToMany, OneToOne } from 'typeorm';
+import {
+  BeforeInsert,
+  Column,
+  Entity,
+  ManyToOne,
+  OneToMany,
+  OneToOne,
+} from 'typeorm';
 import { BaseEntity } from '../../shared/modules/base/entity.base';
 import { Content } from '../contents/content/content.entity';
 import { Collaborator } from '../prepCourse/collaborator/collaborator.entity';
 import { StudentCourse } from '../prepCourse/studentCourse/student-course.entity';
-import { UserRole } from '../user-role/user-role.entity';
+import { Role } from '../role/role.entity';
 import { Gender } from './enum/gender';
 
 @Entity('users')
@@ -69,8 +76,8 @@ export class User extends BaseEntity {
   })
   public emailConfirmSended?: Date;
 
-  @OneToOne(() => UserRole, (userRole) => userRole.user)
-  userRole: UserRole;
+  @ManyToOne(() => Role, (role) => role.users)
+  role: Role;
 
   @OneToMany(() => Content, (content) => content.user)
   content: Content[];

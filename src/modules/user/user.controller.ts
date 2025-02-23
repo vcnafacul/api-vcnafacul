@@ -10,19 +10,24 @@ import {
   Query,
   Req,
   Res,
+  SetMetadata,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
-import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 import { GetAllDtoOutput } from 'src/shared/dtos/get-all.dto.output';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
+import { PermissionsGuard } from 'src/shared/guards/permission.guard';
+import { Permissions } from '../role/role.entity';
 import { CreateUserDtoInput } from './dto/create.dto.input';
 import { ForgotPasswordDtoInput } from './dto/forgot-password.dto.input';
+import { GetUserDtoInput } from './dto/get-user.dto.input';
 import { HasEmailDtoInput } from './dto/has-email.dto.input';
 import { LoginDtoInput } from './dto/login.dto.input';
 import { ResetPasswordDtoInput } from './dto/reset-password.dto.input';
+import { UpdateUserRoleInput } from './dto/update-user-role.dto.input';
 import { UpdateUserDTOInput } from './dto/update.dto.input';
+import { UserWithRoleName } from './dto/userWithRoleName';
 import { User } from './user.entity';
 import { UserService } from './user.service';
 
@@ -50,8 +55,10 @@ export class UserController {
   @Get()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  async find(@Query() query: GetAllDtoInput): Promise<GetAllDtoOutput<User>> {
-    return await this.userService.findAllBy(query);
+  async find(
+    @Query() query: GetUserDtoInput,
+  ): Promise<GetAllDtoOutput<UserWithRoleName>> {
+    return await this.userService.findAllByWithRoleName(query);
   }
 
   @Put()
@@ -101,5 +108,13 @@ export class UserController {
   @UseGuards(JwtAuthGuard)
   async findById(@Param('id') id: string) {
     return await this.userService.findUserById(id);
+  }
+
+  @Patch('updateRole')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
+  async updateRole(@Body() dto: UpdateUserRoleInput) {
+    return await this.userService.updateRole(dto.userId, dto.roleId);
   }
 }

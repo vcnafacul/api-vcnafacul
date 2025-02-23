@@ -1,5 +1,4 @@
 import { Module, OnModuleInit } from '@nestjs/common';
-import { UserRoleModule } from 'src/modules/user-role/user-role.module';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { PartnerPrepCourseModule } from '../partnerPrepCourse/partner-prep-course.module';
 import { LogStudentRepository } from '../studentCourse/log-student/log-student.repository';
@@ -10,7 +9,7 @@ import { InscriptionCourseService } from './inscription-course.service';
 
 @Module({
   controllers: [InscriptionCourseController],
-  imports: [UserRoleModule, PartnerPrepCourseModule, StudentCourseModule],
+  imports: [PartnerPrepCourseModule, StudentCourseModule],
   providers: [
     InscriptionCourseService,
     InscriptionCourseRepository,

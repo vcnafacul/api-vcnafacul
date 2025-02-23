@@ -2,13 +2,13 @@ import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import * as jwt from 'jsonwebtoken';
-import { UserRoleService } from 'src/modules/user-role/user-role.service';
+import { UserService } from 'src/modules/user/user.service';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
   constructor(
     private reflector: Reflector,
-    private userRoleService: UserRoleService,
+    private userService: UserService,
     private configService: ConfigService,
   ) {}
 
@@ -63,7 +63,7 @@ export class PermissionsGuard implements CanActivate {
         const results = await Promise.all(
           requiredPermissions.map(
             async (permission) =>
-              await this.userRoleService.checkUserPermission(
+              await this.userService.checkUserPermission(
                 userId,
                 this.snakeToCamel(permission),
               ),
@@ -71,8 +71,7 @@ export class PermissionsGuard implements CanActivate {
         );
         return results.reduce((acc, value) => acc || value, true);
       }
-
-      return await this.userRoleService.checkUserPermission(
+      return await this.userService.checkUserPermission(
         userId,
         this.snakeToCamel(requiredPermissions),
       );
