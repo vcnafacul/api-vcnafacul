@@ -11,7 +11,6 @@ import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCour
 import { StudentCourseService } from 'src/modules/prepCourse/studentCourse/student-course.service';
 import { Role } from 'src/modules/role/role.entity';
 import { RoleService } from 'src/modules/role/role.service';
-import { UserRoleRepository } from 'src/modules/user-role/user-role.repository';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
 import { EmailService } from 'src/shared/services/email/email.service';
@@ -32,7 +31,6 @@ describe('Class (e2e)', () => {
   let geoService: GeoService;
   let jwtService: JwtService;
   let roleService: RoleService;
-  let userRoleRepository: UserRoleRepository;
   let partnerService: PartnerPrepCourseService;
   let emailService: EmailService;
   let classRepository: ClassRepository;
@@ -52,8 +50,6 @@ describe('Class (e2e)', () => {
     geoService = moduleFixture.get<GeoService>(GeoService);
     jwtService = moduleFixture.get<JwtService>(JwtService);
     roleService = moduleFixture.get<RoleService>(RoleService);
-    userRoleRepository =
-      moduleFixture.get<UserRoleRepository>(UserRoleRepository);
     emailService = moduleFixture.get<EmailService>(EmailService);
     partnerService = moduleFixture.get<PartnerPrepCourseService>(
       PartnerPrepCourseService,
@@ -96,13 +92,8 @@ describe('Class (e2e)', () => {
     await userService.create(userDto);
     const user = await userRepository.findOneBy({ email: userDto.email });
 
-    const userRole = await userRoleRepository.findOneBy({
-      userId: user.id,
-    });
-
-    userRole.role = role;
-
-    await userRoleRepository.update(userRole);
+    user.role = role;
+    await userRepository.update(user);
 
     const dto: PartnerPrepCourseDtoInput = { geoId: geo.id, userId: user.id };
     const partner = await partnerService.create(dto, user.id);
