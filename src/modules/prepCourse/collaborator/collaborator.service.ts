@@ -9,6 +9,7 @@ import { PartnerPrepCourseService } from '../partnerPrepCourse/partner-prep-cour
 import { CollaboratorRepository } from './collaborator.repository';
 import { CollaboratorVolunteerDtoOutput } from './dtos/collaborator-volunteer.dto.output';
 import { GetAllCollaboratorDtoInput } from './dtos/get-all-collaborator.dto.input';
+import { CollaboratorDTOOutput } from './dtos/get-all-collaborator.dto.output';
 
 @Injectable()
 export class CollaboratorService extends BaseService<Collaborator> {
@@ -24,7 +25,7 @@ export class CollaboratorService extends BaseService<Collaborator> {
     page,
     limit,
     userId,
-  }: GetAllCollaboratorDtoInput): Promise<GetAllOutput<Collaborator>> {
+  }: GetAllCollaboratorDtoInput): Promise<GetAllOutput<CollaboratorDTOOutput>> {
     const partnerPrepCourse =
       await this.partnerPrepCourseService.getByUserId(userId);
     if (!partnerPrepCourse) {
@@ -38,7 +39,33 @@ export class CollaboratorService extends BaseService<Collaborator> {
     if (!data) {
       throw new HttpException('Usuário nao encontrado', HttpStatus.NOT_FOUND);
     }
-    return data;
+    const result: CollaboratorDTOOutput[] = data.data.map((c) => ({
+      id: c.id,
+      photo: c.photo,
+      description: c.description,
+      actived: c.actived,
+      lastAccess: c.lastAccess,
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+      user: {
+        id: c.user.id,
+        firstName: c.user.firstName,
+        lastName: c.user.lastName,
+        socialName: c.user.socialName,
+        email: c.user.email,
+        phone: c.user.phone,
+        role: {
+          id: c.user.role.id,
+          name: c.user.role.name,
+        },
+      },
+    }));
+    return {
+      data: result,
+      totalItems: data.totalItems,
+      page: data.page,
+      limit: data.limit,
+    };
   }
 
   async getCollaboratorByPrepPartner(

@@ -37,6 +37,7 @@ export class CollaboratorRepository extends BaseRepository<Collaborator> {
           'user.email',
           'user.phone',
         ])
+        .innerJoinAndSelect('user.role', 'role')
         .getMany(),
       this.repository
         .createQueryBuilder('entity')

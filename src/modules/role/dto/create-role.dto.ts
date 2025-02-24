@@ -5,6 +5,9 @@ export class CreateRoleDtoInput {
   name: string;
 
   @IsBoolean()
+  base: boolean;
+
+  @IsBoolean()
   validarCursinho: boolean;
 
   @IsBoolean()
@@ -51,4 +54,10 @@ export class CreateRoleDtoInput {
 
   @IsBoolean()
   gerenciarTurmas: boolean;
+
+  @IsBoolean()
+  gerenciarEstudantes: boolean;
+
+  @IsBoolean()
+  gerenciarPermissoesCursinho: boolean;
 }
