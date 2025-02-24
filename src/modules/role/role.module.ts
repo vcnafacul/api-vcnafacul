@@ -1,6 +1,5 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { LogGeoRepository } from '../geo/log-geo/log-geo.repository';
 import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
@@ -18,7 +17,6 @@ import { RoleExistValidator } from './validator/role-exist.validator';
     RoleRepository,
     RoleExistValidator,
     EmailService,
-    JwtService,
     CollaboratorRepository,
     LogGeoRepository,
   ],
