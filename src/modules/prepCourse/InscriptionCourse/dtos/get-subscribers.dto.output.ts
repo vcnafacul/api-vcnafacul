@@ -41,4 +41,6 @@ export class GetSubscribersDtoOutput {
   logs: LogStudent[];
   documents: DocumentStudentDtoOutput[];
   photo: string;
+  areas_de_interesse?: string;
+  cursos_selecionados?: string;
 }

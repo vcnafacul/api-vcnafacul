@@ -281,6 +281,8 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
             expiredAt: d.exprires,
           })),
           photo: student.photo,
+          areas_de_interesse: student.areaInterest,
+          cursos_selecionados: student.selectedCourses,
         };
       },
     );
