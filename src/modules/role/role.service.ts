@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { IsNull } from 'typeorm';
 import { PartnerPrepCourse } from '../prepCourse/partnerPrepCourse/partner-prep-course.entity';
 import { CreateRoleDtoInput } from './dto/create-role.dto';
 import { GetAllRoleDto } from './dto/get-all-role.dto';
@@ -22,6 +23,9 @@ export class RoleService extends BaseService<Role> {
     const data = await this._repository.findAllBy({
       page,
       limit,
+      where: {
+        partnerPrepCourse: IsNull(),
+      },
     });
     return {
       data: data.data.map((d) => ({ id: d.id, name: d.name })),
@@ -32,7 +36,14 @@ export class RoleService extends BaseService<Role> {
   }
 
   async findAll() {
-    return await this.roleRepository.findAll();
+    const data = await this._repository.findAllBy({
+      page: 1,
+      limit: 10000,
+      where: {
+        partnerPrepCourse: IsNull(),
+      },
+    });
+    return data.data;
   }
 
   async create(
