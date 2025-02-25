@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { LogGeoRepository } from 'src/modules/geo/log-geo/log-geo.repository';
+import { RoleModule } from 'src/modules/role/role.module';
 import { UserModule } from 'src/modules/user/user.module';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { CollaboratorModule } from '../collaborator/collaborator.module';
@@ -10,7 +11,7 @@ import { PartnerPrepCourseExistValidator } from './validator/partner-pret-course
 
 @Module({
   controllers: [PartnerPrepCourseController],
-  imports: [UserModule, CollaboratorModule],
+  imports: [UserModule, CollaboratorModule, RoleModule],
   providers: [
     PartnerPrepCourseService,
     PartnerPrepCourseRepository,

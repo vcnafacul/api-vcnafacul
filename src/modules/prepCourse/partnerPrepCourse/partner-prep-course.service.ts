@@ -4,6 +4,9 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { StatusLogGeo } from 'src/modules/geo/enum/status-log-geo';
 import { LogGeo } from 'src/modules/geo/log-geo/log-geo.entity';
 import { LogGeoRepository } from 'src/modules/geo/log-geo/log-geo.repository';
+import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
+import { Role } from 'src/modules/role/role.entity';
+import { RoleService } from 'src/modules/role/role.service';
 import { Status } from 'src/modules/simulado/enum/status.enum';
 import { UserService } from 'src/modules/user/user.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
@@ -25,6 +28,7 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     private readonly jwtService: JwtService,
     private readonly collaboratorRepository: CollaboratorRepository,
     private readonly logGeoRepository: LogGeoRepository,
+    private readonly roleService: RoleService,
     @InjectDataSource()
     private dataSource: DataSource,
   ) {
@@ -219,5 +223,43 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
       throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
     }
     return parnetPrepCourse;
+  }
+
+  async getBaseRoles(userId: string): Promise<Role[]> {
+    const partnerPrepCourse = await this.repository.findOneByUserId(userId);
+    if (!partnerPrepCourse) {
+      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
+    }
+    const roles = await this.roleService.findAllBy({
+      page: 1,
+      limit: 1000,
+      where: {
+        base: true,
+      },
+    });
+    return roles.data;
+  }
+
+  async createRole(dto: CreateRoleDtoInput, userId: string) {
+    const partnerPrepCourse = await this.repository.findOneByUserId(userId);
+    if (!partnerPrepCourse) {
+      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
+    }
+    return await this.roleService.create(dto, partnerPrepCourse);
+  }
+
+  async getRoles(userId: string): Promise<Role[]> {
+    const partnerPrepCourse = await this.repository.findOneByUserId(userId);
+    if (!partnerPrepCourse) {
+      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
+    }
+    const roles = await this.roleService.findAllBy({
+      page: 1,
+      limit: 1000,
+      where: {
+        partnerPrepCourse,
+      },
+    });
+    return roles.data;
   }
 }

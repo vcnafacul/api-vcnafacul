@@ -1,5 +1,6 @@
-import { Column, Entity, OneToMany } from 'typeorm';
+import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../shared/modules/base/entity.base';
+import { PartnerPrepCourse } from '../prepCourse/partnerPrepCourse/partner-prep-course.entity';
 import { User } from '../user/user.entity';
 
 export enum Permissions {
@@ -19,6 +20,8 @@ export enum Permissions {
   gerenciarProcessoSeletivo = 'gerenciar_processo_seletivo',
   gerenciarColaboradores = 'gerenciar_colaboradores',
   gerenciarTurmas = 'gerenciar_turmas',
+  gerenciarEstudantes = 'gerenciar_estudantes',
+  gerenciarPermissoesCursinho = 'gerenciar_permissoes_cursinho',
 }
 
 @Entity('roles')
@@ -86,6 +89,24 @@ export class Role extends BaseEntity {
   })
   gerenciarTurmas: boolean;
 
+  @Column({
+    name: Permissions.gerenciarEstudantes,
+    default: false,
+  })
+  gerenciarEstudantes: boolean;
+
+  @Column({
+    name: Permissions.gerenciarPermissoesCursinho,
+    default: false,
+  })
+  gerenciarPermissoesCursinho: boolean;
+
   @OneToMany(() => User, (user) => user.role)
   users: User[];
+
+  @ManyToOne(
+    () => PartnerPrepCourse,
+    (partnerPrepCourse) => partnerPrepCourse.roles,
+  )
+  partnerPrepCourse?: PartnerPrepCourse;
 }

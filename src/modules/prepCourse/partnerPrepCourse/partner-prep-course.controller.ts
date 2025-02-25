@@ -10,7 +10,8 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
-import { Permissions } from 'src/modules/role/role.entity';
+import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
+import { Permissions, Role } from 'src/modules/role/role.entity';
 import { User } from 'src/modules/user/user.entity';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
@@ -47,6 +48,47 @@ export class PartnerPrepCourseController {
       (req.user as User).id,
       (req.user as any).partner as string,
     );
+  }
+
+  // TODO: repensarr se é necessário mover para outro controller (role)
+  // Permissões precisam ser gerenciarPermissoesCursinho e alterarPermissao
+  @Get('role-base')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarPermissoesCursinho)
+  @ApiResponse({
+    status: 200,
+    description: 'obter as permissões base',
+  })
+  async getBaseRoles(@Req() req: Request): Promise<Role[]> {
+    return await this.service.getBaseRoles((req.user as User).id);
+  }
+
+  @Get('role')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarPermissoesCursinho)
+  @ApiResponse({
+    status: 200,
+    description: 'obter as permissões do cursinho parceiro',
+  })
+  async getRoles(@Req() req: Request): Promise<Role[]> {
+    return await this.service.getRoles((req.user as User).id);
+  }
+
+  @Post('role')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarPermissoesCursinho)
+  @ApiResponse({
+    status: 201,
+    description: 'criar permissão cursinho parceiro',
+  })
+  async createRole(
+    @Body() dto: CreateRoleDtoInput,
+    @Req() req: Request,
+  ): Promise<Role> {
+    return await this.service.createRole(dto, (req.user as User).id);
   }
 
   @Get(':id/has-active-inscription')
