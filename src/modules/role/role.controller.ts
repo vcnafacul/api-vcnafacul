@@ -26,8 +26,8 @@ export class RoleController {
   constructor(private readonly roleService: RoleService) {}
 
   @Get()
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
   async find(
     @Query() query: GetAllDtoInput,
   ): Promise<GetAllDtoOutput<GetAllRoleDto>> {
