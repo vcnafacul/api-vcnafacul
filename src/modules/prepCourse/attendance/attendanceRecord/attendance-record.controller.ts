@@ -49,4 +49,15 @@ export class AttendanceRecordController {
     return await this.service.findOneById(id);
   }
 
+  @Get()
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'buscar registros de presenca',
+  })
+  async findAll(
+    @Query() query: GetAttendanceRecord,
+  ): Promise<GetAllOutput<AttendanceRecord>> {
+    return await this.service.findAll(query);
+  }
 }

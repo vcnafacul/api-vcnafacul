@@ -105,4 +105,19 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
     };
   }
 
+  async findAll({
+    page,
+    limit,
+    classId,
+  }: GetAttendanceRecord): Promise<GetAllOutput<AttendanceRecord>> {
+    const cl = await this.classRepository.findOneBy({ id: classId });
+    const where = { class: cl };
+
+    const data = await this.repository.findAllBy({
+      page,
+      limit,
+      where,
+    });
+    return data;
+  }
 }
