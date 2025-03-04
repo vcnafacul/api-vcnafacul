@@ -1,6 +1,8 @@
 import {
   Body,
   Controller,
+  Get,
+  Param,
   Post,
   Req,
   SetMetadata,
@@ -13,6 +15,7 @@ import { User } from 'src/modules/user/user.entity';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { AttendanceRecordService } from './attendance-record.service';
 import { CreateAttendanceRecordDtoInput } from './dtos/create-attendance-record.dto.input';
+import { GetAttendanceRecordByIdDtoOutput } from './dtos/get-attendance-record-by-id.dto.output';
 
 @ApiTags('Attendance Record')
 @Controller('attendance-record')
@@ -33,4 +36,17 @@ export class AttendanceRecordController {
   ): Promise<void> {
     await this.service.create(dto, (req.user as User).id);
   }
+
+  @Get(':id')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'buscar registro de presença',
+  })
+  async findOneById(
+    @Param('id') id: string,
+  ): Promise<GetAttendanceRecordByIdDtoOutput> {
+    return await this.service.findOneById(id);
+  }
+
 }

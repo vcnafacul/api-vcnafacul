@@ -8,6 +8,7 @@ import { StudentAttendance } from '../studentAttendance/student-attendance.entit
 import { AttendanceRecord } from './attendance-record.entity';
 import { AttendanceRecordRepository } from './attendance-record.repository';
 import { CreateAttendanceRecordDtoInput } from './dtos/create-attendance-record.dto.input';
+import { GetAttendanceRecordByIdDtoOutput } from './dtos/get-attendance-record-by-id.dto.output';
 
 @Injectable()
 export class AttendanceRecordService extends BaseService<AttendanceRecord> {
@@ -68,4 +69,40 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
       );
     }
   }
+
+  async findOneById(id: string): Promise<GetAttendanceRecordByIdDtoOutput> {
+    const record = await this.repository.findOneBy({ id });
+    if (!record) {
+      throw new HttpException(
+        `Attendance record not found by id ${id}`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    return {
+      id: record.id,
+      classId: record.class.id,
+      date: record.registeredAt,
+      studentAttendance: record.studentAttendance.map((studentAttendance) => ({
+        id: studentAttendance.id,
+        present: studentAttendance.present,
+        justification: studentAttendance.justification?.justification,
+        student: {
+          name:
+            studentAttendance.studentCourse.user.firstName +
+            ' ' +
+            studentAttendance.studentCourse.user.lastName,
+          cod_enrolled: studentAttendance.studentCourse.cod_enrolled,
+        },
+      })),
+      registeredBy: {
+        name:
+          record.registeredBy.user.firstName +
+          ' ' +
+          record.registeredBy.user.lastName,
+        email: record.registeredBy.user.email,
+      },
+      createdAt: record.createdAt,
+    };
+  }
+
 }

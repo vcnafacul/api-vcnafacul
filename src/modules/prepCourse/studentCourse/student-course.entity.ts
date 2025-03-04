@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { NodeEntity } from '../../../shared/modules/node/node.entity';
 import { User } from '../../user/user.entity';
+import { StudentAttendance } from '../attendance/studentAttendance/student-attendance.entity';
 import { Class } from '../class/class.entity';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
@@ -15,7 +16,6 @@ import { DocumentStudent } from './documents/document-students.entity';
 import { StatusApplication } from './enums/stastusApplication';
 import { LegalGuardian } from './legal-guardian/legal-guardian.entity';
 import { LogStudent } from './log-student/log-student.entity';
-import { StudentAttendance } from '../attendance/studentAttendance/student-attendance.entity';
 
 //Representa o Estudante do Cursinho
 @Entity('student_course')
@@ -57,7 +57,9 @@ export class StudentCourse extends NodeEntity {
   )
   public documents: DocumentStudent[];
 
-  @ManyToOne(() => User, (user) => user.studentCourse)
+  @ManyToOne(() => User, (user) => user.studentCourse, {
+    eager: true,
+  })
   @JoinColumn({ name: 'user_id' })
   public user: User;
 
