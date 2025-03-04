@@ -6,7 +6,7 @@ import { StudentAttendance } from '../studentAttendance/student-attendance.entit
 export class AbsenceJustification extends BaseEntity {
   @OneToOne(
     () => StudentAttendance,
-    (studentAttendance) => studentAttendance.attendanceRecord,
+    (studentAttendance) => studentAttendance.justification,
   )
   public studentAttendance: StudentAttendance;
 
