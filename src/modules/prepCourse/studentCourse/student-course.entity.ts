@@ -8,13 +8,14 @@ import {
 } from 'typeorm';
 import { NodeEntity } from '../../../shared/modules/node/node.entity';
 import { User } from '../../user/user.entity';
+import { Class } from '../class/class.entity';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
 import { DocumentStudent } from './documents/document-students.entity';
 import { StatusApplication } from './enums/stastusApplication';
 import { LegalGuardian } from './legal-guardian/legal-guardian.entity';
 import { LogStudent } from './log-student/log-student.entity';
-import { Class } from '../class/class.entity';
+import { StudentAttendance } from '../attendance/studentAttendance/student-attendance.entity';
 
 //Representa o Estudante do Cursinho
 @Entity('student_course')
@@ -109,4 +110,10 @@ export class StudentCourse extends NodeEntity {
   get list(): string {
     throw new Error('Method not implemented.');
   }
+
+  @OneToMany(
+    () => StudentAttendance,
+    (studentAttendance) => studentAttendance.studentCourse,
+  )
+  public attendance: StudentAttendance[];
 }

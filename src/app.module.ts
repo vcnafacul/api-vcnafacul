@@ -14,6 +14,9 @@ import { FrenteModule } from './modules/contents/frente/frente.module';
 import { SubjectModule } from './modules/contents/subject/subject.module';
 import { GeoModule } from './modules/geo/geo.module';
 import { NewsModule } from './modules/news/news.module';
+import { AbsenceJustification } from './modules/prepCourse/attendance/absenceJustification/absence-justification.entity';
+import { AttendanceRecord } from './modules/prepCourse/attendance/attendanceRecord/attendance-record.entity';
+import { StudentAttendance } from './modules/prepCourse/attendance/studentAttendance/student-attendance.entity';
 import { ClassModule } from './modules/prepCourse/class/class.module';
 import { CollaboratorModule } from './modules/prepCourse/collaborator/collaborator.module';
 import { InscriptionCourseModule } from './modules/prepCourse/InscriptionCourse/inscription-course.module';
@@ -61,6 +64,9 @@ import { JwtStrategy } from './shared/strategy/jwt.strategy';
     SeederModule,
     BlobModule,
     ClassModule,
+    AttendanceRecord,
+    StudentAttendance,
+    AbsenceJustification,
   ],
   controllers: [AppController],
   providers: [JwtStrategy],
