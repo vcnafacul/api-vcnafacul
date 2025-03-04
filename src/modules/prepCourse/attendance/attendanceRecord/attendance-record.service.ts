@@ -37,12 +37,6 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
         HttpStatus.NOT_FOUND,
       );
     }
-    if (classEntity.students.length !== dto.studentIds.length) {
-      throw new HttpException(
-        'The number of students does not match',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
     const attendanceRecord = new AttendanceRecord();
     attendanceRecord.class = classEntity;
     attendanceRecord.registeredAt = dto.date;
