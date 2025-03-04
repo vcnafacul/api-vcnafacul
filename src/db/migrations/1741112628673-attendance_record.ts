@@ -1,14 +1,14 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AttendanceRecord1741099369597 implements MigrationInterface {
-  name = 'AttendanceRecord1741099369597';
+export class AttendanceRecord1741112628673 implements MigrationInterface {
+  name = 'AttendanceRecord1741112628673';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
       `CREATE TABLE \`absence_justification\` (\`id\` varchar(36) NOT NULL, \`created_at\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updated_at\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`deleted_at\` timestamp NULL, \`justification\` varchar(255) NOT NULL, PRIMARY KEY (\`id\`)) ENGINE=InnoDB`,
     );
     await queryRunner.query(
-      `CREATE TABLE \`attendance_record\` (\`id\` varchar(36) NOT NULL, \`created_at\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updated_at\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`deleted_at\` timestamp NULL, \`registeredAt\` date NOT NULL, \`classId\` varchar(36) NULL, \`registeredById\` varchar(36) NULL, PRIMARY KEY (\`id\`)) ENGINE=InnoDB`,
+      `CREATE TABLE \`attendance_record\` (\`id\` varchar(36) NOT NULL, \`created_at\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updated_at\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`deleted_at\` timestamp NULL, \`registeredAt\` datetime NOT NULL, \`classId\` varchar(36) NULL, \`registeredById\` varchar(36) NULL, PRIMARY KEY (\`id\`)) ENGINE=InnoDB`,
     );
     await queryRunner.query(
       `CREATE TABLE \`student_attendance\` (\`id\` varchar(36) NOT NULL, \`created_at\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updated_at\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`deleted_at\` timestamp NULL, \`present\` tinyint(1) NOT NULL, \`studentCourseId\` varchar(36) NULL, \`attendanceRecordId\` varchar(36) NULL, UNIQUE INDEX \`IDX_2d5ea3fa66a07b9e95a86563e1\` (\`attendanceRecordId\`, \`studentCourseId\`), PRIMARY KEY (\`id\`)) ENGINE=InnoDB`,

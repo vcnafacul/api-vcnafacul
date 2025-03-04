@@ -22,6 +22,6 @@ export class AttendanceRecord extends BaseEntity {
   )
   public studentAttendance: StudentAttendance[];
 
-  @Column({ type: 'date' })
+  @Column({ type: 'datetime' })
   public registeredAt: Date;
 }
