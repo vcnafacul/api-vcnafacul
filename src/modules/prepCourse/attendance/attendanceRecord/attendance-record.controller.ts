@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
+  Query,
   Req,
   SetMetadata,
   UseGuards,
@@ -13,9 +15,12 @@ import { Request } from 'express';
 import { Permissions } from 'src/modules/role/role.entity';
 import { User } from 'src/modules/user/user.entity';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
+import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { AttendanceRecord } from './attendance-record.entity';
 import { AttendanceRecordService } from './attendance-record.service';
 import { CreateAttendanceRecordDtoInput } from './dtos/create-attendance-record.dto.input';
 import { GetAttendanceRecordByIdDtoOutput } from './dtos/get-attendance-record-by-id.dto.output';
+import { GetAttendanceRecord } from './dtos/get-attendance-record.dto.input';
 
 @ApiTags('Attendance Record')
 @Controller('attendance-record')
@@ -59,5 +64,17 @@ export class AttendanceRecordController {
     @Query() query: GetAttendanceRecord,
   ): Promise<GetAllOutput<AttendanceRecord>> {
     return await this.service.findAll(query);
+  }
+
+  @Delete(':id')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
+  @ApiResponse({
+    status: 204,
+    description: 'deletar registro de presença',
+  })
+  async delete(@Param('id') id: string): Promise<void> {
+    await this.service.delete(id);
   }
 }

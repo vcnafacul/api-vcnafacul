@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { BaseService } from 'src/shared/modules/base/base.service';
+import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { DataSource } from 'typeorm';
 import { ClassRepository } from '../../class/class.repository';
 import { CollaboratorRepository } from '../../collaborator/collaborator.repository';
@@ -9,6 +10,7 @@ import { AttendanceRecord } from './attendance-record.entity';
 import { AttendanceRecordRepository } from './attendance-record.repository';
 import { CreateAttendanceRecordDtoInput } from './dtos/create-attendance-record.dto.input';
 import { GetAttendanceRecordByIdDtoOutput } from './dtos/get-attendance-record-by-id.dto.output';
+import { GetAttendanceRecord } from './dtos/get-attendance-record.dto.input';
 
 @Injectable()
 export class AttendanceRecordService extends BaseService<AttendanceRecord> {
@@ -119,5 +121,9 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
       where,
     });
     return data;
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.repository.delete(id);
   }
 }
