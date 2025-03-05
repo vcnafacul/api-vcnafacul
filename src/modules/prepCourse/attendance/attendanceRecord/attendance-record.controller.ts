@@ -30,7 +30,7 @@ export class AttendanceRecordController {
   @Post()
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarTurmas)
   @ApiResponse({
     status: 201,
     description: 'criar registro de presença',
@@ -44,6 +44,8 @@ export class AttendanceRecordController {
 
   @Get(':id')
   @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarTurmas)
   @ApiResponse({
     status: 200,
     description: 'buscar registro de presença',
@@ -56,6 +58,8 @@ export class AttendanceRecordController {
 
   @Get()
   @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarTurmas)
   @ApiResponse({
     status: 200,
     description: 'buscar registros de presenca',
