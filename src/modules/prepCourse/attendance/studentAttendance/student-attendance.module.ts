@@ -3,10 +3,11 @@ import { AbsenceJustificationRepository } from '../absenceJustification/absence-
 import { StudentAttendanceController } from './student-attendance.controller';
 import { StudentAttendanceRepository } from './student-attendance.repository';
 import { StudentAttendanceService } from './student-attendance.service';
+import { UserModule } from 'src/modules/user/user.module';
 
 @Module({
   controllers: [StudentAttendanceController],
-  imports: [],
+  imports: [UserModule],
   providers: [
     StudentAttendanceRepository,
     StudentAttendanceService,
