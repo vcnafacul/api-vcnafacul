@@ -1,11 +1,4 @@
-import {
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  OneToOne,
-  Unique,
-} from 'typeorm';
+import { Column, Entity, ManyToOne, OneToOne, Unique } from 'typeorm';
 import { BaseEntity } from '../../../../shared/modules/base/entity.base';
 import { StudentCourse } from '../../studentCourse/student-course.entity';
 import { AbsenceJustification } from '../absenceJustification/absence-justification.entity';
@@ -28,7 +21,6 @@ export class StudentAttendance extends BaseEntity {
     (attendance) => attendance.studentAttendance,
     { onDelete: 'CASCADE' },
   )
-  @JoinColumn()
   public justification?: AbsenceJustification;
 
   @Column({ type: 'tinyint', width: 1 })
