@@ -38,8 +38,8 @@ export class AttendanceRecordController {
   async createPartnerPrepCourse(
     @Body() dto: CreateAttendanceRecordDtoInput,
     @Req() req: Request,
-  ): Promise<void> {
-    await this.service.create(dto, (req.user as User).id);
+  ): Promise<AttendanceRecord> {
+    return await this.service.create(dto, (req.user as User).id);
   }
 
   @Get(':id')

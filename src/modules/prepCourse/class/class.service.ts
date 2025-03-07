@@ -126,4 +126,8 @@ export class ClassService extends BaseService<Class> {
       totalItems: classes.totalItems,
     };
   }
+
+  async findOneByIdToAttendanceRecord(id: string): Promise<Class> {
+    return this.repository.findOneByIdToAttendanceRecord(id);
+  }
 }

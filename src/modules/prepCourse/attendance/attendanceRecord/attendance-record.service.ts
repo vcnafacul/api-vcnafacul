@@ -25,7 +25,8 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
   }
 
   async create(dto: CreateAttendanceRecordDtoInput, userId: string) {
-    const classEntity = await this.classRepository.findOneById(dto.classId);
+    const classEntity =
+      await this.classRepository.findOneByIdToAttendanceRecord(dto.classId);
     if (!classEntity) {
       throw new HttpException(
         `Class not found by id ${dto.classId}`,
@@ -45,9 +46,10 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
     attendanceRecord.registeredAt = dto.date;
     attendanceRecord.registeredBy = collaborator;
 
+    let record: AttendanceRecord = null;
     try {
       await this.dataSource.transaction(async (manager) => {
-        const record = await manager
+        record = await manager
           .getRepository(AttendanceRecord)
           .save(attendanceRecord);
 
@@ -60,8 +62,6 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
             return studentAttendance;
           });
         await manager.getRepository(StudentAttendance).save(studentAttendances);
-
-        return record;
       });
     } catch (error) {
       console.error('Error creating attendance record:', error);
@@ -70,6 +70,13 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
+    if (!record) {
+      throw new HttpException(
+        'An error occurred while creating the attendance record',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+    return record;
   }
 
   async findOneById(id: string): Promise<GetAttendanceRecordByIdDtoOutput> {
@@ -112,7 +119,19 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
     limit,
     classId,
   }: GetAttendanceRecord): Promise<GetAllOutput<AttendanceRecord>> {
+    if (!classId) {
+      throw new HttpException(
+        `Class not found by id ${classId}`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
     const cl = await this.classRepository.findOneBy({ id: classId });
+    if (!cl) {
+      throw new HttpException(
+        `Class not found by id ${classId}`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
     const where = { class: cl };
 
     const data = await this.repository.findAllBy({

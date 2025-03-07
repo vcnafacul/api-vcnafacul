@@ -12,4 +12,12 @@ export class StudentAttendanceRepository extends BaseRepository<StudentAttendanc
   ) {
     super(_entityManager.getRepository(StudentAttendance));
   }
+
+  async findOneBy(where: object): Promise<StudentAttendance> {
+    return await this.repository
+      .createQueryBuilder('entity')
+      .innerJoinAndSelect('entity.justification', 'justification')
+      .where({ ...where })
+      .getOne();
+  }
 }

@@ -21,7 +21,7 @@ export class StudentAttendanceController {
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
   @ApiResponse({
-    status: 201,
+    status: 200,
     description: 'editar presença do aluno',
   })
   async createPartnerPrepCourse(

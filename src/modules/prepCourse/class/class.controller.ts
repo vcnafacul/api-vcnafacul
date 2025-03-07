@@ -96,4 +96,12 @@ export class ClassController {
       (req.user as User).id,
     );
   }
+
+  @Get(':id/attendance-record')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarTurmas)
+  async getClassByIdToAttendanceRecord(@Param('id') id: string) {
+    return await this.service.findOneByIdToAttendanceRecord(id);
+  }
 }
