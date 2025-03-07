@@ -38,21 +38,45 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
   }
 
   async findManyByStudentId(
+    page: number,
+    limit: number,
     id: string,
     studentCourseId: string,
-  ): Promise<AttendanceRecord[]> {
-    return await this.repository
-      .createQueryBuilder('entity')
-      .leftJoin('entity.studentAttendance', 'studentAttendance')
-      .addSelect(['studentAttendance.id', 'studentAttendance.present'])
-      .innerJoin('studentAttendance.studentCourse', 'studentCourse')
-      .addSelect(['studentCourse.id', 'studentCourse.cod_enrolled'])
-      .leftJoinAndSelect('studentAttendance.justification', 'justification')
-      .innerJoin('entity.class', 'class')
-      .addSelect(['class.id'])
-      .where('studentCourse.id = :studentCourseId', { studentCourseId })
-      .andWhere('entity.class.id = :classId', { classId: id })
-      .getMany();
+  ): Promise<GetAllOutput<AttendanceRecord>> {
+    const [data, totalItems] = await Promise.all([
+      this.repository
+        .createQueryBuilder('entity')
+        .leftJoin('entity.studentAttendance', 'studentAttendance')
+        .addSelect(['studentAttendance.id', 'studentAttendance.present'])
+        .innerJoin('studentAttendance.studentCourse', 'studentCourse')
+        .addSelect(['studentCourse.id', 'studentCourse.cod_enrolled'])
+        .leftJoinAndSelect('studentAttendance.justification', 'justification')
+        .innerJoin('entity.class', 'class')
+        .addSelect(['class.id'])
+        .where('studentCourse.id = :studentCourseId', { studentCourseId })
+        .andWhere('entity.class.id = :classId', { classId: id })
+        .andWhere('entity.deletedAt IS NULL')
+        .skip((page - 1) * limit)
+        .take(limit)
+        .getMany(),
+
+      this.repository
+        .createQueryBuilder('entity')
+        .leftJoin('entity.studentAttendance', 'studentAttendance')
+        .innerJoin('studentAttendance.studentCourse', 'studentCourse')
+        .where('studentCourse.id = :studentCourseId', { studentCourseId })
+        .innerJoin('entity.class', 'class')
+        .andWhere('entity.class.id = :classId', { classId: id })
+        .andWhere('entity.deletedAt IS NULL')
+        .getCount(),
+    ]);
+
+    return {
+      data,
+      page,
+      limit,
+      totalItems,
+    };
   }
 
   async findAllBy({

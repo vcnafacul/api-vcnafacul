@@ -20,6 +20,7 @@ import { AttendanceRecord } from './attendance-record.entity';
 import { AttendanceRecordService } from './attendance-record.service';
 import { CreateAttendanceRecordDtoInput } from './dtos/create-attendance-record.dto.input';
 import { GetAttendanceRecordByIdDtoOutput } from './dtos/get-attendance-record-by-id.dto.output';
+import { GetAttendanceRecordByStudent } from './dtos/get-attendance-record-by-student';
 import { GetAttendanceRecord } from './dtos/get-attendance-record.dto.input';
 
 @ApiTags('Attendance Record')
@@ -42,6 +43,20 @@ export class AttendanceRecordController {
     return await this.service.create(dto, (req.user as User).id);
   }
 
+  @Get('student')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarTurmas)
+  @ApiResponse({
+    status: 200,
+    description: 'buscar registro de presença',
+  })
+  async findManyByStudentId(
+    @Query() query: GetAttendanceRecordByStudent,
+  ): Promise<GetAllOutput<AttendanceRecord>> {
+    return await this.service.findManyByStudentId(query);
+  }
+
   @Get(':id')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
@@ -54,21 +69,6 @@ export class AttendanceRecordController {
     @Param('id') id: string,
   ): Promise<GetAttendanceRecordByIdDtoOutput> {
     return await this.service.findOneById(id);
-  }
-
-  @Get(':id/student/:studentId')
-  @ApiBearerAuth()
-  @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarTurmas)
-  @ApiResponse({
-    status: 200,
-    description: 'buscar registro de presença',
-  })
-  async findManyByStudentId(
-    @Param('id') id: string,
-    @Param('studentId') studentId: string,
-  ): Promise<AttendanceRecord[]> {
-    return await this.service.findManyByStudentId(id, studentId);
   }
 
   @Get()

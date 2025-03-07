@@ -10,6 +10,7 @@ import { AttendanceRecord } from './attendance-record.entity';
 import { AttendanceRecordRepository } from './attendance-record.repository';
 import { CreateAttendanceRecordDtoInput } from './dtos/create-attendance-record.dto.input';
 import { GetAttendanceRecordByIdDtoOutput } from './dtos/get-attendance-record-by-id.dto.output';
+import { GetAttendanceRecordByStudent } from './dtos/get-attendance-record-by-student';
 import { GetAttendanceRecord } from './dtos/get-attendance-record.dto.input';
 
 @Injectable()
@@ -142,11 +143,18 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
     return data;
   }
 
-  async findManyByStudentId(
-    id: string,
-    studentId: string,
-  ): Promise<AttendanceRecord[]> {
-    return await this.repository.findManyByStudentId(id, studentId);
+  async findManyByStudentId({
+    page,
+    limit,
+    id,
+    studentId,
+  }: GetAttendanceRecordByStudent): Promise<GetAllOutput<AttendanceRecord>> {
+    return await this.repository.findManyByStudentId(
+      page,
+      limit,
+      id,
+      studentId,
+    );
   }
 
   async delete(id: string): Promise<void> {
