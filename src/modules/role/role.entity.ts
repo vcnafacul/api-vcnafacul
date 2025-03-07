@@ -20,7 +20,9 @@ export enum Permissions {
   gerenciarProcessoSeletivo = 'gerenciar_processo_seletivo',
   gerenciarColaboradores = 'gerenciar_colaboradores',
   gerenciarTurmas = 'gerenciar_turmas',
+  visualizarTurmas = 'visualizar_turmas',
   gerenciarEstudantes = 'gerenciar_estudantes',
+  visualizarEstudantes = 'visualizar_estudantes',
   gerenciarPermissoesCursinho = 'gerenciar_permissoes_cursinho',
 }
 
@@ -100,6 +102,12 @@ export class Role extends BaseEntity {
     default: false,
   })
   gerenciarPermissoesCursinho: boolean;
+
+  @Column({ name: Permissions.visualizarTurmas, default: false })
+  visualizarTurmas: boolean;
+
+  @Column({ name: Permissions.visualizarEstudantes, default: false })
+  visualizarEstudantes: boolean;
 
   @OneToMany(() => User, (user) => user.role)
   users: User[];

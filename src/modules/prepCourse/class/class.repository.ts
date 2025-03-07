@@ -4,6 +4,7 @@ import { BaseRepository } from 'src/shared/modules/base/base.repository';
 import { GetAllWhereInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { EntityManager } from 'typeorm';
+import { StatusApplication } from '../studentCourse/enums/stastusApplication';
 import { Class } from './class.entity';
 
 @Injectable()
@@ -71,6 +72,20 @@ export class ClassRepository extends BaseRepository<Class> {
       ])
       .leftJoinAndSelect('entity.admins', 'admins')
       .where('entity.id = :id', { id })
+      .getOne();
+  }
+
+  async findOneByIdToAttendanceRecord(id: string): Promise<Class> {
+    return this.repository
+      .createQueryBuilder('entity')
+      .leftJoin('entity.students', 'student_course')
+      .addSelect(['student_course.id', 'student_course.cod_enrolled'])
+      .leftJoin('student_course.user', 'user')
+      .addSelect(['user.firstName', 'user.lastName'])
+      .where('entity.id = :id', { id })
+      .andWhere('student_course.applicationStatus = :status', {
+        status: StatusApplication.Enrolled,
+      })
       .getOne();
   }
 }

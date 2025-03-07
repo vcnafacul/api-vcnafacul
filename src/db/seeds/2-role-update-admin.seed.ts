@@ -21,7 +21,9 @@ export class RoleUpdateAdminSeedService {
         gerenciarProcessoSeletivo: true,
         gerenciarColaboradores: true,
         gerenciarTurmas: true,
+        visualizarTurmas: true,
         gerenciarEstudantes: true,
+        visualizarEstudantes: true,
         gerenciarPermissoesCursinho: true,
       })
       .catch(() => {

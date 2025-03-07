@@ -4,17 +4,21 @@ import {
   JoinColumn,
   ManyToMany,
   ManyToOne,
+  OneToMany,
   OneToOne,
 } from 'typeorm';
 import { BaseEntity } from '../../../shared/modules/base/entity.base';
 import { User } from '../../user/user.entity';
+import { AttendanceRecord } from '../attendance/attendanceRecord/attendance-record.entity';
 import { Class } from '../class/class.entity';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
 
 //Representa o Estudante do Cursinho
 @Entity('collaborators')
 export class Collaborator extends BaseEntity {
-  @OneToOne(() => User, (user) => user.collaborator)
+  @OneToOne(() => User, (user) => user.collaborator, {
+    eager: true,
+  })
   @JoinColumn({ name: 'user_id' })
   public user: User;
 
@@ -39,4 +43,10 @@ export class Collaborator extends BaseEntity {
 
   @ManyToMany(() => Class, (classes) => classes.admins)
   public Class: Class[];
+
+  @OneToMany(
+    () => AttendanceRecord,
+    (attendanceRecord) => attendanceRecord.class,
+  )
+  public attendanceRecords: AttendanceRecord[];
 }

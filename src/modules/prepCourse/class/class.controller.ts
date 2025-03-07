@@ -16,7 +16,6 @@ import { Request } from 'express';
 import { Permissions } from 'src/modules/role/role.entity';
 import { User } from 'src/modules/user/user.entity';
 import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
-import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { Class } from './class.entity';
@@ -61,7 +60,8 @@ export class ClassController {
 
   @Get(':id')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarTurmas)
   @ApiResponse({
     status: 200,
     description: 'pegar turma por id',
@@ -84,7 +84,8 @@ export class ClassController {
 
   @Get()
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarTurmas)
   async getAll(
     @Query() dto: GetAllDtoInput,
     @Req() req: Request,
@@ -94,5 +95,13 @@ export class ClassController {
       dto.limit,
       (req.user as User).id,
     );
+  }
+
+  @Get(':id/attendance-record')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarTurmas)
+  async getClassByIdToAttendanceRecord(@Param('id') id: string) {
+    return await this.service.findOneByIdToAttendanceRecord(id);
   }
 }

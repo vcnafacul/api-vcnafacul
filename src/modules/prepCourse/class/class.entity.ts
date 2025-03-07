@@ -11,6 +11,7 @@ import { BaseEntity } from '../../../shared/modules/base/entity.base';
 import { Collaborator } from '../collaborator/collaborator.entity';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
 import { StudentCourse } from '../studentCourse/student-course.entity';
+import { AttendanceRecord } from '../attendance/attendanceRecord/attendance-record.entity';
 
 @Entity('classes')
 export class Class extends BaseEntity {
@@ -54,4 +55,10 @@ export class Class extends BaseEntity {
     },
   })
   public admins: Collaborator[];
+
+  @OneToMany(
+    () => AttendanceRecord,
+    (attendanceRecord) => attendanceRecord.class,
+  )
+  public attendanceRecords: AttendanceRecord[];
 }

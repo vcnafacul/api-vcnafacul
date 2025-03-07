@@ -86,7 +86,13 @@ export class RoleService extends BaseService<Role> {
     role.gerenciarProcessoSeletivo = roleDto.gerenciarProcessoSeletivo;
     role.gerenciarColaboradores = roleDto.gerenciarColaboradores;
     role.gerenciarTurmas = roleDto.gerenciarTurmas;
+    role.visualizarTurmas = roleDto.gerenciarTurmas
+      ? true
+      : roleDto.visualizarTurmas;
     role.gerenciarEstudantes = roleDto.gerenciarEstudantes;
+    role.visualizarEstudantes = roleDto.gerenciarEstudantes
+      ? true
+      : roleDto.visualizarEstudantes;
     role.gerenciarPermissoesCursinho = roleDto.gerenciarPermissoesCursinho;
 
     if (partnerPrepCourse) {

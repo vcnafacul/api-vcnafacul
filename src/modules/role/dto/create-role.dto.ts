@@ -60,4 +60,10 @@ export class CreateRoleDtoInput {
 
   @IsBoolean()
   gerenciarPermissoesCursinho: boolean;
+
+  @IsBoolean()
+  visualizarTurmas: boolean;
+
+  @IsBoolean()
+  visualizarEstudantes: boolean;
 }

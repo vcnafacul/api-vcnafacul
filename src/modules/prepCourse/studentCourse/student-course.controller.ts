@@ -232,7 +232,8 @@ export class StudentCourseController {
 
   @Patch('reset-student')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   @HttpCode(200) // Define explicitamente o código de status
   async resetStudent(
     @Body()
@@ -243,7 +244,8 @@ export class StudentCourseController {
 
   @Patch('reject-student')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   @HttpCode(200) // Define explicitamente o código de status
   async rejectStudent(
     @Body() { studentId, reason }: { studentId: string; reason: string },
@@ -262,7 +264,7 @@ export class StudentCourseController {
   @Get('enrolled')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarEstudantes)
   async getEnrolled(
     @Query() query: GetAllInput,
     @Req() req: Request,
@@ -276,7 +278,7 @@ export class StudentCourseController {
   @Patch('enrollment-cancelled')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
   async cancelEnrolled(
     @Body() { studentId, reason }: { studentId: string; reason: string },
   ): Promise<void> {
@@ -286,7 +288,7 @@ export class StudentCourseController {
   @Patch('active-enrolled')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
   async activeEnrolled(@Body() { studentId }: { studentId: string }) {
     return await this.service.activeEnrolled(studentId);
   }
@@ -294,7 +296,7 @@ export class StudentCourseController {
   @Patch('profile-image')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
   @UseInterceptors(FileInterceptor('file'))
   async updateProfilePhotoByStudent(
     @UploadedFile() file: Express.Multer.File,
