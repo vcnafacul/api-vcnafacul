@@ -7,6 +7,7 @@ export class AbsenceJustification extends BaseEntity {
   @OneToOne(
     () => StudentAttendance,
     (studentAttendance) => studentAttendance.justification,
+    { onDelete: 'CASCADE' },
   )
   @JoinColumn()
   public studentAttendance: StudentAttendance;

@@ -1,6 +1,6 @@
 export class GetAttendanceRecordByIdDtoOutput {
   id: string;
-  date: Date;
+  registeredAt: Date;
   createdAt: Date;
   classId: string;
   studentAttendance: {

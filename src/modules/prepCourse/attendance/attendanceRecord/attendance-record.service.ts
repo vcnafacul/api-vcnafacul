@@ -90,7 +90,7 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
     return {
       id: record.id,
       classId: record.class.id,
-      date: record.registeredAt,
+      registeredAt: record.registeredAt,
       studentAttendance: record.studentAttendance.map((studentAttendance) => ({
         id: studentAttendance.id,
         present: studentAttendance.present,
@@ -140,6 +140,13 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
       where,
     });
     return data;
+  }
+
+  async findManyByStudentId(
+    id: string,
+    studentId: string,
+  ): Promise<AttendanceRecord[]> {
+    return await this.repository.findManyByStudentId(id, studentId);
   }
 
   async delete(id: string): Promise<void> {

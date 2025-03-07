@@ -56,6 +56,21 @@ export class AttendanceRecordController {
     return await this.service.findOneById(id);
   }
 
+  @Get(':id/student/:studentId')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarTurmas)
+  @ApiResponse({
+    status: 200,
+    description: 'buscar registro de presença',
+  })
+  async findManyByStudentId(
+    @Param('id') id: string,
+    @Param('studentId') studentId: string,
+  ): Promise<AttendanceRecord[]> {
+    return await this.service.findManyByStudentId(id, studentId);
+  }
+
   @Get()
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)

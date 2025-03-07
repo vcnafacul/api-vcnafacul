@@ -13,6 +13,7 @@ export class StudentAttendance extends BaseEntity {
   @ManyToOne(
     () => AttendanceRecord,
     (attendance) => attendance.studentAttendance,
+    { onDelete: 'CASCADE' },
   )
   public attendanceRecord: AttendanceRecord;
 
