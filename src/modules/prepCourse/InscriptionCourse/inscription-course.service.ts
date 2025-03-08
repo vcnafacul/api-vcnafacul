@@ -5,6 +5,7 @@ import { Gender } from 'src/modules/user/enum/gender';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { EmailService } from 'src/shared/services/email/email.service';
+import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { adjustDate } from 'src/utils/adjustDate';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
 import { PartnerPrepCourseService } from '../partnerPrepCourse/partner-prep-course.service';
@@ -28,6 +29,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     private readonly partnerPrepCourseService: PartnerPrepCourseService,
     private readonly emailService: EmailService,
     private readonly logStudentRepository: LogStudentRepository,
+    private readonly discordWebhook: DiscordWebhook,
   ) {
     super(repository);
   }
@@ -293,7 +295,13 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     timeZone: 'America/Sao_Paulo',
   })
   async updateInfosInscription() {
-    await this.repository.updateAllInscriptionsStatus();
+    try {
+      await this.repository.updateAllInscriptionsStatus();
+    } catch (error) {
+      this.discordWebhook.sendMessage(
+        `Erro ao atualizar status das inscrições: ${error}`,
+      );
+    }
   }
 
   async checkDateConflict(

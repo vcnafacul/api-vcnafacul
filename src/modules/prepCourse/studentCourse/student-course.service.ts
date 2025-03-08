@@ -14,6 +14,7 @@ import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
+import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { IsNull, Not } from 'typeorm';
 import { ClassService } from '../class/class.service';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
@@ -62,6 +63,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     private configService: ConfigService,
     private readonly collaboratorRepository: CollaboratorRepository,
     private readonly classService: ClassService,
+    private readonly discordWebhook: DiscordWebhook,
   ) {
     super(repository);
   }
@@ -594,42 +596,77 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     timeZone: 'America/Sao_Paulo',
   })
   async sendEmailDeclaredInterest() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const currentTimeInSeconds = Math.floor(today.getTime() / 1000);
-    const students = await this.repository.findAllCompletedBy({
-      selectEnrolledAt: today,
-      applicationStatus: StatusApplication.CalledForEnrollment,
-    });
-    for (const stu of students) {
-      const payload = {
-        user: { id: stu.id },
-      };
-      const limitTimeInSeconds = Math.floor(
-        stu.limitEnrolledAt.getTime() / 1000,
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const currentTimeInSeconds = Math.floor(today.getTime() / 1000);
+
+      const students = await this.repository.findAllCompletedBy({
+        selectEnrolledAt: today,
+        applicationStatus: StatusApplication.CalledForEnrollment,
+      });
+
+      const chunkSize = 5;
+      for (let i = 0; i < students.length; i += chunkSize) {
+        const chunk = students.slice(i, i + chunkSize);
+
+        const results = await Promise.allSettled(
+          chunk.map(async (stu) => {
+            try {
+              const payload = { user: { id: stu.id } };
+              const limitTimeInSeconds = Math.floor(
+                stu.limitEnrolledAt.getTime() / 1000,
+              );
+              const expiresIn = limitTimeInSeconds - currentTimeInSeconds;
+              const token = await this.jwtService.signAsync(payload, {
+                expiresIn,
+              });
+
+              const student_name = `${stu.user.firstName} ${stu.user.lastName}`;
+              stu.limitEnrolledAt.setDate(stu.limitEnrolledAt.getDate() - 1);
+
+              await this.emailService.sendDeclaredInterest(
+                student_name,
+                stu.user.email,
+                stu.partnerPrepCourse.geo.name,
+                stu.limitEnrolledAt,
+                token,
+              );
+
+              const log = new LogStudent();
+              log.studentId = stu.id;
+              log.applicationStatus = StatusApplication.CalledForEnrollment;
+              log.description = 'Email de convocação enviado';
+              await this.logStudentRepository.create(log);
+            } catch (emailError) {
+              throw {
+                email: stu.user.email,
+                id: stu.id,
+                error: emailError.message,
+              };
+            }
+          }),
+        );
+
+        const failedStudents = results
+          .filter((result) => result.status === 'rejected')
+          .map((result) => (result as PromiseRejectedResult).reason);
+
+        if (failedStudents.length > 0) {
+          this.discordWebhook.sendMessage(
+            `Falha no envio de emails para: ${failedStudents
+              .map((s) => `${s.email} (ID: ${s.id})`)
+              .join(', ')}`,
+          );
+        }
+
+        // Delay entre os chunks para evitar sobrecarga no SMTP
+        await new Promise((resolve) => setTimeout(resolve, 1000)); // 5 segundos de pausa
+      }
+    } catch (error) {
+      this.discordWebhook.sendMessage(
+        `Erro grave ao enviar emails de convocação: ${error.message}`,
       );
-      const expiresIn = limitTimeInSeconds - currentTimeInSeconds;
-      const token = await this.jwtService.signAsync(payload, { expiresIn });
-
-      const student_name = `${stu.user.firstName} ${stu.user.lastName}`;
-      stu.limitEnrolledAt.setDate(stu.limitEnrolledAt.getDate() - 1);
-
-      await this.emailService.sendDeclaredInterest(
-        student_name,
-        stu.user.email,
-        stu.partnerPrepCourse.geo.name,
-        stu.limitEnrolledAt,
-        token,
-      );
-
-      const log = new LogStudent();
-      log.studentId = stu.id;
-      log.applicationStatus = StatusApplication.CalledForEnrollment;
-      log.description = 'Email de convocação enviado';
-      await this.logStudentRepository.create(log);
-
-      // Delay de 2 segundos entre os envios
-      await new Promise((resolve) => setTimeout(resolve, 2000));
     }
   }
 
@@ -637,17 +674,48 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     timeZone: 'America/Sao_Paulo',
   })
   async verifyLostEnrolled() {
-    const students = await this.repository.getNotConfirmedEnrolled();
-    await this.repository.notConfirmedEnrolled();
-    await Promise.all(
-      students.map(async (student) => {
-        const log = new LogStudent();
-        log.studentId = student.id;
-        log.applicationStatus = StatusApplication.MissedDeadline;
-        log.description = 'Matríocula perdida';
-        await this.logStudentRepository.create(log);
-      }),
-    );
+    try {
+      const students = await this.repository.getNotConfirmedEnrolled();
+
+      if (students.length === 0) return; // Evita processamento desnecessário
+
+      await this.repository.notConfirmedEnrolled();
+
+      const chunkSize = 10;
+      for (let i = 0; i < students.length; i += chunkSize) {
+        const chunk = students.slice(i, i + chunkSize);
+
+        const results = await Promise.allSettled(
+          chunk.map(async (student) => {
+            try {
+              const log = new LogStudent();
+              log.studentId = student.id;
+              log.applicationStatus = StatusApplication.MissedDeadline;
+              log.description = 'Matrícula perdida';
+              await this.logStudentRepository.create(log);
+            } catch (error) {
+              throw { studentId: student.id, error: error.message };
+            }
+          }),
+        );
+
+        const failedLogs = results
+          .filter((result) => result.status === 'rejected')
+          .map((result) => (result as PromiseRejectedResult).reason);
+
+        if (failedLogs.length > 0) {
+          this.discordWebhook.sendMessage(
+            `Erro ao registrar matrícula perdida para: ${failedLogs
+              .map((s) => `ID: ${s.studentId}`)
+              .join(', ')}`,
+          );
+        }
+      }
+    } catch (error) {
+      this.discordWebhook.sendMessage(
+        `Erro grave ao processar matrículas perdidas: ${error.message}`,
+      );
+    }
   }
 
   async updateClass(studentId: string, classId: string) {

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { EmailService } from 'src/shared/services/email/email.service';
+import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { AuditLogModule } from '../audit-log/audit-log.module';
 import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
 import { RoleRepository } from '../role/role.repository';
@@ -22,6 +23,7 @@ import { UserExistValidator } from './validator/user-exist.validator';
     EmailService,
     CollaboratorRepository,
     RoleRepository,
+    DiscordWebhook,
   ],
   exports: [UserService, UserRepository],
 })
