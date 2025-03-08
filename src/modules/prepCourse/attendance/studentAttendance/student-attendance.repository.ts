@@ -16,7 +16,7 @@ export class StudentAttendanceRepository extends BaseRepository<StudentAttendanc
   async findOneBy(where: object): Promise<StudentAttendance> {
     return await this.repository
       .createQueryBuilder('entity')
-      .innerJoinAndSelect('entity.justification', 'justification')
+      .leftJoinAndSelect('entity.justification', 'justification')
       .where({ ...where })
       .getOne();
   }
