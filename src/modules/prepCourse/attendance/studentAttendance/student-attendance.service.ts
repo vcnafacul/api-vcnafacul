@@ -46,6 +46,7 @@ export class StudentAttendanceService extends BaseService<StudentAttendance> {
       } else {
         await this.absenceJustificationRepository.update(absenceJustification);
       }
+      studentAttendance.justification = absenceJustification;
     }
     await this.repository.update(studentAttendance);
   }
