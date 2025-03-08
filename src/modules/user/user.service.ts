@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { EmailService } from 'src/shared/services/email/email.service';
+import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
 import { Role } from '../role/role.entity';
 import { RoleRepository } from '../role/role.repository';
@@ -26,6 +27,7 @@ export class UserService extends BaseService<User> {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly collaboratorRepository: CollaboratorRepository,
+    private readonly discordWebhook: DiscordWebhook,
   ) {
     super(userRepository);
   }
@@ -55,8 +57,8 @@ export class UserService extends BaseService<User> {
       newUser.role = role;
       return await this.userRepository.create(newUser);
     } catch (error) {
+      this.discordWebhook.sendMessage(`Erro ao criar usuário: ${error}`);
       if (error.code === '23505') {
-        // código de erro para violação de restrição única no PostgreSQL
         throw new HttpException('Email already exist', HttpStatus.CONFLICT);
       }
       throw error;

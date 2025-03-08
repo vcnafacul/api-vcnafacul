@@ -4,6 +4,7 @@ import { RoleModule } from 'src/modules/role/role.module';
 import { UserService } from 'src/modules/user/user.service';
 import { BlobModule } from 'src/shared/services/blob/blob.module';
 import { EmailService } from 'src/shared/services/email/email.service';
+import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { ClassModule } from '../class/class.module';
 import { CollaboratorModule } from '../collaborator/collaborator.module';
 import { InscriptionCourseRepository } from '../InscriptionCourse/inscription-course.repository';
@@ -33,6 +34,7 @@ import { StudentCourseService } from './student-course.service';
     LogStudentRepository,
     LogGeoRepository,
     UserService,
+    DiscordWebhook,
   ],
   exports: [StudentCourseService, StudentCourseRepository, UserService],
 })
