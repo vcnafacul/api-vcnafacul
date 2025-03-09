@@ -1,5 +1,6 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { LokiLoggerService } from 'src/logger/loki-logger';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { EmailService } from 'src/shared/services/email/email.service';
@@ -28,8 +29,10 @@ export class UserService extends BaseService<User> {
     private readonly emailService: EmailService,
     private readonly collaboratorRepository: CollaboratorRepository,
     private readonly discordWebhook: DiscordWebhook,
+    private readonly logger: LokiLoggerService,
   ) {
     super(userRepository);
+    this.logger.setContext(UserService.name);
   }
 
   async create(userDto: CreateUserDtoInput): Promise<void> {
@@ -55,9 +58,12 @@ export class UserService extends BaseService<User> {
         throw new HttpException('role not found', HttpStatus.BAD_REQUEST);
       }
       newUser.role = role;
-      return await this.userRepository.create(newUser);
+      const user = await this.userRepository.create(newUser);
+      this.logger.log('User created: ' + user.id + ' - ' + user.email);
+      return user;
     } catch (error) {
       this.discordWebhook.sendMessage(`Erro ao criar usuário: ${error}`);
+      this.logger.error(`Erro ao criar usuário: ${error}`);
       if (error.code === '23505') {
         throw new HttpException('Email already exist', HttpStatus.CONFLICT);
       }
@@ -73,6 +79,7 @@ export class UserService extends BaseService<User> {
     if (!user.emailConfirmSended) {
       throw new HttpException('Email already valided', HttpStatus.CONFLICT);
     }
+    this.logger.log('User confirmed email: ' + user.id + ' - ' + user.email);
     user.emailConfirmSended = null;
     user.password = undefined;
     await this._repository.update(user);

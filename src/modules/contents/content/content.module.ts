@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { LoggerModule } from 'src/logger/logger.module';
 import { AuditLogModule } from 'src/modules/audit-log/audit-log.module';
 import { CollaboratorRepository } from 'src/modules/prepCourse/collaborator/collaborator.repository';
 import { RoleRepository } from 'src/modules/role/role.repository';
@@ -14,7 +15,7 @@ import { ContentService } from './content.service';
 
 @Module({
   controllers: [ContentController],
-  imports: [AuditLogModule, UserModule],
+  imports: [AuditLogModule, UserModule, LoggerModule],
   providers: [
     ContentService,
     ContentRepository,

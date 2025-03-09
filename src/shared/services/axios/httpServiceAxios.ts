@@ -2,10 +2,14 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import { Observable, catchError, firstValueFrom, map } from 'rxjs';
+import { LokiLoggerService } from 'src/logger/loki-logger';
 
 @Injectable()
 export class HttpServiceAxios {
-  constructor(private readonly http: HttpService) {}
+  constructor(
+    private readonly http: HttpService,
+    private readonly logger: LokiLoggerService,
+  ) {}
 
   public async setBaseURL(baseURL: string) {
     this.http.axiosRef.defaults.baseURL = baseURL;
@@ -16,7 +20,7 @@ export class HttpServiceAxios {
       .get<T>(url)
       .pipe(
         catchError((error: AxiosError) => {
-          console.log(error.response.data);
+          this.logger.error(error.response.data);
           throw error.response?.data;
         }),
       )
@@ -28,6 +32,7 @@ export class HttpServiceAxios {
       .post<T>(url, req)
       .pipe(
         catchError((error: AxiosError) => {
+          this.logger.error(error.response.data);
           throw error.response?.data;
         }),
       )
@@ -39,6 +44,7 @@ export class HttpServiceAxios {
       .post<T>(url, req)
       .pipe(
         catchError((error: AxiosError) => {
+          this.logger.error(error.response.data);
           throw error.response?.data;
         }),
       )
@@ -50,13 +56,13 @@ export class HttpServiceAxios {
       return await firstValueFrom(
         this.http.delete<T>(url).pipe(
           catchError((error: AxiosError) => {
+            this.logger.error(error.response.data);
             throw error.response?.data;
           }),
         ),
-      )
+      );
     } catch (error) {
-      console.error('Erro ao apagar:', error);
-      throw error; 
+      throw error;
     }
   }
 
@@ -66,6 +72,7 @@ export class HttpServiceAxios {
       .pipe(map((res) => res.data))
       .pipe(
         catchError((error: AxiosError) => {
+          this.logger.error(error.response.data);
           throw error.response?.data;
         }),
       );
