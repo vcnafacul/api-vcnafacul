@@ -1,6 +1,5 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { LokiLoggerService } from 'src/logger/loki-logger';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { EmailService } from 'src/shared/services/email/email.service';
@@ -29,11 +28,10 @@ export class UserService extends BaseService<User> {
     private readonly emailService: EmailService,
     private readonly collaboratorRepository: CollaboratorRepository,
     private readonly discordWebhook: DiscordWebhook,
-    private readonly logger: LokiLoggerService,
   ) {
     super(userRepository);
-    this.logger.setContext(UserService.name);
   }
+  private readonly logger = new Logger(UserService.name);
 
   async create(userDto: CreateUserDtoInput): Promise<void> {
     const user = await this.createUser(userDto);
@@ -76,10 +74,10 @@ export class UserService extends BaseService<User> {
     if (!user) {
       throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     }
+    this.logger.log('User confirmed email: ' + user.email);
     if (!user.emailConfirmSended) {
       throw new HttpException('Email already valided', HttpStatus.CONFLICT);
     }
-    this.logger.log('User confirmed email: ' + user.id + ' - ' + user.email);
     user.emailConfirmSended = null;
     user.password = undefined;
     await this._repository.update(user);

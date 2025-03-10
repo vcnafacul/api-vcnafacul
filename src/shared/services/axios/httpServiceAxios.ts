@@ -1,19 +1,17 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import { Observable, catchError, firstValueFrom, map } from 'rxjs';
-import { LokiLoggerService } from 'src/logger/loki-logger';
 
 @Injectable()
 export class HttpServiceAxios {
-  constructor(
-    private readonly http: HttpService,
-    private readonly logger: LokiLoggerService,
-  ) {}
+  constructor(private readonly http: HttpService) {}
 
   public async setBaseURL(baseURL: string) {
     this.http.axiosRef.defaults.baseURL = baseURL;
   }
+
+  private readonly logger = new Logger(HttpServiceAxios.name);
 
   public async get<T>(url: string): Promise<Observable<T>> {
     return this.http

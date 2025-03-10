@@ -6,7 +6,6 @@ const LokiTransport = require('winston-loki');
 @Injectable()
 export class LokiLoggerService implements LoggerService {
   private readonly logger: Logger;
-  private context?: string;
 
   constructor() {
     const USER_ID = process.env.GRAFANA_USER_ID;
@@ -20,6 +19,7 @@ export class LokiLoggerService implements LoggerService {
       basicAuth: `${USER_ID}:${API_KEY}`,
       onConnectionError: (err: any) =>
         console.error('Erro ao conectar ao Loki:', err),
+      level: 'info',
     });
 
     this.logger = createLogger({
@@ -31,32 +31,31 @@ export class LokiLoggerService implements LoggerService {
       ],
     });
   }
-  private formatMessage(message: any) {
-    return this.context ? `[${this.context}] ${message}` : message;
-  }
 
   log(message: any, ...optionalParams: any[]) {
-    this.logger.info(this.formatMessage(message), { optionalParams });
+    if (
+      optionalParams.length > 0 &&
+      !['RoutesResolver', 'RouterExplorer'].includes(optionalParams[0])
+    ) {
+      this.logger.info(message, { optionalParams });
+    }
   }
   error(message: any, ...optionalParams: any[]) {
-    this.logger.error(this.formatMessage(message), { optionalParams });
+    this.logger.error(message, { optionalParams });
   }
   warn(message: any, ...optionalParams: any[]) {
-    this.logger.warn(this.formatMessage(message), { optionalParams });
+    this.logger.warn(message, { optionalParams });
   }
   debug?(message: any, ...optionalParams: any[]) {
-    this.logger.debug(this.formatMessage(message), { optionalParams });
+    this.logger.debug(message, { optionalParams });
   }
   verbose?(message: any, ...optionalParams: any[]) {
-    this.logger.verbose(this.formatMessage(message), { optionalParams });
+    this.logger.verbose(message, { optionalParams });
   }
   fatal?(message: any, ...optionalParams: any[]) {
-    this.logger.error(this.formatMessage(message), { optionalParams });
+    this.logger.error(message, { optionalParams });
   }
   setLogLevels?(levels: LogLevel[]) {
     throw new Error(levels.toString());
-  }
-  setContext(context: string) {
-    this.context = context;
   }
 }
