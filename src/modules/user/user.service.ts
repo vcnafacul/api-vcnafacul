@@ -74,10 +74,10 @@ export class UserService extends BaseService<User> {
     if (!user) {
       throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     }
-    this.logger.log('User confirmed email: ' + user.email);
     if (!user.emailConfirmSended) {
       throw new HttpException('Email already valided', HttpStatus.CONFLICT);
     }
+    this.logger.log('User confirmed email: ' + user.email);
     user.emailConfirmSended = null;
     user.password = undefined;
     await this._repository.update(user);
