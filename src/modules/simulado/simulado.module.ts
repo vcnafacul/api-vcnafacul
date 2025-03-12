@@ -1,6 +1,5 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
-import { LoggerModule } from 'src/logger/logger.module';
 import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
 import { AuditLogRepository } from '../audit-log/audit-log.repository';
 import { AuditLogService } from '../audit-log/audit-log.service';
@@ -15,7 +14,7 @@ import { SimuladoController } from './simulado.controller';
 import { SimuladoService } from './simulado.service';
 
 @Module({
-  imports: [HttpModule, UserModule, LoggerModule],
+  imports: [HttpModule, UserModule],
   controllers: [
     SimuladoController,
     ProvaController,

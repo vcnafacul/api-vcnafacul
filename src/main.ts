@@ -7,6 +7,7 @@ import { AppModule } from './app.module';
 import { VcnafaculCors } from './config/cors';
 import { document } from './config/swagger.config';
 import { ControllerExceptionsFilter } from './exceptions/controller.filter';
+import { LoggingInterceptor } from './logger/logging-interceptor';
 import { LokiLoggerService } from './logger/loki-logger';
 
 async function bootstrap() {
@@ -24,6 +25,7 @@ async function bootstrap() {
   );
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
   app.useGlobalFilters(new ControllerExceptionsFilter());
+  app.useGlobalInterceptors(new LoggingInterceptor());
   app.use(json({ limit: '30mb' }));
   app.use(urlencoded({ limit: '30mb', extended: true }));
   SwaggerModule.setup('api', app, document(app));

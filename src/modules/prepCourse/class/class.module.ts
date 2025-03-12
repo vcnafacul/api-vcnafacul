@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { LoggerModule } from 'src/logger/logger.module';
 import { RoleRepository } from 'src/modules/role/role.repository';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
@@ -13,7 +12,7 @@ import { ClassService } from './class.service';
 
 @Module({
   controllers: [ClassController],
-  imports: [PartnerPrepCourseModule, LoggerModule],
+  imports: [PartnerPrepCourseModule],
   providers: [
     ClassRepository,
     ClassService,

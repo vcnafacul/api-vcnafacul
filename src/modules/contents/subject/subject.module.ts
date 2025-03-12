@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { LoggerModule } from 'src/logger/logger.module';
 import { UserService } from 'src/modules/user/user.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { ContentModule } from '../content/content.module';
@@ -10,7 +9,7 @@ import { SubjectService } from './subject.service';
 
 @Module({
   controllers: [SubjectController],
-  imports: [ContentModule, LoggerModule],
+  imports: [ContentModule],
   providers: [
     SubjectService,
     SubjectRepository,
