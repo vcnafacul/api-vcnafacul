@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import { Observable, catchError, firstValueFrom, map } from 'rxjs';
 
@@ -11,12 +11,14 @@ export class HttpServiceAxios {
     this.http.axiosRef.defaults.baseURL = baseURL;
   }
 
+  private readonly logger = new Logger(HttpServiceAxios.name);
+
   public async get<T>(url: string): Promise<Observable<T>> {
     return this.http
       .get<T>(url)
       .pipe(
         catchError((error: AxiosError) => {
-          console.log(error.response.data);
+          this.logger.error(error.response.data);
           throw error.response?.data;
         }),
       )
@@ -28,6 +30,7 @@ export class HttpServiceAxios {
       .post<T>(url, req)
       .pipe(
         catchError((error: AxiosError) => {
+          this.logger.error(error.response.data);
           throw error.response?.data;
         }),
       )
@@ -39,6 +42,7 @@ export class HttpServiceAxios {
       .post<T>(url, req)
       .pipe(
         catchError((error: AxiosError) => {
+          this.logger.error(error.response.data);
           throw error.response?.data;
         }),
       )
@@ -50,13 +54,13 @@ export class HttpServiceAxios {
       return await firstValueFrom(
         this.http.delete<T>(url).pipe(
           catchError((error: AxiosError) => {
+            this.logger.error(error.response.data);
             throw error.response?.data;
           }),
         ),
-      )
+      );
     } catch (error) {
-      console.error('Erro ao apagar:', error);
-      throw error; 
+      throw error;
     }
   }
 
@@ -66,6 +70,7 @@ export class HttpServiceAxios {
       .pipe(map((res) => res.data))
       .pipe(
         catchError((error: AxiosError) => {
+          this.logger.error(error.response.data);
           throw error.response?.data;
         }),
       );

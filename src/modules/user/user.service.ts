@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
@@ -31,6 +31,7 @@ export class UserService extends BaseService<User> {
   ) {
     super(userRepository);
   }
+  private readonly logger = new Logger(UserService.name);
 
   async create(userDto: CreateUserDtoInput): Promise<void> {
     const user = await this.createUser(userDto);
@@ -55,9 +56,12 @@ export class UserService extends BaseService<User> {
         throw new HttpException('role not found', HttpStatus.BAD_REQUEST);
       }
       newUser.role = role;
-      return await this.userRepository.create(newUser);
+      const user = await this.userRepository.create(newUser);
+      this.logger.log('User created: ' + user.id + ' - ' + user.email);
+      return user;
     } catch (error) {
       this.discordWebhook.sendMessage(`Erro ao criar usuário: ${error}`);
+      this.logger.error(`Erro ao criar usuário: ${error}`);
       if (error.code === '23505') {
         throw new HttpException('Email already exist', HttpStatus.CONFLICT);
       }
@@ -73,6 +77,7 @@ export class UserService extends BaseService<User> {
     if (!user.emailConfirmSended) {
       throw new HttpException('Email already valided', HttpStatus.CONFLICT);
     }
+    this.logger.log('User confirmed email: ' + user.email);
     user.emailConfirmSended = null;
     user.password = undefined;
     await this._repository.update(user);

@@ -8,6 +8,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { TypeOrmOptions } from './config/db.config';
 import { SeederModule } from './db/seeds/seeder.module';
+import { LokiLoggerService } from './logger/loki-logger';
 import { AuditLogModule } from './modules/audit-log/audit-log.module';
 import { ContentModule } from './modules/contents/content/content.module';
 import { FrenteModule } from './modules/contents/frente/frente.module';
@@ -70,7 +71,7 @@ import { JwtStrategy } from './shared/strategy/jwt.strategy';
     AbsenceJustificationModule,
   ],
   controllers: [AppController],
-  providers: [JwtStrategy, DiscordWebhook],
+  providers: [JwtStrategy, DiscordWebhook, LokiLoggerService],
   exports: [DiscordWebhook],
 })
 export class AppModule {}
