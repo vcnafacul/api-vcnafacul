@@ -1,6 +1,7 @@
-import { Column, Entity, OneToMany } from 'typeorm';
+import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../shared/modules/base/entity.base';
-import { UserRole } from '../user-role/user-role.entity';
+import { PartnerPrepCourse } from '../prepCourse/partnerPrepCourse/partner-prep-course.entity';
+import { User } from '../user/user.entity';
 
 export enum Permissions {
   validarCursinho = 'validar_cursinho',
@@ -18,6 +19,11 @@ export enum Permissions {
   gerenciadorDemanda = 'gerenciador_demanda',
   gerenciarProcessoSeletivo = 'gerenciar_processo_seletivo',
   gerenciarColaboradores = 'gerenciar_colaboradores',
+  gerenciarTurmas = 'gerenciar_turmas',
+  visualizarTurmas = 'visualizar_turmas',
+  gerenciarEstudantes = 'gerenciar_estudantes',
+  visualizarEstudantes = 'visualizar_estudantes',
+  gerenciarPermissoesCursinho = 'gerenciar_permissoes_cursinho',
 }
 
 @Entity('roles')
@@ -79,6 +85,36 @@ export class Role extends BaseEntity {
   })
   gerenciarColaboradores: boolean;
 
-  @OneToMany(() => UserRole, (userRole) => userRole.role)
-  userRoles: UserRole[];
+  @Column({
+    name: Permissions.gerenciarTurmas,
+    default: false,
+  })
+  gerenciarTurmas: boolean;
+
+  @Column({
+    name: Permissions.gerenciarEstudantes,
+    default: false,
+  })
+  gerenciarEstudantes: boolean;
+
+  @Column({
+    name: Permissions.gerenciarPermissoesCursinho,
+    default: false,
+  })
+  gerenciarPermissoesCursinho: boolean;
+
+  @Column({ name: Permissions.visualizarTurmas, default: false })
+  visualizarTurmas: boolean;
+
+  @Column({ name: Permissions.visualizarEstudantes, default: false })
+  visualizarEstudantes: boolean;
+
+  @OneToMany(() => User, (user) => user.role)
+  users: User[];
+
+  @ManyToOne(
+    () => PartnerPrepCourse,
+    (partnerPrepCourse) => partnerPrepCourse.roles,
+  )
+  partnerPrepCourse?: PartnerPrepCourse;
 }

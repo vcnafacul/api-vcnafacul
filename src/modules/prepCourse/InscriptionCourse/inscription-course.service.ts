@@ -5,6 +5,7 @@ import { Gender } from 'src/modules/user/enum/gender';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { EmailService } from 'src/shared/services/email/email.service';
+import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { adjustDate } from 'src/utils/adjustDate';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
 import { PartnerPrepCourseService } from '../partnerPrepCourse/partner-prep-course.service';
@@ -28,6 +29,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     private readonly partnerPrepCourseService: PartnerPrepCourseService,
     private readonly emailService: EmailService,
     private readonly logStudentRepository: LogStudentRepository,
+    private readonly discordWebhook: DiscordWebhook,
   ) {
     super(repository);
   }
@@ -222,6 +224,12 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     inscriptionId: string,
   ): Promise<GetSubscribersDtoOutput[]> {
     const inscription = await this.repository.getSubscribers(inscriptionId);
+    if (!inscription) {
+      throw new HttpException(
+        'Inscrição não encontrada',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     const subscribers: GetSubscribersDtoOutput[] = inscription.students.map(
       (student) => {
         return {
@@ -275,6 +283,8 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
             expiredAt: d.exprires,
           })),
           photo: student.photo,
+          areas_de_interesse: student.areaInterest,
+          cursos_selecionados: student.selectedCourses,
         };
       },
     );
@@ -285,7 +295,13 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     timeZone: 'America/Sao_Paulo',
   })
   async updateInfosInscription() {
-    await this.repository.updateAllInscriptionsStatus();
+    try {
+      await this.repository.updateAllInscriptionsStatus();
+    } catch (error) {
+      this.discordWebhook.sendMessage(
+        `Erro ao atualizar status das inscrições: ${error}`,
+      );
+    }
   }
 
   async checkDateConflict(
@@ -344,19 +360,20 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     if (!student) {
       throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
-    if (student.applicationStatus === StatusApplication.UnderReview) {
-      if (student.enrolled) {
-        throw new HttpException(
-          'Não é possível alterar status de lista de espera de estudantes matriculados',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
+    if (student.applicationStatus === StatusApplication.Enrolled) {
+      throw new HttpException(
+        'Não é possível alterar status de lista de espera de estudantes matriculados',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (
+      student.applicationStatus === StatusApplication.UnderReview ||
+      (student.applicationStatus === StatusApplication.CalledForEnrollment &&
+        new Date() < new Date(student.selectEnrolledAt))
+    ) {
       const log = new LogStudent();
       log.studentId = student.id;
       log.applicationStatus = StatusApplication.UnderReview;
-      if (!waitingList) {
-      } else {
-      }
       student.applicationStatus = StatusApplication.UnderReview;
       if (!waitingList) {
         student.waitingList = false;

@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
+import { UserModule } from '../user/user.module';
 import { NewsController } from './news.controller';
-import { NewsService } from './news.service';
 import { NewsRepository } from './news.repository';
-import { UserRoleModule } from '../user-role/user-role.module';
+import { NewsService } from './news.service';
 
 @Module({
-  imports: [UserRoleModule],
+  imports: [UserModule],
   controllers: [NewsController],
   providers: [NewsService, NewsRepository],
 })

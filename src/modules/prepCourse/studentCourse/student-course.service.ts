@@ -10,9 +10,13 @@ import { CreateFlow } from 'src/modules/user/enum/create-flow';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
+import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
+import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
+import { IsNull, Not } from 'typeorm';
+import { ClassService } from '../class/class.service';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
 import { InscriptionCourseService } from '../InscriptionCourse/inscription-course.service';
@@ -28,6 +32,10 @@ import {
   GetAllStudentDtoOutput,
   toGetAllStudentDtoOutput,
 } from './dtos/get-all-student.dto.output';
+import {
+  GetEnrolledDtoOutput,
+  StudentsDtoOutput,
+} from './dtos/get-enrolled.dto.output';
 import { ScheduleEnrolledDtoInput } from './dtos/schedule-enrolled.dto.input';
 import { StatusApplication } from './enums/stastusApplication';
 import { LegalGuardian } from './legal-guardian/legal-guardian.entity';
@@ -54,6 +62,8 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     private readonly logStudentRepository: LogStudentRepository,
     private configService: ConfigService,
     private readonly collaboratorRepository: CollaboratorRepository,
+    private readonly classService: ClassService,
+    private readonly discordWebhook: DiscordWebhook,
   ) {
     super(repository);
   }
@@ -134,7 +144,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     await this.emailService.sendCreateUser(user, token);
   }
 
-  async findAllByStudent({
+  async findAll({
     page,
     limit,
     partnerPrepCourse,
@@ -161,6 +171,41 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       this.configService.get<string>('BUCKET_PROFILE'),
     );
     return fileKey;
+  }
+
+  async updateProfilePhotoByStudent(
+    file: Express.Multer.File,
+    studentId: string,
+  ) {
+    const student = await this.repository.findOneBy({ id: studentId });
+    if (!student) {
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+    }
+    try {
+      await this.blobService.deleteFile(
+        student.photo,
+        this.configService.get<string>('BUCKET_PROFILE'),
+      );
+    } catch (error) {
+      const log = new LogStudent();
+      log.studentId = student.id;
+      log.applicationStatus = student.applicationStatus;
+      log.description = `Erro ao deletar foto de perfil antiga - ${error}`;
+      await this.logStudentRepository.create(log);
+    }
+    const fileKey = await this.blobService.uploadFile(
+      file,
+      this.configService.get<string>('BUCKET_PROFILE'),
+    );
+    student.photo = fileKey;
+
+    const log = new LogStudent();
+    log.studentId = student.id;
+    log.applicationStatus = student.applicationStatus;
+    log.description = 'Atualizou foto de perfil';
+    await this.logStudentRepository.create(log);
+
+    await this.repository.update(student);
   }
 
   async declaredInterest(
@@ -302,17 +347,17 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     if (!inscription) {
       throw new HttpException('Inscrição não encontrada', HttpStatus.NOT_FOUND);
     }
+    if (student.applicationStatus === StatusApplication.Enrolled) {
+      throw new HttpException(
+        'Não é possível alterar status de convocação de estudantes matriculados',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     if (
       student.applicationStatus === StatusApplication.UnderReview ||
       (student.applicationStatus === StatusApplication.CalledForEnrollment &&
-        student.selectEnrolledAt >= new Date())
+        new Date() < new Date(student.selectEnrolledAt))
     ) {
-      if (student.enrolled) {
-        throw new HttpException(
-          'Não é possível alterar status de convocação de estudantes matriculados',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
       const log = new LogStudent();
       log.studentId = student.id;
       if (!enrolled) {
@@ -333,10 +378,8 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         await this.inscriptionCourseService.removeStudentWaitingList(
           student,
           inscription,
-        );
+        ); // remove student from waiting list already update the student and the inscription
       }
-
-      await this.repository.update(student);
       await this.logStudentRepository.create(log);
     } else {
       throw new HttpException(
@@ -435,6 +478,11 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         HttpStatus.BAD_REQUEST,
       );
     }
+    student.applicationStatus = StatusApplication.UnderReview;
+    student.selectEnrolled = false;
+    student.isFree = true;
+    student.selectEnrolledAt = null;
+    student.limitEnrolledAt = null;
     if (student.waitingList) {
       const inscription = await this.inscriptionCourseService.findOneBy({
         id: student.inscriptionCourse.id,
@@ -443,15 +491,10 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       await this.inscriptionCourseService.removeStudentWaitingList(
         student,
         inscription,
-      );
+      ); // remove student from waiting list already update the student and the inscription
+    } else {
+      await this.repository.update(student);
     }
-    student.applicationStatus = StatusApplication.UnderReview;
-    student.selectEnrolled = false;
-    student.waitingList = false;
-    student.isFree = true;
-    student.selectEnrolledAt = null;
-    student.limitEnrolledAt = null;
-    await this.repository.update(student);
 
     const log = new LogStudent();
     log.studentId = student.id;
@@ -553,42 +596,77 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     timeZone: 'America/Sao_Paulo',
   })
   async sendEmailDeclaredInterest() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const currentTimeInSeconds = Math.floor(today.getTime() / 1000);
-    const students = await this.repository.findAllCompletedBy({
-      selectEnrolledAt: today,
-      applicationStatus: StatusApplication.CalledForEnrollment,
-    });
-    for (const stu of students) {
-      const payload = {
-        user: { id: stu.id },
-      };
-      const limitTimeInSeconds = Math.floor(
-        stu.limitEnrolledAt.getTime() / 1000,
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const currentTimeInSeconds = Math.floor(today.getTime() / 1000);
+
+      const students = await this.repository.findAllCompletedBy({
+        selectEnrolledAt: today,
+        applicationStatus: StatusApplication.CalledForEnrollment,
+      });
+
+      const chunkSize = 5;
+      for (let i = 0; i < students.length; i += chunkSize) {
+        const chunk = students.slice(i, i + chunkSize);
+
+        const results = await Promise.allSettled(
+          chunk.map(async (stu) => {
+            try {
+              const payload = { user: { id: stu.id } };
+              const limitTimeInSeconds = Math.floor(
+                stu.limitEnrolledAt.getTime() / 1000,
+              );
+              const expiresIn = limitTimeInSeconds - currentTimeInSeconds;
+              const token = await this.jwtService.signAsync(payload, {
+                expiresIn,
+              });
+
+              const student_name = `${stu.user.firstName} ${stu.user.lastName}`;
+              stu.limitEnrolledAt.setDate(stu.limitEnrolledAt.getDate() - 1);
+
+              await this.emailService.sendDeclaredInterest(
+                student_name,
+                stu.user.email,
+                stu.partnerPrepCourse.geo.name,
+                stu.limitEnrolledAt,
+                token,
+              );
+
+              const log = new LogStudent();
+              log.studentId = stu.id;
+              log.applicationStatus = StatusApplication.CalledForEnrollment;
+              log.description = 'Email de convocação enviado';
+              await this.logStudentRepository.create(log);
+            } catch (emailError) {
+              throw {
+                email: stu.user.email,
+                id: stu.id,
+                error: emailError.message,
+              };
+            }
+          }),
+        );
+
+        const failedStudents = results
+          .filter((result) => result.status === 'rejected')
+          .map((result) => (result as PromiseRejectedResult).reason);
+
+        if (failedStudents.length > 0) {
+          this.discordWebhook.sendMessage(
+            `Falha no envio de emails para: ${failedStudents
+              .map((s) => `${s.email} (ID: ${s.id})`)
+              .join(', ')}`,
+          );
+        }
+
+        // Delay entre os chunks para evitar sobrecarga no SMTP
+        await new Promise((resolve) => setTimeout(resolve, 1000)); // 5 segundos de pausa
+      }
+    } catch (error) {
+      this.discordWebhook.sendMessage(
+        `Erro grave ao enviar emails de convocação: ${error.message}`,
       );
-      const expiresIn = limitTimeInSeconds - currentTimeInSeconds;
-      const token = await this.jwtService.signAsync(payload, { expiresIn });
-
-      const student_name = `${stu.user.firstName} ${stu.user.lastName}`;
-      stu.limitEnrolledAt.setDate(stu.limitEnrolledAt.getDate() - 1);
-
-      await this.emailService.sendDeclaredInterest(
-        student_name,
-        stu.user.email,
-        stu.partnerPrepCourse.geo.name,
-        stu.limitEnrolledAt,
-        token,
-      );
-
-      const log = new LogStudent();
-      log.studentId = stu.id;
-      log.applicationStatus = StatusApplication.CalledForEnrollment;
-      log.description = 'Email de convocação enviado';
-      await this.logStudentRepository.create(log);
-
-      // Delay de 2 segundos entre os envios
-      await new Promise((resolve) => setTimeout(resolve, 2000));
     }
   }
 
@@ -596,17 +674,160 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     timeZone: 'America/Sao_Paulo',
   })
   async verifyLostEnrolled() {
-    const students = await this.repository.getNotConfirmedEnrolled();
-    await this.repository.notConfirmedEnrolled();
-    await Promise.all(
-      students.map(async (student) => {
-        const log = new LogStudent();
-        log.studentId = student.id;
-        log.applicationStatus = StatusApplication.MissedDeadline;
-        log.description = 'Matríocula perdida';
-        await this.logStudentRepository.create(log);
-      }),
-    );
+    try {
+      const students = await this.repository.getNotConfirmedEnrolled();
+
+      if (students.length === 0) return; // Evita processamento desnecessário
+
+      await this.repository.notConfirmedEnrolled();
+
+      const chunkSize = 10;
+      for (let i = 0; i < students.length; i += chunkSize) {
+        const chunk = students.slice(i, i + chunkSize);
+
+        const results = await Promise.allSettled(
+          chunk.map(async (student) => {
+            try {
+              const log = new LogStudent();
+              log.studentId = student.id;
+              log.applicationStatus = StatusApplication.MissedDeadline;
+              log.description = 'Matrícula perdida';
+              await this.logStudentRepository.create(log);
+            } catch (error) {
+              throw { studentId: student.id, error: error.message };
+            }
+          }),
+        );
+
+        const failedLogs = results
+          .filter((result) => result.status === 'rejected')
+          .map((result) => (result as PromiseRejectedResult).reason);
+
+        if (failedLogs.length > 0) {
+          this.discordWebhook.sendMessage(
+            `Erro ao registrar matrícula perdida para: ${failedLogs
+              .map((s) => `ID: ${s.studentId}`)
+              .join(', ')}`,
+          );
+        }
+      }
+    } catch (error) {
+      this.discordWebhook.sendMessage(
+        `Erro grave ao processar matrículas perdidas: ${error.message}`,
+      );
+    }
+  }
+
+  async updateClass(studentId: string, classId: string) {
+    const student = await this.repository.findOneBy({ id: studentId });
+    if (!student) {
+      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+    }
+    const class_ = await this.classService.findOneBy({ id: classId });
+    if (!class_) {
+      throw new HttpException('Turma nao encontrada', HttpStatus.NOT_FOUND);
+    }
+    student.class = class_;
+    await this.repository.update(student);
+
+    const log = new LogStudent();
+    log.studentId = student.id;
+    log.applicationStatus = StatusApplication.Enrolled;
+    log.description = `Atribuido a Turma: ${class_.name} (${class_.year})`;
+    await this.logStudentRepository.create(log);
+  }
+
+  async getEnrolled({
+    page,
+    limit,
+    userId,
+  }: GetAllInput & { userId: string }): Promise<GetEnrolledDtoOutput> {
+    const partnerPrepCourse =
+      await this.partnerPrepCourseService.getByUserId(userId);
+    if (!partnerPrepCourse) {
+      throw new HttpException('Parceiro nao encontrado', HttpStatus.NOT_FOUND);
+    }
+    const result = await this.repository.findAllBy({
+      where: { partnerPrepCourse, cod_enrolled: Not(IsNull()) },
+      limit: limit,
+      page: page,
+    });
+
+    return {
+      name: partnerPrepCourse.geo.name,
+      students: {
+        data: result.data.map(
+          (student) =>
+            ({
+              id: student.id,
+              name: `${student.user.firstName} ${student.user.lastName}`,
+              socialName: student.user.socialName
+                ? `${student.user.socialName?.split(' ')[0]} ${
+                    student.user.lastName
+                  }`
+                : null,
+              email: student.user.email,
+              whatsapp: student.whatsapp,
+              urgencyPhone: student.urgencyPhone,
+              applicationStatus: student.applicationStatus,
+              cod_enrolled: student.cod_enrolled,
+              birthday: student.user.birthday,
+              photo: student.photo,
+              class: {
+                id: student.class?.id,
+                name: student.class?.name,
+                year: student.class?.year,
+                endDate: student.class?.endDate,
+              },
+            }) as unknown as StudentsDtoOutput,
+        ),
+        totalItems: result.totalItems,
+        page: page,
+        limit: limit,
+      },
+    };
+  }
+
+  async cancelEnrolled(studentId: string, reason: string) {
+    const student = await this.repository.findOneBy({ id: studentId });
+    if (!student) {
+      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+    }
+    if (student.applicationStatus !== StatusApplication.Enrolled) {
+      throw new HttpException(
+        'Estudante nao esta matriculado',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    student.applicationStatus = StatusApplication.EnrollmentCancelled;
+    await this.repository.update(student);
+
+    const log = new LogStudent();
+    log.studentId = student.id;
+    log.applicationStatus = StatusApplication.EnrollmentCancelled;
+    log.description = reason || 'Matrícula cancelada';
+    await this.logStudentRepository.create(log);
+  }
+
+  async activeEnrolled(studentId: string) {
+    const student = await this.repository.findOneBy({ id: studentId });
+    if (!student) {
+      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+    }
+    if (student.applicationStatus !== StatusApplication.EnrollmentCancelled) {
+      throw new HttpException(
+        'Estudante nao esta matriculado',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    student.applicationStatus = StatusApplication.Enrolled;
+    await this.repository.update(student);
+
+    const log = new LogStudent();
+    log.studentId = student.id;
+    log.applicationStatus = StatusApplication.Enrolled;
+    log.description = 'Matrícula reativada';
+    await this.logStudentRepository.create(log);
   }
 
   private async generateEnrolledCode() {

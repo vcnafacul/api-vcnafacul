@@ -1,19 +1,19 @@
 import { Module } from '@nestjs/common';
 import { EmailService } from 'src/shared/services/email/email.service';
+import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { AuditLogModule } from '../audit-log/audit-log.module';
-import { RoleModule } from '../role/role.module';
-import { UserRoleModule } from '../user-role/user-role.module';
+import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
+import { RoleRepository } from '../role/role.repository';
 import { UserController } from './user.controller';
 import { UserRepository } from './user.repository';
 import { UserService } from './user.service';
 import { EmailExistValidator } from './validator/email-exist.validator';
 import { EmailUniqueValidator } from './validator/email-unique.validator';
 import { UserExistValidator } from './validator/user-exist.validator';
-import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
 
 @Module({
   controllers: [UserController],
-  imports: [RoleModule, AuditLogModule, UserRoleModule],
+  imports: [AuditLogModule],
   providers: [
     UserService,
     UserRepository,
@@ -22,6 +22,8 @@ import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.
     EmailExistValidator,
     EmailService,
     CollaboratorRepository,
+    RoleRepository,
+    DiscordWebhook,
   ],
   exports: [UserService, UserRepository],
 })

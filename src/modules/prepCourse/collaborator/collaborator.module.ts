@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { LogGeoRepository } from 'src/modules/geo/log-geo/log-geo.repository';
-import { UserRoleModule } from 'src/modules/user-role/user-role.module';
+import { RoleRepository } from 'src/modules/role/role.repository';
+import { RoleService } from 'src/modules/role/role.service';
 import { UserModule } from 'src/modules/user/user.module';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { PartnerPrepCourseRepository } from '../partnerPrepCourse/partner-prep-course.repository';
@@ -11,7 +12,7 @@ import { CollaboratorService } from './collaborator.service';
 
 @Module({
   controllers: [CollaboratorController],
-  imports: [UserModule, UserRoleModule],
+  imports: [UserModule],
   providers: [
     CollaboratorRepository,
     CollaboratorService,
@@ -19,6 +20,8 @@ import { CollaboratorService } from './collaborator.service';
     PartnerPrepCourseRepository,
     EmailService,
     LogGeoRepository,
+    RoleService,
+    RoleRepository,
   ],
   exports: [CollaboratorRepository, CollaboratorService],
 })

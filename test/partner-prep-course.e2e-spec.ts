@@ -1,15 +1,21 @@
 import { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
-import { assert } from 'console';
 import { AppModule } from 'src/app.module';
 import { RoleSeedService } from 'src/db/seeds/1-role.seed';
 import { RoleUpdateAdminSeedService } from 'src/db/seeds/2-role-update-admin.seed';
 import { GeoService } from 'src/modules/geo/geo.service';
+import { PartnerPrepCourseDtoInput } from 'src/modules/prepCourse/partnerPrepCourse/dtos/create-partner-prep-course.input.dto';
+import { Role } from 'src/modules/role/role.entity';
+import { RoleService } from 'src/modules/role/role.service';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { EmailService } from 'src/shared/services/email/email.service';
+import * as request from 'supertest';
+import { CreateGeoDTOInputFaker } from './faker/create-geo.dto.input.faker';
+import { CreateUserDtoInputFaker } from './faker/create-user.dto.input.faker';
 import { createNestAppTest } from './utils/createNestAppTest';
 
 // Mock the EmailService globally
@@ -23,6 +29,8 @@ describe('PartnerPrepCourse (e2e)', () => {
   let emailService: EmailService;
   let roleSeedService: RoleSeedService;
   let roleUpdateAdminSeedService: RoleUpdateAdminSeedService;
+  let jwtService: JwtService;
+  let roleService: RoleService;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -44,6 +52,8 @@ describe('PartnerPrepCourse (e2e)', () => {
     roleUpdateAdminSeedService = moduleFixture.get<RoleUpdateAdminSeedService>(
       RoleUpdateAdminSeedService,
     );
+    jwtService = moduleFixture.get<JwtService>(JwtService);
+    roleService = moduleFixture.get<RoleService>(RoleService);
 
     jest
       .spyOn(emailService, 'sendCreateUser')
@@ -58,27 +68,39 @@ describe('PartnerPrepCourse (e2e)', () => {
     await app.close();
   });
 
-  it('test to pass', () => {
-    assert(true);
-  });
+  it('should create a new PartnerPrepCourse', async () => {
+    const geoDto = CreateGeoDTOInputFaker();
+    const geo = await geoService.create(geoDto);
 
-  // it('should create a new PartnerPrepCourse', async () => {
-  //   const geoDto = CreateGeoDTOInputFaker();
-  //   const geo = await geoService.create(geoDto);
+    const userDto = CreateUserDtoInputFaker();
+    await userService.create(userDto);
+    const user = await userRepository.findOneBy({ email: userDto.email });
 
-  //   const userDto = CreateUserDtoInputFaker();
-  //   await userService.create(userDto);
-  //   const user = await userRepository.findOneBy({ email: userDto.email });
+    let role: Role = null;
+    role = await roleService.findOneBy({ name: 'custom_role' });
+    if (!role) {
+      const newRole = new Role();
+      newRole.name = 'custom_role';
+      newRole.alterarPermissao = true;
+      role = await roleService.create(newRole);
+    }
 
-  //   const dto: PartnerPrepCourseDtoInput = { geoId: geo.id, userId: user.id };
+    user.role = role;
+    await userRepository.update(user);
 
-  //   return request(app.getHttpServer())
-  //     .post('/partner-prep-course')
-  //     .send(dto)
-  //     .expect(201)
-  //     .expect((res) => {
-  //       expect(res.body.geoId).toEqual(geo.id);
-  //       expect(res.body.userId).toEqual(user.id);
-  //     });
-  // }, 30000);
+    const dto: PartnerPrepCourseDtoInput = { geoId: geo.id, userId: user.id };
+
+    const token = await jwtService.signAsync(
+      { user: { id: user.id } },
+      { expiresIn: '2h' },
+    );
+
+    return await request(app.getHttpServer())
+      .post('/partner-prep-course')
+      .send(dto)
+      .expect(201)
+      .set({
+        Authorization: `Bearer ${token}`,
+      });
+  }, 30000);
 });
