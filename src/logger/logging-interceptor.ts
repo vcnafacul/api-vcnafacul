@@ -29,7 +29,7 @@ export class LoggingInterceptor implements NestInterceptor {
           timestamp: new Date().toISOString(),
         };
 
-        this.logger.error(logData);
+        this.logger.error(JSON.stringify(logData));
 
         throw error; // Re-lançar a exceção para não interferir na resposta
       }),

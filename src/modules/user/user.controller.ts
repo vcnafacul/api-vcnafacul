@@ -113,7 +113,7 @@ export class UserController {
   @Patch('updateRole')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarPermissoesCursinho)
   async updateRole(@Body() dto: UpdateUserRoleInput) {
     return await this.userService.updateRole(dto.userId, dto.roleId);
   }
