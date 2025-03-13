@@ -45,6 +45,8 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
     let queryBuilderCount = this.repository
       .createQueryBuilder('entity')
       .leftJoinAndSelect('entity.class', 'class')
+      .innerJoin('entity.user', 'users')
+      .addSelect(['users.birthday'])
       .where({ ...where });
 
     if (orderBy) {
@@ -62,6 +64,18 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
           const query = `class.name LIKE "%${filter.value}%"`;
           queryBuilder = queryBuilder.andWhere(query);
           queryBuilderCount = queryBuilderCount.andWhere(query);
+        } else if (filter.field === 'birthday') {
+          const formattedDate = new Date(filter.value)
+            .toISOString()
+            .slice(0, 10); // "YYYY-MM-DD"
+          queryBuilder = queryBuilder.andWhere(
+            'DATE(users.birthday) = :birthday',
+            { birthday: formattedDate },
+          );
+          queryBuilderCount = queryBuilderCount.andWhere(
+            'DATE(users.birthday) = :birthday',
+            { birthday: formattedDate },
+          );
         } else {
           const query = `entity.${filter.field} LIKE "%${filter.value}%"`;
           queryBuilder = queryBuilder.andWhere(query);
