@@ -766,20 +766,12 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       cod_enrolled: Not(IsNull()),
     };
 
-    const filters: Filter[] = [];
-
-    if (filter) {
-      filters.push({
-        field: filter.field,
-        value: `${filter.value}`.trim(),
-      });
-    }
     const result = await this.repository.findAllBy({
       where,
       limit,
       page,
       orderBy: sort,
-      filters,
+      filters: filter ? [filter] : [],
     });
 
     return {

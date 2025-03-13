@@ -17,7 +17,7 @@ export class GetEnrolleds implements GetAllInput {
 
   @ApiProperty({ required: false })
   @IsOptional()
-  filter?: Filter;
+  filter?: Filter | undefined;
 
   @ApiProperty({ required: false })
   @IsOptional()

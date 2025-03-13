@@ -16,6 +16,7 @@ export interface Sort {
 export interface Filter {
   field: string;
   value: any;
+  operator?: string;
 }
 
 export interface GetAllWhereInput extends GetAllInput {

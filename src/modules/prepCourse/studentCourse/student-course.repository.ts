@@ -65,17 +65,35 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
           queryBuilder = queryBuilder.andWhere(query);
           queryBuilderCount = queryBuilderCount.andWhere(query);
         } else if (filter.field === 'birthday') {
-          const formattedDate = new Date(filter.value)
-            .toISOString()
-            .slice(0, 10); // "YYYY-MM-DD"
-          queryBuilder = queryBuilder.andWhere(
-            'DATE(users.birthday) = :birthday',
-            { birthday: formattedDate },
-          );
-          queryBuilderCount = queryBuilderCount.andWhere(
-            'DATE(users.birthday) = :birthday',
-            { birthday: formattedDate },
-          );
+          const dateValue = new Date(filter.value).toISOString().slice(0, 10); // "YYYY-MM-DD"
+          if (filter.operator === 'is') {
+            queryBuilder = queryBuilder.andWhere(
+              'DATE(users.birthday) = :birthday',
+              { birthday: dateValue },
+            );
+            queryBuilderCount = queryBuilderCount.andWhere(
+              'DATE(users.birthday) = :birthday',
+              { birthday: dateValue },
+            );
+          } else if (filter.operator === 'after') {
+            queryBuilder = queryBuilder.andWhere(
+              'DATE(users.birthday) > :birthday',
+              { birthday: dateValue },
+            );
+            queryBuilderCount = queryBuilderCount.andWhere(
+              'DATE(users.birthday) > :birthday',
+              { birthday: dateValue },
+            );
+          } else if (filter.operator === 'before') {
+            queryBuilder = queryBuilder.andWhere(
+              'DATE(users.birthday) < :birthday',
+              { birthday: dateValue },
+            );
+            queryBuilderCount = queryBuilderCount.andWhere(
+              'DATE(users.birthday) < :birthday',
+              { birthday: dateValue },
+            );
+          }
         } else {
           const query = `entity.${filter.field} LIKE "%${filter.value}%"`;
           queryBuilder = queryBuilder.andWhere(query);
