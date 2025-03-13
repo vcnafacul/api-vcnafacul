@@ -28,6 +28,7 @@ export class CollaboratorRepository extends BaseRepository<Collaborator> {
         .skip((page - 1) * limit)
         .take(limit)
         .where({ ...where })
+        .andWhere('entity.deletedAt IS NULL')
         .innerJoin('entity.user', 'user')
         .addSelect([
           'user.id',

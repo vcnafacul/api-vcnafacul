@@ -20,32 +20,59 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
     page,
     limit,
     where,
+    orderBy,
+    filters,
   }: GetAllWhereInput): Promise<GetAllOutput<StudentCourse>> {
+    let queryBuilder = this.repository
+      .createQueryBuilder('entity')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .leftJoinAndSelect('entity.class', 'class')
+      .innerJoin('entity.user', 'users')
+      .addSelect([
+        'users.id',
+        'users.firstName',
+        'users.lastName',
+        'users.socialName',
+        'users.email',
+        'users.phone',
+        'users.state',
+        'users.city',
+        'users.birthday',
+      ])
+      .where({ ...where });
+
+    let queryBuilderCount = this.repository
+      .createQueryBuilder('entity')
+      .leftJoinAndSelect('entity.class', 'class')
+      .where({ ...where });
+
+    if (orderBy) {
+      queryBuilder = queryBuilder.orderBy(
+        `entity.${orderBy.field}`,
+        orderBy.sort,
+      );
+    } else {
+      queryBuilder = queryBuilder.orderBy('entity.cod_enrolled', 'DESC');
+    }
+
+    if (filters && filters.length > 0) {
+      filters.forEach((filter) => {
+        if (filter.field === 'class') {
+          const query = `class.name LIKE "%${filter.value}%"`;
+          queryBuilder = queryBuilder.andWhere(query);
+          queryBuilderCount = queryBuilderCount.andWhere(query);
+        } else {
+          const query = `entity.${filter.field} LIKE "%${filter.value}%"`;
+          queryBuilder = queryBuilder.andWhere(query);
+          queryBuilderCount = queryBuilderCount.andWhere(query);
+        }
+      });
+    }
+
     const [data, totalItems] = await Promise.all([
-      this.repository
-        .createQueryBuilder('entity')
-        .orderBy('entity.createdAt', 'DESC')
-        .skip((page - 1) * limit)
-        .take(limit)
-        .where({ ...where })
-        .leftJoinAndSelect('entity.class', 'class')
-        .innerJoin('entity.user', 'users')
-        .addSelect([
-          'users.id',
-          'users.firstName',
-          'users.lastName',
-          'users.socialName',
-          'users.email',
-          'users.phone',
-          'users.state',
-          'users.city',
-          'users.birthday',
-        ])
-        .getMany(),
-      this.repository
-        .createQueryBuilder('entity')
-        .where({ ...where })
-        .getCount(),
+      queryBuilder.getMany(),
+      queryBuilderCount.getCount(),
     ]);
     return {
       data,
