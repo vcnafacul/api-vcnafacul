@@ -10,7 +10,11 @@ import { CreateFlow } from 'src/modules/user/enum/create-flow';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
-import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
+import {
+  Filter,
+  GetAllInput,
+  Sort,
+} from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
@@ -741,16 +745,33 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     page,
     limit,
     userId,
-  }: GetAllInput & { userId: string }): Promise<GetEnrolledDtoOutput> {
+    filter,
+    sort,
+  }: GetAllInput & {
+    userId: string;
+    filter?: Filter;
+    sort: Sort;
+  }): Promise<GetEnrolledDtoOutput> {
     const partnerPrepCourse =
       await this.partnerPrepCourseService.getByUserId(userId);
     if (!partnerPrepCourse) {
-      throw new HttpException('Parceiro nao encontrado', HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        'Cursinho Parceiro nao encontrado',
+        HttpStatus.NOT_FOUND,
+      );
     }
+
+    const where = {
+      partnerPrepCourse,
+      cod_enrolled: Not(IsNull()),
+    };
+
     const result = await this.repository.findAllBy({
-      where: { partnerPrepCourse, cod_enrolled: Not(IsNull()) },
-      limit: limit,
-      page: page,
+      where,
+      limit,
+      page,
+      orderBy: sort,
+      filters: filter ? [filter] : [],
     });
 
     return {
@@ -836,6 +857,13 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     if (!lastCode) {
       return `${year}0001`;
     }
+
+    const lastYear = parseInt(lastCode.slice(0, 4)); // Extrai os 4 primeiros caracteres como ano
+
+    if (lastYear !== year) {
+      return `${year}0001`; // Se mudou o ano, reinicia do 0001
+    }
+
     const code = parseInt(lastCode.slice(4)) + 1;
     return `${year}${code.toString().padStart(4, '0')}`;
   }
