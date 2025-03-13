@@ -55,7 +55,6 @@ export class RoleService extends BaseService<Role> {
     role.name = roleDto.name;
     role.base = roleDto.base;
     role.validarCursinho = roleDto.validarCursinho;
-    role.alterarPermissao = roleDto.alterarPermissao;
     role.criarSimulado = roleDto.criarSimulado;
     role.criarQuestao = roleDto.criarQuestao;
     role.validarQuestao = roleDto.validarQuestao;
@@ -93,7 +92,12 @@ export class RoleService extends BaseService<Role> {
     role.visualizarEstudantes = roleDto.gerenciarEstudantes
       ? true
       : roleDto.visualizarEstudantes;
-    role.gerenciarPermissoesCursinho = roleDto.gerenciarPermissoesCursinho;
+    role.alterarPermissao = roleDto.alterarPermissao;
+    role.gerenciarPermissoesCursinho = !roleDto.gerenciarPermissoesCursinho
+      ? role.alterarPermissao
+        ? true
+        : false
+      : true;
 
     if (partnerPrepCourse) {
       role.partnerPrepCourse = partnerPrepCourse;
