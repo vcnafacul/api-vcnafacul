@@ -173,6 +173,7 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
         status: 'success',
         inviter: inviter.email,
         partner: prepCourse.geo.name,
+        partnerId: prepCourse.id,
         timestamp: new Date().toISOString(),
       }),
     );
