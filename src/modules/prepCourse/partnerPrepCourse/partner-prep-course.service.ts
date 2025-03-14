@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { StatusLogGeo } from 'src/modules/geo/enum/status-log-geo';
@@ -34,6 +34,8 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
   ) {
     super(repository);
   }
+
+  private readonly logger = new Logger(PartnerPrepCourseService.name);
 
   async create(
     dto: PartnerPrepCourseDtoInput,
@@ -165,6 +167,15 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
       prepCourse.geo.name,
       token,
     );
+    this.logger.log(
+      JSON.stringify({
+        event: 'inviteMember',
+        status: 'success',
+        inviter: inviter.email,
+        partner: prepCourse.geo.name,
+        timestamp: new Date().toISOString(),
+      }),
+    );
   }
 
   async inviteMemberAccept(userId: string, partnerId: string) {
@@ -198,6 +209,16 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
         prepCoursePartner.members &&
         prepCoursePartner.members.find((m) => m.id === collaborator.id)
       ) {
+        this.logger.warn(
+          JSON.stringify({
+            event: 'inviteMemberAccept',
+            status: 'error',
+            userId,
+            partnerId,
+            reason: 'Usuário já é membro desse cursinho parceiro',
+            timestamp: new Date().toISOString(),
+          }),
+        );
         throw new HttpException(
           'Usuário já é membro desse cursinho parceiro',
           HttpStatus.BAD_REQUEST,
@@ -213,6 +234,16 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
       }
 
       await manager.getRepository(PartnerPrepCourse).save(prepCoursePartner);
+
+      this.logger.log(
+        JSON.stringify({
+          event: 'inviteMemberAccept',
+          status: 'success',
+          userId,
+          partnerId,
+          timestamp: new Date().toISOString(),
+        }),
+      );
     });
   }
 
