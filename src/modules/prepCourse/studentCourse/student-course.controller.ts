@@ -28,13 +28,13 @@ import { UserDtoOutput } from 'src/modules/user/dto/user.dto.output';
 import { User } from 'src/modules/user/user.entity';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
-import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { CreateStudentCourseInput } from './dtos/create-student-course.dto.input';
 import { CreateStudentCourseOutput } from './dtos/create-student-course.dto.output';
 import { GetAllStudentDtoInput } from './dtos/get-all-student.dto.input';
 import { GetAllStudentDtoOutput } from './dtos/get-all-student.dto.output';
 import { GetEnrolledDtoOutput } from './dtos/get-enrolled.dto.output';
+import { GetEnrolleds } from './dtos/get-enrolleds';
 import { ScheduleEnrolledDtoInput } from './dtos/schedule-enrolled.dto.input';
 import { UpdateClassDTOInput } from './dtos/update-class.dto.input';
 import { StudentCourseService } from './student-course.service';
@@ -266,12 +266,17 @@ export class StudentCourseController {
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.visualizarEstudantes)
   async getEnrolled(
-    @Query() query: GetAllInput,
+    @Query() query: GetEnrolleds,
     @Req() req: Request,
   ): Promise<GetEnrolledDtoOutput> {
+    // Evita erros de parsing de JSON
+
     return await this.service.getEnrolled({
-      ...query,
+      page: query.page,
+      limit: query.limit,
       userId: (req.user as User).id,
+      filter: query.filter,
+      sort: query.sort,
     });
   }
 
