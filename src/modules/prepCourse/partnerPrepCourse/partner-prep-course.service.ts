@@ -171,6 +171,7 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
       JSON.stringify({
         event: 'inviteMember',
         status: 'success',
+        guest: email,
         inviter: inviter.email,
         partner: prepCourse.geo.name,
         partnerId: prepCourse.id,
@@ -241,6 +242,7 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
           event: 'inviteMemberAccept',
           status: 'success',
           userId,
+          guest: user.email,
           partnerId,
           timestamp: new Date().toISOString(),
         }),
