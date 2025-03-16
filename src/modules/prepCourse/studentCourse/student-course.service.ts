@@ -121,6 +121,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     const representatives =
       await this.collaboratorRepository.findCollaboratorsByPermission(
         Permissions.gerenciarProcessoSeletivo,
+        partnerPrepCourse.id,
       );
 
     const log = new LogStudent();
