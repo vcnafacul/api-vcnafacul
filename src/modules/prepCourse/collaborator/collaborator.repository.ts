@@ -80,12 +80,16 @@ export class CollaboratorRepository extends BaseRepository<Collaborator> {
 
   async findCollaboratorsByPermission(
     permission: Permissions,
+    prepCourseId: string,
   ): Promise<Collaborator[]> {
     return await this.repository
       .createQueryBuilder('collaborator')
-      .innerJoin('collaborator.user', 'user')
-      .innerJoin('user.role', 'role') // Agora podemos acessar a Role
+      .innerJoinAndSelect('collaborator.user', 'user')
+      .innerJoinAndSelect('user.role', 'role') // Agora podemos acessar a Role
       .where(`role.${permission} = :value`, { value: true })
+      .andWhere('collaborator.partner_prep_course_id = :prepCourseId', {
+        prepCourseId,
+      })
       .getMany();
   }
 }
