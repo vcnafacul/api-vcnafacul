@@ -45,7 +45,7 @@ jobs:
         id: package
         run: echo "VERSION=$(jq -r .version package.json)" >> $GITHUB_ENV
       - name: Exibir versão obtida
-        run: echo "Versão extraída: $VERSION"
+        run: echo "Versão extraída $VERSION"
       - name: Iniciando Build da Imagem
         run: docker build -t vcnafacul/api:$VERSION -f node.dockerfile .
       - name: docker login
