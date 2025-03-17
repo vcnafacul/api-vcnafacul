@@ -8,14 +8,14 @@ import { VcnafaculCors } from './config/cors';
 import { document } from './config/swagger.config';
 import { ControllerExceptionsFilter } from './exceptions/controller.filter';
 import { LoggingInterceptor } from './logger/logging-interceptor';
-import { LokiLoggerService } from './logger/loki-logger';
+// import { LokiLoggerService } from './logger/loki-logger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     cors: VcnafaculCors(),
   });
-  const logger = app.get(LokiLoggerService);
-  app.useLogger(logger);
+  // const logger = app.get(LokiLoggerService);
+  // app.useLogger(logger);
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
