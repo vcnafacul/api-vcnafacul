@@ -35,6 +35,29 @@ jobs:
         run: dotenv -e ./test/.env.test -- yarn typeorm migration:run
       - name: Run tests
         run: dotenv -e ./test/.env.test -- yarn test
+
+  BUILD_AND_PUSH:
+    needs: CI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Obter versão do package.json
+        id: package
+        run: echo "VERSION=$(jq -r .version package.json)" >> $GITHUB_ENV
+      - name: Exibir versão obtida
+        run: echo "Versão extraída $VERSION"
+      - name: Install sharp depend
+        run: yarn add sharp --ignore-engines
+      - name: Install depends
+        run: yarn
+      - name: Build app vCnafacul
+        run: yarn build
+      - name: Iniciando Build da Imagem
+        run: docker build -t vcnafacul/api:$VERSION -f node.dockerfile .
+      - name: docker login
+        run: docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }}
+      - name: Image Push
+        run: docker push vcnafacul/api:$VERSION
   PUSH:
     if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
     runs-on: ubuntu-latest
