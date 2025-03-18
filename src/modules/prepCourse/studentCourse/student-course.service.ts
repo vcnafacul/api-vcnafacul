@@ -384,6 +384,8 @@ export class StudentCourseService extends BaseService<StudentCourse> {
           student,
           inscription,
         ); // remove student from waiting list already update the student and the inscription
+      } else {
+        await this.repository.update(student);
       }
       await this.logStudentRepository.create(log);
     } else {
