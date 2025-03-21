@@ -26,8 +26,8 @@ import { StudentCourseModule } from './modules/prepCourse/studentCourse/student-
 import { RoleModule } from './modules/role/role.module';
 import { SimuladoModule } from './modules/simulado/simulado.module';
 import { BlobModule } from './shared/services/blob/blob.module';
-import { DiscordWebhook } from './shared/services/webhooks/discord';
 import { JwtStrategy } from './shared/strategy/jwt.strategy';
+import { DiscordWebhook } from './shared/services/webhooks/discord';
 
 @Module({
   imports: [
