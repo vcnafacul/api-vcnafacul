@@ -47,7 +47,7 @@ Depois de criado, você será redirecionado para o seu repositório forkado. Ago
 
 Clonar o projeto copia todos os arquivos e o histórico de commits do repositório original para o seu fork, permitindo que você comece a trabalhar localmente.
 
-### Passo 5: Verifique se o seu fork está configurado como "origin"
+### Passo 3: Verifique se o seu fork está configurado como "origin"
 
 Você irá sincronizar seu repositório local tanto com o repositório do projeto original (no GitHub) quanto com o seu fork (também no GitHub). As URLs que apontam para esses repositórios são chamadas de "remotes". No nosso fluxo, o repositório original é conhecido como **upstream** e o seu fork como **origin**.
 
@@ -68,7 +68,7 @@ git remote add origin URL_DO_FORK
 
 Se encontrar problemas durante este passo, consulte a documentação do GitHub sobre gerenciamento de repositórios remotos para obter mais informações.
 
-### Passo 6: Adicionar o repositório do projeto como o remoto "upstream"
+### Passo 4: Adicionar o repositório do projeto como o remoto "upstream"
 
 Acesse o seu fork e clique no link do projeto em **_forked from_**
 
@@ -94,7 +94,7 @@ para verificar se agora você configurou corretamente os dois remote:
 - Um origin, que aponta para o seu fork
 - um upstream, que aponta para o projeto escolhido
 
-### Passo 7: Atualiza a branch com a última versão do projeto
+### Passo 5: Atualiza a branch com a última versão do projeto
 
 Antes de iniciar sua contribuição, é bom garantir que sempre o seu fork estará atualizado com a ultimas atualizações da branch de desenvolvimento. Para isso, execute
 
@@ -103,7 +103,7 @@ git pull upstream develop
 ```
 na qual, a branch develop além de ser a branch default, é nossa branch de desenvolvimento.
 
-### Passo 8: O que já sabe
+### Passo 6: O que já sabe
 
 Nessa etapa você já está pronto para fazer o seu desenvolvimento. Então basta criar sua branch
 
@@ -125,8 +125,22 @@ git push origin BRANCH_NAME
 
 nada de novo, certo?
 
-### Passo 9: Abrindo seu PR de contribuição
+### Passo 7: Abrindo seu PR de contribuição
 
-Uma vez tento sua contribuição publicada em sua branch, acesso o fork no Github, vá na seção **Pull Request**. A priorí normalmente quando atualizamos uma branch, irá aparecer um aviso em amarelo questionando se tem interesse em abrir um PR, caso não apareça nada, clique em **New pull request**.
+Uma vez tendo sua contribuição publicada em sua branch, acesse seu fork no Github, vá na seção **Pull Request**. A priorí normalmente quando atualizamos uma branch, irá aparecer um aviso questionando se tem interesse em abrir um PR, caso não apareça nada, clique em **New pull request**.
 
-Agora basta 
+![alt text](image-6.png)
+
+Selecione sua branch e indique para onde deseja leva-la. Pensando na sua contribuição, você deve selecionar a branch default do projeto, o você na facul, é a **develop**.
+
+Clique em **Create pull request** e a seção abaixo abrirá. Aqui você deve indicar o título do seu PR, uma descrição e lembre de sempre assinar o seu PR. 
+
+![alt text](image-7.png)
+
+Por fim, clique em **Create pull request** e quando o PR for criado, vá na seção Development e indique a Issue que você esta resolvendo
+
+![alt text](image-8.png)
+
+Além disso, o PR deve indicar que esteja rodando as Pipeline necessárias para aprovação e indicando a necessidade de uma aprovação por um revisor.
+
+![alt text](image-10.png)
