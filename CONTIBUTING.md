@@ -55,3 +55,13 @@ Geralmente, os símbolos indicam:
 
 > **⚠️ Atenção!** Se você deseja trabalhar em alguma issue, certifique-se de sempre criar uma nova branch e realizar suas alterações nela, evitando assim enviar commits diretamente para a branch principal.
 
+Para garantir que seu ambiente local esteja devidamente configurado e que você siga as melhores práticas de contribuição, recomendamos a leitura do nosso guia completo de fluxo de trabalho. No arquivo [STEP_BY_STEP](/STEP_BY_STEP_FORK.md) você encontrará instruções detalhadas que abrangem desde a criação do fork do repositório até a abertura do Pull Request. Esse passo a passo foi elaborado para facilitar o processo, evitando erros comuns e garantindo uma integração harmoniosa das contribuições.
+
+Siga o tutorial para:
+
+- Configurar corretamente os remotes (origin e upstream);
+- Atualizar sua branch com as últimas modificações do projeto;
+- Criar novas branches para suas alterações;
+- Enviar suas mudanças via Pull Request de forma organizada.
+
+Ao adotar esse fluxo, você contribuirá para um ambiente de desenvolvimento padronizado e colaborativo. Confira o [STEP_BY_STEP](/STEP_BY_STEP_FORK.md) para iniciar seu processo de contribuição!
