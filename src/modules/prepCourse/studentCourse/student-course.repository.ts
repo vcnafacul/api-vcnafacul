@@ -168,6 +168,7 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
         'users.lastName',
         'users.socialName',
         'users.email',
+        'entity.isFree',
       ])
       .innerJoinAndSelect('entity.partnerPrepCourse', 'partnerPrepCourse')
       .innerJoinAndSelect('partnerPrepCourse.geo', 'geo')

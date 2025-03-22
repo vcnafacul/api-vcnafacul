@@ -620,7 +620,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         const results = await Promise.allSettled(
           chunk.map(async (stu) => {
             try {
-              const payload = { user: { id: stu.id } };
+              const payload = { user: { id: stu.id, isFree: stu.isFree } };
               const limitTimeInSeconds = Math.floor(
                 stu.limitEnrolledAt.getTime() / 1000,
               );
