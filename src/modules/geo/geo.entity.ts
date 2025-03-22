@@ -1,7 +1,8 @@
-import { Column, Entity } from 'typeorm';
+import { Column, Entity, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../shared/modules/base/entity.base';
 import { Status } from '../simulado/enum/status.enum';
 import { TypeGeo } from './enum/typeGeo';
+import { LogGeo } from './log-geo/log-geo.entity';
 
 @Entity('geolocations')
 export class Geolocation extends BaseEntity {
@@ -103,4 +104,6 @@ export class Geolocation extends BaseEntity {
 
   @Column({ default: TypeGeo.PREP_COURSE })
   public type: TypeGeo;
+  @OneToMany(() => LogGeo, (logGeo) => logGeo.geo)
+  public logs: LogGeo[];
 }

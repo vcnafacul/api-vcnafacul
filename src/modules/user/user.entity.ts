@@ -3,16 +3,15 @@ import {
   BeforeInsert,
   Column,
   Entity,
-  JoinColumn,
   ManyToOne,
   OneToMany,
   OneToOne,
 } from 'typeorm';
 import { BaseEntity } from '../../shared/modules/base/entity.base';
 import { Content } from '../contents/content/content.entity';
-import { PartnerPrepCourse } from '../prepCourse/partnerPrepCourse/partner-prep-course.entity';
+import { Collaborator } from '../prepCourse/collaborator/collaborator.entity';
 import { StudentCourse } from '../prepCourse/studentCourse/student-course.entity';
-import { UserRole } from '../user-role/user-role.entity';
+import { Role } from '../role/role.entity';
 import { Gender } from './enum/gender';
 
 @Entity('users')
@@ -69,15 +68,6 @@ export class User extends BaseEntity {
   @Column()
   public lgpd: boolean;
 
-  @Column({ default: false })
-  public collaborator: boolean;
-
-  @Column({ default: null })
-  public collaboratorDescription?: string;
-
-  @Column({ default: null })
-  public collaboratorPhoto?: string;
-
   @Column({
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP',
@@ -86,8 +76,8 @@ export class User extends BaseEntity {
   })
   public emailConfirmSended?: Date;
 
-  @OneToOne(() => UserRole, (userRole) => userRole.user)
-  userRole: UserRole;
+  @ManyToOne(() => Role, (role) => role.users)
+  role: Role;
 
   @OneToMany(() => Content, (content) => content.user)
   content: Content[];
@@ -98,12 +88,8 @@ export class User extends BaseEntity {
   )
   studentCourse: StudentCourse[];
 
-  @ManyToOne(
-    () => PartnerPrepCourse,
-    (partnerInscription) => partnerInscription.members,
-  )
-  @JoinColumn({ name: 'partner_prep_course_id' })
-  partnerPrepCourse?: PartnerPrepCourse;
+  @OneToOne(() => Collaborator, (collaborator) => collaborator.user)
+  collaborator?: Collaborator;
 
   @BeforeInsert()
   async hashPassword() {

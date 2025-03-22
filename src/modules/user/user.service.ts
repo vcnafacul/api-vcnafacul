@@ -1,20 +1,20 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { BaseService } from 'src/shared/modules/base/base.service';
+import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { EmailService } from 'src/shared/services/email/email.service';
-import { removeFileFTP } from 'src/utils/removeFileFtp';
-import { uploadFileFTP } from 'src/utils/uploadFileFtp';
-import { AuditLogService } from '../audit-log/audit-log.service';
+import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
+import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
 import { Role } from '../role/role.entity';
 import { RoleRepository } from '../role/role.repository';
-import { CollaboratorDtoInput } from './dto/collaboratorDto';
 import { CreateUserDtoInput } from './dto/create.dto.input';
+import { GetUserDtoInput } from './dto/get-user.dto.input';
 import { LoginTokenDTO } from './dto/login-token.dto.input';
 import { LoginDtoInput } from './dto/login.dto.input';
 import { ResetPasswordDtoInput } from './dto/reset-password.dto.input';
 import { UpdateUserDTOInput } from './dto/update.dto.input';
 import { UserDtoOutput } from './dto/user.dto.output';
+import { UserWithRoleName } from './dto/userWithRoleName';
 import { CreateFlow } from './enum/create-flow';
 import { User } from './user.entity';
 import { UserRepository } from './user.repository';
@@ -26,11 +26,12 @@ export class UserService extends BaseService<User> {
     private readonly roleRepository: RoleRepository,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
-    private readonly auditLogService: AuditLogService,
-    private readonly configService: ConfigService,
+    private readonly collaboratorRepository: CollaboratorRepository,
+    private readonly discordWebhook: DiscordWebhook,
   ) {
     super(userRepository);
   }
+  private readonly logger = new Logger(UserService.name);
 
   async create(userDto: CreateUserDtoInput): Promise<void> {
     const user = await this.createUser(userDto);
@@ -54,10 +55,14 @@ export class UserService extends BaseService<User> {
       if (!role) {
         throw new HttpException('role not found', HttpStatus.BAD_REQUEST);
       }
-      return await this.userRepository.createWithRole(newUser, role);
+      newUser.role = role;
+      const user = await this.userRepository.create(newUser);
+      this.logger.log('User created: ' + user.id + ' - ' + user.email);
+      return user;
     } catch (error) {
+      this.discordWebhook.sendMessage(`Erro ao criar usuário: ${error}`);
+      this.logger.error(`Erro ao criar usuário: ${error}`);
       if (error.code === '23505') {
-        // código de erro para violação de restrição única no PostgreSQL
         throw new HttpException('Email already exist', HttpStatus.CONFLICT);
       }
       throw error;
@@ -72,6 +77,7 @@ export class UserService extends BaseService<User> {
     if (!user.emailConfirmSended) {
       throw new HttpException('Email already valided', HttpStatus.CONFLICT);
     }
+    this.logger.log('User confirmed email: ' + user.email);
     user.emailConfirmSended = null;
     user.password = undefined;
     await this._repository.update(user);
@@ -176,93 +182,78 @@ export class UserService extends BaseService<User> {
     );
   }
 
-  async collaborator(data: CollaboratorDtoInput, userId: string) {
-    const user = await this.userRepository.findOneBy({ id: data.userId });
-    const changes = {
-      before: {
-        collaborador: user.collaborator,
-        description: user.collaboratorDescription,
-      },
-      after: {
-        collaborador: data.collaborator,
-        description: data.description,
-      },
-    };
-    user.collaborator = data.collaborator;
-    user.collaboratorDescription = data.description;
-    await this.userRepository.update(user);
-
-    await this.auditLogService.create({
-      entityType: User.name,
-      entityId: data.userId,
-      updatedBy: userId,
-      changes: changes,
-    });
-  }
-
-  async uploadImage(
-    file: Express.Multer.File,
-    userId: string,
-  ): Promise<string> {
-    const user = await this.userRepository.findOneBy({ id: userId });
-    if (user.collaboratorPhoto) {
-      try {
-        await removeFileFTP(
-          user.collaboratorPhoto,
-          this.configService.get<string>('FTP_HOST'),
-          this.configService.get<string>('FTP_PROFILE'),
-          this.configService.get<string>('FTP_PASSWORD'),
-        );
-      } catch (error) {
-        console.log(error);
-      }
-    }
-    const fileName = await uploadFileFTP(
-      file,
-      this.configService.get<string>('FTP_HOST'),
-      this.configService.get<string>('FTP_PROFILE'),
-      this.configService.get<string>('FTP_PASSWORD'),
-    );
-    if (!fileName) {
-      throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);
-    }
-    user.collaboratorPhoto = fileName;
-    await this.userRepository.update(user);
-    return fileName;
-  }
-
-  async getVolunteers() {
-    return await this.userRepository.getVolunteers();
-  }
-
-  async removeImage(userId: string): Promise<boolean> {
-    const user = await this.userRepository.findOneBy({ id: userId });
-    const deleted = await removeFileFTP(
-      user.collaboratorPhoto,
-      this.configService.get<string>('FTP_HOST'),
-      this.configService.get<string>('FTP_PROFILE'),
-      this.configService.get<string>('FTP_PASSWORD'),
-    );
-    if (deleted) {
-      user.collaboratorPhoto = null;
-      await this.userRepository.update(user);
-      return true;
-    }
-    return false;
-  }
-
   async me(userId: string) {
-    return this.MapUsertoUserDTO(
+    const collaborator =
+      await this.collaboratorRepository.findOneByUserId(userId);
+    const userDto = this.MapUsertoUserDTO(
       await this.userRepository.findOneBy({ id: userId }),
     );
+    if (collaborator) {
+      userDto.collaborator = true;
+      userDto.collaboratorPhoto = collaborator.photo;
+      userDto.collaboratorDescription = collaborator.description;
+    }
+    return userDto;
   }
 
-  async getPartnerPrepCourse(userId: string) {
-    const user = await this.userRepository.getPartnerPrepCourse(userId);
+  async checkUserPermission(id: string, roleName: string): Promise<boolean> {
+    try {
+      const user = await this.userRepository.findOneBy({ id });
+      return user.role[roleName];
+    } catch (error) {
+      return false;
+    }
+  }
+
+  async findAllByWithRoleName({
+    page,
+    limit,
+    name,
+  }: GetUserDtoInput): Promise<GetAllOutput<UserWithRoleName>> {
+    const result = await this.userRepository.findAllBy({
+      name,
+      page,
+      limit,
+    });
+
+    return {
+      data: result.data.map((user) => ({
+        user: {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: user.phone,
+          birthday: user.birthday,
+          about: user.about,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+          deletedAt: user.deletedAt,
+          socialName: user.socialName,
+          city: user.city,
+          state: user.state,
+          lgpd: user.lgpd,
+        },
+        roleId: user.role.id,
+        roleName: user.role.name,
+      })),
+      page: result.page,
+      limit: result.limit,
+      totalItems: result.totalItems,
+    };
+  }
+
+  async updateRole(id: string, roleId: string): Promise<void> {
+    const user = await this.userRepository.findOneBy({ id });
     if (!user) {
       throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     }
-    return user.partnerPrepCourse;
+    const role = await this.roleRepository.findOneBy({ id: roleId });
+    if (!role) {
+      throw new HttpException('Role not found', HttpStatus.NOT_FOUND);
+    }
+    user.role = role;
+    await this.userRepository.update(user);
   }
 
   private convertDtoToDomain(userDto: CreateUserDtoInput): User {
@@ -271,7 +262,7 @@ export class UserService extends BaseService<User> {
   }
 
   private async getAccessToken(domain: User) {
-    const roles = this.mapperRole(domain.userRole.role);
+    const roles = this.mapperRole(domain.role);
     const user = this.MapUsertoUserDTO(domain);
     return {
       access_token: await this.jwtService.signAsync({ user, roles }),

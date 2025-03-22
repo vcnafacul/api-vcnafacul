@@ -20,13 +20,33 @@ export class PartnerPrepCourseRepository extends BaseRepository<PartnerPrepCours
       .leftJoin('partner_prep_course.inscriptionCourses', 'inscription_course')
       .addSelect([
         'inscription_course.id',
+        'inscription_course.name',
+        'inscription_course.description',
+        'inscription_course.actived',
+        'inscription_course.endDate',
+        'inscription_course.startDate',
+      ])
+      .innerJoinAndSelect('partner_prep_course.geo', 'geo')
+      .leftJoinAndSelect('partner_prep_course.members', 'members')
+      .leftJoin('members.user', 'user')
+      .addSelect(['user.id', 'user.email'])
+      .getOne();
+  }
+
+  async findOneByUserId(id: string): Promise<PartnerPrepCourse> {
+    return await this.repository
+      .createQueryBuilder('partner_prep_course')
+      .leftJoin('partner_prep_course.inscriptionCourses', 'inscription_course')
+      .addSelect([
+        'inscription_course.id',
         'inscription_course.actived',
         'inscription_course.endDate',
       ])
       .innerJoinAndSelect('partner_prep_course.geo', 'geo')
-      .leftJoin('partner_prep_course.members', 'members')
-      .addSelect(['members.email', 'members.id'])
-      .leftJoinAndSelect('partner_prep_course.user', 'user')
+      .leftJoinAndSelect('partner_prep_course.members', 'members')
+      .leftJoin('members.user', 'user')
+      .addSelect(['user.id', 'user.email'])
+      .where('user.id = :id', { id })
       .getOne();
   }
 }

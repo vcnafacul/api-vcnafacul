@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:20.18.2-alpine
 
 COPY dist /var/www
 

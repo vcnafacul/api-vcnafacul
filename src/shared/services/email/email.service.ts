@@ -63,7 +63,7 @@ export class EmailService {
   async sendCreateGeoMail(geo: Geolocation, listEmail: string[]) {
     const info = await this.transporter.sendMail({
       from: this.configService.get<string>('SMTP_USERNAME'),
-      to: listEmail,
+      bcc: listEmail,
       subject: 'Cadastro de Cursinho',
       html: htmlGeo(geo),
       // Você também pode usar HTML aqui
@@ -160,7 +160,7 @@ export class EmailService {
 
     const mailOptions = {
       from: this.configService.get<string>('SMTP_USERNAME'),
-      to: emails,
+      bcc: [...emails, 'cursinho.ufscar@vcnafacul.com.br'],
       subject: `Atualização Lista de Espera ${prepCourseName} - Você na Facul`,
       context: {
         students,
@@ -191,6 +191,7 @@ export class EmailService {
     const mailOptions = {
       from: this.configService.get<string>('SMTP_USERNAME'),
       to: students_email,
+      bcc: 'cursinho.ufscar@vcnafacul.com.br',
       subject: `Declaração de Interesse ${prepCourseName} - Vocé na Facul`,
       context: {
         students_name,

@@ -6,6 +6,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { UserExist } from 'src/modules/user/validator/user-exist.validator';
@@ -101,6 +102,12 @@ export class CreateStudentCourseInput {
 
   @ApiProperty()
   @IsOptional()
+  @ValidateIf((obj) => {
+    const today = new Date();
+    const birthDate = new Date(obj.birthday);
+    const age = today.getFullYear() - birthDate.getFullYear();
+    return age < 18;
+  })
   @ValidateNested()
   @Type(() => CreateLegalGuardianInput)
   legalGuardian?: CreateLegalGuardianInput;

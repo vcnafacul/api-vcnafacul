@@ -1,7 +1,7 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { AxiosError } from 'axios';
-import { Observable, catchError, map } from 'rxjs';
+import { Observable, catchError, firstValueFrom, map } from 'rxjs';
 
 @Injectable()
 export class HttpServiceAxios {
@@ -11,12 +11,14 @@ export class HttpServiceAxios {
     this.http.axiosRef.defaults.baseURL = baseURL;
   }
 
+  private readonly logger = new Logger(HttpServiceAxios.name);
+
   public async get<T>(url: string): Promise<Observable<T>> {
     return this.http
       .get<T>(url)
       .pipe(
         catchError((error: AxiosError) => {
-          console.log(error.response.data);
+          this.logger.error(error.response.data);
           throw error.response?.data;
         }),
       )
@@ -28,6 +30,7 @@ export class HttpServiceAxios {
       .post<T>(url, req)
       .pipe(
         catchError((error: AxiosError) => {
+          this.logger.error(error.response.data);
           throw error.response?.data;
         }),
       )
@@ -39,6 +42,7 @@ export class HttpServiceAxios {
       .post<T>(url, req)
       .pipe(
         catchError((error: AxiosError) => {
+          this.logger.error(error.response.data);
           throw error.response?.data;
         }),
       )
@@ -46,11 +50,18 @@ export class HttpServiceAxios {
   }
 
   public async delete<T>(url: string) {
-    this.http.delete<T>(url).pipe(
-      catchError((error: AxiosError) => {
-        throw error.response?.data;
-      }),
-    );
+    try {
+      return await firstValueFrom(
+        this.http.delete<T>(url).pipe(
+          catchError((error: AxiosError) => {
+            this.logger.error(error.response.data);
+            throw error.response?.data;
+          }),
+        ),
+      );
+    } catch (error) {
+      throw error;
+    }
   }
 
   public async patch<T>(url: string, req?: any) {
@@ -59,6 +70,7 @@ export class HttpServiceAxios {
       .pipe(map((res) => res.data))
       .pipe(
         catchError((error: AxiosError) => {
+          this.logger.error(error.response.data);
           throw error.response?.data;
         }),
       );

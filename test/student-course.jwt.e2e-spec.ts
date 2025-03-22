@@ -81,10 +81,13 @@ describe('StudentCourse-JWT (e2e)', () => {
       email: representativeDTO.email,
     });
 
-    const partnerPrepCourse = await partnerPrepCourseService.create({
-      geoId: geo.id,
-      userId: representative.id,
-    });
+    const partnerPrepCourse = await partnerPrepCourseService.create(
+      {
+        geoId: geo.id,
+        userId: representative.id,
+      },
+      representative.id,
+    );
 
     const userDto = CreateUserDtoInputFaker();
     await userService.create(userDto);
@@ -116,10 +119,13 @@ describe('StudentCourse-JWT (e2e)', () => {
       email: representativeDTO.email,
     });
 
-    const partnerPrepCourse = await partnerPrepCourseService.create({
-      geoId: geo.id,
-      userId: representative.id,
-    });
+    const partnerPrepCourse = await partnerPrepCourseService.create(
+      {
+        geoId: geo.id,
+        userId: representative.id,
+      },
+      representative.id,
+    );
 
     const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker();
     await inscriptionCourseService.create(
@@ -147,7 +153,7 @@ describe('StudentCourse-JWT (e2e)', () => {
       });
   }, 30000);
 
-  it('should return user info', async () => {
+  it('already has student enrolled', async () => {
     const geo = await geoService.create(CreateGeoDTOInputFaker());
     const representativeDTO = CreateUserDtoInputFaker();
     await userService.create(representativeDTO);
@@ -155,10 +161,13 @@ describe('StudentCourse-JWT (e2e)', () => {
       email: representativeDTO.email,
     });
 
-    const partnerPrepCourse = await partnerPrepCourseService.create({
-      geoId: geo.id,
-      userId: representative.id,
-    });
+    const partnerPrepCourse = await partnerPrepCourseService.create(
+      {
+        geoId: geo.id,
+        userId: representative.id,
+      },
+      representative.id,
+    );
 
     const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker();
     await inscriptionCourseService.create(

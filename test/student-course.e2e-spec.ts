@@ -82,49 +82,47 @@ describe('StudentCourse (e2e)', () => {
     await app.close();
   });
 
-  // it('should create a new StudentCourse', async () => {
-  //   const geoDto = CreateGeoDTOInputFaker();
-  //   const geo = await geoService.create(geoDto);
+  it('should create a new StudentCourse', async () => {
+    const geoDto = CreateGeoDTOInputFaker();
+    const geo = await geoService.create(geoDto);
 
-  //   const representativeDTO = CreateUserDtoInputFaker();
-  //   await userService.create(representativeDTO);
-  //   const representative = await userRepository.findOneBy({
-  //     email: representativeDTO.email,
-  //   });
+    const representativeDTO = CreateUserDtoInputFaker();
+    await userService.create(representativeDTO);
+    const representative = await userRepository.findOneBy({
+      email: representativeDTO.email,
+    });
 
-  //   const partnerPrepCourseDto = {
-  //     geoId: geo.id,
-  //     userId: representative.id,
-  //   };
+    const partnerPrepCourseDto = {
+      geoId: geo.id,
+      userId: representative.id,
+    };
 
-  //   const partnerPrepCourse =
-  //     await partnerPrepCourseService.create(partnerPrepCourseDto);
+    const partnerPrepCourse = await partnerPrepCourseService.create(
+      partnerPrepCourseDto,
+      representative.id,
+    );
 
-  //   const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker();
+    const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker();
+    await inscriptionCourseService.create(
+      inscriptionCourseDto,
+      representative.id,
+    );
 
-  //   await request(app.getHttpServer())
-  //     .post('/inscription-course')
-  //     .send(inscriptionCourseDto)
-  //     .expect(201)
-  //     .expect((res) => {
-  //       expect(res.body.id).not.toBeNull();
-  //     });
+    const userDto = CreateUserDtoInputFaker();
+    await userService.create(userDto);
+    const user = await userRepository.findOneBy({ email: userDto.email });
 
-  //   const userDto = CreateUserDtoInputFaker();
-  //   await userService.create(userDto);
-  //   const user = await userRepository.findOneBy({ email: userDto.email });
+    const dto = createStudentCourseDTOInputFaker(user.id, partnerPrepCourse.id);
+    dto.rg = '45.678.123-4';
 
-  //   const dto = createStudentCourseDTOInputFaker(user.id, partnerPrepCourse.id);
-  //   dto.rg = '45.678.123-4';
-
-  //   return request(app.getHttpServer())
-  //     .post('/student-course')
-  //     .send(dto)
-  //     .expect(201)
-  //     .expect((res) => {
-  //       expect(res.body.id).not.toBeNull();
-  //     });
-  // }, 30000);
+    return request(app.getHttpServer())
+      .post('/student-course')
+      .send(dto)
+      .expect(201)
+      .expect((res) => {
+        expect(res.body.id).not.toBeNull();
+      });
+  }, 30000);
 
   it('user not exist', async () => {
     const dto = createStudentCourseDTOInputFaker();
@@ -187,8 +185,10 @@ describe('StudentCourse (e2e)', () => {
       userId: representative.id,
     };
 
-    const partnerPrepCourse =
-      await partnerPrepCourseService.create(partnerPrepCourseDto);
+    const partnerPrepCourse = await partnerPrepCourseService.create(
+      partnerPrepCourseDto,
+      representative.id,
+    );
 
     const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker();
     await inscriptionCourseService.create(
@@ -257,6 +257,7 @@ describe('StudentCourse (e2e)', () => {
 
     const partnerPrepCourse1 = await partnerPrepCourseService.create(
       partnerPrepCourseDto1,
+      representative1.id,
     );
 
     const inscriptionCourseDto1 = CreateInscriptionCourseDTOInputFaker();
@@ -267,6 +268,7 @@ describe('StudentCourse (e2e)', () => {
 
     const partnerPrepCourse2 = await partnerPrepCourseService.create(
       partnerPrepCourseDto2,
+      representative1.id,
     );
 
     const inscriptionCourseDto2 = CreateInscriptionCourseDTOInputFaker();
@@ -319,8 +321,10 @@ describe('StudentCourse (e2e)', () => {
       userId: representative.id,
     };
 
-    const partnerPrepCourse =
-      await partnerPrepCourseService.create(partnerPrepCourseDto);
+    const partnerPrepCourse = await partnerPrepCourseService.create(
+      partnerPrepCourseDto,
+      representative.id,
+    );
 
     const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker();
     await inscriptionCourseService.create(
@@ -362,8 +366,10 @@ describe('StudentCourse (e2e)', () => {
       userId: representative.id,
     };
 
-    const partnerPrepCourse =
-      await partnerPrepCourseService.create(partnerPrepCourseDto);
+    const partnerPrepCourse = await partnerPrepCourseService.create(
+      partnerPrepCourseDto,
+      representative.id,
+    );
 
     const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker();
     await inscriptionCourseService.create(

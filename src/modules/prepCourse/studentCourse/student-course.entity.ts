@@ -8,6 +8,8 @@ import {
 } from 'typeorm';
 import { NodeEntity } from '../../../shared/modules/node/node.entity';
 import { User } from '../../user/user.entity';
+import { StudentAttendance } from '../attendance/studentAttendance/student-attendance.entity';
+import { Class } from '../class/class.entity';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
 import { DocumentStudent } from './documents/document-students.entity';
@@ -55,7 +57,9 @@ export class StudentCourse extends NodeEntity {
   )
   public documents: DocumentStudent[];
 
-  @ManyToOne(() => User, (user) => user.studentCourse)
+  @ManyToOne(() => User, (user) => user.studentCourse, {
+    eager: true,
+  })
   @JoinColumn({ name: 'user_id' })
   public user: User;
 
@@ -74,12 +78,6 @@ export class StudentCourse extends NodeEntity {
 
   @OneToOne(() => LegalGuardian, (legalGuardian) => legalGuardian.studentCourse)
   public legalGuardian: LegalGuardian;
-
-  @ManyToOne(
-    () => InscriptionCourse,
-    (inscriptionCourse) => inscriptionCourse.enrolled,
-  )
-  public enrolled?: InscriptionCourse;
 
   @Column({ default: false })
   public selectEnrolled: boolean; // Se ele está sendo selecionado
@@ -108,7 +106,16 @@ export class StudentCourse extends NodeEntity {
   @Column({ nullable: true })
   public photo: string;
 
+  @ManyToOne(() => Class, (classes) => classes.students)
+  public class?: Class;
+
   get list(): string {
-    return this.enrolled.head;
+    throw new Error('Method not implemented.');
   }
+
+  @OneToMany(
+    () => StudentAttendance,
+    (studentAttendance) => studentAttendance.studentCourse,
+  )
+  public attendance: StudentAttendance[];
 }

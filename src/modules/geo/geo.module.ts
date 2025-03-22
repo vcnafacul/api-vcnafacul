@@ -6,12 +6,11 @@ import { AuditLogModule } from '../audit-log/audit-log.module';
 import { AuditLogRepository } from '../audit-log/audit-log.repository';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { RoleModule } from '../role/role.module';
-import { UserRoleRepository } from '../user-role/user-role.repository';
-import { UserRoleService } from '../user-role/user-role.service';
 import { UserModule } from '../user/user.module';
 import { GeoController } from './geo.controller';
 import { GeoRepository } from './geo.repository';
 import { GeoService } from './geo.service';
+import { LogGeoRepository } from './log-geo/log-geo.repository';
 import { GeoExistValidator } from './validator/geo-exist.validator';
 
 @Module({
@@ -21,12 +20,11 @@ import { GeoExistValidator } from './validator/geo-exist.validator';
     GeoService,
     GeoRepository,
     EmailService,
-    UserRoleService,
-    UserRoleRepository,
     AuditLogService,
     AuditLogRepository,
     HttpServiceAxios,
     GeoExistValidator,
+    LogGeoRepository,
   ],
 })
 export class GeoModule {}

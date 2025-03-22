@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   HttpStatus,
   Param,
@@ -12,27 +11,25 @@ import {
   Req,
   Res,
   SetMetadata,
-  UploadedFile,
   UseGuards,
-  UseInterceptors,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
-import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 import { GetAllDtoOutput } from 'src/shared/dtos/get-all.dto.output';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { Permissions } from '../role/role.entity';
-import { CollaboratorDtoInput } from './dto/collaboratorDto';
 import { CreateUserDtoInput } from './dto/create.dto.input';
 import { ForgotPasswordDtoInput } from './dto/forgot-password.dto.input';
+import { GetUserDtoInput } from './dto/get-user.dto.input';
 import { HasEmailDtoInput } from './dto/has-email.dto.input';
 import { LoginDtoInput } from './dto/login.dto.input';
 import { ResetPasswordDtoInput } from './dto/reset-password.dto.input';
+import { UpdateUserRoleInput } from './dto/update-user-role.dto.input';
 import { UpdateUserDTOInput } from './dto/update.dto.input';
+import { UserWithRoleName } from './dto/userWithRoleName';
 import { User } from './user.entity';
 import { UserService } from './user.service';
-import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('User')
 @Controller('user')
@@ -55,16 +52,13 @@ export class UserController {
     return res.status(200).json(false);
   }
 
-  @Get('volunteers')
-  async getVolunteers() {
-    return await this.userService.getVolunteers();
-  }
-
   @Get()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  async find(@Query() query: GetAllDtoInput): Promise<GetAllDtoOutput<User>> {
-    return await this.userService.findAllBy(query);
+  async find(
+    @Query() query: GetUserDtoInput,
+  ): Promise<GetAllDtoOutput<UserWithRoleName>> {
+    return await this.userService.findAllByWithRoleName(query);
   }
 
   @Put()
@@ -103,29 +97,6 @@ export class UserController {
     return await this.userService.confirmEmail((req.user as User).id);
   }
 
-  @Patch(`collaborator`)
-  @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
-  async collaborator(@Body() data: CollaboratorDtoInput, @Req() req: Request) {
-    return await this.userService.collaborator(data, (req.user as User).id);
-  }
-
-  @Post(`collaborator`)
-  @UseGuards(JwtAuthGuard)
-  @UseInterceptors(FileInterceptor('file'))
-  async uploadImage(
-    @UploadedFile() file: Express.Multer.File,
-    @Req() req: Request,
-  ) {
-    return await this.userService.uploadImage(file, (req.user as User).id);
-  }
-
-  @Delete('collaborator')
-  @UseGuards(JwtAuthGuard)
-  async removeImage(@Req() req: Request) {
-    return await this.userService.removeImage((req.user as User).id);
-  }
-
   @Get('me')
   @UseGuards(JwtAuthGuard)
   async me(@Req() req: Request) {
@@ -137,5 +108,13 @@ export class UserController {
   @UseGuards(JwtAuthGuard)
   async findById(@Param('id') id: string) {
     return await this.userService.findUserById(id);
+  }
+
+  @Patch('updateRole')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarPermissoesCursinho)
+  async updateRole(@Body() dto: UpdateUserRoleInput) {
+    return await this.userService.updateRole(dto.userId, dto.roleId);
   }
 }

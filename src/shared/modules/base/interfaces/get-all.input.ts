@@ -8,7 +8,20 @@ export interface OrConditional {
   value: any;
 }
 
+export interface Sort {
+  field: string;
+  sort: 'ASC' | 'DESC';
+}
+
+export interface Filter {
+  field: string;
+  value: any;
+  operator?: string;
+}
+
 export interface GetAllWhereInput extends GetAllInput {
   where?: object;
   or?: OrConditional[];
+  orderBy?: Sort;
+  filters?: Filter[];
 }

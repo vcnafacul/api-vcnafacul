@@ -10,7 +10,7 @@ export class InscriptionCourse extends LinkedListEntity {
   @Column()
   name: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'text', nullable: true })
   description: string;
 
   @Column({ name: 'start_date' })
@@ -38,12 +38,6 @@ export class InscriptionCourse extends LinkedListEntity {
     (studentCourse) => studentCourse.inscriptionCourse,
   )
   students: StudentCourse[];
-
-  @OneToMany(
-    () => StudentCourse,
-    (studentCourse) => studentCourse.inscriptionCourse,
-  )
-  enrolled: StudentCourse[]; // Matriculados
 
   get list(): string {
     throw new Error('Method not implemented.');
