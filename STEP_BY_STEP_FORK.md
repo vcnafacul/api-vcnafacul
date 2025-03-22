@@ -1,83 +1,91 @@
-# Introdução
+# 🚀 Introdução
 
-Bem-vindo ao tutorial de contribuição para o projeto **Você na Facul**! Este documento foi criado para orientá-lo, passo a passo, na configuração do ambiente de desenvolvimento e no fluxo de trabalho para contribuir com o nosso projeto. Seguir este tutorial é fundamental para que sua contribuição seja integrada de forma harmoniosa e colaborativa, garantindo um ambiente padronizado e eficiente para todos os envolvidos.
+Seja bem-vindo(a) ao guia completo para contribuir com o projeto **Você na Facul**! Estamos felizes por ter você aqui, ajudando a democratizar o acesso à educação de qualidade. 🎓✨
 
-## Por que seguir este tutorial?
+Neste documento você encontrará o passo a passo detalhado para configurar seu ambiente local, realizar suas contribuições e garantir que seu trabalho seja integrado de maneira eficiente e harmoniosa com o restante da comunidade.
 
-Ao seguir este guia, você garante:
-- **Ambiente Padronizado:** Adoção de diretrizes comuns que minimizam conflitos e facilitam a integração do seu trabalho.
-- **Fluxo de Trabalho Organizado:** Do fork inicial à abertura do Pull Request, o tutorial apresenta um processo claro e consistente, evitando erros comuns.
-- **Comunicação Eficiente:** As orientações auxiliam na revisão do seu código e facilitam o feedback dos mantenedores, agilizando o processo de aprovação.
+---
 
-## Por que contribuir para um projeto Open Source?
+## 🌟 Por que seguir este tutorial?
 
-Contribuir para o **Você na Facul** traz benefícios significativos, tanto para você quanto para a comunidade:
+Ao seguir este guia, você contribui diretamente para um ambiente colaborativo mais organizado, padronizado e produtivo, garantindo:
 
-- **Aprendizado e Crescimento:** Trabalhar em um projeto open source permite que você aprimore suas habilidades técnicas, aprenda novas tecnologias e ganhe experiência prática em desenvolvimento colaborativo.
-- **Impacto Social:** Este projeto é uma iniciativa social que busca democratizar o acesso à educação de qualidade. Sua contribuição pode transformar a vida de estudantes de baixa renda, ajudando a ampliar oportunidades educacionais.
-- **Networking e Colaboração:** Ao participar, você se conecta com outros profissionais e entusiastas, ampliando sua rede de contatos e trocando conhecimentos valiosos.
-- **Reconhecimento Profissional:** Contribuir para projetos open source é uma excelente forma de demonstrar suas habilidades e enriquecer seu portfólio, aumentando sua visibilidade no mercado de trabalho.
-- **Inovação e Criatividade:** Suas ideias podem ajudar a moldar o futuro da educação e da tecnologia, promovendo inovações que beneficiam toda a comunidade.
+- ✅ **Ambiente Padronizado:** Com todos seguindo as mesmas diretrizes, reduzimos conflitos e facilitamos a integração das contribuições.
+- 📑 **Fluxo de Trabalho Organizado:** Desde a criação do fork até a abertura do Pull Request, você terá clareza em cada passo, evitando erros comuns.
+- 🗣️ **Comunicação Eficiente:** Um fluxo estruturado torna mais simples a revisão do seu código, permitindo feedback rápido e claro dos mantenedores.
 
-Este tutorial é o seu primeiro passo para se integrar à comunidade do **Você na Facul** e contribuir de maneira efetiva. Siga as instruções a seguir e, se precisar de ajuda, não hesite em entrar em contato com a nossa equipe. Juntos, podemos transformar a educação e abrir portas para um futuro melhor!
+---
 
+## 💡 Por que contribuir para um projeto Open Source?
 
-### Passo 1 - Escolhendo o Projeto
+Contribuir para o **Você na Facul** significa participar de uma iniciativa com propósito, gerando impacto positivo real na vida de milhares de estudantes. Além disso, traz inúmeros benefícios pessoais e profissionais:
 
-A primeira etapa é escolher o projeto ao qual deseja contribuir. Em nossa página principal da organização, você encontrará os 3 principais projetos:
+- 🚀 **Aprendizado e Crescimento:** Aprimore suas habilidades técnicas, conheça novas tecnologias e adquira experiência prática em desenvolvimento colaborativo.
+- 🌎 **Impacto Social:** Sua colaboração pode transformar realidades, ajudando estudantes de baixa renda a conquistarem acesso ao ensino superior.
+- 🤝 **Networking e Colaboração:** Conecte-se com outros profissionais e entusiastas, amplie sua rede e troque conhecimentos valiosos.
+- 🏅 **Reconhecimento Profissional:** Contribuir para projetos open source valoriza seu portfólio e aumenta sua visibilidade no mercado de trabalho.
+- 🌟 **Inovação e Criatividade:** Ajude a moldar o futuro da educação, promovendo inovação tecnológica e pedagógica com suas ideias e contribuições.
+
+Este guia é seu primeiro passo para fazer parte dessa história. Estamos aqui para apoiá-lo(a) nessa jornada. Vamos juntos transformar a educação! 💪📚
+
+---
+
+### 🛠️ Passo 1 – Escolhendo o Projeto
+
+A primeira etapa é escolher o projeto no qual você deseja contribuir. Em nossa página principal da organização, você encontrará os 3 principais projetos:
 
 - 🚀 [Front End](https://github.com/vcnafacul/client-vcnafacul)  
 - 📚 [Back End API](https://github.com/vcnafacul/api-vcnafacul)  
 - 🧪 [MS Simulado](https://github.com/vcnafacul/ms-simulado)
 
+---
 
-### Passo 2 - Clonando seu Fork
+### 📌 Passo 2 – Clonando seu Fork
 
-Após escolher o repositório desejado, clique no botão **Fork** localizado no canto superior direito, conforme ilustrado abaixo:
+Após escolher o repositório, clique no botão **Fork** localizado no canto superior direito, conforme ilustrado abaixo:
 
 ![Criar Fork](image.png)
 
-Ao clicar em **Fork**, você poderá configurar seu fork de forma simples:
+Configure seu fork de maneira simples na tela seguinte:
 
 ![Configurar Fork](image-1.png)
 
-Depois de criado, você será redirecionado para o seu repositório forkado. Agora, basta clonar o seu fork para sua máquina local:
+Após a criação, clone o seu fork para sua máquina local:
 
 ![Clonar Fork](image-2.png)
 
-Clonar o projeto copia todos os arquivos e o histórico de commits do repositório original para o seu fork, permitindo que você comece a trabalhar localmente.
+Clonar o projeto copia todos os arquivos e histórico do repositório original para seu ambiente local, pronto para você começar a trabalhar.
 
-### Passo 3: Verifique se o seu fork está configurado como "origin"
+---
 
-Você precisará sincronizar seu repositório local tanto com o repositório do projeto original (no GitHub) quanto com o seu fork. As URLs que apontam para esses repositórios são chamadas de "remotes". No nosso fluxo, o repositório original é denominado **upstream** e o seu fork, **origin**.
+### 🔗 Passo 3 – Confirmando o "origin"
 
-Ao clonar o seu fork, o Git deve ter configurado automaticamente o remote **origin** com a URL do seu fork. Para verificar, execute:
+Você precisará sincronizar seu repositório local com o projeto original (**upstream**) e seu fork (**origin**).
+
+Verifique se o remote **origin** está configurado corretamente com:
 
 ```bash
 git remote -v
 ```
 
-Você deverá ver a URL do seu fork associada ao nome origin.
-Caso não veja o remote origin, adicione-o com o seguinte comando:
+Se necessário, configure-o com:
 
 ```bash
 git remote add origin URL_DO_FORK
 ```
+Em caso de dúvidas, consulte a documentação do GitHub sobre gerenciamento de remotes.
 
-Se encontrar problemas neste passo, consulte a documentação do GitHub sobre gerenciamento de repositórios remotos.
+---
 
-### Passo 4: Adicionar o repositório do projeto como o remoto "upstream"
+### 📥 Passo 4 – Adicionando o "upstream"
 
-Acesse o seu fork e clique no link do projeto em **_forked from_**
-
+Acesse seu fork no GitHub e clique no link indicado por forked from.
 ![alt text](image-3.png)
 
-Dentro do repo do projeto escolhido, clique **<> Code** e  copie o endereço do projeto.
-
+Dentro do repositório original, clique em <> Code e copie o endereço do projeto.
 ![alt text](image-4.png)
 
-Para adicionar o repositório do projeto como o remoto "upstream", execute:
-
+Adicione o repositório original como upstream:
 ```bash
 git remote add upstream URL_DO_PROJECT
 ```
@@ -87,61 +95,51 @@ Após isso execute:
 git remote -v
 ```
 
-Você deverá ver dois remotes configurados:
+### 🔄 Passo 5 – Atualizando sua Branch Local
 
-- **origin**: Apontando para o seu fork.
-- **upstream**: Apontando para o projeto original.
-
-### Passo 5: Atualiza a branch com a última versão do projeto
-
-Antes de iniciar sua contribuição, é importante garantir que seu fork esteja atualizado com as últimas alterações da branch de desenvolvimento. Para isso, execute:
+Antes de contribuir, atualize sua branch local com as últimas mudanças:
 
 ```bash
 git pull upstream develop
 ```
-> Nota: A branch **develop** é a branch default e representa o ambiente de desenvolvimento do projeto.
+> ⚠️ Lembre-se: develop é a branch padrão para desenvolvimento.
 
-### Passo 6: Preparando o Ambiente para Desenvolvimento
+### 🖥️ Passo 6 – Desenvolvendo sua Contribuição
 
-Nesta etapa, você já está pronto para começar a desenvolver. Logo você já pode
+Agora você já pode começar a desenvolver!
 
-1. Crie uma nova branch para sua contribuição:
-
+1. Crie uma nova branch:
 ```bash
 git checkout -b BRANCH_NAME
 ```
-2. Desenvolver seu código e fazer commits:
-
+2. Desenvolva seu código e faça commits claros e objetivos:
 ```bash
-git commit -m "my commit"
+git commit -m "minha contribuição"
 ```
-3. Enviar sua branch para o repositório remoto:
-
+3. Envie sua contribuição ao seu fork remoto:
 ```bash
 git push origin BRANCH_NAME
 ```
-> Dica: Certifique-se de utilizar nomes de branches e mensagens de commit claros e descritivos.
+> 📌 Dica: Sempre utilize nomes descritivos para suas branches e commits.
 
-### Passo 7: Abrindo seu Pull Request (PR)
+### 🎉 Passo 7 – Abrindo seu Pull Request
 
-Após publicar sua branch com a contribuição, siga estes passos:
+Ao terminar suas alterações, siga esses passos:
 
-1. Acesse seu fork no GitHub e vá para a seção Pull Requests.
-
-2. Caso apareça um aviso sugerindo a abertura de um PR, siga a orientação. Se não, clique em New pull request.
-
-3. Selecione sua branch e escolha a branch de destino do projeto, que normalmente é a develop.
+1. Vá à seção Pull Requests do seu fork no GitHub.
+2. Clique em New pull request ou siga o aviso automático do GitHub.
+3. Selecione sua branch e escolha develop como destino no projeto principal.
 
 ![alt text](image-6.png)
-
-4. Clique em **Create pull request**. Na tela que se abrirá, insira um título e uma descrição detalhada para seu PR. Lembre-se de incluir sua assinatura. Finalize clicando no botão abaixo da descrição, **Create pull request**.
+4. Clique em **Create pull request** e preencha título e descrição com detalhes claros. Lembre-se de assinar seu PR! Finalize clicando novamente em **Create pull request**.
 
 ![alt text](image-7.png)
-
-5. Após criar o PR, vá para a seção Development e associe a Issue que você está resolvendo.
+5. Após criado, associe a Issue relacionada na seção Development.
 
 ![alt text](image-8.png)
-
-6. Por fim, confirme que as pipelines necessárias estão sendo executadas e aguarde a aprovação do seu PR.
+6. Aguarde a execução das pipelines e a revisão da equipe.
 
 ![alt text](image-10.png)
+
+## 🙌 Agora é só aguardar!
+Após esses passos, é só aguardar a revisão e aprovação da sua contribuição. Obrigado por participar do Você na Facul e por ajudar a transformar o futuro de milhares de estudantes. Seu esforço faz toda a diferença! 🚀🎓

@@ -1,67 +1,124 @@
-# Guia de Contibuição
+# 🚀 Guia de Contribuição
 
-O **Você na Facul - Democratizando o Acesso à Educação!** é uma plataforma pré-vestibular gratuita, desenvolvida com o propósito de transformar vidas por meio do acesso à educação de qualidade. Nosso foco principal é apoiar estudantes de baixa renda na preparação para o vestibular e o ENEM, fornecendo conteúdos e ferramentas essenciais para o seu sucesso acadêmico.
+O **Você na Facul – Democratizando o Acesso à Educação!** é uma plataforma pré-vestibular gratuita criada para transformar vidas através da educação de qualidade. Nosso foco principal é apoiar estudantes de baixa renda na preparação para o vestibular e o ENEM, oferecendo conteúdos e ferramentas essenciais para garantir seu sucesso acadêmico. 🎓
 
-Além desse público, também direcionamos esforços para os cursinhos populares, que atuam como parceiros estratégicos e possuem equipes dedicadas que podem colaborar ativamente com o projeto. Atualmente, contamos com a parceria com o Cursinho Popular da Universidade de São Carlos, um cursinho federal, e estamos empenhados em expandir essa rede de parcerias. Nosso objetivo é não só fortalecer os cursinhos parceiros já existentes, mas também ajudar na criação de novos cursinhos, ampliando assim o alcance do projeto e maximizando seu impacto social.
+Além disso, buscamos ativamente parcerias com **cursinhos populares**, que são fundamentais para ampliar o impacto social do projeto. Atualmente, contamos com o apoio do **Cursinho Popular da Universidade Federal de São Carlos** (cursinho federal), e estamos empenhados em expandir essa rede, fortalecendo cursinhos já existentes e estimulando a criação de novos parceiros. 🤝
 
-## Antes de iniciar
+Nosso objetivo é simples: **ampliar oportunidades** e abrir portas para o futuro de milhares de estudantes em todo o Brasil. 🌟
 
-Antes de iniciar sua contribuição, verifique:
-- Você já leu nosso [Código de Conduta?](https://github.com/vcnafacul/.github/blob/main/CODE_OF_CONDUCT.md)
-- Conferiu as Issues existentes e os fóruns de discussão para saber se o que você pretende propor já não foi solucionado?
+---
 
-É importante salientar também que é importante que você tenha uma conta no Github para contribuir com o projeto. Se você não tem uma conta ainda, crie uma, pois é totalmente de graça. 
+## ✅ Antes de iniciar
 
-## Tipos de Contribuições
+Antes de começar a sua contribuição, pedimos que você confira os seguintes pontos:
 
-O objetivo deste documento é ajudar você a entender como colaborar com o projeto **Você na Facul**. Este é um projeto open source e amamos receber contribuições da nossa comunidade! Há diversas formas de contribuir: desde escrever tutoriais, aprimorar a documentação, relatar bugs, sugerir novas funcionalidades ou até mesmo contribuir com código para a aplicação. 🚀
-Pensando nisso, definimos dois tipos principais de contribuições:
+- 📌 Você já leu nosso [Código de Conduta](https://github.com/vcnafacul/.github/blob/main/CODE_OF_CONDUCT.md)?
+- 🔍 Conferiu as [Issues abertas](https://github.com/vcnafacul) e os fóruns de discussão para saber se a sua ideia ou proposta já foi discutida ou solucionada anteriormente?
 
-- **Contribuições Esperadas 🛠️**:
-_São aquelas para as quais já abrimos discussões internas e Issues preparadas especialmente para vocês._
-- **Novas Ideias 💡**:
-_Se você tem uma proposta inovadora, ela também pode se transformar em uma contribuição. Embora não possamos garantir a aceitação de todas as sugestões, incentivamos você a discutir sua ideia em nossos canais de discussão ou com qualquer mantenedor para obter mais informações._
+Dessa forma, você garante que sua contribuição seja assertiva, evitando retrabalho e garantindo um processo mais eficiente e agradável para toda a comunidade! 🙌
 
-## Issues e Discussões
 
-### Discussões 💬
+## 🚀 Tipos de Contribuições
 
-Para dúvidas, comentários ou outros tópicos que não exijam uma ação imediata, utilize nosso fórum de discussões. Por exemplo, se você quer perguntar “Devemos fazer…?” ou “Como faço para…?”, inicie a conversa no fórum. Isso permite que toda a comunidade do Você na Facul participe da discussão e, conforme necessário, possamos integrar as respostas na documentação ou em issues. 🤝
+O **Você na Facul** é um projeto open-source construído por uma comunidade diversificada e apaixonada pela educação. Não importa qual é a sua área ou experiência, sempre há formas significativas de contribuir e fazer a diferença na vida de milhares de estudantes.
 
-Além disso, se você encontrar um problema mas não tiver certeza se é um bug de fato, sinta-se à vontade para nos questionar no fórum. Estamos aqui para ajudar! 🔍
+### 🛠️ Contribuições Técnicas
 
-### Issues 📝
+Estas são contribuições focadas no desenvolvimento e aprimoramento das nossas aplicações e plataformas digitais. Você pode ajudar:
 
-Além dos nossos fóruns de discussões, no GitHub temos as [**Issues**](https://docs.github.com/pt/issues/tracking-your-work-with-issues/about-issues) para cada projeto. Elas são descrições detalhadas de novas funcionalidades, problemas identificados, melhorias ou simples ajustes, e muitas vezes são a porta de entrada para você começar a contribuir com o Você na Facul.
+- **Desenvolvendo código:** Resolva bugs, implemente novas funcionalidades ou melhore o desempenho dos nossos projetos.
+- **Revisando código:** Ajude a manter a qualidade e segurança revisando Pull Requests de outros contribuidores.
+- **Relatando Bugs:** Identifique problemas e reporte-os de forma detalhada através das Issues.
+- **Documentação Técnica:** Escreva tutoriais, guias e documentação técnica para auxiliar novos desenvolvedores e usuários.
 
-Caso você não encontre uma Issue que se encaixe na contribuição que deseja realizar, sinta-se à vontade para criar a sua própria. Basta acessar o projeto desejado, ir para a seção de Issues e clicar em "**New Issue**". Atualmente, temos 3 modelos de templates:
+É importante salientar também que é importante que você tenha uma conta no Github. Se você não tem uma conta ainda, crie uma, pois é totalmente de graça. 
 
-- 🐞 Reportar Bug
-- 🌱 Nova Funcionalidade 
-- 🔧 Melhoria de Funcionalidade
+### 📖 Contribuições Educacionais
 
-Se sua contribuição não se encaixar em nenhum desses templates, você pode criar uma Issue seguindo o padrão default de issues do GitHub.
+Você não precisa saber programação para causar um grande impacto! Educadores e especialistas podem contribuir:
 
-Você também pode verificar se já existe um Pull Request (PR) associado a uma Issue. Para isso, basta abrir a Issue e procurar na seção Development por PRs relacionados. 
+- **Criando materiais educativos:** Elabore conteúdos, exercícios e guias de estudo que ajudem estudantes a alcançarem o sonho da universidade.
+- **Revisando e validando conteúdos:** Garanta a qualidade e precisão dos materiais educacionais que disponibilizamos.
+- **Sugerindo melhorias pedagógicas:** Compartilhe ideias que tornem nossa metodologia mais eficiente e acessível.
+
+Para essas contribuições, entre em contato pelo e-mail: [contato@vcnafacul.com.br](mailto:contato@vcnafacul.com.br).
+
+### 📢 Divulgação e Comunidade
+
+Se você acredita na nossa causa, ajude-nos a crescer e alcançar ainda mais pessoas:
+
+- **Compartilhe nosso projeto nas suas redes sociais.**
+- **Indique o Você na Facul para cursinhos populares, escolas e estudantes.**
+- **Participe das nossas discussões e eventos, ajudando a fortalecer a comunidade.**
+
+### 💖 Apoio Financeiro
+
+Estamos em processo de avaliação no GitHub Sponsors. Assim que disponível, você poderá apoiar diretamente nosso trabalho e contribuir para o crescimento sustentável da iniciativa. Fique atento às novidades em nossas redes sociais!
+
+---
+
+> **Lembre-se:** Toda contribuição conta! Independentemente da forma como você decidir ajudar, estaremos felizes por ter você conosco nessa missão de democratizar o acesso à educação. 🙌
+
+## 📌 Issues e Discussões
+
+As **Issues** e **Discussões** são fundamentais para organizar o desenvolvimento e a comunicação dentro do projeto **Você na Facul**. Saber utilizá-las corretamente ajuda toda a comunidade a se manter informada, envolvida e organizada.
+
+---
+
+### 💬 Discussões 
+
+Utilize nosso **fórum de discussões** sempre que precisar esclarecer dúvidas, fazer comentários ou propor ideias que não exijam ações imediatas. 
+
+Por exemplo, perguntas como:  
+- _“Devemos implementar tal funcionalidade?”_  
+- _“Como faço para...?”_  
+- _“Será que isso realmente é um bug?”_
+
+devem começar no fórum. Assim, toda a comunidade poderá contribuir, discutir e, conforme necessário, transformar conclusões em documentação ou issues específicas. 🤝
+
+Se tiver dúvidas sobre a natureza de um problema ou comportamento inesperado, pergunte no fórum antes de abrir uma issue. Estamos aqui para ajudar! 🔍
+
+---
+
+### 📝 Issues
+
+No GitHub, utilizamos as [**Issues**](https://docs.github.com/pt/issues/tracking-your-work-with-issues/about-issues) para acompanhar e gerenciar problemas, novas funcionalidades ou melhorias nos projetos. As Issues são uma excelente porta de entrada para novos colaboradores.
+
+Antes de começar uma contribuição, consulte as Issues abertas no repositório escolhido. Se não encontrar uma Issue que corresponda à sua contribuição, fique à vontade para criar uma nova. Para isso:
+
+1. Acesse o projeto desejado e clique em **Issues**.
+2. Clique no botão **New Issue**.
+3. Escolha um dos nossos modelos pré-definidos:
+   - 🐞 **Reportar Bug**
+   - 🌱 **Nova Funcionalidade**
+   - 🔧 **Melhoria de Funcionalidade**
+
+Caso sua contribuição não se encaixe em nenhum dos templates acima, utilize o modelo padrão do GitHub.
+
+Você também pode verificar se já existe um **Pull Request (PR)** associado a uma Issue específica. Para isso, abra a Issue e confira a seção **Development**:
 
 ![issues pr development](assets/issues_pr_development.png)
 
-Geralmente, os símbolos indicam:
+Os símbolos indicam:
 
-- PRs ou Issues abertas com ícone verde.
-- PRs ou Issues fechadas com ícone roxo.
+- 🟢 **Verde:** PRs ou Issues abertas.
+- 🟣 **Roxo:** PRs ou Issues fechadas.
 
-## Configurando ambiente local para desenvolver
+---
 
-> **⚠️ Atenção!** Se você deseja trabalhar em alguma issue, certifique-se de sempre criar uma nova branch e realizar suas alterações nela, evitando assim enviar commits diretamente para a branch principal.
+## 💻 Configurando o Ambiente Local
 
-Para garantir que seu ambiente local esteja devidamente configurado e que você siga as melhores práticas de contribuição, recomendamos a leitura do nosso guia completo de fluxo de trabalho. No arquivo [STEP_BY_STEP](/STEP_BY_STEP_FORK.md) você encontrará instruções detalhadas que abrangem desde a criação do fork do repositório até a abertura do Pull Request. Esse passo a passo foi elaborado para facilitar o processo, evitando erros comuns e garantindo uma integração harmoniosa das contribuições.
+> **⚠️ Atenção!** Nunca faça commits diretamente na branch principal. Sempre crie uma branch separada para suas alterações.
 
-Siga o tutorial para:
+Para configurar corretamente seu ambiente local e garantir que você siga as melhores práticas, consulte nosso guia detalhado no arquivo [**STEP_BY_STEP_FORK.md**](STEP_BY_STEP_FORK.md). Lá você encontrará instruções claras desde o fork até a criação de um Pull Request.
 
-- Configurar corretamente os remotes (origin e upstream);
-- Atualizar sua branch com as últimas modificações do projeto;
-- Criar novas branches para suas alterações;
-- Enviar suas mudanças via Pull Request de forma organizada.
+Seguindo o guia você aprenderá a:
 
-Ao adotar esse fluxo, você contribuirá para um ambiente de desenvolvimento padronizado e colaborativo. Confira o [STEP_BY_STEP](/STEP_BY_STEP_FORK.md) para iniciar seu processo de contribuição!
+- ✅ Configurar corretamente os remotes (**origin** e **upstream**).
+- ✅ Manter sua branch atualizada com o projeto original.
+- ✅ Criar novas branches para cada contribuição.
+- ✅ Submeter suas alterações através de Pull Requests organizados.
+
+Dessa forma, você contribui diretamente para um ambiente de desenvolvimento mais eficiente, colaborativo e organizado.
+
+👉 Confira o [**STEP_BY_STEP_FORK.md**](STEP_BY_STEP_FORK.md) e inicie sua contribuição agora mesmo! 🚀
