@@ -54,8 +54,13 @@ export class GeoService extends BaseService<Geolocation> {
     limit,
     status,
     text,
+    type,
   }: ListGeoDTOInput): Promise<GetAllOutput<Geolocation>> {
     const where: any = { status };
+
+    if (type) {
+      where.type = type;
+    }
 
     const or = this.generateTextCombinations(text);
     const data = await this.geoRepository.findAllBy({

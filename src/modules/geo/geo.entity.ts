@@ -1,6 +1,7 @@
 import { Column, Entity, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../shared/modules/base/entity.base';
 import { Status } from '../simulado/enum/status.enum';
+import { TypeGeo } from './enum/typeGeo';
 import { LogGeo } from './log-geo/log-geo.entity';
 
 @Entity('geolocations')
@@ -29,8 +30,8 @@ export class Geolocation extends BaseEntity {
   @Column()
   public street: string;
 
-  @Column()
-  public number: string;
+  @Column({ nullable: true })
+  public number?: string;
 
   @Column({ nullable: true })
   public complement?: string;
@@ -95,6 +96,14 @@ export class Geolocation extends BaseEntity {
   @Column({ default: false })
   public reportOther: boolean;
 
+  @Column({ nullable: true })
+  public campus?: string;
+
+  @Column({ nullable: true })
+  public alias?: string;
+
+  @Column({ default: TypeGeo.PREP_COURSE })
+  public type: TypeGeo;
   @OneToMany(() => LogGeo, (logGeo) => logGeo.geo)
   public logs: LogGeo[];
 }

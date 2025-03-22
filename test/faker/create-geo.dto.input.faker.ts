@@ -1,5 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { CreateGeoDTOInput } from 'src/modules/geo/dto/create-geo.dto.input';
+import { TypeGeo } from 'src/modules/geo/enum/typeGeo';
 
 export function CreateGeoDTOInputFaker(): CreateGeoDTOInput {
   return {
@@ -29,5 +30,6 @@ export function CreateGeoDTOInputFaker(): CreateGeoDTOInput {
     userPhone: faker.phone.number(), // Telefone do usuário
     userConnection: faker.person.jobType(), // Conexão do usuário (aleatório)
     userEmail: faker.internet.email(), // Email do usuário
+    type: TypeGeo.PREP_COURSE,
   };
 }
