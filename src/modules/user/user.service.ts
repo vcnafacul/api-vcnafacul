@@ -56,6 +56,7 @@ export class UserService extends BaseService<User> {
         throw new HttpException('role not found', HttpStatus.BAD_REQUEST);
       }
       newUser.role = role;
+      if (userDto.socialName) newUser.useSocialName = true;
       const user = await this.userRepository.create(newUser);
       this.logger.log('User created: ' + user.id + ' - ' + user.email);
       return user;
