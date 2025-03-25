@@ -11,6 +11,8 @@ import { Class } from './class.entity';
 import { ClassRepository } from './class.repository';
 import { ClassDtoOutput } from './dtos/class.dto.output';
 import { CreateClassDtoInput } from './dtos/create-class.dto.input';
+import { GetClassByIdAttendanceDtoOutput } from './dtos/get-class-by-id-attendance.dto.output';
+import { GetClassByIdDtoOutput } from './dtos/get-class-by-id.dto.output';
 import { UpdateClassDTOInput } from './dtos/update-class.dto.input';
 
 @Injectable()
@@ -40,14 +42,33 @@ export class ClassService extends BaseService<Class> {
     return entity;
   }
 
-  async findOneById(id: string): Promise<Class> {
+  async findOneById(id: string): Promise<GetClassByIdDtoOutput> {
     const classEntity = await this.repository.findOneById(id);
 
     if (!classEntity) {
       throw new NotFoundException(`Class with id ${id} not found`);
     }
-
-    return classEntity;
+    const students = classEntity.students.map((student) => {
+      return {
+        id: student.id,
+        name: student.user.useSocialName
+          ? `${student.user.socialName?.split(' ')[0]} ${student.user.lastName}`
+          : `${student.user.firstName} ${student.user.lastName}`,
+        email: student.user.email,
+        status: student.applicationStatus,
+        cod_enrolled: student.cod_enrolled,
+        created_at: student.createdAt,
+        updated_at: student.updatedAt,
+        photo: student.photo,
+        logs: student.logs,
+        birthday: student.user.birthday,
+      };
+    });
+    const result = {
+      ...classEntity,
+      students,
+    };
+    return result as unknown as GetClassByIdDtoOutput;
   }
 
   async update(dto: UpdateClassDTOInput): Promise<void> {
@@ -127,7 +148,29 @@ export class ClassService extends BaseService<Class> {
     };
   }
 
-  async findOneByIdToAttendanceRecord(id: string): Promise<Class> {
-    return this.repository.findOneByIdToAttendanceRecord(id);
+  async findOneByIdToAttendanceRecord(
+    id: string,
+  ): Promise<GetClassByIdAttendanceDtoOutput> {
+    const classEntity = await this.repository.findOneByIdToAttendanceRecord(id);
+    if (!classEntity) {
+      throw new HttpException(
+        `Class not found by id ${id}`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    const students = classEntity.students.map((student) => {
+      return {
+        id: student.id,
+        name: student.user.useSocialName
+          ? `${student.user.socialName?.split(' ')[0]} ${student.user.lastName}`
+          : `${student.user.firstName} ${student.user.lastName}`,
+        cod_enrolled: student.cod_enrolled,
+      };
+    });
+    const result = {
+      ...classEntity,
+      students,
+    };
+    return result as unknown as GetClassByIdAttendanceDtoOutput;
   }
 }

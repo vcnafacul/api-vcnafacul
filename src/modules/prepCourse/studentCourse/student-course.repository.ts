@@ -39,6 +39,7 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
         'users.state',
         'users.city',
         'users.birthday',
+        'users.useSocialName',
       ])
       .where({ ...where });
 
