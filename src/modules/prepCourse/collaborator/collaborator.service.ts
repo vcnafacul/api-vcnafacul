@@ -72,7 +72,6 @@ export class CollaboratorService extends BaseService<Collaborator> {
     id: string,
   ): Promise<CollaboratorVolunteerDtoOutput[]> {
     const collaborator = await this.repository.findOneByPrepPartner(id);
-    console.log(collaborator);
     return collaborator.map((c) => ({
       name: c.user.useSocialName
         ? `${c.user.socialName} ${c.user.lastName}`
