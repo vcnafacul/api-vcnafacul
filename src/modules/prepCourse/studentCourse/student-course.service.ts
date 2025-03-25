@@ -757,6 +757,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   }): Promise<GetEnrolledDtoOutput> {
     const partnerPrepCourse =
       await this.partnerPrepCourseService.getByUserId(userId);
+
     if (!partnerPrepCourse) {
       throw new HttpException(
         'Cursinho Parceiro nao encontrado',
@@ -784,12 +785,12 @@ export class StudentCourseService extends BaseService<StudentCourse> {
           (student) =>
             ({
               id: student.id,
-              name: `${student.user.firstName} ${student.user.lastName}`,
-              socialName: student.user.socialName
+              name: student.user.useSocialName
                 ? `${student.user.socialName?.split(' ')[0]} ${
                     student.user.lastName
                   }`
-                : null,
+                : `${student.user.firstName} ${student.user.lastName}`,
+
               email: student.user.email,
               whatsapp: student.whatsapp,
               urgencyPhone: student.urgencyPhone,

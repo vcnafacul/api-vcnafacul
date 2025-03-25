@@ -64,4 +64,7 @@ export class UserDtoOutput {
 
   @IsString()
   collaboratorPhoto?: string = undefined;
+
+  @IsBoolean()
+  useSocialName: boolean = false;
 }

@@ -67,8 +67,10 @@ export class ClassRepository extends BaseRepository<Class> {
         'user.id',
         'user.firstName',
         'user.lastName',
+        'user.socialName',
         'user.email',
         'user.birthday',
+        'user.useSocialName',
       ])
       .leftJoinAndSelect('entity.admins', 'admins')
       .where('entity.id = :id', { id })
@@ -81,7 +83,12 @@ export class ClassRepository extends BaseRepository<Class> {
       .leftJoin('entity.students', 'student_course')
       .addSelect(['student_course.id', 'student_course.cod_enrolled'])
       .leftJoin('student_course.user', 'user')
-      .addSelect(['user.firstName', 'user.lastName'])
+      .addSelect([
+        'user.firstName',
+        'user.lastName',
+        'user.socialName',
+        'user.useSocialName',
+      ])
       .where('entity.id = :id', { id })
       .andWhere('student_course.applicationStatus = :status', {
         status: StatusApplication.Enrolled,

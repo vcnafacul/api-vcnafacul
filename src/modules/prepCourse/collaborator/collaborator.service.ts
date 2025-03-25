@@ -49,9 +49,9 @@ export class CollaboratorService extends BaseService<Collaborator> {
       updatedAt: c.updatedAt,
       user: {
         id: c.user.id,
-        firstName: c.user.firstName,
-        lastName: c.user.lastName,
-        socialName: c.user.socialName,
+        name: c.user.useSocialName
+          ? `${c.user.socialName} ${c.user.lastName}`
+          : `${c.user.firstName} ${c.user.lastName}`,
         email: c.user.email,
         phone: c.user.phone,
         role: {
@@ -72,8 +72,11 @@ export class CollaboratorService extends BaseService<Collaborator> {
     id: string,
   ): Promise<CollaboratorVolunteerDtoOutput[]> {
     const collaborator = await this.repository.findOneByPrepPartner(id);
+    console.log(collaborator);
     return collaborator.map((c) => ({
-      name: `${c.user.firstName} ${c.user.lastName}`,
+      name: c.user.useSocialName
+        ? `${c.user.socialName} ${c.user.lastName}`
+        : `${c.user.firstName} ${c.user.lastName}`,
       description: c.description,
       image: c.photo,
       actived: c.actived,
