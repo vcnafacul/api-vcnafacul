@@ -573,7 +573,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       );
     }
     const payload = {
-      user: { id: students.id },
+      user: { id: students.id, isFree: students.isFree },
     };
     const limitTimeInSeconds = Math.floor(
       students.limitEnrolledAt.getTime() / 1000,
