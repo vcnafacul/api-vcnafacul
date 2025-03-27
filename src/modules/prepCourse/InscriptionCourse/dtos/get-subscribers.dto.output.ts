@@ -22,6 +22,7 @@ export class GetSubscribersDtoOutput {
   nome: string;
   sobrenome: string;
   nome_social: string;
+  usar_nome_social: boolean;
   data_nascimento: Date;
   genero: string;
   telefone: string;

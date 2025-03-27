@@ -10,7 +10,6 @@ export class GetEnrolledDtoOutput {
 export class StudentsDtoOutput {
   id: string;
   name: string;
-  socialName?: string;
   email: string;
   whatsapp: string;
   urgencyPhone?: string;

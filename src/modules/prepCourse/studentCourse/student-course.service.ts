@@ -573,7 +573,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       );
     }
     const payload = {
-      user: { id: students.id },
+      user: { id: students.id, isFree: students.isFree },
     };
     const limitTimeInSeconds = Math.floor(
       students.limitEnrolledAt.getTime() / 1000,
@@ -620,7 +620,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         const results = await Promise.allSettled(
           chunk.map(async (stu) => {
             try {
-              const payload = { user: { id: stu.id } };
+              const payload = { user: { id: stu.id, isFree: stu.isFree } };
               const limitTimeInSeconds = Math.floor(
                 stu.limitEnrolledAt.getTime() / 1000,
               );
@@ -757,6 +757,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   }): Promise<GetEnrolledDtoOutput> {
     const partnerPrepCourse =
       await this.partnerPrepCourseService.getByUserId(userId);
+
     if (!partnerPrepCourse) {
       throw new HttpException(
         'Cursinho Parceiro nao encontrado',
@@ -784,12 +785,12 @@ export class StudentCourseService extends BaseService<StudentCourse> {
           (student) =>
             ({
               id: student.id,
-              name: `${student.user.firstName} ${student.user.lastName}`,
-              socialName: student.user.socialName
+              name: student.user.useSocialName
                 ? `${student.user.socialName?.split(' ')[0]} ${
                     student.user.lastName
                   }`
-                : null,
+                : `${student.user.firstName} ${student.user.lastName}`,
+
               email: student.user.email,
               whatsapp: student.whatsapp,
               urgencyPhone: student.urgencyPhone,

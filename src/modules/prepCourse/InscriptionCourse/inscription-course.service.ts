@@ -253,6 +253,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
           nome: student.user.firstName,
           sobrenome: student.user.lastName,
           nome_social: student.user.socialName,
+          usar_nome_social: student.user.useSocialName,
           data_nascimento: student.user.birthday,
           genero:
             student.user.gender === Gender.Male

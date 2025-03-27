@@ -1,11 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsBoolean,
+  IsEnum,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
 } from 'class-validator';
+import { TypeGeo } from '../enum/typeGeo';
 
 export class CreateGeoDTOInput {
   @IsNumber()
@@ -150,4 +152,13 @@ export class CreateGeoDTOInput {
   @ApiProperty({ required: false })
   @IsOptional()
   reportOther?: boolean = false;
+
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty({ required: false })
+  campus?: string;
+
+  @IsEnum(TypeGeo)
+  @ApiProperty({ enum: TypeGeo })
+  type: TypeGeo;
 }

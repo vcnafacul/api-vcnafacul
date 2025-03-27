@@ -32,6 +32,9 @@ export class User extends BaseEntity {
   @Column({ nullable: true })
   public socialName?: string;
 
+  @Column({ default: false })
+  public useSocialName: boolean;
+
   @Column()
   public phone: string;
 

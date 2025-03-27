@@ -22,6 +22,7 @@ import { Class } from './class.entity';
 import { ClassService } from './class.service';
 import { ClassDtoOutput } from './dtos/class.dto.output';
 import { CreateClassDtoInput } from './dtos/create-class.dto.input';
+import { GetClassByIdDtoOutput } from './dtos/get-class-by-id.dto.output';
 import { UpdateClassDTOInput } from './dtos/update-class.dto.input';
 
 @ApiTags('Classes')
@@ -66,7 +67,7 @@ export class ClassController {
     status: 200,
     description: 'pegar turma por id',
   })
-  async getById(@Param('id') id: string): Promise<Class> {
+  async getById(@Param('id') id: string): Promise<GetClassByIdDtoOutput> {
     return await this.service.findOneById(id);
   }
 
