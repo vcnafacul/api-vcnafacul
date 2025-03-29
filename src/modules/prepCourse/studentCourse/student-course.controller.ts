@@ -156,7 +156,10 @@ export class StudentCourseController {
   @Get('profile-photo/:fileKey')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.visualizarEstudantes,
+    Permissions.gerenciarProcessoSeletivo,
+  ])
   @ApiResponse({
     status: 200,
     description: 'Busca de documento de estudante',
