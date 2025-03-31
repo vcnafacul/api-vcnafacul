@@ -15,6 +15,12 @@ export class TypeOrmOptions implements TypeOrmOptionsFactory {
       database: this.configService.get<string>('MY_DB_NAME'),
       entities: [__dirname + '/../**/*.entity.{js,ts}'],
       migrations: [__dirname + '/migrations/*.{js,ts}'],
+      keepConnectionAlive: true,
+      extra: {
+        connectionLimit: 10,
+        queueLimit: 0, // sem limite de fila
+        waitForConnections: true, // aguarda conexão em vez de lançar erro
+      },
     };
   }
 }
