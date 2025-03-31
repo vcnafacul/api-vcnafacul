@@ -6,8 +6,8 @@ import { UserService } from 'src/modules/user/user.service';
 import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
 import { CreateQuestaoDTOInput } from '../dtos/create-questao.dto.input';
 import {
-  AuditLogMSDTO,
-  HistoryQuestionDTOOutput,
+    AuditLogMSDTO,
+    HistoryQuestionDTOOutput,
 } from '../dtos/history-question.dto.output';
 import { QuestaoDTOInput } from '../dtos/questao.dto.input';
 import { UpdateDTOInput } from '../dtos/update-questao.dto.input';
@@ -55,7 +55,7 @@ export class QuestaoService {
   }
 
   public async createQuestion(questao: CreateQuestaoDTOInput) {
-    return await this.axios.postR(`v1/questao`, questao);
+    return await this.axios.post(`v1/questao`, questao);
   }
 
   public async uploadImage(file: any): Promise<string> {

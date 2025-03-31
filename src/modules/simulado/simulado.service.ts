@@ -24,7 +24,7 @@ export class SimuladoService {
   }
 
   async create(dto: CreateSimuladoDTOInput) {
-    return await this.axios.postR<SimuladoDTO>('v1/simulado', dto);
+    return await this.axios.post<SimuladoDTO>('v1/simulado', dto);
   }
 
   async getAll() {
@@ -63,7 +63,7 @@ export class SimuladoService {
         updatedBy: userId,
       });
     } else {
-      await this.axios.postR(`v1/questao/report`, reportDto);
+      await this.axios.post(`v1/questao/report`, reportDto);
     }
   }
 
@@ -84,7 +84,7 @@ export class SimuladoService {
   }
 
   public async createQuestion(questao: CreateQuestaoDTOInput) {
-    return await this.axios.postR(`v1/questao`, questao);
+    return await this.axios.post(`v1/questao`, questao);
   }
 
   public async uploadImage(file: any): Promise<string> {

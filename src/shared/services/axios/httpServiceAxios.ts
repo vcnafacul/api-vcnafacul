@@ -1,78 +1,57 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
 import { AxiosError } from 'axios';
-import { Observable, catchError, firstValueFrom, map } from 'rxjs';
+import { Observable, catchError, map, throwError } from 'rxjs';
 
 @Injectable()
 export class HttpServiceAxios {
   constructor(private readonly http: HttpService) {}
 
-  public async setBaseURL(baseURL: string) {
+  private readonly logger = new Logger(HttpServiceAxios.name);
+
+  public setBaseURL(baseURL: string) {
     this.http.axiosRef.defaults.baseURL = baseURL;
   }
 
-  private readonly logger = new Logger(HttpServiceAxios.name);
+  private handleError(error: any): Observable<never> {
+    const axiosError = error as AxiosError;
 
-  public async get<T>(url: string): Promise<Observable<T>> {
-    return this.http
-      .get<T>(url)
-      .pipe(
-        catchError((error: AxiosError) => {
-          this.logger.error(error.response.data);
-          throw error.response?.data;
-        }),
-      )
-      .pipe(map((res) => res.data));
+    const errorData =
+      axiosError?.response?.data ||
+      ({
+        message: 'Erro desconhecido ou serviço indisponível.',
+        status: axiosError?.code || 500,
+      } as any);
+
+    this.logger.error({
+      message: errorData?.message || errorData,
+      status: errorData?.status || 'SEM STATUS',
+      stack: axiosError?.stack,
+    });
+
+    return throwError(() => errorData);
   }
 
-  public async postR<T>(url: string, req: any): Promise<Observable<T>> {
-    return this.http
-      .post<T>(url, req)
-      .pipe(
-        catchError((error: AxiosError) => {
-          this.logger.error(error.response.data);
-          throw error.response?.data;
-        }),
-      )
-      .pipe(map((res) => res.data));
+  private requestWrapper<T>(request: Observable<any>): Observable<T> {
+    return request.pipe(
+      map((res) => res.data),
+      catchError((error) => this.handleError(error)),
+    );
   }
 
-  public async post<T>(url: string, req: any) {
-    this.http
-      .post<T>(url, req)
-      .pipe(
-        catchError((error: AxiosError) => {
-          this.logger.error(error.response.data);
-          throw error.response?.data;
-        }),
-      )
-      .subscribe();
+  public get<T>(url: string): Observable<T> {
+    return this.requestWrapper<T>(this.http.get<T>(url));
   }
 
-  public async delete<T>(url: string) {
-    try {
-      return await firstValueFrom(
-        this.http.delete<T>(url).pipe(
-          catchError((error: AxiosError) => {
-            this.logger.error(error.response.data);
-            throw error.response?.data;
-          }),
-        ),
-      );
-    } catch (error) {
-      throw error;
-    }
+  public post<T>(url: string, body: any): Observable<T> {
+    return this.requestWrapper<T>(this.http.post<T>(url, body));
   }
 
-  public async patch<T>(url: string, req?: any) {
-    return this.http
-      .patch<T>(url, req)
-      .pipe(map((res) => res.data))
-      .pipe(
-        catchError((error: AxiosError) => {
-          this.logger.error(error.response.data);
-          throw error.response?.data;
-        }),
-      );
+  public patch<T>(url: string, body?: any): Observable<T> {
+    return this.requestWrapper<T>(this.http.patch<T>(url, body));
+  }
+
+  public delete<T>(url: string): Observable<T> {
+    return this.requestWrapper<T>(this.http.delete<T>(url));
   }
 }
