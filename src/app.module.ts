@@ -6,6 +6,7 @@ import { PassportModule } from '@nestjs/passport';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
+import { DatabaseHealthCheckService } from './config/db-health-check.service';
 import { TypeOrmOptions } from './config/db.config';
 import { SeederModule } from './db/seeds/seeder.module';
 import { LokiLoggerService } from './logger/loki-logger';
@@ -71,7 +72,12 @@ import { JwtStrategy } from './shared/strategy/jwt.strategy';
     AbsenceJustificationModule,
   ],
   controllers: [AppController],
-  providers: [JwtStrategy, DiscordWebhook, LokiLoggerService],
+  providers: [
+    JwtStrategy,
+    DiscordWebhook,
+    LokiLoggerService,
+    DatabaseHealthCheckService,
+  ],
   exports: [DiscordWebhook],
 })
 export class AppModule {}

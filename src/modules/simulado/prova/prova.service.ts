@@ -31,7 +31,7 @@ export class ProvaService {
     request.aplicacao = parseInt(prova.aplicacao as unknown as string);
     request.tipo = prova.tipo;
     request.filename = fileName;
-    return await this.axios.postR(`v1/prova`, request);
+    return await this.axios.post(`v1/prova`, request);
   }
 
   public async getProvaById(id: string) {
