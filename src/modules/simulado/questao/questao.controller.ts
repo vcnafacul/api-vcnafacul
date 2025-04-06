@@ -3,22 +3,22 @@ import {
   Controller,
   Delete,
   Get,
-  HttpStatus,
   Param,
   Patch,
   Post,
   Query,
   Req,
-  Res,
   SetMetadata,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Request, Response } from 'express';
-import multerConfig from 'src/config/multer-config';
+import { Request } from 'express';
 import { Permissions } from 'src/modules/role/role.entity';
 import { User } from 'src/modules/user/user.entity';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
@@ -133,24 +133,72 @@ export class QuestaoController {
     },
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
-  public async createQuestion(@Body() dto: CreateQuestaoDTOInput) {
-    return await this.questaoService.createQuestion(dto);
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.criarQuestao,
+    Permissions.validarQuestao,
+  ])
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'files', maxCount: 10 },
+      { name: 'imageId', maxCount: 1 },
+      { name: 'altA', maxCount: 1 },
+      { name: 'altB', maxCount: 1 },
+      { name: 'altC', maxCount: 1 },
+      { name: 'altD', maxCount: 1 },
+      { name: 'altE', maxCount: 1 },
+    ]),
+  )
+  public async createQuestion(
+    @UploadedFile()
+    files: {
+      files?: Express.Multer.File[];
+      imageId?: Express.Multer.File;
+      altA?: Express.Multer.File;
+      altB?: Express.Multer.File;
+      altC?: Express.Multer.File;
+      altD?: Express.Multer.File;
+      altE?: Express.Multer.File;
+    },
+    @Req() req: Request,
+  ) {
+    return await this.questaoService.createQuestion(
+      req.body as CreateQuestaoDTOInput,
+      files.files || [],
+      files.imageId?.[0] || null,
+      files.altA?.[0] || null,
+      files.altB?.[0] || null,
+      files.altC?.[0] || null,
+      files.altD?.[0] || null,
+      files.altE?.[0] || null,
+    );
   }
 
-  @Post('uploadimage')
+  @Patch('uploadimage')
   @ApiBearerAuth()
   @ApiResponse({
     status: 200,
     description: 'upload de nova imagem de questao',
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
-  @UseInterceptors(FileInterceptor('file', multerConfig))
-  public async uploadImage(@UploadedFile() file, @Res() res: Response) {
-    return res
-      .status(HttpStatus.CREATED)
-      .send(await this.questaoService.uploadImage(file));
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.criarQuestao,
+    Permissions.validarQuestao,
+  ])
+  @UseInterceptors(FileInterceptor('file'))
+  public async uploadImage(@UploadedFile() file: Express.Multer.File) {
+    return await this.questaoService.uploadImage(file);
+  }
+
+  @Get(':id/image')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'busca imagem de questão',
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
+  public async getImage(@Param('id') id: string) {
+    return await this.questaoService.getImage(id);
   }
 
   @Delete(':id')
