@@ -1,9 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuditLogService } from 'src/modules/audit-log/audit-log.service';
 import { User } from 'src/modules/user/user.entity';
 import { UserService } from 'src/modules/user/user.service';
 import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
+import { BlobService } from 'src/shared/services/blob/blob-service';
+import { CreateQuestaoMsSimuladoDTOInput } from '../dtos/create-questao-mssimulado.dto.input';
 import { CreateQuestaoDTOInput } from '../dtos/create-questao.dto.input';
 import {
   AuditLogMSDTO,
@@ -16,8 +18,9 @@ import { Status } from '../enum/status.enum';
 @Injectable()
 export class QuestaoService {
   constructor(
+    @Inject('BlobService') private readonly blobService: BlobService,
     private readonly axios: HttpServiceAxios,
-    private readonly configService: ConfigService,
+    private configService: ConfigService,
     private readonly auditLod: AuditLogService,
     private readonly userService: UserService,
   ) {
@@ -54,15 +57,55 @@ export class QuestaoService {
     return await this.axios.patch(`v1/questao`, questao);
   }
 
-  public async createQuestion(questao: CreateQuestaoDTOInput) {
-    return await this.axios.postR(`v1/questao`, questao);
+  public async createQuestion(
+    questao: CreateQuestaoDTOInput,
+    fileContents: Express.Multer.File[],
+    imageId?: Express.Multer.File,
+    altA?: Express.Multer.File,
+    altB?: Express.Multer.File,
+    altC?: Express.Multer.File,
+    altD?: Express.Multer.File,
+    altE?: Express.Multer.File,
+  ) {
+    const questSend = questao as CreateQuestaoMsSimuladoDTOInput;
+    if (fileContents.length > 0) {
+      const files: string[] = [];
+      for (const file of fileContents) {
+        const fileKey = await this.uploadImage(file);
+        files.push(fileKey);
+      }
+      questSend.files = files;
+    }
+    if (imageId) {
+      questSend.imageId = await this.uploadImage(imageId);
+    }
+    if (altA) {
+      questSend.altA = await this.uploadImage(altA);
+    }
+    if (altB) {
+      questSend.altB = await this.uploadImage(altB);
+    }
+    if (altC) {
+      questSend.altC = await this.uploadImage(altC);
+    }
+    if (altD) {
+      questSend.altD = await this.uploadImage(altD);
+    }
+    if (altE) {
+      questSend.altE = await this.uploadImage(altE);
+      return await this.axios.post(`v1/questao`, questSend);
+    }
   }
 
-  public async uploadImage(file: any): Promise<string> {
+  public async uploadImage(file: Express.Multer.File): Promise<string> {
     if (!file) {
       throw new Error('Nenhum arquivo fornecido');
     }
-    return file.filename.split('.')[0];
+    const fileKey = await this.blobService.uploadFile(
+      file,
+      this.configService.get<string>('BUCKET_QUESTION'),
+    );
+    return fileKey;
   }
 
   public async delete(id: string) {
@@ -108,5 +151,12 @@ export class QuestaoService {
       createdAt: create?.createdAt,
       history: historyDTO,
     };
+  }
+
+  public async getImage(id: string) {
+    return await this.blobService.getFile(
+      `${id}.png`,
+      this.configService.get<string>('BUCKET_QUESTION'),
+    );
   }
 }
