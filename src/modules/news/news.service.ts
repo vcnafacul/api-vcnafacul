@@ -18,10 +18,13 @@ export class NewsService extends BaseService<News> {
     super(repository);
   }
 
-  async create(request: CreateNewsDtoInput, file: any, userId: string) {
+  async create(
+    request: CreateNewsDtoInput,
+    file: Express.Multer.File,
+    userId: string,
+  ) {
     const fileName = await uploadFileFTP(
       file,
-      this.configService.get<string>('FTP_TEMP_FILE'),
       this.configService.get<string>('FTP_HOST'),
       this.configService.get<string>('FTP_USER'),
       this.configService.get<string>('FTP_PASSWORD'),
