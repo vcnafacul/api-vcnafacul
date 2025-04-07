@@ -5,7 +5,7 @@ import { Readable } from 'stream';
 export const uploadFileFTP = async (
   file: Express.Multer.File,
   FTP_HOST: string,
-  FTP_CONTENT: string,
+  FTP_USER: string,
   FTP_PASSWORD: string,
   directory: string = '',
 ): Promise<string> => {
@@ -15,7 +15,7 @@ export const uploadFileFTP = async (
     // Acesso ao servidor FTP
     await client.access({
       host: FTP_HOST,
-      user: FTP_CONTENT,
+      user: FTP_USER,
       password: FTP_PASSWORD,
     });
 

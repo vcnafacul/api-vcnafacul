@@ -45,7 +45,7 @@ export class NewsController {
   async createNews(
     @Body() body: CreateNewsDtoInput,
     @Req() req: Request,
-    @UploadedFile() file,
+    @UploadedFile() file: Express.Multer.File,
   ) {
     return await this.newService.create(body, file, (req.user as User).id);
   }
