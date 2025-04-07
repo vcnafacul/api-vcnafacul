@@ -76,7 +76,7 @@ export class S3Service implements BlobService {
     });
 
     return {
-      buffer,
+      buffer: buffer.toString('base64'),
       contentType, // Inclua o tipo MIME
     };
   }
