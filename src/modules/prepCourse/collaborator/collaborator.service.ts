@@ -1,5 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { RoleRepository } from 'src/modules/role/role.repository';
+import { UserRepository } from 'src/modules/user/user.repository';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { removeFileFTP } from 'src/utils/removeFileFtp';
@@ -17,6 +19,8 @@ export class CollaboratorService extends BaseService<Collaborator> {
     private readonly repository: CollaboratorRepository,
     private readonly partnerPrepCourseService: PartnerPrepCourseService,
     private configService: ConfigService,
+    private readonly roleRepository: RoleRepository,
+    private readonly userRepository: UserRepository,
   ) {
     super(repository);
   }
@@ -132,6 +136,14 @@ export class CollaboratorService extends BaseService<Collaborator> {
   async changeActive(id: string) {
     const collaborator = await this.repository.findOneBy({ id });
     collaborator.actived = !collaborator.actived;
+    if (!collaborator.actived) {
+      const user = await this.userRepository.findOneBy({
+        id: collaborator.user.id,
+      });
+      const aluno = await this.roleRepository.findOneBy({ name: 'aluno' });
+      user.role = aluno;
+      await this.userRepository.update(user);
+    }
     await this.repository.update(collaborator);
     return collaborator;
   }
