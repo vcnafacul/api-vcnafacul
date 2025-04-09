@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
@@ -28,6 +29,7 @@ export class UserService extends BaseService<User> {
     private readonly emailService: EmailService,
     private readonly collaboratorRepository: CollaboratorRepository,
     private readonly discordWebhook: DiscordWebhook,
+    private readonly configService: ConfigService,
   ) {
     super(userRepository);
   }
@@ -61,7 +63,12 @@ export class UserService extends BaseService<User> {
       this.logger.log('User created: ' + user.id + ' - ' + user.email);
       return user;
     } catch (error) {
-      this.discordWebhook.sendMessage(`Erro ao criar usuário: ${error}`);
+      const env = this.configService.get('NODE_ENV');
+      if (env !== 'test') {
+        await this.discordWebhook.sendMessage(
+          `Erro ao criar usuário: ${error}`,
+        );
+      }
       this.logger.error(`Erro ao criar usuário: ${error}`);
       if (error.code === '23505') {
         throw new HttpException('Email already exist', HttpStatus.CONFLICT);
