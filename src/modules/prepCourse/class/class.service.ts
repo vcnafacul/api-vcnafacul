@@ -62,6 +62,10 @@ export class ClassService extends BaseService<Class> {
         photo: student.photo,
         logs: student.logs,
         birthday: student.user.birthday,
+        socioeconomic: student.socioeconomic,
+        areaInterest: student.areaInterest,
+        selectedCourses: student.selectedCourses,
+        isFree: student.isFree,
       };
     });
     const result = {
