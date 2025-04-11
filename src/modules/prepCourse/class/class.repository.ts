@@ -95,4 +95,13 @@ export class ClassRepository extends BaseRepository<Class> {
       })
       .getOne();
   }
+
+  async findOneByIdWithPartner(id: string): Promise<Class> {
+    return this.repository
+      .createQueryBuilder('entity')
+      .innerJoin('entity.partnerPrepCourse', 'partner_prep_course')
+      .addSelect(['partner_prep_course.id'])
+      .where('entity.id = :id', { id })
+      .getOne();
+  }
 }

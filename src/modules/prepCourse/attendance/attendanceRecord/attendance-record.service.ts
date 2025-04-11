@@ -1,5 +1,6 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
+import { format } from 'date-fns/format';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { DataSource } from 'typeorm';
@@ -8,6 +9,11 @@ import { CollaboratorRepository } from '../../collaborator/collaborator.reposito
 import { StudentAttendance } from '../studentAttendance/student-attendance.entity';
 import { AttendanceRecord } from './attendance-record.entity';
 import { AttendanceRecordRepository } from './attendance-record.repository';
+import { AttendanceRecordByClassInput } from './dtos/attendance-record-by-class.dto.input';
+import {
+  AttendanceRecordByClassOutput,
+  AttendanceRecordItem,
+} from './dtos/attendance-record-by-class.dto.output';
 import { CreateAttendanceRecordDtoInput } from './dtos/create-attendance-record.dto.input';
 import { GetAttendanceRecordByIdDtoOutput } from './dtos/get-attendance-record-by-id.dto.output';
 import { GetAttendanceRecordByStudent } from './dtos/get-attendance-record-by-student';
@@ -34,6 +40,17 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
         HttpStatus.NOT_FOUND,
       );
     }
+
+    const isAttendanceRecordToday =
+      (await this.repository.findByClassIdAndDate(classEntity.id, dto.date)) !==
+      null;
+    if (isAttendanceRecordToday) {
+      throw new HttpException(
+        'Já existe um registro de presença para a data informada',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const collaborator =
       await this.collaboratorRepository.findOneByUserId(userId);
     if (!collaborator) {
@@ -159,5 +176,76 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
 
   async delete(id: string): Promise<void> {
     await this.repository.delete(id);
+  }
+
+  groupByDate(records: AttendanceRecordItem[]): AttendanceRecordItem[] {
+    const grouped = new Map<string, { total: number; presentCount: number }>();
+
+    for (const record of records) {
+      const dateKey = format(new Date(record.date), 'yyyy-MM-dd');
+
+      if (!grouped.has(dateKey)) {
+        grouped.set(dateKey, { total: 0, presentCount: 0 });
+      }
+
+      const agg = grouped.get(dateKey)!;
+      agg.total += Number(record.total);
+      agg.presentCount += Number(record.presentCount);
+    }
+
+    return Array.from(grouped.entries()).map(([date, data]) => ({
+      date,
+      total: data.total,
+      presentCount: data.presentCount,
+    }));
+  }
+
+  async getAttendanceRecordByClassId({
+    classId,
+    startDate,
+    endDate,
+  }: AttendanceRecordByClassInput): Promise<AttendanceRecordByClassOutput> {
+    const classEntity =
+      await this.classRepository.findOneByIdWithPartner(classId);
+    if (!classEntity) {
+      throw new HttpException(
+        `Class not found by id ${classId}`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const classReport = await this.repository.dailyAttendanceByClassId(
+      classId,
+      startDate,
+      endDate,
+    );
+
+    const generalReport = await this.repository.dailyAttendanceForClassIds(
+      [],
+      classEntity.partnerPrepCourse.id,
+      startDate,
+      endDate,
+    );
+
+    return {
+      class: {
+        name: classEntity.name,
+        year: classEntity.year,
+      },
+      startDate,
+      endDate,
+      classReport: classReport
+        .map((item) => ({
+          ...item,
+          date: format(new Date(item.date), 'yyyy-MM-dd'),
+          total: Number(item.total),
+          presentCount: Number(item.presentCount),
+        }))
+        .sort((a, b) => b.date.localeCompare(a.date)),
+
+      generalReport: this.groupByDate(generalReport).sort((a, b) =>
+        b.date.localeCompare(a.date),
+      ),
+    };
   }
 }
