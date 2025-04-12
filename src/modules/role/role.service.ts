@@ -20,7 +20,7 @@ export class RoleService extends BaseService<Role> {
     page,
     limit,
   }: GetAllInput): Promise<GetAllOutput<GetAllRoleDto>> {
-    const data = await this._repository.findAllBy({
+    const data = await this.roleRepository.findAllBy({
       page,
       limit,
       where: {
@@ -36,7 +36,7 @@ export class RoleService extends BaseService<Role> {
   }
 
   async findAll() {
-    const data = await this._repository.findAllBy({
+    const data = await this.roleRepository.findAllBy({
       page: 1,
       limit: 10000,
       where: {
@@ -113,9 +113,9 @@ export class RoleService extends BaseService<Role> {
     if (!role) {
       throw new Error('Role not found');
     }
+    role.name = roleDto.name;
     role.base = roleDto.base;
     role.validarCursinho = roleDto.validarCursinho;
-    role.alterarPermissao = roleDto.alterarPermissao;
     role.criarSimulado = roleDto.criarSimulado;
     role.criarQuestao = roleDto.criarQuestao;
     role.validarQuestao = roleDto.validarQuestao;
@@ -146,8 +146,27 @@ export class RoleService extends BaseService<Role> {
     role.gerenciarProcessoSeletivo = roleDto.gerenciarProcessoSeletivo;
     role.gerenciarColaboradores = roleDto.gerenciarColaboradores;
     role.gerenciarTurmas = roleDto.gerenciarTurmas;
+    role.visualizarTurmas = roleDto.gerenciarTurmas
+      ? true
+      : roleDto.visualizarTurmas;
     role.gerenciarEstudantes = roleDto.gerenciarEstudantes;
-    role.gerenciarPermissoesCursinho = roleDto.gerenciarPermissoesCursinho;
+    role.visualizarEstudantes = roleDto.gerenciarEstudantes
+      ? true
+      : roleDto.visualizarEstudantes;
+    role.alterarPermissao = roleDto.alterarPermissao;
+    role.gerenciarPermissoesCursinho = !roleDto.gerenciarPermissoesCursinho
+      ? role.alterarPermissao
+        ? true
+        : false
+      : true;
     return await this.roleRepository.update(role);
+  }
+
+  async findOneById(id: string) {
+    return await this.roleRepository.findOneBy({ id: id });
+  }
+
+  async findOneByIdWithPartner(id: string) {
+    return await this.roleRepository.findOneByIdWithPartner(id);
   }
 }

@@ -156,9 +156,11 @@ export class CreateGeoDTOInput {
   @IsString()
   @IsNotEmpty()
   @ApiProperty({ required: false })
+  @IsOptional()
   campus?: string;
 
   @IsEnum(TypeGeo)
-  @ApiProperty({ enum: TypeGeo })
+  @ApiProperty({ enum: TypeGeo, default: TypeGeo.PREP_COURSE })
+  @IsOptional()
   type: TypeGeo;
 }

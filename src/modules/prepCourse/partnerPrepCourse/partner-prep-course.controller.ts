@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Req,
   SetMetadata,
@@ -11,6 +12,7 @@ import {
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
+import { UpdateRoleDtoInput } from 'src/modules/role/dto/update.role.dto';
 import { Permissions, Role } from 'src/modules/role/role.entity';
 import { User } from 'src/modules/user/user.entity';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
@@ -89,6 +91,14 @@ export class PartnerPrepCourseController {
     @Req() req: Request,
   ): Promise<Role> {
     return await this.service.createRole(dto, (req.user as User).id);
+  }
+
+  @Patch('role')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarPermissoesCursinho)
+  async update(@Body() dto: UpdateRoleDtoInput, @Req() req: Request) {
+    return await this.service.updateRole(dto, (req.user as User).id);
   }
 
   @Get(':id/has-active-inscription')

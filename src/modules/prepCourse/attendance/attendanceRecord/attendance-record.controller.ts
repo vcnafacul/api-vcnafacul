@@ -18,6 +18,8 @@ import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { AttendanceRecord } from './attendance-record.entity';
 import { AttendanceRecordService } from './attendance-record.service';
+import { AttendanceRecordByClassInput } from './dtos/attendance-record-by-class.dto.input';
+import { AttendanceRecordByClassOutput } from './dtos/attendance-record-by-class.dto.output';
 import { CreateAttendanceRecordDtoInput } from './dtos/create-attendance-record.dto.input';
 import { GetAttendanceRecordByIdDtoOutput } from './dtos/get-attendance-record-by-id.dto.output';
 import { GetAttendanceRecordByStudent } from './dtos/get-attendance-record-by-student';
@@ -55,6 +57,16 @@ export class AttendanceRecordController {
     @Query() query: GetAttendanceRecordByStudent,
   ): Promise<GetAllOutput<AttendanceRecord>> {
     return await this.service.findManyByStudentId(query);
+  }
+
+  @Get('summary')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
+  async summary(
+    @Query() dto: AttendanceRecordByClassInput,
+  ): Promise<AttendanceRecordByClassOutput> {
+    return await this.service.getAttendanceRecordByClassId(dto);
   }
 
   @Get(':id')

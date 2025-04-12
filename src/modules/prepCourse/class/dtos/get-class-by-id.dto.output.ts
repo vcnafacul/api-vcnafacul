@@ -23,4 +23,8 @@ export class StudentClass {
   birthday: Date;
   createdAt: Date;
   updatedAt: Date;
+  socioeconomic: string;
+  isFree: string;
+  areaInterest: string;
+  selectedCourses: string;
 }

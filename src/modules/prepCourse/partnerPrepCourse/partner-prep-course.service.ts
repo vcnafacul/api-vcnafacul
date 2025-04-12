@@ -18,6 +18,7 @@ import { PartnerPrepCourseDtoInput } from './dtos/create-partner-prep-course.inp
 import { HasInscriptionActiveDtoOutput } from './dtos/has-inscription-active.output.dto';
 import { PartnerPrepCourse } from './partner-prep-course.entity';
 import { PartnerPrepCourseRepository } from './partner-prep-course.repository';
+import { UpdateRoleDtoInput } from 'src/modules/role/dto/update.role.dto';
 
 @Injectable()
 export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
@@ -295,5 +296,23 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
       },
     });
     return roles.data;
+  }
+
+  async updateRole(dto: UpdateRoleDtoInput, userId: string) {
+    const partnerPrepCourse = await this.repository.findOneByUserId(userId);
+    if (!partnerPrepCourse) {
+      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
+    }
+    const role = await this.roleService.findOneByIdWithPartner(dto.id);
+    if (!role) {
+      throw new HttpException('Role nao encontrada', HttpStatus.NOT_FOUND);
+    }
+    if (role.partnerPrepCourse.id !== partnerPrepCourse.id) {
+      throw new HttpException(
+        'Role nao pertence ao cursinho parceiro',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    return await this.roleService.update(dto);
   }
 }
