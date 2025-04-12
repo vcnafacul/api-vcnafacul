@@ -75,16 +75,20 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   async create(
     dto: CreateStudentCourseInput,
   ): Promise<CreateStudentCourseOutput> {
-    const partnerPrepCourse = await this.partnerPrepCourseService.findOneBy({
-      id: dto.partnerPrepCourse,
+    const inscriptionCourse = await this.inscriptionCourseService.findOneBy({
+      id: dto.inscriptionId,
     });
-
-    const inscriptionCourse =
-      await this.inscriptionCourseService.findOneActived(partnerPrepCourse);
 
     if (!inscriptionCourse) {
       throw new HttpException(
         'No active inscription course for this partner prep course',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    if (inscriptionCourse.actived !== Status.Approved) {
+      throw new HttpException(
+        'Processo Seletivo não está ativo',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -109,7 +113,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
     const studentCourse = await this.createStudentCourse(
       dto,
-      partnerPrepCourse,
+      inscriptionCourse.partnerPrepCourse,
       inscriptionCourse,
     );
 
@@ -121,7 +125,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     const representatives =
       await this.collaboratorRepository.findCollaboratorsByPermission(
         Permissions.gerenciarProcessoSeletivo,
-        partnerPrepCourse.id,
+        inscriptionCourse.partnerPrepCourse.id,
       );
 
     const log = new LogStudent();
@@ -133,16 +137,16 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     await this.sendEmailConfirmation(
       dto,
       representatives.map((rep) => rep.user.email),
-      partnerPrepCourse.geo.name,
+      inscriptionCourse.partnerPrepCourse.geo.name,
     );
     return { id: studentCourse.id } as CreateStudentCourseOutput;
   }
 
-  async createUser(userDto: CreateUserDtoInput, hashPrepCourse: string) {
+  async createUser(userDto: CreateUserDtoInput, inscriptionId: string) {
     const user = await this.userService.createUser(userDto);
     const token = await this.jwtService.signAsync(
       {
-        user: { id: user.id, flow: CreateFlow.CREATE_STUDENT, hashPrepCourse },
+        user: { id: user.id, flow: CreateFlow.CREATE_STUDENT, inscriptionId },
       },
       { expiresIn: '2h' },
     );
@@ -285,24 +289,16 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     return file;
   }
 
-  async getUserInfoToInscription(idPrepCourse: string, userId: string) {
-    const prepCourse = await this.partnerPrepCourseService.findOneBy({
-      id: idPrepCourse,
-    });
-    const activedInscription = prepCourse.inscriptionCourses.find(
-      (i) => i.actived === Status.Approved,
-    );
+  async getUserInfoToInscription(inscriptionId: string, userId: string) {
+    const inscription =
+      await this.inscriptionCourseService.getById(inscriptionId);
 
-    if (!activedInscription) {
+    if (!inscription) {
       throw new HttpException(
-        'Não existe inscrição ativa para este curso',
+        'Processo Seletivo nao encontrado',
         HttpStatus.BAD_REQUEST,
       );
     }
-
-    const inscription = await this.inscriptionCourseService.findOneBy({
-      id: activedInscription.id,
-    });
 
     const hasUser = inscription.students.some(
       (student) => student.userId === userId,

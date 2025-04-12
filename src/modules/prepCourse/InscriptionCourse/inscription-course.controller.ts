@@ -17,8 +17,10 @@ import { Request } from 'express';
 import { Permissions } from 'src/modules/role/role.entity';
 import { User } from 'src/modules/user/user.entity';
 import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
+import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { HasInscriptionActiveDtoOutput } from '../partnerPrepCourse/dtos/has-inscription-active.output.dto';
 import { CreateInscriptionCourseInput } from './dtos/create-inscription-course.dto.input';
 import { InscriptionCourseDtoOutput } from './dtos/get-all-inscription.dto.output';
 import { GetSubscribersDtoOutput } from './dtos/get-subscribers.dto.output';
@@ -95,6 +97,15 @@ export class InscriptionCourseController {
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async getById(@Param('id') id: string): Promise<InscriptionCourse> {
     return await this.service.getById(id);
+  }
+
+  @Get('to-inscription/:id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async getToInscription(
+    @Param('id') id: string,
+  ): Promise<HasInscriptionActiveDtoOutput> {
+    return await this.service.getToInscription(id);
   }
 
   @Put('active/:id')

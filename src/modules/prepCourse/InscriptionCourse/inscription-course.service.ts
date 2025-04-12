@@ -7,6 +7,7 @@ import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output'
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { adjustDate } from 'src/utils/adjustDate';
+import { HasInscriptionActiveDtoOutput } from '../partnerPrepCourse/dtos/has-inscription-active.output.dto';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
 import { PartnerPrepCourseService } from '../partnerPrepCourse/partner-prep-course.service';
 import { StatusApplication } from '../studentCourse/enums/stastusApplication';
@@ -131,7 +132,34 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
   }
 
   async getById(id: string): Promise<InscriptionCourse> {
-    return this.repository.findOneBy({ where: { id } });
+    return this.repository.findOneBy({ id });
+  }
+
+  async getToInscription(id: string): Promise<HasInscriptionActiveDtoOutput> {
+    const inscription = await this.repository.findOneBy({ id });
+    if (!inscription) {
+      throw new HttpException(
+        'Inscrição nao encontrada',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const today = new Date();
+    const status =
+      today < inscription.startDate
+        ? Status.Pending
+        : today > inscription.endDate
+        ? Status.Rejected
+        : Status.Approved;
+    return {
+      prepCourseName: inscription.partnerPrepCourse.geo.name,
+      inscription: {
+        name: inscription.name,
+        description: inscription.description,
+        startDate: inscription.startDate,
+        endDate: inscription.endDate,
+        status,
+      },
+    };
   }
 
   async findOneActived(partnerPrepCourse: PartnerPrepCourse) {

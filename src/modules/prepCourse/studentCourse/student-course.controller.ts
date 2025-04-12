@@ -53,12 +53,12 @@ export class StudentCourseController {
     return await this.service.create(dto);
   }
 
-  @Post('user/:hashPrepCourse')
+  @Post('user/:inscriptionId')
   async createUser(
     @Body() userDto: CreateUserDtoInput,
-    @Param('hashPrepCourse') hashPrepCourse: string,
+    @Param('inscriptionId') inscriptionId: string,
   ): Promise<void> {
-    return await this.service.createUser(userDto, hashPrepCourse);
+    return await this.service.createUser(userDto, inscriptionId);
   }
 
   @Get('confirm-enrolled/:id')
@@ -184,15 +184,15 @@ export class StudentCourseController {
     });
   }
 
-  @Get('get-user-info/:idPrepPartner')
+  @Get('get-user-info/:inscriptionId')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async getUserInfo(
-    @Param('idPrepPartner') idPrepPartner: string,
+    @Param('inscriptionId') inscriptionId: string,
     @Req() req: Request,
   ): Promise<UserDtoOutput> {
     return await this.service.getUserInfoToInscription(
-      idPrepPartner,
+      inscriptionId,
       (req.user as User).id,
     );
   }
