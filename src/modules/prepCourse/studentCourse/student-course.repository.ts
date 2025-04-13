@@ -172,6 +172,8 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       ])
       .innerJoinAndSelect('entity.partnerPrepCourse', 'partnerPrepCourse')
       .innerJoinAndSelect('partnerPrepCourse.geo', 'geo')
+      .innerJoin('entity.inscriptionCourse', 'inscriptionCourse')
+      .addSelect(['inscriptionCourse.id'])
       .getMany();
   }
 
@@ -188,6 +190,8 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       ])
       .innerJoinAndSelect('entity.partnerPrepCourse', 'partnerPrepCourse')
       .innerJoinAndSelect('partnerPrepCourse.geo', 'geo')
+      .innerJoin('entity.inscriptionCourse', 'inscriptionCourse')
+      .addSelect(['inscriptionCourse.id'])
       .leftJoinAndSelect('entity.logs', 'logs')
       .getOne();
   }
@@ -220,5 +224,20 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
         status: StatusApplication.CalledForEnrollment,
       })
       .execute();
+  }
+
+  async getStudentByUserIdAndInscriptionId(
+    userId: string,
+    inscriptionId: string,
+  ) {
+    return await this.repository
+      .createQueryBuilder('entity')
+      .innerJoin('entity.user', 'user')
+      .addSelect(['user.id'])
+      .innerJoin('entity.inscriptionCourse', 'inscriptionCourse')
+      .addSelect(['inscriptionCourse.id'])
+      .where('user.id = :userId', { userId })
+      .andWhere('inscriptionCourse.id = :inscriptionId', { inscriptionId })
+      .getOne();
   }
 }

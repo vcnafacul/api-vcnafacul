@@ -175,7 +175,7 @@ export class EmailService {
     students_email: string,
     prepCourse: string,
     limitDate: Date,
-    token: string,
+    inscriptionId: string,
   ) {
     const prepCourseName = prepCourse.includes('Cursinho')
       ? prepCourse
@@ -183,7 +183,7 @@ export class EmailService {
     const date = format(limitDate, 'dd/MM/yyyy');
     const declaredInterestUrl = `${this.configService.get<string>(
       'FRONT_URL',
-    )}/declarar-interesse?token=${token}`;
+    )}/declarar-interesse/${inscriptionId}`;
     const mailOptions = {
       from: this.configService.get<string>('SMTP_USERNAME'),
       to: students_email,

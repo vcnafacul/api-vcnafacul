@@ -39,6 +39,9 @@ export class InscriptionCourse extends LinkedListEntity {
   )
   students: StudentCourse[];
 
+  @Column({ default: false })
+  requestDocuments: boolean;
+
   get list(): string {
     throw new Error('Method not implemented.');
   }

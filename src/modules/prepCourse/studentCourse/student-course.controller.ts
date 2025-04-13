@@ -37,6 +37,7 @@ import { GetEnrolledDtoOutput } from './dtos/get-enrolled.dto.output';
 import { GetEnrolleds } from './dtos/get-enrolleds';
 import { ScheduleEnrolledDtoInput } from './dtos/schedule-enrolled.dto.input';
 import { UpdateClassDTOInput } from './dtos/update-class.dto.input';
+import { VerifyDeclaredInterestDtoOutput } from './dtos/verify-declared-interest.dto.out';
 import { StudentCourseService } from './student-course.service';
 
 @ApiTags('StudentCourse')
@@ -121,7 +122,7 @@ export class StudentCourseController {
       files.photo?.[0] || null,
       areaInterest,
       selectedCourses,
-      (req.user as User).id,
+      req.body.studentId,
     );
   }
 
@@ -197,11 +198,17 @@ export class StudentCourseController {
     );
   }
 
-  @Get('declared-interest/:id')
+  @Get('declared-interest/:inscriptionId')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  async verifyDeclaredInterest(@Param('id') id: string): Promise<boolean> {
-    return await this.service.verifyDeclaredInterest(id);
+  async verifyDeclaredInterest(
+    @Param('inscriptionId') inscriptionId: string,
+    @Req() req: Request,
+  ): Promise<VerifyDeclaredInterestDtoOutput> {
+    return await this.service.verifyDeclaredInterest(
+      inscriptionId,
+      (req.user as User).id,
+    );
   }
 
   @Patch('update-is-free')

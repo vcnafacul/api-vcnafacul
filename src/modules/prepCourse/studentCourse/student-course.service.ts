@@ -48,6 +48,7 @@ import {
   StudentsDtoOutput,
 } from './dtos/get-enrolled.dto.output';
 import { ScheduleEnrolledDtoInput } from './dtos/schedule-enrolled.dto.input';
+import { VerifyDeclaredInterestDtoOutput } from './dtos/verify-declared-interest.dto.out';
 import { StatusApplication } from './enums/stastusApplication';
 import { LegalGuardian } from './legal-guardian/legal-guardian.entity';
 import { LegalGuardianRepository } from './legal-guardian/legal-guardian.repository';
@@ -229,9 +230,9 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     photo: Express.Multer.File,
     areaInterest: string[],
     selectedCourses: string[],
-    userId: string,
+    studentId: string,
   ) {
-    const student = await this.repository.findOneBy({ id: userId });
+    const student = await this.repository.findOneBy({ id: studentId });
     if (!student) {
       throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
@@ -532,24 +533,43 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     await this.logStudentRepository.create(log);
   }
 
-  async verifyDeclaredInterest(studentId: string) {
-    const student = await this.repository.findOneBy({ id: studentId });
+  async verifyDeclaredInterest(
+    inscriptinId: string,
+    userId: string,
+  ): Promise<VerifyDeclaredInterestDtoOutput> {
+    const inscriptin = await this.inscriptionCourseService.findOneBy({
+      id: inscriptinId,
+    });
+    if (!inscriptin) {
+      throw new HttpException('Inscrição nao encontrada', HttpStatus.NOT_FOUND);
+    }
+    const student = await this.repository.getStudentByUserIdAndInscriptionId(
+      userId,
+      inscriptin.id,
+    );
     if (!student) {
       throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
     }
+    let declared = false;
     if (
       student.applicationStatus === StatusApplication.DeclaredInterest ||
       student.applicationStatus === StatusApplication.Enrolled
     ) {
-      return true;
+      declared = true;
     }
-    return false;
+    const today = new Date();
+    return {
+      requestDocuments: inscriptin.requestDocuments,
+      convocaded:
+        student.applicationStatus === StatusApplication.CalledForEnrollment,
+      declared,
+      expired: student.limitEnrolledAt < today,
+      studentId: student.id,
+      isFree: student.isFree,
+    };
   }
 
   async sendEmailDeclaredInterestById(id: string) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const currentTimeInSeconds = Math.floor(today.getTime() / 1000);
     const students = await this.repository.findOneToSendEmail(id);
     if (!students) {
       throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
@@ -573,14 +593,6 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         HttpStatus.BAD_REQUEST,
       );
     }
-    const payload = {
-      user: { id: students.id, isFree: students.isFree },
-    };
-    const limitTimeInSeconds = Math.floor(
-      students.limitEnrolledAt.getTime() / 1000,
-    );
-    const expiresIn = limitTimeInSeconds - currentTimeInSeconds;
-    const token = await this.jwtService.signAsync(payload, { expiresIn });
 
     const student_name = `${students.user.firstName} ${students.user.lastName}`;
     students.limitEnrolledAt.setDate(students.limitEnrolledAt.getDate() - 1);
@@ -590,7 +602,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       students.user.email,
       students.partnerPrepCourse.geo.name,
       students.limitEnrolledAt,
-      token,
+      students.inscriptionCourse.id,
     );
 
     const log = new LogStudent();
@@ -607,7 +619,6 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const currentTimeInSeconds = Math.floor(today.getTime() / 1000);
 
       const students = await this.repository.findAllCompletedBy({
         selectEnrolledAt: today,
@@ -621,15 +632,6 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         const results = await Promise.allSettled(
           chunk.map(async (stu) => {
             try {
-              const payload = { user: { id: stu.id, isFree: stu.isFree } };
-              const limitTimeInSeconds = Math.floor(
-                stu.limitEnrolledAt.getTime() / 1000,
-              );
-              const expiresIn = limitTimeInSeconds - currentTimeInSeconds;
-              const token = await this.jwtService.signAsync(payload, {
-                expiresIn,
-              });
-
               const student_name = `${stu.user.firstName} ${stu.user.lastName}`;
               stu.limitEnrolledAt.setDate(stu.limitEnrolledAt.getDate() - 1);
 
@@ -638,7 +640,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
                 stu.user.email,
                 stu.partnerPrepCourse.geo.name,
                 stu.limitEnrolledAt,
-                token,
+                stu.inscriptionCourse.id,
               );
 
               const log = new LogStudent();
