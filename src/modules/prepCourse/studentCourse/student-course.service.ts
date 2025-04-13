@@ -1,4 +1,11 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -294,21 +301,19 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       await this.inscriptionCourseService.getById(inscriptionId);
 
     if (!inscription) {
-      throw new HttpException(
-        'Processo Seletivo nao encontrado',
-        HttpStatus.BAD_REQUEST,
+      throw new NotFoundException('Processo Seletivo não encontrado');
+    }
+
+    const isAlreadyEnrolled = inscription.students.some(
+      (student) => student.userId === userId,
+    );
+
+    if (isAlreadyEnrolled) {
+      throw new ConflictException(
+        'Você já realizou a inscrição neste Processo Seletivo.',
       );
     }
 
-    const hasUser = inscription.students.some(
-      (student) => student.userId === userId,
-    );
-    if (hasUser) {
-      throw new HttpException(
-        'Você já realizou a inscrição neste Processo Seletivo.',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
     return this.userService.me(userId);
   }
 
