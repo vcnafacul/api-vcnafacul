@@ -97,7 +97,7 @@ export class CreateStudentCourseInput {
 
   @ApiProperty()
   @IsString()
-  @InscriptionCourseExist({ message: 'Partner Prep Course not found' })
+  @InscriptionCourseExist({ message: 'Processo seletivo nao encontrado' })
   inscriptionId: string;
 
   @ApiProperty()

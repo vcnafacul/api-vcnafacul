@@ -911,7 +911,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     const studentCourse: StudentCourse = Object.assign(new StudentCourse(), {
       userId: dto.userId,
       rg: dto.rg,
-      uf: dto.uf,
+      uf: dto.uf || '',
       cpf: dto.cpf,
       email: dto.email,
       whatsapp: dto.whatsapp,

@@ -17,10 +17,10 @@ export class InscriptionCourseExistValidator
   ) {}
 
   async validate(value: any): Promise<boolean> {
-    const InscriptionCourse = await this.inscriptionCourseRepository.findOneBy({
+    const inscriptionCourse = await this.inscriptionCourseRepository.findOneBy({
       id: value,
     });
-    return !InscriptionCourse;
+    return !!inscriptionCourse;
   }
 }
 

@@ -7,7 +7,7 @@ import { CollaboratorModule } from '../collaborator/collaborator.module';
 import { PartnerPrepCourseController } from './partner-prep-course.controller';
 import { PartnerPrepCourseRepository } from './partner-prep-course.repository';
 import { PartnerPrepCourseService } from './partner-prep-course.service';
-import { PartnerPrepCourseExistValidator } from './validator/inscription-course-exist.validator';
+import { PartnerPrepCourseExistValidator } from './validator/partner-pret-course-exist.validator';
 
 @Module({
   controllers: [PartnerPrepCourseController],
