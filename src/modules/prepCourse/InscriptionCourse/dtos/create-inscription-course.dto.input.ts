@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsDateString,
   IsNumber,
   IsOptional,
@@ -36,4 +37,9 @@ export class CreateInscriptionCourseInput {
   @IsNumber()
   @Min(1)
   expectedOpening: number;
+
+  @ApiProperty()
+  @IsOptional()
+  @IsBoolean()
+  requestDocuments: boolean = false;
 }

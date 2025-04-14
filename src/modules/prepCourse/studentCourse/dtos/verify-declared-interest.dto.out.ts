@@ -11,7 +11,7 @@ export class VerifyDeclaredInterestDtoOutput {
   expired: boolean;
 
   @ApiProperty()
-  convocaded: boolean;
+  convocated: boolean;
 
   @ApiProperty()
   declared: boolean;

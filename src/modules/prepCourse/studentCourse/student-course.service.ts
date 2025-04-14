@@ -560,7 +560,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     const today = new Date();
     return {
       requestDocuments: inscriptin.requestDocuments,
-      convocaded:
+      convocated:
         student.applicationStatus === StatusApplication.CalledForEnrollment,
       declared,
       expired: student.limitEnrolledAt < today,

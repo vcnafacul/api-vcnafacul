@@ -37,4 +37,7 @@ export class InscriptionCourseDtoOutput {
 
   @ApiProperty()
   partnerPrepCourseName: string;
+
+  @ApiProperty()
+  requestDocuments: boolean;
 }

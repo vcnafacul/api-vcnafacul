@@ -95,6 +95,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
       updatedAt: result.updatedAt,
       partnerPrepCourseId: parnetPrepCourse.id,
       partnerPrepCourseName: parnetPrepCourse.geo.name,
+      requestDocuments: result.requestDocuments,
     };
   }
 
@@ -124,6 +125,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
         updatedAt: i.updatedAt,
         partnerPrepCourseId: i.partnerPrepCourse.id,
         partnerPrepCourseName: i.partnerPrepCourse.geo.name,
+        requestDocuments: i.requestDocuments,
       })),
       page: inscription.page,
       limit: inscription.limit,
@@ -245,6 +247,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     inscriptionCourse.startDate = dto.startDate;
     inscriptionCourse.endDate = dto.endDate;
     inscriptionCourse.expectedOpening = dto.expectedOpening;
+    inscriptionCourse.requestDocuments = dto.requestDocuments;
     await this.repository.update(inscriptionCourse);
   }
 
