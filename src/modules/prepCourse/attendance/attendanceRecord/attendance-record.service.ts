@@ -214,17 +214,20 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
       );
     }
 
+    const endDateCopy = new Date(endDate);
+    endDateCopy.setDate(endDateCopy.getDate() + 1);
+
     const classReport = await this.repository.dailyAttendanceByClassId(
       classId,
       startDate,
-      endDate,
+      endDateCopy,
     );
 
     const generalReport = await this.repository.dailyAttendanceForClassIds(
       [],
       classEntity.partnerPrepCourse.id,
       startDate,
-      endDate,
+      endDateCopy,
     );
 
     return {
