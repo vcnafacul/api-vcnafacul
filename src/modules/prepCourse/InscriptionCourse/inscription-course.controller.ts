@@ -120,11 +120,8 @@ export class InscriptionCourseController {
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
-  async update(
-    @Body() dto: UpdateInscriptionCourseDTOInput,
-    @Req() req: Request,
-  ) {
-    await this.service.updateFromDTO(dto, (req.user as User).id);
+  async update(@Body() dto: UpdateInscriptionCourseDTOInput) {
+    await this.service.updateFromDTO(dto);
   }
 
   @Delete(':id')

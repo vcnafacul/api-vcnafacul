@@ -8,7 +8,6 @@ import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { adjustDate } from 'src/utils/adjustDate';
 import { HasInscriptionActiveDtoOutput } from '../partnerPrepCourse/dtos/has-inscription-active.output.dto';
-import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
 import { PartnerPrepCourseService } from '../partnerPrepCourse/partner-prep-course.service';
 import { StatusApplication } from '../studentCourse/enums/stastusApplication';
 import { LogStudent } from '../studentCourse/log-student/log-student.entity';
@@ -59,12 +58,6 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     dto.endDate = new Date(dto.endDate);
     dto.startDate = new Date(dto.startDate);
     dto.endDate.setHours(23, 59, 59, 999);
-
-    this.checkDateConflictWithInscription(
-      allInscription.data,
-      dto.startDate,
-      dto.endDate,
-    );
 
     if (currentInscriptionCourse || dto.startDate > new Date()) {
       dto.actived = Status.Pending;
@@ -164,14 +157,6 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     };
   }
 
-  async findOneActived(partnerPrepCourse: PartnerPrepCourse) {
-    const inscription = await this.repository.findActived(partnerPrepCourse);
-    if (!inscription || inscription.endDate < new Date()) {
-      return null;
-    }
-    return inscription;
-  }
-
   async cancelInscriptionCourse(id: string) {
     const inscriptionCourse = await this.repository.findOneBy({ id });
     if (!inscriptionCourse) {
@@ -203,10 +188,8 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     return this.repository.update(entity);
   }
 
-  async updateFromDTO(dto: UpdateInscriptionCourseDTOInput, userId: string) {
-    const parnetPrepCourse =
-      await this.partnerPrepCourseService.getByUserId(userId);
-    const activeInscription = await this.findOneActived(parnetPrepCourse);
+  async updateFromDTO(dto: UpdateInscriptionCourseDTOInput) {
+    const activeInscription = await this.findOneBy({ id: dto.id });
 
     const inscriptionCourse = await this.repository.findOneBy({ id: dto.id });
     if (!inscriptionCourse) {
@@ -226,13 +209,6 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     dto.endDate = new Date(dto.endDate);
     dto.startDate = new Date(dto.startDate);
     dto.endDate.setHours(23, 59, 59, 999);
-
-    await this.checkDateConflict(
-      parnetPrepCourse,
-      dto.startDate,
-      dto.endDate,
-      dto.id,
-    );
 
     if (dto.endDate < new Date()) {
       inscriptionCourse.actived = Status.Rejected;
@@ -334,53 +310,6 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
         `Erro ao atualizar status das inscrições: ${error}`,
       );
     }
-  }
-
-  async checkDateConflict(
-    partner: PartnerPrepCourse,
-    startDate: Date,
-    endDate: Date,
-    inscriptionId?: string,
-  ) {
-    const allInscription = await this.repository.findAllBy({
-      page: 1,
-      limit: 9999,
-      where: { partnerPrepCourse: partner },
-    });
-    this.checkDateConflictWithInscription(
-      allInscription.data,
-      startDate,
-      endDate,
-      inscriptionId,
-    );
-  }
-
-  checkDateConflictWithInscription(
-    inscription: InscriptionCourse[],
-    startDate: Date,
-    endDate: Date,
-    inscriptionId?: string,
-  ) {
-    inscription.forEach((ins) => {
-      if (ins.id !== inscriptionId) {
-        if (startDate >= ins.startDate && startDate <= ins.endDate) {
-          throw new HttpException(
-            'Já existe um processo seletivo neste período',
-            HttpStatus.BAD_REQUEST,
-          );
-        } else if (endDate >= ins.startDate && endDate <= ins.endDate) {
-          throw new HttpException(
-            'Já existe um processo seletivo neste período',
-            HttpStatus.BAD_REQUEST,
-          );
-        } else if (startDate <= ins.startDate && endDate >= ins.endDate) {
-          throw new HttpException(
-            'Já existe um processo seletivo neste período',
-            HttpStatus.BAD_REQUEST,
-          );
-        }
-      }
-    });
   }
 
   async updateWaitingList(id: string, studentId: string, waitingList: boolean) {
