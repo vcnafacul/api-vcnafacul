@@ -9,6 +9,7 @@ import { User } from 'src/modules/user/user.entity';
 import { htmlGeo } from './data';
 import { sendEmailConfirmEmail } from './templates/confirm-email';
 import { sendEmailDeclaredInterest } from './templates/declared-interest';
+import { sendEmailDeclaredInterestBulk } from './templates/declared-interest-bulk';
 import { sendEmailInviteMember } from './templates/invite-member-prep-course';
 import { sendEmail } from './templates/reset-password';
 import { sendEmailWaitingList } from './templates/waiting-list';
@@ -198,6 +199,38 @@ export class EmailService {
     };
 
     await sendEmailDeclaredInterest({
+      transporter: this.transporter,
+      options: mailOptions,
+    });
+  }
+
+  async sendDeclaredInterestBulk(
+    bccList: string[],
+    prepCourse: string,
+    limitDate: Date,
+    inscriptionId: string,
+  ) {
+    const prepCourseName = prepCourse.includes('Cursinho')
+      ? prepCourse
+      : `Cursinho ${prepCourse}`;
+    const date = format(limitDate, 'dd/MM/yyyy');
+    const declaredInterestUrl = `${this.configService.get<string>(
+      'FRONT_URL',
+    )}/declarar-interesse/${inscriptionId}`;
+
+    const mailOptions = {
+      from: this.configService.get<string>('SMTP_USERNAME'),
+      to: this.configService.get<string>('SMTP_USERNAME'), // ou um destinatário genérico
+      bcc: bccList,
+      subject: `Declaração de Interesse ${prepCourseName} - Você na Facul`,
+      context: {
+        declaredInterestUrl,
+        prepCourseName,
+        date,
+      },
+    };
+
+    await sendEmailDeclaredInterestBulk({
       transporter: this.transporter,
       options: mailOptions,
     });

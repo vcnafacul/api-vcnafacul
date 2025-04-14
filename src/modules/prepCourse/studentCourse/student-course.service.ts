@@ -631,53 +631,68 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         applicationStatus: StatusApplication.CalledForEnrollment,
       });
 
-      const chunkSize = 5;
-      for (let i = 0; i < students.length; i += chunkSize) {
-        const chunk = students.slice(i, i + chunkSize);
+      const grouped = new Map<string, Map<string, StudentCourse[]>>();
 
-        const results = await Promise.allSettled(
-          chunk.map(async (stu) => {
-            try {
-              const student_name = `${stu.user.firstName} ${stu.user.lastName}`;
-              stu.limitEnrolledAt.setDate(stu.limitEnrolledAt.getDate() - 1);
+      // Agrupar por inscriptionCourse.id e deadline (normalizado)
+      for (const student of students) {
+        const courseId = student.inscriptionCourse.id;
 
-              await this.emailService.sendDeclaredInterest(
-                student_name,
-                stu.user.email,
-                stu.partnerPrepCourse.geo.name,
-                stu.limitEnrolledAt,
-                stu.inscriptionCourse.id,
-              );
+        const deadline = new Date(student.limitEnrolledAt);
+        deadline.setHours(0, 0, 0, 0); // normalizar a hora
+        const deadlineKey = deadline.toISOString(); // usar como chave
 
-              const log = new LogStudent();
-              log.studentId = stu.id;
-              log.applicationStatus = StatusApplication.CalledForEnrollment;
-              log.description = 'Email de convocação enviado';
-              await this.logStudentRepository.create(log);
-            } catch (emailError) {
-              throw {
-                email: stu.user.email,
-                id: stu.id,
-                error: emailError.message,
-              };
-            }
-          }),
-        );
-
-        const failedStudents = results
-          .filter((result) => result.status === 'rejected')
-          .map((result) => (result as PromiseRejectedResult).reason);
-
-        if (failedStudents.length > 0) {
-          this.discordWebhook.sendMessage(
-            `Falha no envio de emails para: ${failedStudents
-              .map((s) => `${s.email} (ID: ${s.id})`)
-              .join(', ')}`,
-          );
+        if (!grouped.has(courseId)) {
+          grouped.set(courseId, new Map());
         }
 
-        // Delay entre os chunks para evitar sobrecarga no SMTP
-        await new Promise((resolve) => setTimeout(resolve, 1000)); // 5 segundos de pausa
+        const courseGroup = grouped.get(courseId)!;
+
+        if (!courseGroup.has(deadlineKey)) {
+          courseGroup.set(deadlineKey, []);
+        }
+
+        courseGroup.get(deadlineKey)!.push(student);
+      }
+
+      const chunkSize = 50;
+
+      for (const [courseId, deadlineGroup] of grouped.entries()) {
+        for (const [deadlineKey, courseStudents] of deadlineGroup.entries()) {
+          const deadline = new Date(deadlineKey);
+          for (let i = 0; i < courseStudents.length; i += chunkSize) {
+            const chunk = courseStudents.slice(i, i + chunkSize);
+
+            const bccList = chunk.map((s) => s.user.email);
+            const courseName = chunk[0].partnerPrepCourse.geo.name;
+
+            try {
+              await this.emailService.sendDeclaredInterestBulk(
+                bccList,
+                courseName,
+                deadline,
+                courseId,
+              );
+
+              await Promise.all(
+                chunk.map((student) => {
+                  const log = new LogStudent();
+                  log.studentId = student.id;
+                  log.applicationStatus = StatusApplication.CalledForEnrollment;
+                  log.description = 'Email de convocação enviado (em lote)';
+                  return this.logStudentRepository.create(log);
+                }),
+              );
+            } catch (error) {
+              this.discordWebhook.sendMessage(
+                `Erro ao enviar email para inscrição ${courseId}, deadline ${deadlineKey}, chunk: ${bccList.join(
+                  ', ',
+                )}.\nErro: ${error.message}`,
+              );
+            }
+
+            await new Promise((res) => setTimeout(res, 1000));
+          }
+        }
       }
     } catch (error) {
       this.discordWebhook.sendMessage(
