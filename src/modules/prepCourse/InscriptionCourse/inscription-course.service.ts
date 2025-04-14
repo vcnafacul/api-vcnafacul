@@ -134,7 +134,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     const inscription = await this.repository.findOneBy({ id });
     if (!inscription) {
       throw new HttpException(
-        'Inscrição nao encontrada',
+        'Processo Seletivo não encontrado',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -161,7 +161,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     const inscriptionCourse = await this.repository.findOneBy({ id });
     if (!inscriptionCourse) {
       throw new HttpException(
-        'Inscrição não encontrada',
+        'Processo Seletivo não encontrado',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -176,7 +176,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     });
     if (!inscriptionCourse) {
       throw new HttpException(
-        'Inscrição não encontrada',
+        'Processo Seletivo não encontrado',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -194,7 +194,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     const inscriptionCourse = await this.repository.findOneBy({ id: dto.id });
     if (!inscriptionCourse) {
       throw new HttpException(
-        'Inscrição não encontrada',
+        'Processo Seletivo não encontrado',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -233,7 +233,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     const inscription = await this.repository.getSubscribers(inscriptionId);
     if (!inscription) {
       throw new HttpException(
-        'Inscrição não encontrada',
+        'Processo Seletivo não encontrado',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -315,7 +315,10 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
   async updateWaitingList(id: string, studentId: string, waitingList: boolean) {
     const inscription = await this.repository.findOneBy({ id });
     if (!inscription) {
-      throw new HttpException('Inscrição não encontrada', HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        'Processo Seletivo não encontrado',
+        HttpStatus.NOT_FOUND,
+      );
     }
     const student = await this.studentRepository.findOneBy({ id: studentId });
     if (!student) {
@@ -374,7 +377,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
       const inscription = await this.repository.findOneBy({ id });
       if (!inscription) {
         throw new HttpException(
-          'Inscrição não encontrada',
+          'Processo Seletivo não encontrado',
           HttpStatus.NOT_FOUND,
         );
       }

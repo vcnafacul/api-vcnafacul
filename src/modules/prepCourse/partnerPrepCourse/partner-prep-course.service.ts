@@ -274,11 +274,11 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     }
     const role = await this.roleService.findOneByIdWithPartner(dto.id);
     if (!role) {
-      throw new HttpException('Role nao encontrada', HttpStatus.NOT_FOUND);
+      throw new HttpException('Role não encontrada', HttpStatus.NOT_FOUND);
     }
     if (role.partnerPrepCourse.id !== partnerPrepCourse.id) {
       throw new HttpException(
-        'Role nao pertence ao cursinho parceiro',
+        'Role não pertence ao cursinho parceiro',
         HttpStatus.BAD_REQUEST,
       );
     }

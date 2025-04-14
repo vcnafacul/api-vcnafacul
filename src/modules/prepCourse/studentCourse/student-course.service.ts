@@ -352,7 +352,10 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       id: student.inscriptionCourse.id,
     });
     if (!inscription) {
-      throw new HttpException('Inscrição não encontrada', HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        'Processo Seletivo não encontrado',
+        HttpStatus.NOT_FOUND,
+      );
     }
     if (student.applicationStatus === StatusApplication.Enrolled) {
       throw new HttpException(
@@ -456,7 +459,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   async confirmEnrolled(id: string) {
     const student = await this.repository.findOneBy({ id });
     if (!student) {
-      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
     if (student.applicationStatus !== StatusApplication.DeclaredInterest) {
       throw new HttpException(
@@ -479,7 +482,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   async resetStudent(id: string) {
     const student = await this.repository.findOneBy({ id });
     if (!student) {
-      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
     if (student.applicationStatus === StatusApplication.Enrolled) {
       throw new HttpException(
@@ -515,7 +518,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   async rejectStudent(id: string, reason: string) {
     const student = await this.repository.findOneBy({ id });
     if (!student) {
-      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
     if (student.applicationStatus === StatusApplication.Enrolled) {
       throw new HttpException(
@@ -541,14 +544,17 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       id: inscriptinId,
     });
     if (!inscriptin) {
-      throw new HttpException('Inscrição nao encontrada', HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        'Processo Seletivo não encontrado',
+        HttpStatus.NOT_FOUND,
+      );
     }
     const student = await this.repository.getStudentByUserIdAndInscriptionId(
       userId,
       inscriptin.id,
     );
     if (!student) {
-      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
     let declared = false;
     if (
@@ -572,7 +578,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   async sendEmailDeclaredInterestById(id: string) {
     const students = await this.repository.findOneToSendEmail(id);
     if (!students) {
-      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
     const lastLog = students.logs
       .filter((log) => log.description === 'Email de convocação enviado')
@@ -731,11 +737,11 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   async updateClass(studentId: string, classId: string) {
     const student = await this.repository.findOneBy({ id: studentId });
     if (!student) {
-      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
     const class_ = await this.classService.findOneBy({ id: classId });
     if (!class_) {
-      throw new HttpException('Turma nao encontrada', HttpStatus.NOT_FOUND);
+      throw new HttpException('Turma não encontrada', HttpStatus.NOT_FOUND);
     }
     student.class = class_;
     await this.repository.update(student);
@@ -763,7 +769,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
     if (!partnerPrepCourse) {
       throw new HttpException(
-        'Cursinho Parceiro nao encontrado',
+        'Cursinho Parceiro não encontrado',
         HttpStatus.NOT_FOUND,
       );
     }
@@ -819,11 +825,11 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   async cancelEnrolled(studentId: string, reason: string) {
     const student = await this.repository.findOneBy({ id: studentId });
     if (!student) {
-      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
     if (student.applicationStatus !== StatusApplication.Enrolled) {
       throw new HttpException(
-        'Estudante nao esta matriculado',
+        'Estudante não esta matriculado',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -840,11 +846,11 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   async activeEnrolled(studentId: string) {
     const student = await this.repository.findOneBy({ id: studentId });
     if (!student) {
-      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
     if (student.applicationStatus !== StatusApplication.EnrollmentCancelled) {
       throw new HttpException(
-        'Estudante nao esta matriculado',
+        'Estudante não esta matriculado',
         HttpStatus.BAD_REQUEST,
       );
     }

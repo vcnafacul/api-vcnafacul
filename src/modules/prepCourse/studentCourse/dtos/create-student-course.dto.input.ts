@@ -1,13 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
-  IsDateString,
-  IsNotEmpty,
-  IsNumber,
-  IsOptional,
-  IsString,
-  ValidateIf,
-  ValidateNested,
+    IsDateString,
+    IsNotEmpty,
+    IsNumber,
+    IsOptional,
+    IsString,
+    ValidateIf,
+    ValidateNested,
 } from 'class-validator';
 import { UserExist } from 'src/modules/user/validator/user-exist.validator';
 import { CPF } from 'src/shared/validator/cpf.validator';
@@ -97,7 +97,7 @@ export class CreateStudentCourseInput {
 
   @ApiProperty()
   @IsString()
-  @InscriptionCourseExist({ message: 'Processo seletivo nao encontrado' })
+  @InscriptionCourseExist({ message: 'Processo seletivo não encontrado' })
   inscriptionId: string;
 
   @ApiProperty()
