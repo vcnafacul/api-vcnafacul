@@ -6,8 +6,5 @@ export class HasInscriptionActiveDtoOutput {
   prepCourseName: string;
 
   @ApiProperty()
-  hasActiveInscription: boolean;
-
-  @ApiProperty()
   inscription?: InscriptionInfoFormDtoOutput;
 }

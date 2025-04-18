@@ -5,9 +5,9 @@ import { StatusLogGeo } from 'src/modules/geo/enum/status-log-geo';
 import { LogGeo } from 'src/modules/geo/log-geo/log-geo.entity';
 import { LogGeoRepository } from 'src/modules/geo/log-geo/log-geo.repository';
 import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
+import { UpdateRoleDtoInput } from 'src/modules/role/dto/update.role.dto';
 import { Role } from 'src/modules/role/role.entity';
 import { RoleService } from 'src/modules/role/role.service';
-import { Status } from 'src/modules/simulado/enum/status.enum';
 import { UserService } from 'src/modules/user/user.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { EmailService } from 'src/shared/services/email/email.service';
@@ -15,10 +15,8 @@ import { DataSource } from 'typeorm';
 import { Collaborator } from '../collaborator/collaborator.entity';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
 import { PartnerPrepCourseDtoInput } from './dtos/create-partner-prep-course.input.dto';
-import { HasInscriptionActiveDtoOutput } from './dtos/has-inscription-active.output.dto';
 import { PartnerPrepCourse } from './partner-prep-course.entity';
 import { PartnerPrepCourseRepository } from './partner-prep-course.repository';
-import { UpdateRoleDtoInput } from 'src/modules/role/dto/update.role.dto';
 
 @Injectable()
 export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
@@ -55,8 +53,10 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
         );
       }
 
-      const user = await this.userService.findOneBy({ id: dto.userId });
-      if (!user) {
+      const representative = await this.userService.findOneBy({
+        id: dto.representative,
+      });
+      if (!representative) {
         throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
       }
 
@@ -65,17 +65,15 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
 
       let collaborator = await manager
         .getRepository(Collaborator)
-        .findOneBy({ user: { id: user.id } });
+        .findOneBy({ user: { id: representative.id } });
 
       if (!collaborator) {
         collaborator = new Collaborator();
-        collaborator.user = user;
+        collaborator.user = representative;
         collaborator.description = 'Representante Cursinho';
       }
 
       collaborator.partnerPrepCourse = partnerPrepCourse;
-
-      partnerPrepCourse.members = [collaborator];
 
       // Salvar cursinho e colaborador na mesma transação
       await manager.getRepository(PartnerPrepCourse).save(partnerPrepCourse);
@@ -99,35 +97,6 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
 
   async update(entity: PartnerPrepCourse): Promise<void> {
     await this.repository.update(entity);
-  }
-
-  async hasActiveInscription(
-    id: string,
-  ): Promise<HasInscriptionActiveDtoOutput> {
-    const prep = await this.repository.findOneBy({ id });
-    if (!prep) {
-      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
-    }
-    const activedInscription = prep.inscriptionCourses.find(
-      (i) => i.actived === Status.Approved && i.endDate > new Date(),
-    );
-    if (!activedInscription) {
-      throw new HttpException(
-        'Não há inscrições ativas para esse cursinho no momento',
-        HttpStatus.NOT_FOUND,
-      );
-    }
-
-    return {
-      prepCourseName: prep.geo.name,
-      hasActiveInscription: true,
-      inscription: {
-        name: activedInscription.name,
-        description: activedInscription.description,
-        startDate: activedInscription.startDate,
-        endDate: activedInscription.endDate,
-      },
-    };
   }
 
   async inviteMember(email: string, userId: string) {
@@ -305,11 +274,11 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     }
     const role = await this.roleService.findOneByIdWithPartner(dto.id);
     if (!role) {
-      throw new HttpException('Role nao encontrada', HttpStatus.NOT_FOUND);
+      throw new HttpException('Role não encontrada', HttpStatus.NOT_FOUND);
     }
     if (role.partnerPrepCourse.id !== partnerPrepCourse.id) {
       throw new HttpException(
-        'Role nao pertence ao cursinho parceiro',
+        'Role não pertence ao cursinho parceiro',
         HttpStatus.BAD_REQUEST,
       );
     }

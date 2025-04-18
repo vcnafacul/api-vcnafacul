@@ -5,7 +5,6 @@ import { GetAllWhereInput } from 'src/shared/modules/base/interfaces/get-all.inp
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { LinkedListRepository } from 'src/shared/modules/linked/linked-list.repository';
 import { EntityManager } from 'typeorm';
-import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
 import { StudentCourse } from '../studentCourse/student-course.entity';
 import { InscriptionCourse } from './inscription-course.entity';
 
@@ -44,20 +43,6 @@ export class InscriptionCourseRepository extends LinkedListRepository<
         'user.state',
         'user.city',
       ])
-      .getOne();
-  }
-
-  async findActived(
-    partnerPrepCourse: PartnerPrepCourse,
-  ): Promise<InscriptionCourse> {
-    return await this.repository
-      .createQueryBuilder('inscription_course')
-      .where({
-        partnerPrepCourse,
-        actived: Status.Approved,
-      })
-      .leftJoin('inscription_course.students', 'student_course')
-      .addSelect(['student_course.userId'])
       .getOne();
   }
 

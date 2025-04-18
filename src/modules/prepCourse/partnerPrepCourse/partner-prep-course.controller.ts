@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Get,
-  Param,
   Patch,
   Post,
   Req,
@@ -18,7 +17,6 @@ import { User } from 'src/modules/user/user.entity';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { PartnerPrepCourseDtoInput } from './dtos/create-partner-prep-course.input.dto';
-import { HasInscriptionActiveDtoOutput } from './dtos/has-inscription-active.output.dto';
 import { inviteMembersInputDto } from './dtos/invite-members.input.dto';
 import { PartnerPrepCourseService } from './partner-prep-course.service';
 
@@ -99,19 +97,6 @@ export class PartnerPrepCourseController {
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarPermissoesCursinho)
   async update(@Body() dto: UpdateRoleDtoInput, @Req() req: Request) {
     return await this.service.updateRole(dto, (req.user as User).id);
-  }
-
-  @Get(':id/has-active-inscription')
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
-  @ApiResponse({
-    status: 201,
-    description: 'verifica se há inscrição ativa para o cursinho parceiro',
-  })
-  async hasActiveInscription(
-    @Param('id') id: string,
-  ): Promise<HasInscriptionActiveDtoOutput> {
-    return await this.service.hasActiveInscription(id);
   }
 
   @Post('invite-members')

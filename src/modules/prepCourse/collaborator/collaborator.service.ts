@@ -41,7 +41,7 @@ export class CollaboratorService extends BaseService<Collaborator> {
       page: page,
     });
     if (!data) {
-      throw new HttpException('Usuário nao encontrado', HttpStatus.NOT_FOUND);
+      throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
     }
     const result: CollaboratorDTOOutput[] = data.data.map((c) => ({
       id: c.id,

@@ -95,7 +95,10 @@ describe('Class (e2e)', () => {
     user.role = role;
     await userRepository.update(user);
 
-    const dto: PartnerPrepCourseDtoInput = { geoId: geo.id, userId: user.id };
+    const dto: PartnerPrepCourseDtoInput = {
+      geoId: geo.id,
+      representative: user.id,
+    };
     const partner = await partnerService.create(dto, user.id);
     return { user, partner };
   };
@@ -255,7 +258,7 @@ describe('Class (e2e)', () => {
   }, 30000);
 
   it('should list class with number of students', async () => {
-    const { user, partner } = await createPartnerFaker();
+    const { user } = await createPartnerFaker();
 
     const token = await jwtService.signAsync(
       { user: { id: user.id } },
@@ -280,7 +283,10 @@ describe('Class (e2e)', () => {
     const classId = createdClass.body.id;
 
     const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker();
-    await inscriptionCourseService.create(inscriptionCourseDto, user.id);
+    const inscription = await inscriptionCourseService.create(
+      inscriptionCourseDto,
+      user.id,
+    );
 
     const userDto = CreateUserDtoInputFaker();
     await userService.create(userDto);
@@ -288,7 +294,10 @@ describe('Class (e2e)', () => {
       email: userDto.email,
     });
 
-    const dto = createStudentCourseDTOInputFaker(userStudent.id, partner.id);
+    const dto = createStudentCourseDTOInputFaker(
+      userStudent.id,
+      inscription.id,
+    );
     dto.rg = '45.678.123-4';
 
     const student = await studentCourseService.create(dto);

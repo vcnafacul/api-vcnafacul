@@ -1,0 +1,11 @@
+{
+  "jest.enabled": true,
+  "jest.jestCommandLine": "yarn test:local",
+  "jest.configPath": "test/config/jest-e2e.json",
+  "jest.rootPath": ".",
+  "jest.testMatch": ["**/*.e2e-spec.ts"],
+  "jest.autoRun": {
+    "watch": true,
+    "onSave": "test-src-file"
+  }
+}

@@ -1,4 +1,11 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -41,6 +48,7 @@ import {
   StudentsDtoOutput,
 } from './dtos/get-enrolled.dto.output';
 import { ScheduleEnrolledDtoInput } from './dtos/schedule-enrolled.dto.input';
+import { VerifyDeclaredInterestDtoOutput } from './dtos/verify-declared-interest.dto.out';
 import { StatusApplication } from './enums/stastusApplication';
 import { LegalGuardian } from './legal-guardian/legal-guardian.entity';
 import { LegalGuardianRepository } from './legal-guardian/legal-guardian.repository';
@@ -75,16 +83,20 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   async create(
     dto: CreateStudentCourseInput,
   ): Promise<CreateStudentCourseOutput> {
-    const partnerPrepCourse = await this.partnerPrepCourseService.findOneBy({
-      id: dto.partnerPrepCourse,
+    const inscriptionCourse = await this.inscriptionCourseService.findOneBy({
+      id: dto.inscriptionId,
     });
-
-    const inscriptionCourse =
-      await this.inscriptionCourseService.findOneActived(partnerPrepCourse);
 
     if (!inscriptionCourse) {
       throw new HttpException(
         'No active inscription course for this partner prep course',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    if (inscriptionCourse.actived !== Status.Approved) {
+      throw new HttpException(
+        'Processo Seletivo não está ativo',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -109,7 +121,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
     const studentCourse = await this.createStudentCourse(
       dto,
-      partnerPrepCourse,
+      inscriptionCourse.partnerPrepCourse,
       inscriptionCourse,
     );
 
@@ -121,7 +133,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     const representatives =
       await this.collaboratorRepository.findCollaboratorsByPermission(
         Permissions.gerenciarProcessoSeletivo,
-        partnerPrepCourse.id,
+        inscriptionCourse.partnerPrepCourse.id,
       );
 
     const log = new LogStudent();
@@ -133,16 +145,16 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     await this.sendEmailConfirmation(
       dto,
       representatives.map((rep) => rep.user.email),
-      partnerPrepCourse.geo.name,
+      inscriptionCourse.partnerPrepCourse.geo.name,
     );
     return { id: studentCourse.id } as CreateStudentCourseOutput;
   }
 
-  async createUser(userDto: CreateUserDtoInput, hashPrepCourse: string) {
+  async createUser(userDto: CreateUserDtoInput, inscriptionId: string) {
     const user = await this.userService.createUser(userDto);
     const token = await this.jwtService.signAsync(
       {
-        user: { id: user.id, flow: CreateFlow.CREATE_STUDENT, hashPrepCourse },
+        user: { id: user.id, flow: CreateFlow.CREATE_STUDENT, inscriptionId },
       },
       { expiresIn: '2h' },
     );
@@ -168,14 +180,6 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       totalItems: result.totalItems,
       limit: result.limit,
     } as GetAllOutput<GetAllStudentDtoOutput>;
-  }
-
-  async uploadProfilePhoto(file: Express.Multer.File) {
-    const fileKey = await this.blobService.uploadFile(
-      file,
-      this.configService.get<string>('BUCKET_PROFILE'),
-    );
-    return fileKey;
   }
 
   async updateProfilePhotoByStudent(
@@ -218,15 +222,15 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     photo: Express.Multer.File,
     areaInterest: string[],
     selectedCourses: string[],
-    userId: string,
+    studentId: string,
   ) {
-    const student = await this.repository.findOneBy({ id: userId });
+    const student = await this.repository.findOneBy({ id: studentId });
     if (!student) {
       throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
     if (student.applicationStatus === StatusApplication.DeclaredInterest) {
       throw new HttpException(
-        'Você já declarou interesse neste Processo Seletivo.',
+        'Você já declarou interesse neste Processo Seletivo',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -253,7 +257,10 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         await this.documentRepository.create(document);
       }),
     );
-    const fileKey = await this.uploadProfilePhoto(photo);
+    const fileKey = await this.blobService.uploadFile(
+      photo,
+      this.configService.get<string>('BUCKET_PROFILE'),
+    );
 
     student.applicationStatus = StatusApplication.DeclaredInterest;
     student.areaInterest = JSON.stringify(areaInterest);
@@ -285,34 +292,24 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     return file;
   }
 
-  async getUserInfoToInscription(idPrepCourse: string, userId: string) {
-    const prepCourse = await this.partnerPrepCourseService.findOneBy({
-      id: idPrepCourse,
-    });
-    const activedInscription = prepCourse.inscriptionCourses.find(
-      (i) => i.actived === Status.Approved,
-    );
+  async getUserInfoToInscription(inscriptionId: string, userId: string) {
+    const inscription =
+      await this.inscriptionCourseService.getById(inscriptionId);
 
-    if (!activedInscription) {
-      throw new HttpException(
-        'Não existe inscrição ativa para este curso',
-        HttpStatus.BAD_REQUEST,
-      );
+    if (!inscription) {
+      throw new NotFoundException('Processo Seletivo não encontrado');
     }
 
-    const inscription = await this.inscriptionCourseService.findOneBy({
-      id: activedInscription.id,
-    });
-
-    const hasUser = inscription.students.some(
+    const isAlreadyEnrolled = inscription.students.some(
       (student) => student.userId === userId,
     );
-    if (hasUser) {
-      throw new HttpException(
+
+    if (isAlreadyEnrolled) {
+      throw new ConflictException(
         'Você já realizou a inscrição neste Processo Seletivo.',
-        HttpStatus.BAD_REQUEST,
       );
     }
+
     return this.userService.me(userId);
   }
 
@@ -321,24 +318,25 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     if (!student) {
       throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
-    if (student.applicationStatus === StatusApplication.UnderReview) {
-      student.isFree = isFree;
-      student.applicationStatus = StatusApplication.UnderReview;
-      await this.repository.update(student);
 
-      const log = new LogStudent();
-      log.studentId = student.id;
-      log.applicationStatus = StatusApplication.UnderReview;
-      log.description = isFree
-        ? 'Alterou status para isento'
-        : 'Alterou status para pagante';
-      await this.logStudentRepository.create(log);
-    } else {
+    if (student.applicationStatus !== StatusApplication.UnderReview) {
       throw new HttpException(
         'Não é possível alterar informações do estudantes. Status Block',
         HttpStatus.BAD_REQUEST,
       );
     }
+
+    student.isFree = isFree;
+    student.applicationStatus = StatusApplication.UnderReview;
+    await this.repository.update(student);
+
+    const log = new LogStudent();
+    log.studentId = student.id;
+    log.applicationStatus = StatusApplication.UnderReview;
+    log.description = isFree
+      ? 'Alterou status para isento'
+      : 'Alterou status para pagante';
+    await this.logStudentRepository.create(log);
   }
 
   async updateSelectEnrolled(id: string, enrolled: boolean) {
@@ -349,51 +347,47 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     const inscription = await this.inscriptionCourseService.findOneBy({
       id: student.inscriptionCourse.id,
     });
-    if (!inscription) {
-      throw new HttpException('Inscrição não encontrada', HttpStatus.NOT_FOUND);
-    }
     if (student.applicationStatus === StatusApplication.Enrolled) {
       throw new HttpException(
         'Não é possível alterar status de convocação de estudantes matriculados',
         HttpStatus.BAD_REQUEST,
       );
     }
+
     if (
-      student.applicationStatus === StatusApplication.UnderReview ||
-      (student.applicationStatus === StatusApplication.CalledForEnrollment &&
-        new Date() < new Date(student.selectEnrolledAt))
+      student.applicationStatus !== StatusApplication.UnderReview &&
+      (student.applicationStatus !== StatusApplication.CalledForEnrollment ||
+        new Date() >= new Date(student.selectEnrolledAt))
     ) {
-      const log = new LogStudent();
-      log.studentId = student.id;
-      if (!enrolled) {
-        student.selectEnrolled = false;
-        log.description =
-          'Alterou status de convocação para não convocar estudante';
-      } else {
-        student.selectEnrolled = true;
-        log.description =
-          'Alterou status de convocação para convocar estudante';
-      }
-      student.applicationStatus = StatusApplication.UnderReview;
-      log.applicationStatus = StatusApplication.UnderReview;
-      student.selectEnrolledAt = null;
-      student.limitEnrolledAt = null;
-      if (student.waitingList) {
-        student.waitingList = false;
-        await this.inscriptionCourseService.removeStudentWaitingList(
-          student,
-          inscription,
-        ); // remove student from waiting list already update the student and the inscription
-      } else {
-        await this.repository.update(student);
-      }
-      await this.logStudentRepository.create(log);
-    } else {
       throw new HttpException(
         'Não é possível alterar informações do estudantes. Status Block',
         HttpStatus.BAD_REQUEST,
       );
     }
+    const log = new LogStudent();
+    log.studentId = student.id;
+    if (!enrolled) {
+      student.selectEnrolled = false;
+      log.description =
+        'Alterou status de convocação para não convocar estudante';
+    } else {
+      student.selectEnrolled = true;
+      log.description = 'Alterou status de convocação para convocar estudante';
+    }
+    student.applicationStatus = StatusApplication.UnderReview;
+    log.applicationStatus = StatusApplication.UnderReview;
+    student.selectEnrolledAt = null;
+    student.limitEnrolledAt = null;
+    if (student.waitingList) {
+      student.waitingList = false;
+      await this.inscriptionCourseService.removeStudentWaitingList(
+        student,
+        inscription,
+      ); // remove student from waiting list already update the student and the inscription
+    } else {
+      await this.repository.update(student);
+    }
+    await this.logStudentRepository.create(log);
   }
 
   /*************  ✨ Codeium Command ⭐  *************/
@@ -414,6 +408,12 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     const inscription = await this.inscriptionCourseService.findOneBy({
       id: inscriptionId,
     });
+    if (!inscription) {
+      throw new HttpException(
+        'Processo Seletivo nao encontrado',
+        HttpStatus.NOT_FOUND,
+      );
+    }
     const students = await this.repository.findAllBy({
       page: 1,
       limit: 9999,
@@ -454,7 +454,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   async confirmEnrolled(id: string) {
     const student = await this.repository.findOneBy({ id });
     if (!student) {
-      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
     if (student.applicationStatus !== StatusApplication.DeclaredInterest) {
       throw new HttpException(
@@ -477,11 +477,11 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   async resetStudent(id: string) {
     const student = await this.repository.findOneBy({ id });
     if (!student) {
-      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
     if (student.applicationStatus === StatusApplication.Enrolled) {
       throw new HttpException(
-        'Estudante matriculado, impossivel resetar',
+        'Não é possivel resetar estudante matriculado',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -513,11 +513,11 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   async rejectStudent(id: string, reason: string) {
     const student = await this.repository.findOneBy({ id });
     if (!student) {
-      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
     if (student.applicationStatus === StatusApplication.Enrolled) {
       throw new HttpException(
-        'Estudante matriculado, impossivel resetar',
+        'Não é possivel rejeitar estudante matriculado',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -531,27 +531,66 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     await this.logStudentRepository.create(log);
   }
 
-  async verifyDeclaredInterest(studentId: string) {
-    const student = await this.repository.findOneBy({ id: studentId });
-    if (!student) {
-      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+  async verifyDeclaredInterest(
+    inscriptinId: string,
+    userId: string,
+  ): Promise<VerifyDeclaredInterestDtoOutput> {
+    const inscriptin = await this.inscriptionCourseService.findOneBy({
+      id: inscriptinId,
+    });
+    if (!inscriptin) {
+      throw new HttpException(
+        'Processo Seletivo não encontrado',
+        HttpStatus.NOT_FOUND,
+      );
     }
+    const student = await this.repository.getStudentByUserIdAndInscriptionId(
+      userId,
+      inscriptin.id,
+    );
+    if (!student) {
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+    }
+    let declared = false;
     if (
       student.applicationStatus === StatusApplication.DeclaredInterest ||
       student.applicationStatus === StatusApplication.Enrolled
     ) {
-      return true;
+      declared = true;
     }
-    return false;
+    const today = new Date();
+    return {
+      requestDocuments: inscriptin.requestDocuments,
+      convocated:
+        student.applicationStatus === StatusApplication.CalledForEnrollment,
+      declared,
+      expired: student.limitEnrolledAt < today,
+      studentId: student.id,
+      isFree: student.isFree,
+    };
   }
 
   async sendEmailDeclaredInterestById(id: string) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const currentTimeInSeconds = Math.floor(today.getTime() / 1000);
     const students = await this.repository.findOneToSendEmail(id);
     if (!students) {
-      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+    }
+    if (students.applicationStatus !== StatusApplication.CalledForEnrollment) {
+      throw new HttpException(
+        'Estudante nao foi convocado',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (
+      students.selectEnrolledAt === null ||
+      (students.limitEnrolledAt === null &&
+        students.selectEnrolledAt > new Date()) ||
+      students.limitEnrolledAt < new Date()
+    ) {
+      throw new HttpException(
+        'O período de convocação não confere com o período permitido para envio do email',
+        HttpStatus.BAD_REQUEST,
+      );
     }
     const lastLog = students.logs
       .filter((log) => log.description === 'Email de convocação enviado')
@@ -572,24 +611,15 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         HttpStatus.BAD_REQUEST,
       );
     }
-    const payload = {
-      user: { id: students.id, isFree: students.isFree },
-    };
-    const limitTimeInSeconds = Math.floor(
-      students.limitEnrolledAt.getTime() / 1000,
-    );
-    const expiresIn = limitTimeInSeconds - currentTimeInSeconds;
-    const token = await this.jwtService.signAsync(payload, { expiresIn });
 
     const student_name = `${students.user.firstName} ${students.user.lastName}`;
-    students.limitEnrolledAt.setDate(students.limitEnrolledAt.getDate() - 1);
 
     await this.emailService.sendDeclaredInterest(
       student_name,
       students.user.email,
       students.partnerPrepCourse.geo.name,
       students.limitEnrolledAt,
-      token,
+      students.inscriptionCourse.id,
     );
 
     const log = new LogStudent();
@@ -606,69 +636,74 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const currentTimeInSeconds = Math.floor(today.getTime() / 1000);
 
       const students = await this.repository.findAllCompletedBy({
         selectEnrolledAt: today,
         applicationStatus: StatusApplication.CalledForEnrollment,
       });
 
-      const chunkSize = 5;
-      for (let i = 0; i < students.length; i += chunkSize) {
-        const chunk = students.slice(i, i + chunkSize);
+      const grouped = new Map<string, Map<string, StudentCourse[]>>();
 
-        const results = await Promise.allSettled(
-          chunk.map(async (stu) => {
-            try {
-              const payload = { user: { id: stu.id, isFree: stu.isFree } };
-              const limitTimeInSeconds = Math.floor(
-                stu.limitEnrolledAt.getTime() / 1000,
-              );
-              const expiresIn = limitTimeInSeconds - currentTimeInSeconds;
-              const token = await this.jwtService.signAsync(payload, {
-                expiresIn,
-              });
+      // Agrupar por inscriptionCourse.id e deadline (normalizado)
+      for (const student of students) {
+        const courseId = student.inscriptionCourse.id;
 
-              const student_name = `${stu.user.firstName} ${stu.user.lastName}`;
-              stu.limitEnrolledAt.setDate(stu.limitEnrolledAt.getDate() - 1);
+        const deadline = new Date(student.limitEnrolledAt);
+        deadline.setHours(0, 0, 0, 0); // normalizar a hora
+        const deadlineKey = deadline.toISOString(); // usar como chave
 
-              await this.emailService.sendDeclaredInterest(
-                student_name,
-                stu.user.email,
-                stu.partnerPrepCourse.geo.name,
-                stu.limitEnrolledAt,
-                token,
-              );
-
-              const log = new LogStudent();
-              log.studentId = stu.id;
-              log.applicationStatus = StatusApplication.CalledForEnrollment;
-              log.description = 'Email de convocação enviado';
-              await this.logStudentRepository.create(log);
-            } catch (emailError) {
-              throw {
-                email: stu.user.email,
-                id: stu.id,
-                error: emailError.message,
-              };
-            }
-          }),
-        );
-
-        const failedStudents = results
-          .filter((result) => result.status === 'rejected')
-          .map((result) => (result as PromiseRejectedResult).reason);
-
-        if (failedStudents.length > 0) {
-          this.discordWebhook.sendMessage(
-            `Falha no envio de emails para: ${failedStudents
-              .map((s) => `${s.email} (ID: ${s.id})`)
-              .join(', ')}`,
-          );
+        if (!grouped.has(courseId)) {
+          grouped.set(courseId, new Map());
         }
 
-        // Delay entre os chunks para evitar sobrecarga no SMTP
-        await new Promise((resolve) => setTimeout(resolve, 1000)); // 5 segundos de pausa
+        const courseGroup = grouped.get(courseId)!;
+
+        if (!courseGroup.has(deadlineKey)) {
+          courseGroup.set(deadlineKey, []);
+        }
+
+        courseGroup.get(deadlineKey)!.push(student);
+      }
+
+      const chunkSize = 50;
+
+      for (const [courseId, deadlineGroup] of grouped.entries()) {
+        for (const [deadlineKey, courseStudents] of deadlineGroup.entries()) {
+          const deadline = new Date(deadlineKey);
+          for (let i = 0; i < courseStudents.length; i += chunkSize) {
+            const chunk = courseStudents.slice(i, i + chunkSize);
+
+            const bccList = chunk.map((s) => s.user.email);
+            const courseName = chunk[0].partnerPrepCourse.geo.name;
+
+            try {
+              await this.emailService.sendDeclaredInterestBulk(
+                bccList,
+                courseName,
+                deadline,
+                courseId,
+              );
+
+              await Promise.all(
+                chunk.map((student) => {
+                  const log = new LogStudent();
+                  log.studentId = student.id;
+                  log.applicationStatus = StatusApplication.CalledForEnrollment;
+                  log.description = 'Email de convocação enviado (em lote)';
+                  return this.logStudentRepository.create(log);
+                }),
+              );
+            } catch (error) {
+              this.discordWebhook.sendMessage(
+                `Erro ao enviar email para inscrição ${courseId}, deadline ${deadlineKey}, chunk: ${bccList.join(
+                  ', ',
+                )}.\nErro: ${error.message}`,
+              );
+            }
+
+            await new Promise((res) => setTimeout(res, 1000));
+          }
+        }
       }
     } catch (error) {
       this.discordWebhook.sendMessage(
@@ -688,7 +723,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
       await this.repository.notConfirmedEnrolled();
 
-      const chunkSize = 10;
+      const chunkSize = 50;
       for (let i = 0; i < students.length; i += chunkSize) {
         const chunk = students.slice(i, i + chunkSize);
 
@@ -711,7 +746,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
           .map((result) => (result as PromiseRejectedResult).reason);
 
         if (failedLogs.length > 0) {
-          this.discordWebhook.sendMessage(
+          await this.discordWebhook.sendMessage(
             `Erro ao registrar matrícula perdida para: ${failedLogs
               .map((s) => `ID: ${s.studentId}`)
               .join(', ')}`,
@@ -728,11 +763,11 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   async updateClass(studentId: string, classId: string) {
     const student = await this.repository.findOneBy({ id: studentId });
     if (!student) {
-      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
     const class_ = await this.classService.findOneBy({ id: classId });
     if (!class_) {
-      throw new HttpException('Turma nao encontrada', HttpStatus.NOT_FOUND);
+      throw new HttpException('Turma não encontrada', HttpStatus.NOT_FOUND);
     }
     student.class = class_;
     await this.repository.update(student);
@@ -760,7 +795,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
     if (!partnerPrepCourse) {
       throw new HttpException(
-        'Cursinho Parceiro nao encontrado',
+        'Cursinho Parceiro não encontrado',
         HttpStatus.NOT_FOUND,
       );
     }
@@ -816,11 +851,11 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   async cancelEnrolled(studentId: string, reason: string) {
     const student = await this.repository.findOneBy({ id: studentId });
     if (!student) {
-      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
     if (student.applicationStatus !== StatusApplication.Enrolled) {
       throw new HttpException(
-        'Estudante nao esta matriculado',
+        'Estudante não esta matriculado',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -837,11 +872,11 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   async activeEnrolled(studentId: string) {
     const student = await this.repository.findOneBy({ id: studentId });
     if (!student) {
-      throw new HttpException('Estudante nao encontrado', HttpStatus.NOT_FOUND);
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
     if (student.applicationStatus !== StatusApplication.EnrollmentCancelled) {
       throw new HttpException(
-        'Estudante nao esta matriculado',
+        'Estudante não esta matriculado',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -915,7 +950,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     const studentCourse: StudentCourse = Object.assign(new StudentCourse(), {
       userId: dto.userId,
       rg: dto.rg,
-      uf: dto.uf,
+      uf: dto.uf || '',
       cpf: dto.cpf,
       email: dto.email,
       whatsapp: dto.whatsapp,

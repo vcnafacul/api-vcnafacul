@@ -32,7 +32,7 @@ describe('PartnerPrepCourse (e2e)', () => {
   let jwtService: JwtService;
   let roleService: RoleService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
       providers: [EmailService, ConfigService],
@@ -88,7 +88,10 @@ describe('PartnerPrepCourse (e2e)', () => {
     user.role = role;
     await userRepository.update(user);
 
-    const dto: PartnerPrepCourseDtoInput = { geoId: geo.id, userId: user.id };
+    const dto: PartnerPrepCourseDtoInput = {
+      geoId: geo.id,
+      representative: user.id,
+    };
 
     const token = await jwtService.signAsync(
       { user: { id: user.id } },

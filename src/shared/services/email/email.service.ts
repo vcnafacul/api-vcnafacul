@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
 import { format } from 'date-fns';
 import * as nodemailer from 'nodemailer';
 import * as hbs from 'nodemailer-express-handlebars';
@@ -10,6 +9,7 @@ import { User } from 'src/modules/user/user.entity';
 import { htmlGeo } from './data';
 import { sendEmailConfirmEmail } from './templates/confirm-email';
 import { sendEmailDeclaredInterest } from './templates/declared-interest';
+import { sendEmailDeclaredInterestBulk } from './templates/declared-interest-bulk';
 import { sendEmailInviteMember } from './templates/invite-member-prep-course';
 import { sendEmail } from './templates/reset-password';
 import { sendEmailWaitingList } from './templates/waiting-list';
@@ -17,10 +17,7 @@ import { sendEmailWaitingList } from './templates/waiting-list';
 @Injectable()
 export class EmailService {
   private transporter;
-  constructor(
-    private configService: ConfigService,
-    private readonly jwtService: JwtService,
-  ) {
+  constructor(private configService: ConfigService) {
     this.transporter = nodemailer.createTransport({
       host: this.configService.get<string>('SMTP_HOST'),
       port: this.configService.get<number>('SMTP_PORT'),
@@ -179,7 +176,7 @@ export class EmailService {
     students_email: string,
     prepCourse: string,
     limitDate: Date,
-    token: string,
+    inscriptionId: string,
   ) {
     const prepCourseName = prepCourse.includes('Cursinho')
       ? prepCourse
@@ -187,7 +184,7 @@ export class EmailService {
     const date = format(limitDate, 'dd/MM/yyyy');
     const declaredInterestUrl = `${this.configService.get<string>(
       'FRONT_URL',
-    )}/declarar-interesse?token=${token}`;
+    )}/declarar-interesse/${inscriptionId}`;
     const mailOptions = {
       from: this.configService.get<string>('SMTP_USERNAME'),
       to: students_email,
@@ -202,6 +199,38 @@ export class EmailService {
     };
 
     await sendEmailDeclaredInterest({
+      transporter: this.transporter,
+      options: mailOptions,
+    });
+  }
+
+  async sendDeclaredInterestBulk(
+    bccList: string[],
+    prepCourse: string,
+    limitDate: Date,
+    inscriptionId: string,
+  ) {
+    const prepCourseName = prepCourse.includes('Cursinho')
+      ? prepCourse
+      : `Cursinho ${prepCourse}`;
+    const date = format(limitDate, 'dd/MM/yyyy');
+    const declaredInterestUrl = `${this.configService.get<string>(
+      'FRONT_URL',
+    )}/declarar-interesse/${inscriptionId}`;
+
+    const mailOptions = {
+      from: this.configService.get<string>('SMTP_USERNAME'),
+      to: this.configService.get<string>('SMTP_USERNAME'), // ou um destinatário genérico
+      bcc: bccList,
+      subject: `Declaração de Interesse ${prepCourseName} - Você na Facul`,
+      context: {
+        declaredInterestUrl,
+        prepCourseName,
+        date,
+      },
+    };
+
+    await sendEmailDeclaredInterestBulk({
       transporter: this.transporter,
       options: mailOptions,
     });
