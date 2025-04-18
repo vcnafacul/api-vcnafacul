@@ -88,7 +88,10 @@ describe('PartnerPrepCourse (e2e)', () => {
     user.role = role;
     await userRepository.update(user);
 
-    const dto: PartnerPrepCourseDtoInput = { geoId: geo.id, userId: user.id };
+    const dto: PartnerPrepCourseDtoInput = {
+      geoId: geo.id,
+      representative: user.id,
+    };
 
     const token = await jwtService.signAsync(
       { user: { id: user.id } },

@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 export function createStudentCourseDTOInputFaker(
   userId?: string | undefined,
-  partnerPrepCourseId?: string | undefined,
+  inscriptionId?: string | undefined,
   rg?: string,
 ): CreateStudentCourseInput {
   return {
@@ -34,7 +34,7 @@ export function createStudentCourseDTOInputFaker(
       uf: generateRandomUF(),
       family_relationship: faker.person.firstName(),
     },
-    partnerPrepCourse: partnerPrepCourseId ?? uuidv4(),
+    inscriptionId: inscriptionId ?? uuidv4(),
     socioeconomic: '[]',
   };
 }

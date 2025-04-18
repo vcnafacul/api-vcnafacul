@@ -9,5 +9,5 @@ export class PartnerPrepCourseDtoInput {
 
   @ApiProperty()
   @UserExist({ message: 'User not exist' })
-  userId: string;
+  representative: string;
 }

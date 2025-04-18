@@ -53,8 +53,10 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
         );
       }
 
-      const user = await this.userService.findOneBy({ id: dto.userId });
-      if (!user) {
+      const representative = await this.userService.findOneBy({
+        id: dto.representative,
+      });
+      if (!representative) {
         throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
       }
 
@@ -63,17 +65,15 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
 
       let collaborator = await manager
         .getRepository(Collaborator)
-        .findOneBy({ user: { id: user.id } });
+        .findOneBy({ user: { id: representative.id } });
 
       if (!collaborator) {
         collaborator = new Collaborator();
-        collaborator.user = user;
+        collaborator.user = representative;
         collaborator.description = 'Representante Cursinho';
       }
 
       collaborator.partnerPrepCourse = partnerPrepCourse;
-
-      partnerPrepCourse.members = [collaborator];
 
       // Salvar cursinho e colaborador na mesma transação
       await manager.getRepository(PartnerPrepCourse).save(partnerPrepCourse);

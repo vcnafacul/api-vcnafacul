@@ -201,8 +201,8 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
     today.setHours(0, 0, 0, 0);
     return await this.repository
       .createQueryBuilder('entity')
-      .where('limitEnrolledAt = :today', { today })
-      .andWhere('applicationStatus = :status', {
+      .where('entity.limitEnrolledAt <= :today', { today })
+      .andWhere('entity.applicationStatus = :status', {
         status: StatusApplication.CalledForEnrollment,
       })
       .getMany();

@@ -47,34 +47,23 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     const parnetPrepCourse =
       await this.partnerPrepCourseService.getByUserId(userId);
 
-    const allInscription = await this.findAllBy({
-      page: 1,
-      limit: 9999,
-      where: { partnerPrepCourse: parnetPrepCourse },
-    });
-    const currentInscriptionCourse = allInscription.data.find(
-      (ins) => ins.actived === Status.Approved,
-    );
     dto.endDate = new Date(dto.endDate);
     dto.startDate = new Date(dto.startDate);
+    dto.startDate.setHours(0, 0, 0, 0);
     dto.endDate.setHours(23, 59, 59, 999);
-
-    if (currentInscriptionCourse || dto.startDate > new Date()) {
-      dto.actived = Status.Pending;
-    }
 
     const inscriptionCourse: InscriptionCourse = Object.assign(
       new InscriptionCourse(),
       dto,
     );
-    inscriptionCourse.description = dto.description || '';
-    const result = await this.repository.create(inscriptionCourse);
-    if (parnetPrepCourse.inscriptionCourses) {
-      parnetPrepCourse.inscriptionCourses.push(result);
-    } else {
-      parnetPrepCourse.inscriptionCourses = [result];
+
+    if (dto.startDate < new Date()) {
+      inscriptionCourse.actived = Status.Approved;
     }
-    await this.partnerPrepCourseService.update(parnetPrepCourse);
+
+    inscriptionCourse.description = dto.description || '';
+    inscriptionCourse.partnerPrepCourse = parnetPrepCourse;
+    const result = await this.repository.create(inscriptionCourse);
     return {
       id: result.id,
       name: result.name,
@@ -105,21 +94,23 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
       where: { partnerPrepCourse: partner },
     });
     return {
-      data: inscription.data.map((i) => ({
-        id: i.id,
-        name: i.name,
-        description: i.description,
-        startDate: i.startDate,
-        endDate: i.endDate,
-        actived: i.actived,
-        openingsCount: i.expectedOpening,
-        subscribersCount: i.students?.length || 0,
-        createdAt: i.createdAt,
-        updatedAt: i.updatedAt,
-        partnerPrepCourseId: i.partnerPrepCourse.id,
-        partnerPrepCourseName: i.partnerPrepCourse.geo.name,
-        requestDocuments: i.requestDocuments,
-      })),
+      data: inscription.data.map((i) =>
+        Object.assign(new InscriptionCourseDtoOutput(), {
+          id: i.id,
+          name: i.name,
+          description: i.description,
+          startDate: i.startDate,
+          endDate: i.endDate,
+          actived: i.actived,
+          openingsCount: i.expectedOpening,
+          subscribersCount: i.students?.length || 0,
+          createdAt: i.createdAt,
+          updatedAt: i.updatedAt,
+          partnerPrepCourseId: i.partnerPrepCourse.id,
+          partnerPrepCourseName: i.partnerPrepCourse.geo.name,
+          requestDocuments: i.requestDocuments,
+        }),
+      ),
       page: inscription.page,
       limit: inscription.limit,
       totalItems: inscription.totalItems,
@@ -127,7 +118,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
   }
 
   async getById(id: string): Promise<InscriptionCourse> {
-    return this.repository.findOneBy({ id });
+    return await this.repository.findOneBy({ id });
   }
 
   async getToInscription(id: string): Promise<HasInscriptionActiveDtoOutput> {
@@ -170,60 +161,47 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     await this.repository.update(inscriptionCourse);
   }
 
-  async activeInscriptionCourse(id: string) {
-    const inscriptionCourse = await this.repository.findOneBy({
-      where: { id },
-    });
-    if (!inscriptionCourse) {
-      throw new HttpException(
-        'Processo Seletivo não encontrado',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-    inscriptionCourse.actived = Status.Approved;
-    await this.repository.update(inscriptionCourse);
-  }
-
   async update(entity: InscriptionCourse) {
     return this.repository.update(entity);
   }
-
   async updateFromDTO(dto: UpdateInscriptionCourseDTOInput) {
-    const activeInscription = await this.findOneBy({ id: dto.id });
+    const now = new Date();
+
+    if (new Date(dto.endDate) < now) {
+      throw new HttpException(
+        'Data de término do curso não pode ser menor que a data atual',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
 
     const inscriptionCourse = await this.repository.findOneBy({ id: dto.id });
     if (!inscriptionCourse) {
       throw new HttpException(
         'Processo Seletivo não encontrado',
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.NOT_FOUND,
       );
     }
 
-    if (activeInscription && activeInscription.id !== dto.id) {
-      throw new HttpException(
-        'Não é permitido alterar uma inscrição enquanto houver um processo seletivo ativo',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    const startDate = new Date(dto.startDate);
+    const endDate = new Date(dto.endDate);
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
 
-    dto.endDate = new Date(dto.endDate);
-    dto.startDate = new Date(dto.startDate);
-    dto.endDate.setHours(23, 59, 59, 999);
-
-    if (dto.endDate < new Date()) {
-      inscriptionCourse.actived = Status.Rejected;
-    } else if (dto.startDate < new Date() && dto.endDate > new Date()) {
+    if (startDate < now) {
       inscriptionCourse.actived = Status.Approved;
     } else {
       inscriptionCourse.actived = Status.Pending;
     }
 
-    inscriptionCourse.name = dto.name;
-    inscriptionCourse.description = dto.description;
-    inscriptionCourse.startDate = dto.startDate;
-    inscriptionCourse.endDate = dto.endDate;
-    inscriptionCourse.expectedOpening = dto.expectedOpening;
-    inscriptionCourse.requestDocuments = dto.requestDocuments;
+    Object.assign(inscriptionCourse, {
+      name: dto.name,
+      description: dto.description,
+      startDate,
+      endDate,
+      expectedOpening: dto.expectedOpening,
+      requestDocuments: dto.requestDocuments,
+    });
+
     await this.repository.update(inscriptionCourse);
   }
 
@@ -239,7 +217,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     }
     const subscribers: GetSubscribersDtoOutput[] = inscription.students.map(
       (student) => {
-        return {
+        return Object.assign(new GetSubscribersDtoOutput(), {
           id: student.id,
           cadastrado_em: student.createdAt,
           isento: student.isFree ? 'Sim' : 'Não',
@@ -293,7 +271,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
           photo: student.photo,
           areas_de_interesse: student.areaInterest,
           cursos_selecionados: student.selectedCourses,
-        };
+        });
       },
     );
     return subscribers;

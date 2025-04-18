@@ -62,7 +62,7 @@ export class StudentCourseController {
     return await this.service.createUser(userDto, inscriptionId);
   }
 
-  @Get('confirm-enrolled/:id')
+  @Patch('confirm-enrolled/:id')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
@@ -317,9 +317,6 @@ export class StudentCourseController {
     @UploadedFile() file: Express.Multer.File,
     @Req() req: Request,
   ) {
-    return await this.service.updateProfilePhotoByStudent(
-      file,
-      req.body.studentId,
-    );
+    await this.service.updateProfilePhotoByStudent(file, req.body.studentId);
   }
 }

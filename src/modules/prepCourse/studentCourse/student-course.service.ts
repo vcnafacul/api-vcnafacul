@@ -182,14 +182,6 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     } as GetAllOutput<GetAllStudentDtoOutput>;
   }
 
-  async uploadProfilePhoto(file: Express.Multer.File) {
-    const fileKey = await this.blobService.uploadFile(
-      file,
-      this.configService.get<string>('BUCKET_PROFILE'),
-    );
-    return fileKey;
-  }
-
   async updateProfilePhotoByStudent(
     file: Express.Multer.File,
     studentId: string,
@@ -238,7 +230,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     }
     if (student.applicationStatus === StatusApplication.DeclaredInterest) {
       throw new HttpException(
-        'Você já declarou interesse neste Processo Seletivo.',
+        'Você já declarou interesse neste Processo Seletivo',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -265,7 +257,10 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         await this.documentRepository.create(document);
       }),
     );
-    const fileKey = await this.uploadProfilePhoto(photo);
+    const fileKey = await this.blobService.uploadFile(
+      photo,
+      this.configService.get<string>('BUCKET_PROFILE'),
+    );
 
     student.applicationStatus = StatusApplication.DeclaredInterest;
     student.areaInterest = JSON.stringify(areaInterest);
@@ -323,24 +318,25 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     if (!student) {
       throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
-    if (student.applicationStatus === StatusApplication.UnderReview) {
-      student.isFree = isFree;
-      student.applicationStatus = StatusApplication.UnderReview;
-      await this.repository.update(student);
 
-      const log = new LogStudent();
-      log.studentId = student.id;
-      log.applicationStatus = StatusApplication.UnderReview;
-      log.description = isFree
-        ? 'Alterou status para isento'
-        : 'Alterou status para pagante';
-      await this.logStudentRepository.create(log);
-    } else {
+    if (student.applicationStatus !== StatusApplication.UnderReview) {
       throw new HttpException(
         'Não é possível alterar informações do estudantes. Status Block',
         HttpStatus.BAD_REQUEST,
       );
     }
+
+    student.isFree = isFree;
+    student.applicationStatus = StatusApplication.UnderReview;
+    await this.repository.update(student);
+
+    const log = new LogStudent();
+    log.studentId = student.id;
+    log.applicationStatus = StatusApplication.UnderReview;
+    log.description = isFree
+      ? 'Alterou status para isento'
+      : 'Alterou status para pagante';
+    await this.logStudentRepository.create(log);
   }
 
   async updateSelectEnrolled(id: string, enrolled: boolean) {
@@ -351,54 +347,47 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     const inscription = await this.inscriptionCourseService.findOneBy({
       id: student.inscriptionCourse.id,
     });
-    if (!inscription) {
-      throw new HttpException(
-        'Processo Seletivo não encontrado',
-        HttpStatus.NOT_FOUND,
-      );
-    }
     if (student.applicationStatus === StatusApplication.Enrolled) {
       throw new HttpException(
         'Não é possível alterar status de convocação de estudantes matriculados',
         HttpStatus.BAD_REQUEST,
       );
     }
+
     if (
-      student.applicationStatus === StatusApplication.UnderReview ||
-      (student.applicationStatus === StatusApplication.CalledForEnrollment &&
-        new Date() < new Date(student.selectEnrolledAt))
+      student.applicationStatus !== StatusApplication.UnderReview &&
+      (student.applicationStatus !== StatusApplication.CalledForEnrollment ||
+        new Date() >= new Date(student.selectEnrolledAt))
     ) {
-      const log = new LogStudent();
-      log.studentId = student.id;
-      if (!enrolled) {
-        student.selectEnrolled = false;
-        log.description =
-          'Alterou status de convocação para não convocar estudante';
-      } else {
-        student.selectEnrolled = true;
-        log.description =
-          'Alterou status de convocação para convocar estudante';
-      }
-      student.applicationStatus = StatusApplication.UnderReview;
-      log.applicationStatus = StatusApplication.UnderReview;
-      student.selectEnrolledAt = null;
-      student.limitEnrolledAt = null;
-      if (student.waitingList) {
-        student.waitingList = false;
-        await this.inscriptionCourseService.removeStudentWaitingList(
-          student,
-          inscription,
-        ); // remove student from waiting list already update the student and the inscription
-      } else {
-        await this.repository.update(student);
-      }
-      await this.logStudentRepository.create(log);
-    } else {
       throw new HttpException(
         'Não é possível alterar informações do estudantes. Status Block',
         HttpStatus.BAD_REQUEST,
       );
     }
+    const log = new LogStudent();
+    log.studentId = student.id;
+    if (!enrolled) {
+      student.selectEnrolled = false;
+      log.description =
+        'Alterou status de convocação para não convocar estudante';
+    } else {
+      student.selectEnrolled = true;
+      log.description = 'Alterou status de convocação para convocar estudante';
+    }
+    student.applicationStatus = StatusApplication.UnderReview;
+    log.applicationStatus = StatusApplication.UnderReview;
+    student.selectEnrolledAt = null;
+    student.limitEnrolledAt = null;
+    if (student.waitingList) {
+      student.waitingList = false;
+      await this.inscriptionCourseService.removeStudentWaitingList(
+        student,
+        inscription,
+      ); // remove student from waiting list already update the student and the inscription
+    } else {
+      await this.repository.update(student);
+    }
+    await this.logStudentRepository.create(log);
   }
 
   /*************  ✨ Codeium Command ⭐  *************/
@@ -419,6 +408,12 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     const inscription = await this.inscriptionCourseService.findOneBy({
       id: inscriptionId,
     });
+    if (!inscription) {
+      throw new HttpException(
+        'Processo Seletivo nao encontrado',
+        HttpStatus.NOT_FOUND,
+      );
+    }
     const students = await this.repository.findAllBy({
       page: 1,
       limit: 9999,
@@ -486,7 +481,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     }
     if (student.applicationStatus === StatusApplication.Enrolled) {
       throw new HttpException(
-        'Estudante matriculado, impossivel resetar',
+        'Não é possivel resetar estudante matriculado',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -522,7 +517,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     }
     if (student.applicationStatus === StatusApplication.Enrolled) {
       throw new HttpException(
-        'Estudante matriculado, impossivel resetar',
+        'Não é possivel rejeitar estudante matriculado',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -580,6 +575,23 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     if (!students) {
       throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
+    if (students.applicationStatus !== StatusApplication.CalledForEnrollment) {
+      throw new HttpException(
+        'Estudante nao foi convocado',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (
+      students.selectEnrolledAt === null ||
+      (students.limitEnrolledAt === null &&
+        students.selectEnrolledAt > new Date()) ||
+      students.limitEnrolledAt < new Date()
+    ) {
+      throw new HttpException(
+        'O período de convocação não confere com o período permitido para envio do email',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     const lastLog = students.logs
       .filter((log) => log.description === 'Email de convocação enviado')
       .sort(
@@ -601,7 +613,6 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     }
 
     const student_name = `${students.user.firstName} ${students.user.lastName}`;
-    students.limitEnrolledAt.setDate(students.limitEnrolledAt.getDate() - 1);
 
     await this.emailService.sendDeclaredInterest(
       student_name,
@@ -712,7 +723,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
       await this.repository.notConfirmedEnrolled();
 
-      const chunkSize = 10;
+      const chunkSize = 50;
       for (let i = 0; i < students.length; i += chunkSize) {
         const chunk = students.slice(i, i + chunkSize);
 
@@ -735,7 +746,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
           .map((result) => (result as PromiseRejectedResult).reason);
 
         if (failedLogs.length > 0) {
-          this.discordWebhook.sendMessage(
+          await this.discordWebhook.sendMessage(
             `Erro ao registrar matrícula perdida para: ${failedLogs
               .map((s) => `ID: ${s.studentId}`)
               .join(', ')}`,

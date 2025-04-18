@@ -6,7 +6,6 @@ import {
   Param,
   Patch,
   Post,
-  Put,
   Query,
   Req,
   SetMetadata,
@@ -91,14 +90,6 @@ export class InscriptionCourseController {
     await this.service.sendEmailWaitingList(id);
   }
 
-  @Get(':id')
-  @ApiBearerAuth()
-  @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
-  async getById(@Param('id') id: string): Promise<InscriptionCourse> {
-    return await this.service.getById(id);
-  }
-
   @Get('to-inscription/:id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
@@ -108,12 +99,12 @@ export class InscriptionCourseController {
     return await this.service.getToInscription(id);
   }
 
-  @Put('active/:id')
+  @Get(':id')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
-  async active(@Param('id') id: string): Promise<void> {
-    await this.service.activeInscriptionCourse(id);
+  async getById(@Param('id') id: string): Promise<InscriptionCourse> {
+    return await this.service.getById(id);
   }
 
   @Patch()

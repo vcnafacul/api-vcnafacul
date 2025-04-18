@@ -7,7 +7,6 @@ import {
   IsString,
   Min,
 } from 'class-validator';
-import { Status } from 'src/modules/simulado/enum/status.enum';
 
 export class CreateInscriptionCourseInput {
   @ApiProperty()
@@ -25,10 +24,6 @@ export class CreateInscriptionCourseInput {
   @ApiProperty()
   @IsDateString()
   endDate: Date;
-
-  @ApiProperty({ default: Status.Approved })
-  @IsOptional()
-  actived: Status = Status.Approved;
 
   @ApiProperty({
     description:
