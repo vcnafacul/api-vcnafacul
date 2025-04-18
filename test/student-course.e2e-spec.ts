@@ -1,3 +1,4 @@
+import { faker } from '@faker-js/faker';
 import { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -6,6 +7,7 @@ import { AppModule } from 'src/app.module';
 import { RoleSeedService } from 'src/db/seeds/1-role.seed';
 import { RoleUpdateAdminSeedService } from 'src/db/seeds/2-role-update-admin.seed';
 import { GeoService } from 'src/modules/geo/geo.service';
+import { ClassService } from 'src/modules/prepCourse/class/class.service';
 import { InscriptionCourseService } from 'src/modules/prepCourse/InscriptionCourse/inscription-course.service';
 import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
 import { GetAllStudentDtoInput } from 'src/modules/prepCourse/studentCourse/dtos/get-all-student.dto.input';
@@ -21,6 +23,7 @@ import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import * as request from 'supertest';
+import CreateClassDtoInputFaker from './faker/create-class.dto.input.faker';
 import { CreateGeoDTOInputFaker } from './faker/create-geo.dto.input.faker';
 import { CreateInscriptionCourseDTOInputFaker } from './faker/create-inscription-course.dto.faker';
 import { createStudentCourseDTOInputFaker } from './faker/create-student-course.dto.input.faker';
@@ -48,6 +51,7 @@ describe('StudentCourse (e2e)', () => {
   let roleService: RoleService;
   let blobService: BlobService;
   let logStudentRepository: LogStudentRepository;
+  let classService: ClassService;
 
   const discordWebhookMock = {
     sendMessage: jest.fn(),
@@ -87,6 +91,7 @@ describe('StudentCourse (e2e)', () => {
     blobService = moduleFixture.get<BlobService>('BlobService');
     logStudentRepository =
       moduleFixture.get<LogStudentRepository>(LogStudentRepository);
+    classService = moduleFixture.get<ClassService>(ClassService);
 
     jest
       .spyOn(emailService, 'sendCreateUser')
@@ -185,6 +190,11 @@ describe('StudentCourse (e2e)', () => {
     );
 
     return await studentCourseService.create(studentDto);
+  }
+
+  async function createClass(userId: string, className?: string) {
+    const classDto = CreateClassDtoInputFaker(className);
+    return await classService.create(classDto, userId);
   }
 
   it('should create a new StudentCourse', async () => {
@@ -1396,7 +1406,7 @@ describe('StudentCourse (e2e)', () => {
     expect(updated.applicationStatus).toBe(StatusApplication.Rejected);
   });
 
-  it('verificr declaração de interesse, inscrição não existe', async () => {
+  it('verifica declaração de interesse, inscrição não existe', async () => {
     const userStudentDto = await CreateUserDtoInputFaker();
     await userService.create(userStudentDto);
     const userStudent = await userRepository.findOneBy({
@@ -1663,6 +1673,7 @@ describe('StudentCourse (e2e)', () => {
 
     const token = await jwtService.signAsync({
       user: { id: representative.id },
+      expiresIn: '2h',
     });
 
     await request(app.getHttpServer())
@@ -1883,4 +1894,205 @@ describe('StudentCourse (e2e)', () => {
     // Restore mock
     spy.mockRestore();
   }, 60000);
+
+  it('tenta atualizar turma de estudante, estudante não existe', async () => {
+    const { representative } = await createPartnerPrepCourse();
+
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+      expiresIn: '2h',
+    });
+
+    const dto = {
+      studentId: 'hash-not-exist',
+      classId: 'hash-not-exist',
+    };
+
+    await request(app.getHttpServer())
+      .patch(`/student-course/class`)
+      .send(dto)
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(404)
+      .expect((res) => {
+        expect(res.body).toHaveProperty('message');
+        expect(res.body.message).toBe('Estudante não encontrado');
+      });
+  }, 60000);
+
+  it('tenta atualizar turma de estudante, turma não existe', async () => {
+    const { representative } = await createPartnerPrepCourse();
+
+    const inscription = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      representative.id,
+    );
+
+    const { id: studentId } = await createStudent(inscription.id);
+
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+      expiresIn: '2h',
+    });
+
+    const dto = {
+      studentId: studentId,
+      classId: 'hash-not-exist',
+    };
+
+    await request(app.getHttpServer())
+      .patch(`/student-course/class`)
+      .send(dto)
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(404)
+      .expect((res) => {
+        expect(res.body).toHaveProperty('message');
+        expect(res.body.message).toBe('Turma não encontrada');
+      });
+  }, 60000);
+
+  it('tenta atualizar turma de estudante, adiciona turma', async () => {
+    const { representative } = await createPartnerPrepCourse();
+
+    const inscription = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      representative.id,
+    );
+
+    const { id: studentId } = await createStudent(inscription.id);
+
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+      expiresIn: '2h',
+    });
+
+    const classEntity = await createClass(representative.id);
+
+    const dto = {
+      studentId: studentId,
+      classId: classEntity.id,
+    };
+
+    await request(app.getHttpServer())
+      .patch(`/student-course/class`)
+      .send(dto)
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+
+    const updated = await studentCourseService.findOneBy({ id: studentId });
+    expect(updated.class.id).toBe(classEntity.id);
+  }, 60000);
+
+  it('deve retornar estudantes paginados', async () => {
+    // 1. Cria representante e token
+    const { representative } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+
+    // 2. Cria processo seletivo vinculado
+    const inscription = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      representative.id,
+    );
+
+    // 3. Cria estudantes com código de matrícula
+    for (let i = 0; i < 3; i++) {
+      const { id } = await createStudent(inscription.id);
+      const student = await studentCourseService.findOneBy({ id });
+      student.applicationStatus = StatusApplication.DeclaredInterest;
+      await studentCourseRepository.update(student);
+      await studentCourseService.confirmEnrolled(student.id);
+    }
+
+    // 4. Faz chamada à rota sem filtro nem ordenação
+    const response = await request(app.getHttpServer())
+      .get('/student-course/enrolled')
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+
+    // 5. Valida estrutura da resposta
+    expect(response.body).toHaveProperty('students.data');
+    expect(Array.isArray(response.body.students.data)).toBe(true);
+    expect(response.body.students.data.length).toBe(3);
+    expect(response.body.students).toHaveProperty('page', 1);
+    expect(response.body.students).toHaveProperty('limit', 30);
+    expect(response.body.students).toHaveProperty('totalItems', 3);
+
+    // 6. Valida campos essenciais de um estudante retornado
+    const student = response.body.students.data[0];
+    expect(student).toHaveProperty('id');
+    expect(student).toHaveProperty('name');
+    expect(student).toHaveProperty('email');
+    expect(student).toHaveProperty('cod_enrolled');
+    expect(student).toHaveProperty('applicationStatus');
+    expect(student).toHaveProperty('class');
+  }, 60000);
+
+  //Filter: field, value, operator - Sort: field, sort - expected
+  test.each([
+    ['class', faker.company.name(), null, null, null, 1],
+    ['birthday', new Date('1999-01-01'), 'after', null, null, 2],
+  ])(
+    'deve retornar estudantes paginados com filtro e ordenação',
+    async (field, value, operator, order, sort, expected) => {
+      // 1. Cria representante e token
+      const { representative } = await createPartnerPrepCourse();
+
+      const inscription = await inscriptionCourseService.create(
+        CreateInscriptionCourseDTOInputFaker(),
+        representative.id,
+      );
+
+      const { id: studentId } = await createStudent(inscription.id);
+      const student = await studentCourseService.findOneBy({ id: studentId });
+      student.applicationStatus = StatusApplication.DeclaredInterest;
+      await studentCourseRepository.update(student);
+      await studentCourseService.confirmEnrolled(student.id);
+
+      const user1 = await userService.findOneBy({ id: student.userId });
+      user1.birthday = new Date('2000-01-01');
+      await userRepository.update(user1);
+
+      if (field === 'class') {
+        const classEntity = await createClass(
+          representative.id,
+          value as string,
+        );
+        await studentCourseService.updateClass(student.id, classEntity.id);
+      }
+
+      const { id: studentId2 } = await createStudent(inscription.id);
+      const student2 = await studentCourseService.findOneBy({ id: studentId2 });
+      student2.applicationStatus = StatusApplication.DeclaredInterest;
+      await studentCourseRepository.update(student2);
+      await studentCourseService.confirmEnrolled(student2.id);
+
+      const user2 = await userService.findOneBy({ id: student2.userId });
+      user2.birthday = new Date('2000-01-01');
+      await userRepository.update(user2);
+
+      const token = await jwtService.signAsync({
+        user: { id: representative.id },
+        expiresIn: '2h',
+      });
+
+      let url = `/student-course/enrolled?filter[field]=${field}&filter[value]=${value}`;
+      if (operator) {
+        url += `&filter[operator]=${operator}`;
+      }
+      if (order) {
+        url += `&sort[${sort}]=${order}`;
+      }
+
+      const response = await request(app.getHttpServer())
+        .get(url)
+        .set({ Authorization: `Bearer ${token}` })
+        .expect(200);
+
+      // 5. Valida estrutura da resposta
+      expect(response.body).toHaveProperty('students.data');
+      expect(Array.isArray(response.body.students.data)).toBe(true);
+      expect(response.body.students.data.length).toBe(expected);
+    },
+  );
 });
