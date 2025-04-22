@@ -136,7 +136,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
         : today > inscription.endDate
         ? Status.Rejected
         : Status.Approved;
-    return {
+    return Object.assign(new HasInscriptionActiveDtoOutput(), {
       prepCourseName: inscription.partnerPrepCourse.geo.name,
       inscription: {
         name: inscription.name,
@@ -145,7 +145,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
         endDate: inscription.endDate,
         status,
       },
-    };
+    });
   }
 
   async cancelInscriptionCourse(id: string) {

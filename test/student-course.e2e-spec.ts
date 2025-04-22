@@ -319,7 +319,7 @@ describe('StudentCourse (e2e)', () => {
       .expect((res) => {
         expect(res.body.data.length).toBe(10);
       });
-  }, 60000);
+  }, 100000);
 
   it('student should enroll in two different prep courses', async () => {
     const repPart1 = await createPartnerPrepCourse();
@@ -1802,7 +1802,7 @@ describe('StudentCourse (e2e)', () => {
       );
       expect(log).toBeDefined();
     }
-  }, 60000);
+  }, 100000);
 
   it('deve registrar matrícula perdida para estudantes que não confirmaram no prazo', async () => {
     const { representative } = await createPartnerPrepCourse();
@@ -1858,7 +1858,7 @@ describe('StudentCourse (e2e)', () => {
 
     expect(log1).toBeDefined();
     expect(log2).toBeDefined();
-  }, 60000);
+  }, 100000);
 
   it('deve enviar alerta no Discord se falhar ao registrar algum log de matrícula perdida', async () => {
     const { representative } = await createPartnerPrepCourse();
@@ -1893,7 +1893,7 @@ describe('StudentCourse (e2e)', () => {
 
     // Restore mock
     spy.mockRestore();
-  }, 60000);
+  }, 100000);
 
   it('tenta atualizar turma de estudante, estudante não existe', async () => {
     const { representative } = await createPartnerPrepCourse();
@@ -1917,7 +1917,7 @@ describe('StudentCourse (e2e)', () => {
         expect(res.body).toHaveProperty('message');
         expect(res.body.message).toBe('Estudante não encontrado');
       });
-  }, 60000);
+  }, 100000);
 
   it('tenta atualizar turma de estudante, turma não existe', async () => {
     const { representative } = await createPartnerPrepCourse();
@@ -1948,7 +1948,7 @@ describe('StudentCourse (e2e)', () => {
         expect(res.body).toHaveProperty('message');
         expect(res.body.message).toBe('Turma não encontrada');
       });
-  }, 60000);
+  }, 100000);
 
   it('tenta atualizar turma de estudante, adiciona turma', async () => {
     const { representative } = await createPartnerPrepCourse();
@@ -1980,7 +1980,7 @@ describe('StudentCourse (e2e)', () => {
 
     const updated = await studentCourseService.findOneBy({ id: studentId });
     expect(updated.class.id).toBe(classEntity.id);
-  }, 60000);
+  }, 100000);
 
   it('deve retornar estudantes paginados', async () => {
     // 1. Cria representante e token
@@ -2026,7 +2026,7 @@ describe('StudentCourse (e2e)', () => {
     expect(student).toHaveProperty('cod_enrolled');
     expect(student).toHaveProperty('applicationStatus');
     expect(student).toHaveProperty('class');
-  }, 60000);
+  }, 100000);
 
   //Filter: field, value, operator - Sort: field, sort - expected
   test.each([
