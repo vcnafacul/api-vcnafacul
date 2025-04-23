@@ -16,5 +16,5 @@ export class Frente extends LinkedListEntity {
   materia: Materias;
 
   @OneToMany(() => Subject, (subject) => subject.frente)
-  subject: Subject;
+  subjects: Subject[];
 }

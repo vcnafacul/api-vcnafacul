@@ -13,9 +13,9 @@ export class Subject extends LinkedListEntity {
   description: string;
 
   @OneToMany(() => Content, (content) => content.subject)
-  content: Content;
+  contents: Content[];
 
-  @ManyToOne(() => Frente, (frente) => frente.subject)
+  @ManyToOne(() => Frente, (frente) => frente.subjects)
   frente: Frente;
 
   get list(): string | undefined {

@@ -20,7 +20,7 @@ export class Content extends NodeEntity {
   @ManyToOne(() => User, (user) => user.content)
   user: User;
 
-  @ManyToOne(() => Subject, (subject) => subject.content)
+  @ManyToOne(() => Subject, (subject) => subject.contents)
   subject: Subject;
 
   @OneToMany(() => FileContent, (file) => file.content, { cascade: true })

@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { format } from 'date-fns';
@@ -6,8 +7,8 @@ import * as hbs from 'nodemailer-express-handlebars';
 import * as path from 'path';
 import { Geolocation } from 'src/modules/geo/geo.entity';
 import { User } from 'src/modules/user/user.entity';
-import { htmlGeo } from './data';
 import { sendEmailConfirmEmail } from './templates/confirm-email';
+import { sendGeoEmail } from './templates/create-geo';
 import { sendEmailDeclaredInterest } from './templates/declared-interest';
 import { sendEmailDeclaredInterestBulk } from './templates/declared-interest-bulk';
 import { sendEmailInviteMember } from './templates/invite-member-prep-course';
@@ -57,15 +58,17 @@ export class EmailService {
     await sendEmail({ transporter: this.transporter, options: mailOptions });
   }
 
-  async sendCreateGeoMail(geo: Geolocation, listEmail: string[]) {
-    const info = await this.transporter.sendMail({
+  async sendEmailGeo({ geo, emails }: { geo: Geolocation; emails: string[] }) {
+    const mailOptions = {
       from: this.configService.get<string>('SMTP_USERNAME'),
-      bcc: listEmail,
+      bcc: emails,
       subject: 'Cadastro de Cursinho',
-      html: htmlGeo(geo),
-      // Você também pode usar HTML aqui
-    });
-    console.log('E-mail enviado: %s', info.messageId);
+      context: {
+        geo,
+      },
+    };
+
+    await sendGeoEmail({ transporter: this.transporter, options: mailOptions });
   }
 
   async sendCreateUser(user: User, token: string) {

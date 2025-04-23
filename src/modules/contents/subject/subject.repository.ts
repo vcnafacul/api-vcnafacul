@@ -58,7 +58,12 @@ export class SubjectRepository extends LinkedListRepository<Subject, Content> {
     return query.getOne();
   }
 
-  async getNodes(list: string) {
-    return this.repository.findBy({ list });
+  async getNodes(frenteId: string) {
+    return await this.repository
+      .createQueryBuilder('subject')
+      .innerJoin('subject.frente', 'frente')
+      .addSelect(['frente.id'])
+      .where('frente.id = :frenteId', { frenteId })
+      .getMany();
   }
 }
