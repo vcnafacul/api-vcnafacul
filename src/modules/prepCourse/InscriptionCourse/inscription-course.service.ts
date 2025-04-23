@@ -340,7 +340,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     student: StudentCourse,
     inscription: InscriptionCourse,
   ) {
-    await this.repository.removeNode(student, inscription);
+    await this.repository.removeNode(inscription, student);
   }
 
   async addStudentWaitingList(

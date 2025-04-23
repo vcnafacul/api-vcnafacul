@@ -39,9 +39,14 @@ export class S3Service implements BlobService {
     file: any,
     bucketName: string,
     exprires?: Date,
+    prefix?: string,
   ): Promise<string> {
-    const typeFile = file.originalname.split('.')[1];
-    const fileKey = `${uuidv4()}.${typeFile}`;
+    const typeFile = file.originalname.split('.').pop()?.toLowerCase();
+    const sanitizedPrefix = prefix?.replace(/\/+$/, ''); // remove barras finais, se houver
+    const fileKey = `${
+      sanitizedPrefix ? `${sanitizedPrefix}/` : ''
+    }${uuidv4()}.${typeFile}`;
+
     const command = new PutObjectCommand({
       Bucket: bucketName,
       Key: fileKey,

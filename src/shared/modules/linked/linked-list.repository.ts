@@ -107,8 +107,8 @@ export class LinkedListRepository<
   }
 
   async removeNode(
-    dataNode: K | string,
     dataEntity: T | string,
+    dataNode: K | string,
   ): Promise<NodeEntity> {
     let node = null;
     let entity = null;

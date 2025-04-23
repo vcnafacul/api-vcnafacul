@@ -8,6 +8,6 @@ export class PartnerPrepCourseDtoInput {
   geoId: string;
 
   @ApiProperty()
-  @UserExist({ message: 'User not exist' })
+  @UserExist({ message: 'Usuário não encontrado' })
   representative: string;
 }
