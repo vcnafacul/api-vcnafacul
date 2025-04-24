@@ -34,7 +34,7 @@ export class ContentService extends BaseService<Content> {
   async create(data: CreateContentDTOInput, user: User): Promise<Content> {
     if (!(await this.IsUnique(data.subjectId, data.title))) {
       throw new HttpException(
-        'Já existe um Título para esse Tema',
+        'Já existe um conteúdo chamado "' + data.title + '" nessa tema.',
         HttpStatus.CONFLICT,
       );
     }
@@ -42,7 +42,7 @@ export class ContentService extends BaseService<Content> {
     const subject = await this.subjectRepository.getById(data.subjectId);
     if (!subject) {
       throw new HttpException(
-        `Subject not found by Id ${data.subjectId}`,
+        `Tema não encontrado com o ID ${data.subjectId}`,
         HttpStatus.NOT_FOUND,
       );
     }
@@ -68,10 +68,10 @@ export class ContentService extends BaseService<Content> {
     return await this.repository.getOrderContent(nodes, subject.head, status);
   }
 
-  public async getContent(id: string) {
+  public async getFile(id: string) {
     const file = await this.fileContentRepository.findOneBy({ id });
     if (!file) {
-      throw new HttpException('Demand not found', HttpStatus.NOT_FOUND);
+      throw new HttpException('File not found', HttpStatus.NOT_FOUND);
     }
     return await this.blobService.getFile(
       file.fileKey,
@@ -92,12 +92,7 @@ export class ContentService extends BaseService<Content> {
   }
 
   async changeOrder(dto: ChangeOrderDTOInput) {
-    await this.subjectRepository.changeOrder(
-      dto.listId,
-      dto.node1,
-      dto.node2,
-      dto.where,
-    );
+    await this.subjectRepository.changeOrder(dto.listId, dto.node1, dto.node2);
   }
 
   async changeStatus(id: string, status: StatusContent, user: User) {
@@ -127,7 +122,7 @@ export class ContentService extends BaseService<Content> {
 
   async uploadFile(id: string, user: User, file: Express.Multer.File) {
     if (!file) {
-      throw new Error('Nenhum arquivo fornecido');
+      throw new HttpException('file not found', HttpStatus.BAD_REQUEST);
     }
     const demand = await this.repository.findByUpload(id);
     if (!demand) {

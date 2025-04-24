@@ -1,9 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 export class UpdateSubjectDTOInput {
   @ApiProperty()
-  @IsNumber() //Criar Verificacao se Frente Existe
+  @IsString() //Criar Verificacao se Frente Existe
   id: string;
 
   @ApiProperty()

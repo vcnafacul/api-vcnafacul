@@ -1,8 +1,8 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { GetAllDtoOutput } from 'src/shared/dtos/get-all.dto.output';
 import { BaseService } from 'src/shared/modules/base/base.service';
-import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
@@ -217,34 +217,36 @@ export class UserService extends BaseService<User> {
     page,
     limit,
     name,
-  }: GetUserDtoInput): Promise<GetAllOutput<UserWithRoleName>> {
+  }: GetUserDtoInput): Promise<GetAllDtoOutput<UserWithRoleName>> {
     const result = await this.userRepository.findAllBy({
       name,
       page,
       limit,
     });
 
+    const data = result.data.map((user) => ({
+      user: {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone,
+        birthday: user.birthday,
+        about: user.about,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        deletedAt: user.deletedAt,
+        socialName: user.socialName,
+        city: user.city,
+        state: user.state,
+        lgpd: user.lgpd,
+      },
+      roleId: user.role.id,
+      roleName: user.role.name,
+    }));
+
     return {
-      data: result.data.map((user) => ({
-        user: {
-          id: user.id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          phone: user.phone,
-          birthday: user.birthday,
-          about: user.about,
-          createdAt: user.createdAt,
-          updatedAt: user.updatedAt,
-          deletedAt: user.deletedAt,
-          socialName: user.socialName,
-          city: user.city,
-          state: user.state,
-          lgpd: user.lgpd,
-        },
-        roleId: user.role.id,
-        roleName: user.role.name,
-      })),
+      data: Object.assign(new GetAllDtoOutput<UserWithRoleName>(), data),
       page: result.page,
       limit: result.limit,
       totalItems: result.totalItems,

@@ -168,4 +168,18 @@ export class ContentRepository extends NodeRepository<Content> {
 
     return query.getOne();
   }
+
+  async findOneBy(where: object): Promise<Content> {
+    const query = this.repository
+      .createQueryBuilder('content')
+      .leftJoin('content.subject', 'subject')
+      .addSelect(['subject.id', 'subject.name', 'subject.description'])
+      .leftJoin('subject.frente', 'frente')
+      .addSelect(['frente.id', 'frente.name', 'frente.materia'])
+      .leftJoinAndSelect('content.file', 'file')
+      .leftJoinAndSelect('content.files', 'files')
+      .where(where);
+
+    return query.getOne();
+  }
 }

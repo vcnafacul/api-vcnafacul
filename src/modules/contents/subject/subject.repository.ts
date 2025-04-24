@@ -17,12 +17,6 @@ export class SubjectRepository extends LinkedListRepository<Subject, Content> {
   async getByFrente(frente: string) {
     const query = this.repository
       .createQueryBuilder('subject')
-      .select([
-        'subject.id',
-        'subject.name',
-        'subject.description',
-        'subject.lenght',
-      ])
       .leftJoin('subject.frente', 'frente')
       .addSelect(['frente.id'])
       .where('frente.id = :frente', { frente });

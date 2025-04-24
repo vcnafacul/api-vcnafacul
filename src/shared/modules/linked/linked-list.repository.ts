@@ -1,5 +1,4 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
-import { InsertWhere } from 'src/modules/contents/content/enum/insert-where';
 import { EntityManager } from 'typeorm';
 import { NodeEntity } from '../node/node.entity';
 import { NodeRepository } from '../node/node.repository';
@@ -46,44 +45,71 @@ export class LinkedListRepository<
     return true;
   }
 
-  async changeOrder(
-    listId: string,
-    id1: string,
-    id2: string,
-    where: InsertWhere,
-  ) {
-    const node1 = (await this.removeNode(listId, id1)) as K;
+  async changeOrder(listId: string, id1: string, id2: string): Promise<void> {
+    if (id1 === id2) return; // Nada a fazer se os IDs forem iguais
 
     const entity = await this.getEntityList({ id: listId });
+
+    const node1 = await this.getNode(id1);
     const node2 = await this.getNode(id2);
 
-    if (where === InsertWhere.Front) {
-      if (node2.id === entity.head) {
-        entity.head = node1.id;
-      } else {
-        const node2Prev = await this.getNode(node2.prev);
-        node2Prev.next = node1.id;
-        node1.prev = node2Prev.id;
-        await this.repositoryNodeChild.update(node2Prev);
-      }
-      node1.next = node2.id;
-      node2.prev = node1.id;
-    } else {
-      if (node2.id === entity.tail) {
-        entity.tail = node1.id;
-      } else {
-        const node2Next = await this.getNode(node2.next);
-        node2Next.prev = node1.id;
-        node1.next = node2Next.id;
-        await this.repositoryNodeChild.update(node2Next);
-      }
-      node1.prev = node2.id;
-      node2.next = node1.id;
+    if (!node1 || !node2) {
+      throw new Error('Um ou ambos os nós não foram encontrados.');
     }
+
+    // Salva referências dos vizinhos
+    const [node1Prev, node1Next] = [node1.prev, node1.next];
+    const [node2Prev, node2Next] = [node2.prev, node2.next];
+
+    // Atualiza os vizinhos do node1
+    if (node2Prev && node2Prev !== node1.id) {
+      const prev = await this.getNode(node2Prev);
+      prev.next = node1.id;
+      await this.repositoryNodeChild.update(prev);
+    }
+    if (node2Next && node2Next !== node1.id) {
+      const next = await this.getNode(node2Next);
+      next.prev = node1.id;
+      await this.repositoryNodeChild.update(next);
+    }
+
+    // Atualiza os vizinhos do node2
+    if (node1Prev && node1Prev !== node2.id) {
+      const prev = await this.getNode(node1Prev);
+      prev.next = node2.id;
+      await this.repositoryNodeChild.update(prev);
+    }
+    if (node1Next && node1Next !== node2.id) {
+      const next = await this.getNode(node1Next);
+      next.prev = node2.id;
+      await this.repositoryNodeChild.update(next);
+    }
+
+    // Corrige head e tail se necessário
+    if (entity.head === node1.id) {
+      entity.head = node2.id;
+    } else if (entity.head === node2.id) {
+      entity.head = node1.id;
+    }
+
+    if (entity.tail === node1.id) {
+      entity.tail = node2.id;
+    } else if (entity.tail === node2.id) {
+      entity.tail = node1.id;
+    }
+
+    // Troca os ponteiros entre node1 e node2
+    [node1.prev, node2.prev] = [
+      node2Prev === node1.id ? node2.id : node2Prev,
+      node1Prev === node2.id ? node1.id : node1Prev,
+    ];
+    [node1.next, node2.next] = [
+      node2Next === node1.id ? node2.id : node2Next,
+      node1Next === node2.id ? node1.id : node1Next,
+    ];
 
     await this.repositoryNodeChild.update(node1);
     await this.repositoryNodeChild.update(node2);
-    entity.lenght += 1;
     await this.repository.save(entity);
   }
 

@@ -61,12 +61,7 @@ export class SubjectService extends BaseService<Subject> {
   }
 
   async changeOrder(dto: ChangeOrderDTOInput) {
-    await this.frenteRepository.changeOrder(
-      dto.listId,
-      dto.node1,
-      dto.node2,
-      dto.where,
-    );
+    await this.frenteRepository.changeOrder(dto.listId, dto.node1, dto.node2);
   }
 
   async getByFrente(frente: string) {
