@@ -69,6 +69,16 @@ export class AttendanceRecordController {
     return await this.service.getAttendanceRecordByClassId(dto);
   }
 
+  @Get('summarybystudent')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
+  async summaryByStudent(
+    @Query() dto: AttendanceRecordByClassInput,
+  ): Promise<AttendanceRecordByClassOutput> {
+    return await this.service.getStudentPresenceReportByClassId(dto);
+  }
+
   @Get(':id')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
