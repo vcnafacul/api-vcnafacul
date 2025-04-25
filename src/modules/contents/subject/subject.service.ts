@@ -18,39 +18,39 @@ export class SubjectService extends BaseService<Subject> {
   }
 
   async create(data: CreateSubjectDTOInput): Promise<Subject> {
+    const frente = await this.frenteRepository.findOneBy({ id: data.frente });
+
+    if (!frente) {
+      throw new HttpException(
+        `Frente não encontrada com o ID ${data.frente}`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const subject = new Subject();
+    subject.name = data.name;
+    subject.description = data.description;
+    subject.frente = frente;
+
     try {
-      const frente = await this.frenteRepository.findOneBy({
-        id: data.frente,
-      });
-      if (!frente) {
+      const subjectSaved = await this.repository.create(subject);
+      await this.frenteRepository.addList(subjectSaved, frente); // ← mantém encadeamento de lista
+      return subjectSaved;
+    } catch (error: any) {
+      if (
+        error instanceof QueryFailedError &&
+        error.message.toLowerCase().includes('duplicate entry')
+      ) {
         throw new HttpException(
-          `Subject not found by Id ${data.frente}`,
-          HttpStatus.NOT_FOUND,
+          `Já existe um tema chamado "${data.name}" nessa frente.`,
+          HttpStatus.CONFLICT,
         );
       }
 
-      const subject = new Subject();
-      subject.name = data.name;
-      subject.frente = frente;
-      subject.description = data.description;
-      const subjectSave = await this.repository.create(subject);
-      await this.frenteRepository.addList(subjectSave, frente);
-      return subjectSave;
-    } catch (error) {
-      if (
-        error instanceof QueryFailedError &&
-        error.message.includes('duplicate key value')
-      ) {
-        // 23505 é o código específico para violação de chave única
-        throw new HttpException(
-          'Nome da Tema deve ser único',
-          HttpStatus.CONFLICT,
-        );
-      } else {
-        console.log('Não Entrei');
-        // Se não for um erro de chave única, você pode lidar com isso de acordo com suas necessidades
-        throw new Error('Erro ao criar a frente');
-      }
+      throw new HttpException(
+        'Erro inesperado ao criar o tema.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -61,12 +61,7 @@ export class SubjectService extends BaseService<Subject> {
   }
 
   async changeOrder(dto: ChangeOrderDTOInput) {
-    await this.frenteRepository.changeOrder(
-      dto.listId,
-      dto.node1,
-      dto.node2,
-      dto.where,
-    );
+    await this.frenteRepository.changeOrder(dto.listId, dto.node1, dto.node2);
   }
 
   async getByFrente(frente: string) {

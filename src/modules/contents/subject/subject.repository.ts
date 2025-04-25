@@ -17,14 +17,10 @@ export class SubjectRepository extends LinkedListRepository<Subject, Content> {
   async getByFrente(frente: string) {
     const query = this.repository
       .createQueryBuilder('subject')
-      .select([
-        'subject.id',
-        'subject.name',
-        'subject.description',
-        'subject.lenght',
-      ])
       .leftJoin('subject.frente', 'frente')
       .addSelect(['frente.id'])
+      .leftJoin('subject.contents', 'content')
+      .addSelect(['content.id', 'content.status'])
       .where('frente.id = :frente', { frente });
 
     return query.getMany();
@@ -58,7 +54,12 @@ export class SubjectRepository extends LinkedListRepository<Subject, Content> {
     return query.getOne();
   }
 
-  async getNodes(list: string) {
-    return this.repository.findBy({ list });
+  async getNodes(frenteId: string) {
+    return await this.repository
+      .createQueryBuilder('subject')
+      .innerJoin('subject.frente', 'frente')
+      .addSelect(['frente.id'])
+      .where('frente.id = :frenteId', { frenteId })
+      .getMany();
   }
 }

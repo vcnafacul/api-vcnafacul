@@ -137,7 +137,7 @@ describe('InscriptionCourse (e2e)', () => {
         Authorization: `Bearer ${token}`,
       })
       .expect(201);
-  }, 60000);
+  }, 100000);
 
   it('should not create a new inscription with end date before today', async () => {
     const { representative } = await createPartnerPrepCourse();

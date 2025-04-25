@@ -1,13 +1,15 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuditLogService } from 'src/modules/audit-log/audit-log.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { ChangeOrderDTOInput } from 'src/shared/modules/node/dtos/change-order.dto.input';
+import { BlobService } from 'src/shared/services/blob/blob-service';
 import { cleanString } from 'src/utils/cleanString';
-import { uploadFileFTP } from 'src/utils/uploadFileFtp';
 import { User } from '../../user/user.entity';
+import { FileContent } from '../file-content/file-content.entity';
+import { FileContentRepository } from '../file-content/file-content.repository';
 import { MateriasLabel } from '../frente/types/materiaLabel';
 import { SubjectRepository } from '../subject/subject.repository';
 import { Content } from './content.entity';
@@ -23,14 +25,16 @@ export class ContentService extends BaseService<Content> {
     private readonly subjectRepository: SubjectRepository,
     private readonly configService: ConfigService,
     private readonly auditLog: AuditLogService,
+    private readonly fileContentRepository: FileContentRepository,
+    @Inject('BlobService') private readonly blobService: BlobService,
   ) {
     super(repository);
   }
 
-  async create(data: CreateContentDTOInput): Promise<Content> {
+  async create(data: CreateContentDTOInput, user: User): Promise<Content> {
     if (!(await this.IsUnique(data.subjectId, data.title))) {
       throw new HttpException(
-        'Já existe um Título para esse Tema',
+        'Já existe um conteúdo chamado "' + data.title + '" nessa tema.',
         HttpStatus.CONFLICT,
       );
     }
@@ -38,7 +42,7 @@ export class ContentService extends BaseService<Content> {
     const subject = await this.subjectRepository.getById(data.subjectId);
     if (!subject) {
       throw new HttpException(
-        `Subject not found by Id ${data.subjectId}`,
+        `Tema não encontrado com o ID ${data.subjectId}`,
         HttpStatus.NOT_FOUND,
       );
     }
@@ -46,6 +50,7 @@ export class ContentService extends BaseService<Content> {
     content.title = data.title;
     content.subject = subject;
     content.description = data.description;
+    content.user = user;
     const contentSave = await this.repository.create(content);
     await this.subjectRepository.addList(contentSave, subject);
     return contentSave;
@@ -63,6 +68,17 @@ export class ContentService extends BaseService<Content> {
     return await this.repository.getOrderContent(nodes, subject.head, status);
   }
 
+  public async getFile(id: string) {
+    const file = await this.fileContentRepository.findOneBy({ id });
+    if (!file) {
+      throw new HttpException('File not found', HttpStatus.NOT_FOUND);
+    }
+    return await this.blobService.getFile(
+      file.fileKey,
+      this.configService.get<string>('BUCKET_CONTENT'),
+    );
+  }
+
   async getAllDemand(query: GetAllInput): Promise<GetAllOutput<Content>> {
     const demands = await this.repository.findAllBy({
       status: StatusContent.Pending_Upload,
@@ -76,12 +92,7 @@ export class ContentService extends BaseService<Content> {
   }
 
   async changeOrder(dto: ChangeOrderDTOInput) {
-    await this.subjectRepository.changeOrder(
-      dto.listId,
-      dto.node1,
-      dto.node2,
-      dto.where,
-    );
+    await this.subjectRepository.changeOrder(dto.listId, dto.node1, dto.node2);
   }
 
   async changeStatus(id: string, status: StatusContent, user: User) {
@@ -99,7 +110,7 @@ export class ContentService extends BaseService<Content> {
   async reset(id: string, user: User) {
     const demand = await this.repository.findOneBy({ id });
     demand.status = StatusContent.Pending_Upload;
-    demand.filename = null;
+    demand.file = null;
     await this.repository.update(demand);
     await this.auditLog.create({
       entityType: 'Content',
@@ -109,31 +120,38 @@ export class ContentService extends BaseService<Content> {
     });
   }
 
-  async uploadFile(id: string, user: User, file: any) {
+  async uploadFile(id: string, user: User, file: Express.Multer.File) {
+    if (!file) {
+      throw new HttpException('file not found', HttpStatus.BAD_REQUEST);
+    }
     const demand = await this.repository.findByUpload(id);
     if (!demand) {
       throw new HttpException('demand not found', HttpStatus.NOT_FOUND);
     }
     const diretory = this.getDiretory(demand);
-    const fileName = await uploadFileFTP(
+    const fileKey = await this.blobService.uploadFile(
       file,
-      this.configService.get<string>('FTP_HOST'),
-      this.configService.get<string>('FTP_CONTENT'),
-      this.configService.get<string>('FTP_PASSWORD'),
+      this.configService.get<string>('BUCKET_CONTENT'),
+      undefined,
       diretory,
     );
-    if (!fileName) {
+    if (!fileKey) {
       throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);
     }
+    const fileContent = new FileContent();
+    fileContent.fileKey = fileKey;
+    fileContent.originalName = file.originalname;
+    fileContent.content = demand;
+    fileContent.uploadedBy = user;
+    const result = await this.fileContentRepository.create(fileContent);
     demand.status = StatusContent.Pending;
-    demand.filename = fileName;
-    demand.user = user;
+    demand.file = result;
     await this.repository.update(demand);
     await this.auditLog.create({
       entityType: 'Content',
       entityId: demand.id,
       updatedBy: user.id,
-      changes: { message: `Upload file: ${fileName}` },
+      changes: { message: `Upload file: ${fileKey}` },
     });
   }
 
@@ -144,6 +162,13 @@ export class ContentService extends BaseService<Content> {
         `Content not found by id ${id}`,
         HttpStatus.NOT_FOUND,
       );
+    }
+    for (const file of content.files) {
+      await this.blobService.deleteFile(
+        file.fileKey,
+        this.configService.get<string>('BUCKET_CONTENT'),
+      );
+      await this.fileContentRepository.delete(file.id);
     }
     await this.subjectRepository.removeNode(content.subject.id, content.id);
     await this.repository.delete(id);

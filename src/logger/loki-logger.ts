@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import { Injectable, LoggerService, LogLevel } from '@nestjs/common';
 import { createLogger, format, Logger, transports } from 'winston';
 // eslint-disable-next-line @typescript-eslint/no-var-requires

@@ -35,12 +35,14 @@ export class ContentRepository extends NodeRepository<Content> {
         'demand.status',
         'demand.title',
         'demand.description',
-        'demand.filename',
       ])
       .leftJoin('demand.subject', 'subject')
       .addSelect(['subject.id', 'subject.name', 'subject.description'])
       .leftJoin('subject.frente', 'frente')
-      .addSelect(['frente.id', 'frente.name', 'frente.materia']);
+      .addSelect(['frente.id', 'frente.name', 'frente.materia'])
+      .leftJoinAndSelect('demand.files', 'files')
+      .leftJoinAndSelect('demand.file', 'file')
+      .orderBy('demand.createdAt', 'DESC');
 
     let whereApplied = false;
     if (status !== undefined) {
@@ -94,13 +96,13 @@ export class ContentRepository extends NodeRepository<Content> {
         'demand.status',
         'demand.title',
         'demand.description',
-        'demand.filename',
         'demand.next',
       ])
       .leftJoin('demand.subject', 'subject')
       .addSelect(['subject.id', 'subject.name', 'subject.description'])
       .leftJoin('subject.frente', 'frente')
       .addSelect(['frente.id', 'frente.name', 'frente.materia'])
+      .leftJoinAndSelect('demand.file', 'file')
       .where('subject.id = :subjectId', { subjectId });
 
     return query.getMany();
@@ -112,6 +114,7 @@ export class ContentRepository extends NodeRepository<Content> {
       .select(['content.id', 'content.next', 'content.prev'])
       .leftJoin('content.subject', 'subject')
       .addSelect(['subject.id', 'subject.name'])
+      .leftJoinAndSelect('content.files', 'files')
       .where('content.id = :id', { id });
 
     return query.getOne();
@@ -162,6 +165,20 @@ export class ContentRepository extends NodeRepository<Content> {
       .leftJoin('subject.frente', 'frente')
       .addSelect(['frente.id', 'frente.name', 'frente.materia'])
       .where('content.id = :id', { id });
+
+    return query.getOne();
+  }
+
+  async findOneBy(where: object): Promise<Content> {
+    const query = this.repository
+      .createQueryBuilder('content')
+      .leftJoin('content.subject', 'subject')
+      .addSelect(['subject.id', 'subject.name', 'subject.description'])
+      .leftJoin('subject.frente', 'frente')
+      .addSelect(['frente.id', 'frente.name', 'frente.materia'])
+      .leftJoinAndSelect('content.file', 'file')
+      .leftJoinAndSelect('content.files', 'files')
+      .where(where);
 
     return query.getOne();
   }

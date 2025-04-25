@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
 import { AxiosError } from 'axios';

@@ -5,7 +5,7 @@
   "jest.rootPath": ".",
   "jest.testMatch": ["**/*.e2e-spec.ts"],
   "jest.autoRun": {
-    "watch": true,
-    "onSave": "test-src-file"
+    "watch": false,
+    "onDemand": true
   }
 }

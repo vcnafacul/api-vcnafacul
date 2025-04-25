@@ -61,9 +61,7 @@ describe('Class (e2e)', () => {
     studentCourseService =
       moduleFixture.get<StudentCourseService>(StudentCourseService);
 
-    jest
-      .spyOn(emailService, 'sendCreateGeoMail')
-      .mockImplementation(async () => {});
+    jest.spyOn(emailService, 'sendEmailGeo').mockImplementation(async () => {});
 
     jest
       .spyOn(emailService, 'sendCreateUser')

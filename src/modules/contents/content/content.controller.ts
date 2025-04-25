@@ -36,8 +36,8 @@ export class ContentController {
   @Post()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.validarDemanda)
-  async create(@Body() dto: CreateContentDTOInput) {
-    return await this.contentService.create(dto);
+  async create(@Body() dto: CreateContentDTOInput, @Req() req: Request) {
+    return await this.contentService.create(dto, req.user as User);
   }
 
   @Get()
@@ -95,7 +95,7 @@ export class ContentController {
   @UseInterceptors(FileInterceptor('file'))
   async upload(
     @Param('id') id: string,
-    @UploadedFile() file,
+    @UploadedFile() file: Express.Multer.File,
     @Req() req: Request,
   ) {
     return await this.contentService.uploadFile(id, req.user as User, file);
@@ -106,5 +106,10 @@ export class ContentController {
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
   async delete(@Param('id') id: string) {
     return await this.contentService.delete(id);
+  }
+
+  @Get('file/:id')
+  async getFile(@Param('id') id: string) {
+    return await this.contentService.getFile(id);
   }
 }

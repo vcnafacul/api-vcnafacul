@@ -56,9 +56,6 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
       const representative = await this.userService.findOneBy({
         id: dto.representative,
       });
-      if (!representative) {
-        throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
-      }
 
       partnerPrepCourse = new PartnerPrepCourse();
       partnerPrepCourse.geoId = dto.geoId;
@@ -102,9 +99,7 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
   async inviteMember(email: string, userId: string) {
     const inviter = await this.userService.findOneBy({ id: userId });
     const prepCourse = await this.getByUserId(userId);
-    if (!prepCourse) {
-      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
-    }
+
     const user = await this.userService.findOneBy({ email });
     if (!user) {
       throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
@@ -224,7 +219,10 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     let parnetPrepCourse = null;
     parnetPrepCourse = await this.repository.findOneByUserId(userId);
     if (!parnetPrepCourse) {
-      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        'Cursinho parceiro não encontrado',
+        HttpStatus.NOT_FOUND,
+      );
     }
     return parnetPrepCourse;
   }
