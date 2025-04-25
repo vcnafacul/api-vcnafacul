@@ -19,6 +19,8 @@ export class SubjectRepository extends LinkedListRepository<Subject, Content> {
       .createQueryBuilder('subject')
       .leftJoin('subject.frente', 'frente')
       .addSelect(['frente.id'])
+      .leftJoin('subject.contents', 'content')
+      .addSelect(['content.id', 'content.status'])
       .where('frente.id = :frente', { frente });
 
     return query.getMany();

@@ -5,6 +5,7 @@ import { Subject } from '../subject/subject.entity';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { Materias } from './enum/materias';
+import { StatusContent } from '../content/enum/status-content';
 
 @Injectable()
 export class FrenteRepository extends LinkedListRepository<Frente, Subject> {
@@ -33,10 +34,10 @@ export class FrenteRepository extends LinkedListRepository<Frente, Subject> {
         'subject.name',
         'subject.description',
       ])
-      .innerJoin('frente.subject', 'subject')
-      .innerJoin('subject.content', 'content')
+      .innerJoin('frente.subjects', 'subject')
+      .innerJoin('subject.contents', 'content')
       .where('frente.materia = :materia', { materia })
-      .andWhere('content.status = :status', { status: 1 });
+      .andWhere('content.status = :status', { status: StatusContent.Approved });
 
     return query.getMany();
   }

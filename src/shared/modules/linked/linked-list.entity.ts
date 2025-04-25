@@ -9,5 +9,5 @@ export abstract class LinkedListEntity extends NodeEntity {
   tail?: string;
 
   @Column({ default: 0 })
-  lenght: number;
+  lenght: number; //escrito errado, mas segue o jogo
 }

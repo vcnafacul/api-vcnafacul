@@ -245,12 +245,12 @@ export class UserService extends BaseService<User> {
       roleName: user.role.name,
     }));
 
-    return {
-      data: Object.assign(new GetAllDtoOutput<UserWithRoleName>(), data),
+    return Object.assign(new GetAllDtoOutput<UserWithRoleName>(), {
+      data: data,
       page: result.page,
       limit: result.limit,
       totalItems: result.totalItems,
-    };
+    });
   }
 
   async updateRole(id: string, roleId: string): Promise<void> {
