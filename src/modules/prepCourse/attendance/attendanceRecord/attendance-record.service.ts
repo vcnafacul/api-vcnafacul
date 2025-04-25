@@ -14,6 +14,7 @@ import {
   AttendanceRecordByClassOutput,
   AttendanceRecordItem,
 } from './dtos/attendance-record-by-class.dto.output';
+import { AttendanceRecordByStudentDtoOutput } from './dtos/attendance-record-by-student.dto.output';
 import { CreateAttendanceRecordDtoInput } from './dtos/create-attendance-record.dto.input';
 import { GetAttendanceRecordByIdDtoOutput } from './dtos/get-attendance-record-by-id.dto.output';
 import { GetAttendanceRecordByStudent } from './dtos/get-attendance-record-by-student';
@@ -250,5 +251,36 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
         b.date.localeCompare(a.date),
       ),
     };
+  }
+
+  async getStudentPresenceReportByClassId({
+    classId,
+    startDate,
+    endDate,
+  }: AttendanceRecordByClassInput): Promise<any> {
+    const classEntity =
+      await this.classRepository.findOneByIdWithPartner(classId);
+    if (!classEntity) {
+      throw new HttpException(
+        `Class not found by id ${classId}`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const report = await this.repository.studentAttendanceReportByClassId(
+      classId,
+      startDate,
+      endDate,
+    );
+
+    return Object.assign(new AttendanceRecordByStudentDtoOutput(), {
+      class: {
+        name: classEntity.name,
+        year: classEntity.year,
+      },
+      startDate,
+      endDate,
+      report,
+    });
   }
 }
