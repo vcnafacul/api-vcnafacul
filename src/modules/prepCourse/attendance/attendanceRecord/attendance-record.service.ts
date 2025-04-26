@@ -116,7 +116,9 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
         justification: studentAttendance.justification?.justification,
         student: {
           name:
-            studentAttendance.studentCourse.user.firstName +
+            (studentAttendance.studentCourse.user.useSocialName
+              ? studentAttendance.studentCourse.user.socialName
+              : studentAttendance.studentCourse.user.firstName) +
             ' ' +
             studentAttendance.studentCourse.user.lastName,
           cod_enrolled: studentAttendance.studentCourse.cod_enrolled,

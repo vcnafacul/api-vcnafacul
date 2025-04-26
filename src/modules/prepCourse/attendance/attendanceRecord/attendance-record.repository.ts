@@ -24,6 +24,8 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
       .addSelect([
         'userRegisteredBy.firstName',
         'userRegisteredBy.lastName',
+        'userRegisteredBy.socialName',
+        'userRegisteredBy.useSocialName',
         'userRegisteredBy.email',
       ])
       .leftJoin('entity.studentAttendance', 'studentAttendance')
@@ -32,7 +34,12 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
       .innerJoin('studentAttendance.studentCourse', 'studentCourse')
       .addSelect(['studentCourse.id', 'studentCourse.cod_enrolled'])
       .innerJoin('studentCourse.user', 'user')
-      .addSelect(['user.firstName', 'user.lastName'])
+      .addSelect([
+        'user.firstName',
+        'user.lastName',
+        'user.socialName',
+        'user.useSocialName',
+      ])
       .innerJoinAndSelect('entity.class', 'class')
       .where({ ...where })
       .getOne();
@@ -197,7 +204,9 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
     endDate: Date,
   ): Promise<
     {
-      studentName: string;
+      name: string;
+      socialName: string;
+      useSocialName: boolean;
       codEnrolled: string;
       totalClassRecords: number;
       studentRecords: number;
@@ -231,7 +240,9 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
         endDate: endDateCopy,
       })
       .andWhere('attendance.deletedAt IS NULL')
-      .select('user.firstName', 'studentName')
+      .select('user.firstName', 'name')
+      .addSelect('user.socialName', 'socialName')
+      .addSelect('user.useSocialName', 'useSocialName')
       .addSelect('studentCourse.cod_enrolled', 'codEnrolled')
       .addSelect('COUNT(studentAttendance.id)', 'totalClassRecords')
       .addSelect(
