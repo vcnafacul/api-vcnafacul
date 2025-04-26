@@ -20,7 +20,7 @@ export class SubjectRepository extends LinkedListRepository<Subject, Content> {
       .leftJoin('subject.frente', 'frente')
       .addSelect(['frente.id'])
       .leftJoin('subject.contents', 'content')
-      .addSelect(['content.id', 'content.status'])
+      .addSelect(['content.id', 'content.status', 'content.title'])
       .where('frente.id = :frente', { frente });
 
     return query.getMany();
@@ -49,6 +49,8 @@ export class SubjectRepository extends LinkedListRepository<Subject, Content> {
       .select(['subject.id', 'subject.next', 'subject.prev'])
       .leftJoin('subject.frente', 'frente')
       .addSelect(['frente.id', 'frente.name'])
+      .leftJoin('subject.contents', 'contents')
+      .addSelect(['contents.id', 'contents.status', 'contents.title'])
       .where('subject.id = :id', { id });
 
     return query.getOne();

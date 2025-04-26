@@ -89,7 +89,7 @@ export class SubjectService extends BaseService<Subject> {
         HttpStatus.NOT_FOUND,
       );
     }
-    if (subject.lenght > 0) {
+    if (subject.lenght > 0 || subject.contents.length > 0) {
       throw new HttpException(
         `It's not possible to delete subject with content`,
         HttpStatus.CONFLICT,
