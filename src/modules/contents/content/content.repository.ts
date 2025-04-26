@@ -127,17 +127,17 @@ export class ContentRepository extends NodeRepository<Content> {
   ) {
     const orderedNodes: Content[] = [];
     let currentNode = nodes.find((n) => n.id === start);
+
     while (currentNode) {
-      if (
-        status === undefined ||
-        Number.isNaN(status) ||
-        currentNode.status === status
-      ) {
-        orderedNodes.push(currentNode);
-      }
+      orderedNodes.push(currentNode);
       currentNode = nodes.find((n) => n.id === currentNode.next);
     }
-    return orderedNodes;
+
+    if (status === undefined || Number.isNaN(status)) {
+      return orderedNodes;
+    }
+
+    return orderedNodes.filter((node) => node.status === status);
   }
 
   async getNodes(list: string) {
