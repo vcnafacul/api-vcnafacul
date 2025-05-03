@@ -67,8 +67,11 @@ export class ClassController {
     status: 200,
     description: 'pegar turma por id',
   })
-  async getById(@Param('id') id: string): Promise<GetClassByIdDtoOutput> {
-    return await this.service.findOneById(id);
+  async getById(
+    @Param('id') id: string,
+    @Req() req: Request,
+  ): Promise<GetClassByIdDtoOutput> {
+    return await this.service.findOneById(id, (req.user as User).id);
   }
 
   @Delete(':id')

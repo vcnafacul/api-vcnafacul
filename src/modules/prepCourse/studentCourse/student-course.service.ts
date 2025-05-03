@@ -11,6 +11,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import * as dayjs from 'dayjs';
 import { Permissions } from 'src/modules/role/role.entity';
+import { RoleService } from 'src/modules/role/role.service';
 import { Status } from 'src/modules/simulado/enum/status.enum';
 import { CreateUserDtoInput } from 'src/modules/user/dto/create.dto.input';
 import { CreateFlow } from 'src/modules/user/enum/create-flow';
@@ -26,6 +27,7 @@ import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output'
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
+import { maskEmail } from 'src/utils/maskEmail';
 import { IsNull, Not } from 'typeorm';
 import { ClassService } from '../class/class.service';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
@@ -76,6 +78,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     private readonly collaboratorRepository: CollaboratorRepository,
     private readonly classService: ClassService,
     private readonly discordWebhook: DiscordWebhook,
+    private readonly roleService: RoleService,
   ) {
     super(repository);
   }
@@ -813,6 +816,10 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       filters: filter ? [filter] : [],
     });
 
+    const user = await this.userService.findUserById(userId);
+    const role = await this.roleService.findOneById(user.role.id);
+    const manager = role.gerenciarEstudantes;
+
     return {
       name: partnerPrepCourse.geo.name,
       students: {
@@ -826,7 +833,9 @@ export class StudentCourseService extends BaseService<StudentCourse> {
                   }`
                 : `${student.user.firstName} ${student.user.lastName}`,
 
-              email: student.user.email,
+              email: manager
+                ? student.user.email
+                : maskEmail(student.user.email),
               whatsapp: student.whatsapp,
               urgencyPhone: student.urgencyPhone,
               applicationStatus: student.applicationStatus,
