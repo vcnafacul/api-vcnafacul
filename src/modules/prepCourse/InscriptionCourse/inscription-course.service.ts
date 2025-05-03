@@ -7,6 +7,8 @@ import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output'
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { adjustDate } from 'src/utils/adjustDate';
+import { maskCpf } from 'src/utils/maskCpf';
+import { maskRg } from 'src/utils/maskRg';
 import { HasInscriptionActiveDtoOutput } from '../partnerPrepCourse/dtos/has-inscription-active.output.dto';
 import { PartnerPrepCourseService } from '../partnerPrepCourse/partner-prep-course.service';
 import { StatusApplication } from '../studentCourse/enums/stastusApplication';
@@ -229,8 +231,8 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
           lista_de_espera: student.waitingList ? 'Sim' : 'Não',
           status: student.applicationStatus,
           email: student.user.email,
-          cpf: student.cpf,
-          rg: student.rg,
+          cpf: maskCpf(student.cpf),
+          rg: maskRg(student.rg),
           uf: student.uf,
           telefone_emergencia: student.urgencyPhone,
           socioeconomic: student.socioeconomic,
@@ -256,9 +258,9 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
           estado: student.user.state,
           nome_guardiao_legal: student.legalGuardian?.fullName || '',
           telefone_guardiao_legal: student.legalGuardian?.phone || '',
-          rg_guardiao_legal: student.legalGuardian?.rg || '',
+          rg_guardiao_legal: maskRg(student.legalGuardian?.rg) || '',
           uf_guardiao_legal: student.legalGuardian?.uf || '',
-          cpf_guardiao_legal: student.legalGuardian?.cpf || '',
+          cpf_guardiao_legal: maskCpf(student.legalGuardian?.cpf) || '',
           parentesco_guardiao_legal:
             student.legalGuardian?.family_relationship || '',
           logs: student.logs,

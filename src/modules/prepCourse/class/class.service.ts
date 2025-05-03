@@ -4,8 +4,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { RoleService } from 'src/modules/role/role.service';
+import { UserService } from 'src/modules/user/user.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { maskEmail } from 'src/utils/maskEmail';
 import { PartnerPrepCourseRepository } from '../partnerPrepCourse/partner-prep-course.repository';
 import { Class } from './class.entity';
 import { ClassRepository } from './class.repository';
@@ -20,6 +23,8 @@ export class ClassService extends BaseService<Class> {
   constructor(
     private readonly repository: ClassRepository,
     private readonly partnerRepository: PartnerPrepCourseRepository,
+    private readonly userService: UserService,
+    private readonly roleService: RoleService,
   ) {
     super(repository);
   }
@@ -42,19 +47,27 @@ export class ClassService extends BaseService<Class> {
     return entity;
   }
 
-  async findOneById(id: string): Promise<GetClassByIdDtoOutput> {
+  async findOneById(
+    id: string,
+    userId: string,
+  ): Promise<GetClassByIdDtoOutput> {
     const classEntity = await this.repository.findOneById(id);
 
     if (!classEntity) {
       throw new NotFoundException(`Class with id ${id} not found`);
     }
+
+    const user = await this.userService.findUserById(userId);
+    const role = await this.roleService.findOneById(user.role.id);
+    const manager = role.gerenciarEstudantes;
+
     const students = classEntity.students.map((student) => {
       return {
         id: student.id,
         name: student.user.useSocialName
           ? `${student.user.socialName?.split(' ')[0]} ${student.user.lastName}`
           : `${student.user.firstName} ${student.user.lastName}`,
-        email: student.user.email,
+        email: manager ? student.user.email : maskEmail(student.user.email),
         status: student.applicationStatus,
         cod_enrolled: student.cod_enrolled,
         created_at: student.createdAt,
