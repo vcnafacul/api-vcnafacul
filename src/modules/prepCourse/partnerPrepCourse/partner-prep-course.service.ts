@@ -1,4 +1,11 @@
-import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { StatusLogGeo } from 'src/modules/geo/enum/status-log-geo';
@@ -10,6 +17,7 @@ import { Role } from 'src/modules/role/role.entity';
 import { RoleService } from 'src/modules/role/role.service';
 import { UserService } from 'src/modules/user/user.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
+import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DataSource } from 'typeorm';
 import { Collaborator } from '../collaborator/collaborator.entity';
@@ -17,6 +25,7 @@ import { CollaboratorRepository } from '../collaborator/collaborator.repository'
 import { PartnerPrepCourseDtoInput } from './dtos/create-partner-prep-course.input.dto';
 import { PartnerPrepCourse } from './partner-prep-course.entity';
 import { PartnerPrepCourseRepository } from './partner-prep-course.repository';
+import { createTermOfUse } from './utils/create-term-of-use';
 
 @Injectable()
 export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
@@ -28,8 +37,10 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     private readonly collaboratorRepository: CollaboratorRepository,
     private readonly logGeoRepository: LogGeoRepository,
     private readonly roleService: RoleService,
+    @Inject('BlobService') private readonly blobService: BlobService,
     @InjectDataSource()
     private dataSource: DataSource,
+    private configService: ConfigService,
   ) {
     super(repository);
   }
@@ -39,6 +50,8 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
   async create(
     dto: PartnerPrepCourseDtoInput,
     userId: string,
+    partnershipAgreement?: Express.Multer.File,
+    logo?: Express.Multer.File,
   ): Promise<PartnerPrepCourse> {
     let partnerPrepCourse: PartnerPrepCourse = null;
     const user = await this.userService.findOneBy({ id: userId });
@@ -57,18 +70,51 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
         id: dto.representative,
       });
 
-      partnerPrepCourse = new PartnerPrepCourse();
-      partnerPrepCourse.geoId = dto.geoId;
+      if (!representative) {
+        throw new HttpException(
+          'Representante nao encontrado',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
 
-      let collaborator = await manager
+      const existingCollaborador = await manager
         .getRepository(Collaborator)
         .findOneBy({ user: { id: representative.id } });
-
-      if (!collaborator) {
-        collaborator = new Collaborator();
-        collaborator.user = representative;
-        collaborator.description = 'Representante Cursinho';
+      if (existingCollaborador) {
+        throw new HttpException(
+          'Representante ja cadastrado como colaborador',
+          HttpStatus.CONFLICT,
+        );
       }
+
+      const file = await createTermOfUse(this.blobService, this.configService);
+      const key = await this.blobService.uploadFile(
+        file,
+        this.configService.get<string>('BUCKET_PARTNERSHIP_DOC'),
+      );
+
+      partnerPrepCourse = new PartnerPrepCourse();
+      partnerPrepCourse.termOfUseUrl = key;
+      const agreementKey = await this.blobService.uploadFile(
+        partnershipAgreement,
+        this.configService.get<string>('BUCKET_PARTNERSHIP_DOC'),
+      );
+      partnerPrepCourse.partnershipAgreement = agreementKey;
+
+      if (logo) {
+        const logoKey = await this.blobService.uploadFile(
+          logo,
+          this.configService.get<string>('BUCKET_PARTNERSHIP_LOGO'),
+        );
+        partnerPrepCourse.logo = logoKey;
+      }
+
+      partnerPrepCourse.geoId = dto.geoId;
+      partnerPrepCourse.representative = representative;
+
+      const collaborator = new Collaborator();
+      collaborator.user = representative;
+      collaborator.description = 'Representante Cursinho';
 
       collaborator.partnerPrepCourse = partnerPrepCourse;
 

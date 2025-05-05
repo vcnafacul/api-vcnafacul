@@ -9,10 +9,11 @@ import { PartnerPrepCourseService } from '../partnerPrepCourse/partner-prep-cour
 import { CollaboratorController } from './collaborator.controller';
 import { CollaboratorRepository } from './collaborator.repository';
 import { CollaboratorService } from './collaborator.service';
+import { BlobModule } from 'src/shared/services/blob/blob.module';
 
 @Module({
   controllers: [CollaboratorController],
-  imports: [UserModule],
+  imports: [UserModule, BlobModule],
   providers: [
     CollaboratorRepository,
     CollaboratorService,

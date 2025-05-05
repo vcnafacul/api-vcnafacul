@@ -6,6 +6,7 @@ import {
   Post,
   Req,
   SetMetadata,
+  UploadedFiles,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -35,9 +36,19 @@ export class PartnerPrepCourseController {
   })
   async createPartnerPrepCourse(
     @Body() dto: PartnerPrepCourseDtoInput,
+    @UploadedFiles()
+    files: {
+      partnershipAgreement?: Express.Multer.File;
+      logo?: Express.Multer.File;
+    },
     @Req() req: Request,
   ): Promise<void> {
-    await this.service.create(dto, (req.user as User).id);
+    await this.service.create(
+      dto,
+      (req.user as User).id,
+      files.partnershipAgreement,
+      files.logo,
+    );
   }
 
   @Get('invite-members-accept')
