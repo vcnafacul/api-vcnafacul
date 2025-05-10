@@ -132,6 +132,9 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       await this.createLegalGuardian(dto.legalGuardian, studentCourse);
     }
 
+    if (dto.socialName) user.useSocialName = true;
+    else user.useSocialName = false;
+
     await this.userRepository.update(user);
     const representatives =
       await this.collaboratorRepository.findCollaboratorsByPermission(
