@@ -5,8 +5,10 @@ import { RoleRepository } from 'src/modules/role/role.repository';
 import { UserModule } from 'src/modules/user/user.module';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
+import { BlobModule } from 'src/shared/services/blob/blob.module';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
+import { FileContentRepository } from '../file-content/file-content.repository';
 import { SubjectRepository } from '../subject/subject.repository';
 import { ContentController } from './content.controller';
 import { ContentRepository } from './content.repository';
@@ -14,7 +16,7 @@ import { ContentService } from './content.service';
 
 @Module({
   controllers: [ContentController],
-  imports: [AuditLogModule, UserModule],
+  imports: [AuditLogModule, UserModule, BlobModule],
   providers: [
     ContentService,
     ContentRepository,
@@ -25,6 +27,7 @@ import { ContentService } from './content.service';
     EmailService,
     CollaboratorRepository,
     DiscordWebhook,
+    FileContentRepository,
   ],
   exports: [
     ContentService,

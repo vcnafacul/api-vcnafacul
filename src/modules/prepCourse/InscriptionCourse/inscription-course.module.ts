@@ -7,6 +7,7 @@ import { StudentCourseModule } from '../studentCourse/student-course.module';
 import { InscriptionCourseController } from './inscription-course.controller';
 import { InscriptionCourseRepository } from './inscription-course.repository';
 import { InscriptionCourseService } from './inscription-course.service';
+import { InscriptionCourseExistValidator } from './validator/inscription-course-exist.validator';
 
 @Module({
   controllers: [InscriptionCourseController],
@@ -14,6 +15,7 @@ import { InscriptionCourseService } from './inscription-course.service';
   providers: [
     InscriptionCourseService,
     InscriptionCourseRepository,
+    InscriptionCourseExistValidator,
     EmailService,
     LogStudentRepository,
     DiscordWebhook,

@@ -1,5 +1,12 @@
 {
-  "moduleFileExtensions": ["ts", "tsx", "js", "jsx", "json", "node"],
+  "moduleFileExtensions": [
+    "ts",
+    "tsx",
+    "js",
+    "jsx",
+    "json",
+    "node"
+  ],
   "rootDir": "./../../",
   "testEnvironment": "node",
   "testRegex": "spec.ts$",
@@ -7,7 +14,10 @@
     "^.+\\.(t|j)s$": "ts-jest",
     "^.+\\.(ts|tsx|js|jsx)$": "babel-jest"
   },
-  "moduleDirectories": ["<rootDir>/", "node_modules"],
+  "moduleDirectories": [
+    "<rootDir>/",
+    "node_modules"
+  ],
   "collectCoverageFrom": [
     "src/**/*.{ts,js}",
     "!src/main.ts",
@@ -18,8 +28,12 @@
   "coverageDirectory": "./coverage",
   "coverageThreshold": {
     "global": {
-      "lines": 59
+      "lines": 77
     }
   },
-  "coverageReporters": ["text-summary"]
+  "coverageReporters": [
+    "text",
+    "lcov",
+    "text-summary"
+  ]
 }

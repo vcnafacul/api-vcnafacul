@@ -7,7 +7,9 @@ import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output'
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { adjustDate } from 'src/utils/adjustDate';
-import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
+import { maskCpf } from 'src/utils/maskCpf';
+import { maskRg } from 'src/utils/maskRg';
+import { HasInscriptionActiveDtoOutput } from '../partnerPrepCourse/dtos/has-inscription-active.output.dto';
 import { PartnerPrepCourseService } from '../partnerPrepCourse/partner-prep-course.service';
 import { StatusApplication } from '../studentCourse/enums/stastusApplication';
 import { LogStudent } from '../studentCourse/log-student/log-student.entity';
@@ -47,40 +49,23 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     const parnetPrepCourse =
       await this.partnerPrepCourseService.getByUserId(userId);
 
-    const allInscription = await this.findAllBy({
-      page: 1,
-      limit: 9999,
-      where: { partnerPrepCourse: parnetPrepCourse },
-    });
-    const currentInscriptionCourse = allInscription.data.find(
-      (ins) => ins.actived === Status.Approved,
-    );
     dto.endDate = new Date(dto.endDate);
     dto.startDate = new Date(dto.startDate);
+    dto.startDate.setHours(0, 0, 0, 0);
     dto.endDate.setHours(23, 59, 59, 999);
-
-    this.checkDateConflictWithInscription(
-      allInscription.data,
-      dto.startDate,
-      dto.endDate,
-    );
-
-    if (currentInscriptionCourse || dto.startDate > new Date()) {
-      dto.actived = Status.Pending;
-    }
 
     const inscriptionCourse: InscriptionCourse = Object.assign(
       new InscriptionCourse(),
       dto,
     );
-    inscriptionCourse.description = dto.description || '';
-    const result = await this.repository.create(inscriptionCourse);
-    if (parnetPrepCourse.inscriptionCourses) {
-      parnetPrepCourse.inscriptionCourses.push(result);
-    } else {
-      parnetPrepCourse.inscriptionCourses = [result];
+
+    if (dto.startDate < new Date()) {
+      inscriptionCourse.actived = Status.Approved;
     }
-    await this.partnerPrepCourseService.update(parnetPrepCourse);
+
+    inscriptionCourse.description = dto.description || '';
+    inscriptionCourse.partnerPrepCourse = parnetPrepCourse;
+    const result = await this.repository.create(inscriptionCourse);
     return {
       id: result.id,
       name: result.name,
@@ -94,6 +79,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
       updatedAt: result.updatedAt,
       partnerPrepCourseId: parnetPrepCourse.id,
       partnerPrepCourseName: parnetPrepCourse.geo.name,
+      requestDocuments: result.requestDocuments,
     };
   }
 
@@ -110,20 +96,23 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
       where: { partnerPrepCourse: partner },
     });
     return {
-      data: inscription.data.map((i) => ({
-        id: i.id,
-        name: i.name,
-        description: i.description,
-        startDate: i.startDate,
-        endDate: i.endDate,
-        actived: i.actived,
-        openingsCount: i.expectedOpening,
-        subscribersCount: i.students?.length || 0,
-        createdAt: i.createdAt,
-        updatedAt: i.updatedAt,
-        partnerPrepCourseId: i.partnerPrepCourse.id,
-        partnerPrepCourseName: i.partnerPrepCourse.geo.name,
-      })),
+      data: inscription.data.map((i) =>
+        Object.assign(new InscriptionCourseDtoOutput(), {
+          id: i.id,
+          name: i.name,
+          description: i.description,
+          startDate: i.startDate,
+          endDate: i.endDate,
+          actived: i.actived,
+          openingsCount: i.expectedOpening,
+          subscribersCount: i.students?.length || 0,
+          createdAt: i.createdAt,
+          updatedAt: i.updatedAt,
+          partnerPrepCourseId: i.partnerPrepCourse.id,
+          partnerPrepCourseName: i.partnerPrepCourse.geo.name,
+          requestDocuments: i.requestDocuments,
+        }),
+      ),
       page: inscription.page,
       limit: inscription.limit,
       totalItems: inscription.totalItems,
@@ -131,22 +120,41 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
   }
 
   async getById(id: string): Promise<InscriptionCourse> {
-    return this.repository.findOneBy({ where: { id } });
+    return await this.repository.findOneBy({ id });
   }
 
-  async findOneActived(partnerPrepCourse: PartnerPrepCourse) {
-    const inscription = await this.repository.findActived(partnerPrepCourse);
-    if (!inscription || inscription.endDate < new Date()) {
-      return null;
+  async getToInscription(id: string): Promise<HasInscriptionActiveDtoOutput> {
+    const inscription = await this.repository.findOneBy({ id });
+    if (!inscription) {
+      throw new HttpException(
+        'Processo Seletivo não encontrado',
+        HttpStatus.BAD_REQUEST,
+      );
     }
-    return inscription;
+    const today = new Date();
+    const status =
+      today < inscription.startDate
+        ? Status.Pending
+        : today > inscription.endDate
+        ? Status.Rejected
+        : Status.Approved;
+    return Object.assign(new HasInscriptionActiveDtoOutput(), {
+      prepCourseName: inscription.partnerPrepCourse.geo.name,
+      inscription: {
+        name: inscription.name,
+        description: inscription.description,
+        startDate: inscription.startDate,
+        endDate: inscription.endDate,
+        status,
+      },
+    });
   }
 
   async cancelInscriptionCourse(id: string) {
     const inscriptionCourse = await this.repository.findOneBy({ id });
     if (!inscriptionCourse) {
       throw new HttpException(
-        'Inscrição não encontrada',
+        'Processo Seletivo não encontrado',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -155,68 +163,47 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     await this.repository.update(inscriptionCourse);
   }
 
-  async activeInscriptionCourse(id: string) {
-    const inscriptionCourse = await this.repository.findOneBy({
-      where: { id },
-    });
-    if (!inscriptionCourse) {
-      throw new HttpException(
-        'Inscrição não encontrada',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-    inscriptionCourse.actived = Status.Approved;
-    await this.repository.update(inscriptionCourse);
-  }
-
   async update(entity: InscriptionCourse) {
     return this.repository.update(entity);
   }
+  async updateFromDTO(dto: UpdateInscriptionCourseDTOInput) {
+    const now = new Date();
 
-  async updateFromDTO(dto: UpdateInscriptionCourseDTOInput, userId: string) {
-    const parnetPrepCourse =
-      await this.partnerPrepCourseService.getByUserId(userId);
-    const activeInscription = await this.findOneActived(parnetPrepCourse);
+    if (new Date(dto.endDate) < now) {
+      throw new HttpException(
+        'Data de término do curso não pode ser menor que a data atual',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
 
     const inscriptionCourse = await this.repository.findOneBy({ id: dto.id });
     if (!inscriptionCourse) {
       throw new HttpException(
-        'Inscrição não encontrada',
-        HttpStatus.BAD_REQUEST,
+        'Processo Seletivo não encontrado',
+        HttpStatus.NOT_FOUND,
       );
     }
 
-    if (activeInscription && activeInscription.id !== dto.id) {
-      throw new HttpException(
-        'Não é permitido alterar uma inscrição enquanto houver um processo seletivo ativo',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    const startDate = new Date(dto.startDate);
+    const endDate = new Date(dto.endDate);
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
 
-    dto.endDate = new Date(dto.endDate);
-    dto.startDate = new Date(dto.startDate);
-    dto.endDate.setHours(23, 59, 59, 999);
-
-    await this.checkDateConflict(
-      parnetPrepCourse,
-      dto.startDate,
-      dto.endDate,
-      dto.id,
-    );
-
-    if (dto.endDate < new Date()) {
-      inscriptionCourse.actived = Status.Rejected;
-    } else if (dto.startDate < new Date() && dto.endDate > new Date()) {
+    if (startDate < now) {
       inscriptionCourse.actived = Status.Approved;
     } else {
       inscriptionCourse.actived = Status.Pending;
     }
 
-    inscriptionCourse.name = dto.name;
-    inscriptionCourse.description = dto.description;
-    inscriptionCourse.startDate = dto.startDate;
-    inscriptionCourse.endDate = dto.endDate;
-    inscriptionCourse.expectedOpening = dto.expectedOpening;
+    Object.assign(inscriptionCourse, {
+      name: dto.name,
+      description: dto.description,
+      startDate,
+      endDate,
+      expectedOpening: dto.expectedOpening,
+      requestDocuments: dto.requestDocuments,
+    });
+
     await this.repository.update(inscriptionCourse);
   }
 
@@ -226,13 +213,13 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     const inscription = await this.repository.getSubscribers(inscriptionId);
     if (!inscription) {
       throw new HttpException(
-        'Inscrição não encontrada',
+        'Processo Seletivo não encontrado',
         HttpStatus.BAD_REQUEST,
       );
     }
     const subscribers: GetSubscribersDtoOutput[] = inscription.students.map(
       (student) => {
-        return {
+        return Object.assign(new GetSubscribersDtoOutput(), {
           id: student.id,
           cadastrado_em: student.createdAt,
           isento: student.isFree ? 'Sim' : 'Não',
@@ -244,8 +231,8 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
           lista_de_espera: student.waitingList ? 'Sim' : 'Não',
           status: student.applicationStatus,
           email: student.user.email,
-          cpf: student.cpf,
-          rg: student.rg,
+          cpf: maskCpf(student.cpf),
+          rg: maskRg(student.rg),
           uf: student.uf,
           telefone_emergencia: student.urgencyPhone,
           socioeconomic: student.socioeconomic,
@@ -271,9 +258,9 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
           estado: student.user.state,
           nome_guardiao_legal: student.legalGuardian?.fullName || '',
           telefone_guardiao_legal: student.legalGuardian?.phone || '',
-          rg_guardiao_legal: student.legalGuardian?.rg || '',
+          rg_guardiao_legal: maskRg(student.legalGuardian?.rg) || '',
           uf_guardiao_legal: student.legalGuardian?.uf || '',
-          cpf_guardiao_legal: student.legalGuardian?.cpf || '',
+          cpf_guardiao_legal: maskCpf(student.legalGuardian?.cpf) || '',
           parentesco_guardiao_legal:
             student.legalGuardian?.family_relationship || '',
           logs: student.logs,
@@ -286,7 +273,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
           photo: student.photo,
           areas_de_interesse: student.areaInterest,
           cursos_selecionados: student.selectedCourses,
-        };
+        });
       },
     );
     return subscribers;
@@ -305,57 +292,13 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     }
   }
 
-  async checkDateConflict(
-    partner: PartnerPrepCourse,
-    startDate: Date,
-    endDate: Date,
-    inscriptionId?: string,
-  ) {
-    const allInscription = await this.repository.findAllBy({
-      page: 1,
-      limit: 9999,
-      where: { partnerPrepCourse: partner },
-    });
-    this.checkDateConflictWithInscription(
-      allInscription.data,
-      startDate,
-      endDate,
-      inscriptionId,
-    );
-  }
-
-  checkDateConflictWithInscription(
-    inscription: InscriptionCourse[],
-    startDate: Date,
-    endDate: Date,
-    inscriptionId?: string,
-  ) {
-    inscription.forEach((ins) => {
-      if (ins.id !== inscriptionId) {
-        if (startDate >= ins.startDate && startDate <= ins.endDate) {
-          throw new HttpException(
-            'Já existe um processo seletivo neste período',
-            HttpStatus.BAD_REQUEST,
-          );
-        } else if (endDate >= ins.startDate && endDate <= ins.endDate) {
-          throw new HttpException(
-            'Já existe um processo seletivo neste período',
-            HttpStatus.BAD_REQUEST,
-          );
-        } else if (startDate <= ins.startDate && endDate >= ins.endDate) {
-          throw new HttpException(
-            'Já existe um processo seletivo neste período',
-            HttpStatus.BAD_REQUEST,
-          );
-        }
-      }
-    });
-  }
-
   async updateWaitingList(id: string, studentId: string, waitingList: boolean) {
     const inscription = await this.repository.findOneBy({ id });
     if (!inscription) {
-      throw new HttpException('Inscrição não encontrada', HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        'Processo Seletivo não encontrado',
+        HttpStatus.NOT_FOUND,
+      );
     }
     const student = await this.studentRepository.findOneBy({ id: studentId });
     if (!student) {
@@ -399,7 +342,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     student: StudentCourse,
     inscription: InscriptionCourse,
   ) {
-    await this.repository.removeNode(student, inscription);
+    await this.repository.removeNode(inscription, student);
   }
 
   async addStudentWaitingList(
@@ -414,7 +357,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
       const inscription = await this.repository.findOneBy({ id });
       if (!inscription) {
         throw new HttpException(
-          'Inscrição não encontrada',
+          'Processo Seletivo não encontrado',
           HttpStatus.NOT_FOUND,
         );
       }

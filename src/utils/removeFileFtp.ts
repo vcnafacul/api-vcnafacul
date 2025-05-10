@@ -5,23 +5,23 @@ export const removeFileFTP = async (
   FTP_HOST: string,
   FTP_USER: string,
   FTP_PASSWORD: string,
+  ftpClient: ftp.Client = new ftp.Client(30000), // 👈 injetável
 ): Promise<boolean> => {
-  const client = new ftp.Client(30000);
   try {
-    await client.access({
+    await ftpClient.access({
       host: FTP_HOST,
       user: FTP_USER,
       password: FTP_PASSWORD,
     });
 
-    const ftpResponse = await client.remove(filename);
-    if (ftpResponse.code == 250) {
+    const ftpResponse = await ftpClient.remove(filename);
+    if (ftpResponse.code === 250) {
       return true;
     }
     return false;
   } catch (error) {
     throw error;
   } finally {
-    client.close();
+    ftpClient.close();
   }
 };

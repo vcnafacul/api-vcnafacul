@@ -1,6 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { BaseService } from 'src/shared/modules/base/base.service';
-import { QueryFailedError } from 'typeorm';
 import { CreateFrenteDTOInput } from './dtos/create-frente.dto.input';
 import { UpdateFrenteDTOInput } from './dtos/update-frente.dto.input';
 import { Materias } from './enum/materias';
@@ -14,25 +13,27 @@ export class FrenteService extends BaseService<Frente> {
   }
 
   async create(data: CreateFrenteDTOInput): Promise<Frente> {
+    const frente = new Frente();
+    frente.name = data.name;
+    frente.materia = data.materia;
     try {
-      const frente = new Frente();
-      frente.name = data.name;
-      frente.materia = data.materia;
       return await this.repository.create(frente);
-    } catch (error) {
+    } catch (error: any) {
       if (
-        error instanceof QueryFailedError &&
-        error.message.includes('duplicate key value')
+        error.code === '23505' || // PostgreSQL
+        error.code === 'ER_DUP_ENTRY' || // MySQL
+        error.errno === 1062
       ) {
-        // 23505 é o código específico para violação de chave única
         throw new HttpException(
-          'Nome da frente deve ser único',
+          `Já existe uma frente com o nome "${data.name}" para essa matéria.`,
           HttpStatus.CONFLICT,
         );
-      } else {
-        // Se não for um erro de chave única, você pode lidar com isso de acordo com suas necessidades
-        throw new Error('Erro ao criar a frente');
       }
+
+      throw new HttpException(
+        'Erro interno ao criar frente de estudo.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -62,7 +63,7 @@ export class FrenteService extends BaseService<Frente> {
     }
     if (frente.lenght > 0) {
       throw new HttpException(
-        `It's not possible to delete subject with content`,
+        `It's not possible to delete frente with subject`,
         HttpStatus.CONFLICT,
       );
     }

@@ -3,8 +3,6 @@ import { BaseService } from 'src/shared/modules/base/base.service';
 import { OrConditional } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { EmailService } from 'src/shared/services/email/email.service';
-import { AuditLogRepository } from '../audit-log/audit-log.repository';
-import { AuditLogService } from '../audit-log/audit-log.service';
 import { statusLabels } from '../simulado/enum/status.enum';
 import { User } from '../user/user.entity';
 import { UserService } from '../user/user.service';
@@ -25,8 +23,6 @@ export class GeoService extends BaseService<Geolocation> {
     private readonly geoRepository: GeoRepository,
     private readonly userService: UserService,
     private readonly emailService: EmailService,
-    private readonly auditLogService: AuditLogService,
-    private readonly auditLogRepository: AuditLogRepository,
     private readonly log: LogGeoRepository,
   ) {
     super(geoRepository);
@@ -44,7 +40,10 @@ export class GeoService extends BaseService<Geolocation> {
     await this.log.create(logGeo);
 
     const listEmail = await this.userService.getvalidateGeo();
-    await this.emailService.sendCreateGeoMail(newGeo, listEmail);
+    await this.emailService.sendEmailGeo({
+      geo: newGeo,
+      emails: listEmail,
+    });
 
     return newGeo;
   }

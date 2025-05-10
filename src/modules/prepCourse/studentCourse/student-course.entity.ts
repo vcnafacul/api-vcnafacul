@@ -23,11 +23,11 @@ export class StudentCourse extends NodeEntity {
   @Column({ name: 'user_id' })
   userId: string;
 
-  @Column()
-  rg: string;
+  @Column({ nullable: true })
+  rg?: string;
 
-  @Column()
-  uf: string;
+  @Column({ nullable: true })
+  uf?: string;
 
   @Column()
   cpf: string;

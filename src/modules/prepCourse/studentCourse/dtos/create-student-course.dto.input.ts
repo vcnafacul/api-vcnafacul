@@ -1,18 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
-  IsDateString,
-  IsNotEmpty,
-  IsNumber,
-  IsOptional,
-  IsString,
-  ValidateIf,
-  ValidateNested,
+    IsDateString,
+    IsNotEmpty,
+    IsNumber,
+    IsOptional,
+    IsString,
+    ValidateIf,
+    ValidateNested,
 } from 'class-validator';
 import { UserExist } from 'src/modules/user/validator/user-exist.validator';
 import { CPF } from 'src/shared/validator/cpf.validator';
 import { UF } from 'src/shared/validator/uf.validator';
-import { PartnerPrepCourseExist } from '../../partnerPrepCourse/validator/partner-pret-course-exist.validator';
+import { InscriptionCourseExist } from '../../InscriptionCourse/validator/inscription-course-exist.validator';
 import { CreateLegalGuardianInput } from './create-legal-guardian.dto.input';
 
 export class CreateStudentCourseInput {
@@ -97,8 +97,8 @@ export class CreateStudentCourseInput {
 
   @ApiProperty()
   @IsString()
-  @PartnerPrepCourseExist({ message: 'Partner Prep Course not found' })
-  partnerPrepCourse: string;
+  @InscriptionCourseExist({ message: 'Processo seletivo não encontrado' })
+  inscriptionId: string;
 
   @ApiProperty()
   @IsOptional()

@@ -50,4 +50,35 @@ export class StudentAttendanceService extends BaseService<StudentAttendance> {
     }
     await this.repository.update(studentAttendance);
   }
+
+  async updateJustificationsForAttendanceRecords(
+    studentCourseId: string,
+    attendanceRecordIds: string[],
+    justification: string,
+  ): Promise<void> {
+    const studentAttendances =
+      await this.repository.findAllByAttendanceRecordsWithJustification(
+        studentCourseId,
+        attendanceRecordIds,
+      );
+
+    for (const studentAttendance of studentAttendances) {
+      let absenceJustification = studentAttendance.justification;
+
+      if (!absenceJustification) {
+        absenceJustification = new AbsenceJustification();
+        absenceJustification.studentAttendance = studentAttendance;
+      }
+
+      absenceJustification.justification = justification;
+
+      if (absenceJustification.id) {
+        await this.absenceJustificationRepository.update(absenceJustification);
+      } else {
+        await this.absenceJustificationRepository.create(absenceJustification);
+      }
+
+      studentAttendance.justification = absenceJustification;
+    }
+  }
 }

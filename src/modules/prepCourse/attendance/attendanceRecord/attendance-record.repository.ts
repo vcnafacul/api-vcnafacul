@@ -24,6 +24,8 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
       .addSelect([
         'userRegisteredBy.firstName',
         'userRegisteredBy.lastName',
+        'userRegisteredBy.socialName',
+        'userRegisteredBy.useSocialName',
         'userRegisteredBy.email',
       ])
       .leftJoin('entity.studentAttendance', 'studentAttendance')
@@ -32,7 +34,12 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
       .innerJoin('studentAttendance.studentCourse', 'studentCourse')
       .addSelect(['studentCourse.id', 'studentCourse.cod_enrolled'])
       .innerJoin('studentCourse.user', 'user')
-      .addSelect(['user.firstName', 'user.lastName'])
+      .addSelect([
+        'user.firstName',
+        'user.lastName',
+        'user.socialName',
+        'user.useSocialName',
+      ])
       .innerJoinAndSelect('entity.class', 'class')
       .where({ ...where })
       .getOne();
@@ -189,5 +196,66 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
       .andWhere('DATE(entity.registeredAt) = :date', { date: formattedDate })
       .andWhere('entity.deletedAt IS NULL')
       .getOne();
+  }
+
+  async studentAttendanceReportByClassId(
+    classId: string,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<
+    {
+      name: string;
+      socialName: string;
+      useSocialName: boolean;
+      codEnrolled: string;
+      totalClassRecords: number;
+      studentRecords: number;
+      presencePercentage: number;
+    }[]
+  > {
+    const endDateCopy = new Date(endDate);
+    endDateCopy.setDate(endDateCopy.getDate() + 1);
+
+    // Subquery: total de registros da turma no período
+    const totalClassRecordsSubquery = this.repository
+      .createQueryBuilder('attendance')
+      .select('COUNT(attendance.id)', 'total')
+      .where('attendance.class = :classId', { classId })
+      .andWhere('attendance.registeredAt BETWEEN :startDate AND :endDate', {
+        startDate,
+        endDate: endDateCopy,
+      })
+      .andWhere('attendance.deletedAt IS NULL');
+
+    const totalClassRecords = await totalClassRecordsSubquery.getRawOne();
+
+    return await this.repository
+      .createQueryBuilder('attendance')
+      .innerJoin('attendance.studentAttendance', 'studentAttendance')
+      .innerJoin('studentAttendance.studentCourse', 'studentCourse')
+      .innerJoin('studentCourse.user', 'user')
+      .where('attendance.class = :classId', { classId })
+      .andWhere('attendance.registeredAt BETWEEN :startDate AND :endDate', {
+        startDate,
+        endDate: endDateCopy,
+      })
+      .andWhere('attendance.deletedAt IS NULL')
+      .select('user.firstName', 'name')
+      .addSelect('user.socialName', 'socialName')
+      .addSelect('user.useSocialName', 'useSocialName')
+      .addSelect('studentCourse.cod_enrolled', 'codEnrolled')
+      .addSelect('COUNT(studentAttendance.id)', 'totalClassRecords')
+      .addSelect(
+        `SUM(CASE WHEN studentAttendance.present = true THEN 1 ELSE 0 END)`,
+        'studentRecords',
+      )
+      .addSelect(
+        `ROUND(100.0 * SUM(CASE WHEN studentAttendance.present = true THEN 1 ELSE 0 END) / ${totalClassRecords.total}, 2)`,
+        'presencePercentage',
+      )
+      .groupBy('user.firstName')
+      .addGroupBy('studentCourse.cod_enrolled')
+      .orderBy('presencePercentage', 'DESC')
+      .getRawMany();
   }
 }

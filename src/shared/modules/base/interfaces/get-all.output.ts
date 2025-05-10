@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 export interface GetAllOutput<T> {
   data: T[];
   page: number;

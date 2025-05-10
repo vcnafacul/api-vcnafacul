@@ -37,6 +37,7 @@ import { GetEnrolledDtoOutput } from './dtos/get-enrolled.dto.output';
 import { GetEnrolleds } from './dtos/get-enrolleds';
 import { ScheduleEnrolledDtoInput } from './dtos/schedule-enrolled.dto.input';
 import { UpdateClassDTOInput } from './dtos/update-class.dto.input';
+import { VerifyDeclaredInterestDtoOutput } from './dtos/verify-declared-interest.dto.out';
 import { StudentCourseService } from './student-course.service';
 
 @ApiTags('StudentCourse')
@@ -53,15 +54,15 @@ export class StudentCourseController {
     return await this.service.create(dto);
   }
 
-  @Post('user/:hashPrepCourse')
+  @Post('user/:inscriptionId')
   async createUser(
     @Body() userDto: CreateUserDtoInput,
-    @Param('hashPrepCourse') hashPrepCourse: string,
+    @Param('inscriptionId') inscriptionId: string,
   ): Promise<void> {
-    return await this.service.createUser(userDto, hashPrepCourse);
+    return await this.service.createUser(userDto, inscriptionId);
   }
 
-  @Get('confirm-enrolled/:id')
+  @Patch('confirm-enrolled/:id')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
@@ -121,7 +122,7 @@ export class StudentCourseController {
       files.photo?.[0] || null,
       areaInterest,
       selectedCourses,
-      (req.user as User).id,
+      req.body.studentId,
     );
   }
 
@@ -184,24 +185,30 @@ export class StudentCourseController {
     });
   }
 
-  @Get('get-user-info/:idPrepPartner')
+  @Get('get-user-info/:inscriptionId')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async getUserInfo(
-    @Param('idPrepPartner') idPrepPartner: string,
+    @Param('inscriptionId') inscriptionId: string,
     @Req() req: Request,
   ): Promise<UserDtoOutput> {
     return await this.service.getUserInfoToInscription(
-      idPrepPartner,
+      inscriptionId,
       (req.user as User).id,
     );
   }
 
-  @Get('declared-interest/:id')
+  @Get('declared-interest/:inscriptionId')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  async verifyDeclaredInterest(@Param('id') id: string): Promise<boolean> {
-    return await this.service.verifyDeclaredInterest(id);
+  async verifyDeclaredInterest(
+    @Param('inscriptionId') inscriptionId: string,
+    @Req() req: Request,
+  ): Promise<VerifyDeclaredInterestDtoOutput> {
+    return await this.service.verifyDeclaredInterest(
+      inscriptionId,
+      (req.user as User).id,
+    );
   }
 
   @Patch('update-is-free')
@@ -310,9 +317,6 @@ export class StudentCourseController {
     @UploadedFile() file: Express.Multer.File,
     @Req() req: Request,
   ) {
-    return await this.service.updateProfilePhotoByStudent(
-      file,
-      req.body.studentId,
-    );
+    await this.service.updateProfilePhotoByStudent(file, req.body.studentId);
   }
 }
