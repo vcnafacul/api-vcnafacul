@@ -9,10 +9,11 @@ import { PartnerPrepCourseService } from '../partnerPrepCourse/partner-prep-cour
 import { CollaboratorController } from './collaborator.controller';
 import { CollaboratorRepository } from './collaborator.repository';
 import { CollaboratorService } from './collaborator.service';
+import { EnvModule } from 'src/shared/modules/env/env.module';
 
 @Module({
   controllers: [CollaboratorController],
-  imports: [UserModule],
+  imports: [UserModule, EnvModule],
   providers: [
     CollaboratorRepository,
     CollaboratorService,

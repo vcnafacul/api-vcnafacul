@@ -1,12 +1,12 @@
 /* istanbul ignore file */
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { format } from 'date-fns';
 import * as nodemailer from 'nodemailer';
 import * as hbs from 'nodemailer-express-handlebars';
 import * as path from 'path';
 import { Geolocation } from 'src/modules/geo/geo.entity';
 import { User } from 'src/modules/user/user.entity';
+import { EnvService } from 'src/shared/modules/env/env.service';
 import { sendEmailConfirmEmail } from './templates/confirm-email';
 import { sendGeoEmail } from './templates/create-geo';
 import { sendEmailDeclaredInterest } from './templates/declared-interest';
@@ -18,19 +18,17 @@ import { sendEmailWaitingList } from './templates/waiting-list';
 @Injectable()
 export class EmailService {
   private transporter;
-  constructor(private configService: ConfigService) {
+  constructor(private envService: EnvService) {
     this.transporter = nodemailer.createTransport({
-      host: this.configService.get<string>('SMTP_HOST'),
-      port: this.configService.get<number>('SMTP_PORT'),
+      host: this.envService.get('SMTP_HOST'),
+      port: this.envService.get('SMTP_PORT'),
       secure: true, // true para 465, false para outras portas
       auth: {
-        user: this.configService.get<string>('SMTP_USERNAME'),
-        pass: this.configService.get<string>('SMTP_PASSWORD'),
+        user: this.envService.get('SMTP_USERNAME'),
+        pass: this.envService.get('SMTP_PASSWORD'),
       },
     });
-    const templatePath = path.resolve(
-      this.configService.get<string>('TEMPLATE_EMAIL'),
-    );
+    const templatePath = path.resolve(this.envService.get('TEMPLATE_EMAIL'));
     const handlebarOptions = {
       viewEngine: {
         partialsDir: templatePath,
@@ -42,11 +40,11 @@ export class EmailService {
   }
 
   async sendForgotPasswordMail(name: string, email: string, token: string) {
-    const resetPasswordUrl = `${this.configService.get<string>(
+    const resetPasswordUrl = `${this.envService.get(
       'FRONT_URL',
     )}/reset?token=${token}`;
     const mailOptions = {
-      from: this.configService.get<string>('SMTP_USERNAME'),
+      from: this.envService.get('SMTP_USERNAME'),
       to: email,
       subject: 'Esqueci a Senha - Você na Facul',
       context: {
@@ -60,7 +58,7 @@ export class EmailService {
 
   async sendEmailGeo({ geo, emails }: { geo: Geolocation; emails: string[] }) {
     const mailOptions = {
-      from: this.configService.get<string>('SMTP_USERNAME'),
+      from: this.envService.get('SMTP_USERNAME'),
       bcc: emails,
       subject: 'Cadastro de Cursinho - Você na Facul',
       context: {
@@ -72,11 +70,11 @@ export class EmailService {
   }
 
   async sendCreateUser(user: User, token: string) {
-    const confirmEmailUrl = `${this.configService.get<string>(
+    const confirmEmailUrl = `${this.envService.get(
       'FRONT_URL',
     )}/confirmEmail?token=${token}`;
     const mailOptions = {
-      from: this.configService.get<string>('SMTP_USERNAME'),
+      from: this.envService.get('SMTP_USERNAME'),
       to: user.email,
       subject: 'Confirmação de Email - Você na Facul',
       context: {
@@ -100,7 +98,7 @@ export class EmailService {
       ? nomeCursinho
       : `Cursinho ${nomeCursinho}`;
     const mailOptions = {
-      from: this.configService.get<string>('SMTP_USERNAME'),
+      from: this.envService.get('SMTP_USERNAME'),
       to: listEmail[0],
       bcc: listEmail.slice(1),
       subject: 'Confirmação de Incrição Cursinho - Você na Facul',
@@ -123,12 +121,12 @@ export class EmailService {
     const prepCourseName = nomeCursinho.includes('Cursinho')
       ? nomeCursinho
       : `Cursinho ${nomeCursinho}`;
-    const acceptInviteUrl = `${this.configService.get<string>(
+    const acceptInviteUrl = `${this.envService.get(
       'FRONT_URL',
     )}/convidar-membro?token=${token}`;
 
     const mailOptions = {
-      from: this.configService.get<string>('SMTP_USERNAME'),
+      from: this.envService.get('SMTP_USERNAME'),
       to: email,
       subject: `Convite Membro ${prepCourseName} - Você na Facul`,
       context: {
@@ -159,7 +157,7 @@ export class EmailService {
     const emails = students.map((s) => s.email);
 
     const mailOptions = {
-      from: this.configService.get<string>('SMTP_USERNAME'),
+      from: this.envService.get('SMTP_USERNAME'),
       bcc: [...emails, 'cursinho.ufscar@vcnafacul.com.br'],
       subject: `Atualização Lista de Espera ${prepCourseName} - Você na Facul`,
       context: {
@@ -185,11 +183,11 @@ export class EmailService {
       ? prepCourse
       : `Cursinho ${prepCourse}`;
     const date = format(limitDate, 'dd/MM/yyyy');
-    const declaredInterestUrl = `${this.configService.get<string>(
+    const declaredInterestUrl = `${this.envService.get(
       'FRONT_URL',
     )}/declarar-interesse/${inscriptionId}`;
     const mailOptions = {
-      from: this.configService.get<string>('SMTP_USERNAME'),
+      from: this.envService.get('SMTP_USERNAME'),
       to: students_email,
       bcc: 'cursinho.ufscar@vcnafacul.com.br',
       subject: `Declaração de Interesse ${prepCourseName} - Vocé na Facul`,
@@ -217,13 +215,13 @@ export class EmailService {
       ? prepCourse
       : `Cursinho ${prepCourse}`;
     const date = format(limitDate, 'dd/MM/yyyy');
-    const declaredInterestUrl = `${this.configService.get<string>(
+    const declaredInterestUrl = `${this.envService.get(
       'FRONT_URL',
     )}/declarar-interesse/${inscriptionId}`;
 
     const mailOptions = {
-      from: this.configService.get<string>('SMTP_USERNAME'),
-      to: this.configService.get<string>('SMTP_USERNAME'), // ou um destinatário genérico
+      from: this.envService.get('SMTP_USERNAME'),
+      to: this.envService.get('SMTP_USERNAME'), // ou um destinatário genérico
       bcc: bccList,
       subject: `Declaração de Interesse ${prepCourseName} - Você na Facul`,
       context: {
