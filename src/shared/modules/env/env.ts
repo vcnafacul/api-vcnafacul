@@ -6,7 +6,7 @@ export const envSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
     .default('development'),
-  APP_KEY: z.string(),
+  APP_KEY: z.string().default('vcnafacul'),
 
   //DB
   MY_HOST: z.string().default('localhost'),
@@ -28,7 +28,7 @@ export const envSchema = z.object({
     .default('https://discord.com/api/webhooks/134'),
 
   //HOSPEDAGEM HOSTINGER
-  FTP_HOST: z.string().ip(),
+  FTP_HOST: z.string().ip().default('0.0.0.0'),
   FTP_CONTENT: z.string().default('/usr/share/nginx/html/'),
   FTP_USER: z.string().default('cursinho'),
   FTP_PASSWORD: z.string().default('cursinho'),
@@ -36,20 +36,20 @@ export const envSchema = z.object({
   FTP_PROFILE: z.string().default('cursinho'),
 
   //MAIL
-  SMTP_HOST: z.string(),
-  SMTP_PORT: z.coerce.number(),
-  SMTP_USERNAME: z.string().email(),
-  SMTP_PASSWORD: z.string(),
-  MAIL_USERNAME: z.string(),
-  MAIL_PASSWORD: z.string(),
-  TEMPLATE_EMAIL: z.string(),
-  TEMPLATE_EMAIL_ASSET: z.string(),
+  SMTP_HOST: z.string().default('smtp.gmail.com'),
+  SMTP_PORT: z.coerce.number().default(465),
+  SMTP_USERNAME: z.string().email().default('smtp@smtp.com.br'),
+  SMTP_PASSWORD: z.string().default('password'),
+  MAIL_USERNAME: z.string().default('smtp@smtp.com.br'),
+  MAIL_PASSWORD: z.string().default('password'),
+  TEMPLATE_EMAIL: z.string().default('vcnafacul'),
+  TEMPLATE_EMAIL_ASSET: z.string().default('vcnafacul'),
 
   //S3
   BLOB_PROVIDER: z.enum(['S3']).default('S3'),
-  AWS_ACCESS_KEY_ID: z.string(),
-  AWS_SECRET_ACCESS_KEY: z.string(),
-  AWS_ENDPOINT: z.string().url(),
+  AWS_ACCESS_KEY_ID: z.string().default('vcnafacul'),
+  AWS_SECRET_ACCESS_KEY: z.string().default('vcnafacul'),
+  AWS_ENDPOINT: z.string().url().default('http://localhost:9000'),
   AWS_REGION: z.string().default('auto'),
   BUCKET_DOC: z.string().default('vcnafacul-docs'),
   BUCKET_PROFILE: z.string().default('vcnafacul-students-photo'),
@@ -59,9 +59,9 @@ export const envSchema = z.object({
   AWS_STORAGE_CLASS: z.enum(['STANDARD']).default('STANDARD'),
 
   //GRAFANA
-  GRAFANA_HOST: z.string().url(),
-  GRAFANA_USER_ID: z.coerce.number(),
-  GRAFANA_TOKEN: z.string(),
+  GRAFANA_HOST: z.string().url().default('http://localhost:3000'),
+  GRAFANA_USER_ID: z.coerce.number().default(1),
+  GRAFANA_TOKEN: z.string().default('vcnafacul'),
 });
 
 export type Env = z.infer<typeof envSchema>;
