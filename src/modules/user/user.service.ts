@@ -1,8 +1,8 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { GetAllDtoOutput } from 'src/shared/dtos/get-all.dto.output';
 import { BaseService } from 'src/shared/modules/base/base.service';
+import { EnvService } from 'src/shared/modules/env/env.service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
@@ -29,7 +29,7 @@ export class UserService extends BaseService<User> {
     private readonly emailService: EmailService,
     private readonly collaboratorRepository: CollaboratorRepository,
     private readonly discordWebhook: DiscordWebhook,
-    private readonly configService: ConfigService,
+    private readonly envService: EnvService,
   ) {
     super(userRepository);
   }
@@ -63,7 +63,7 @@ export class UserService extends BaseService<User> {
       this.logger.log('User created: ' + user.id + ' - ' + user.email);
       return user;
     } catch (error) {
-      const env = this.configService.get('NODE_ENV');
+      const env = this.envService.get('NODE_ENV');
       if (env !== 'test') {
         await this.discordWebhook.sendMessage(
           `Erro ao criar usuário: ${error}`,

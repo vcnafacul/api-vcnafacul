@@ -55,6 +55,7 @@ export const envSchema = z.object({
   BUCKET_PROFILE: z.string().default('vcnafacul-students-photo'),
   BUCKET_QUESTION: z.string().default('simulado-questoes'),
   BUCKET_SIMULADO: z.string().default('vcnafacul-simulado'),
+  BUCKET_CONTENT: z.string().default('vcnafacul-content'),
   AWS_STORAGE_CLASS: z.enum(['STANDARD']).default('STANDARD'),
 
   //GRAFANA

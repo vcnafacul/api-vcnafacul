@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { EnvService } from 'src/shared/modules/env/env.service';
 import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AnswerSimulado } from './dtos/answer-simulado.dto.input';
@@ -17,10 +17,10 @@ import { Status } from './enum/status.enum';
 export class SimuladoService {
   constructor(
     private readonly axios: HttpServiceAxios,
-    private readonly configService: ConfigService,
+    private readonly envService: EnvService,
     private readonly auditLod: AuditLogService,
   ) {
-    this.axios.setBaseURL(this.configService.get<string>('SIMULADO_URL'));
+    this.axios.setBaseURL(this.envService.get('SIMULADO_URL'));
   }
 
   async create(dto: CreateSimuladoDTOInput) {

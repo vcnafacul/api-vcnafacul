@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { EnvService } from 'src/shared/modules/env/env.service';
 import { uploadFileFTP } from 'src/utils/uploadFileFtp';
 import { Status } from '../simulado/enum/status.enum';
 import { CreateNewsDtoInput } from './dtos/create-news.dto.input';
@@ -13,7 +13,7 @@ import { NewsRepository } from './news.repository';
 export class NewsService extends BaseService<News> {
   constructor(
     private readonly repository: NewsRepository,
-    private configService: ConfigService,
+    private envService: EnvService,
   ) {
     super(repository);
   }
@@ -25,9 +25,9 @@ export class NewsService extends BaseService<News> {
   ) {
     const fileName = await uploadFileFTP(
       file,
-      this.configService.get<string>('FTP_HOST'),
-      this.configService.get<string>('FTP_USER'),
-      this.configService.get<string>('FTP_PASSWORD'),
+      this.envService.get('FTP_HOST'),
+      this.envService.get('FTP_USER'),
+      this.envService.get('FTP_PASSWORD'),
     );
     if (!fileName) {
       throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);

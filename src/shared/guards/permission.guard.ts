@@ -1,15 +1,15 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import * as jwt from 'jsonwebtoken';
 import { UserService } from 'src/modules/user/user.service';
+import { EnvService } from '../modules/env/env.service';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
   constructor(
     private reflector: Reflector,
     private userService: UserService,
-    private configService: ConfigService,
+    private envService: EnvService,
   ) {}
 
   snakeToCamel = (snakeStr: string) => {
@@ -49,7 +49,7 @@ export class PermissionsGuard implements CanActivate {
     try {
       const decoded = jwt.verify(
         token,
-        this.configService.get<string>('APP_KEY'),
+        this.envService.get('APP_KEY'),
       ) as jwt.JwtPayload;
 
       const userId = decoded.user?.id;

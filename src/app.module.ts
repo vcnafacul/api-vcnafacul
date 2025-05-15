@@ -40,6 +40,7 @@ import { JwtStrategy } from './shared/strategy/jwt.strategy';
     }),
     EnvModule,
     TypeOrmModule.forRootAsync({
+      imports: [EnvModule],
       useClass: TypeOrmOptions,
       inject: [TypeOrmOptions],
     }),

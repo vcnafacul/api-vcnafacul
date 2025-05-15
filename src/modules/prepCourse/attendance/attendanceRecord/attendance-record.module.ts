@@ -6,10 +6,11 @@ import { CollaboratorRepository } from '../../collaborator/collaborator.reposito
 import { AttendanceRecordController } from './attendance-record.controller';
 import { AttendanceRecordRepository } from './attendance-record.repository';
 import { AttendanceRecordService } from './attendance-record.service';
+import { EnvModule } from 'src/shared/modules/env/env.module';
 
 @Module({
   controllers: [AttendanceRecordController],
-  imports: [UserModule],
+  imports: [UserModule, EnvModule],
   providers: [
     AttendanceRecordRepository,
     AttendanceRecordService,
