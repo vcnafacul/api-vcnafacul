@@ -1,9 +1,9 @@
 import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { AuditLogService } from 'src/modules/audit-log/audit-log.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { EnvService } from 'src/shared/modules/env/env.service';
 import { ChangeOrderDTOInput } from 'src/shared/modules/node/dtos/change-order.dto.input';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { cleanString } from 'src/utils/cleanString';
@@ -23,7 +23,7 @@ export class ContentService extends BaseService<Content> {
   constructor(
     private readonly repository: ContentRepository,
     private readonly subjectRepository: SubjectRepository,
-    private readonly configService: ConfigService,
+    private readonly envService: EnvService,
     private readonly auditLog: AuditLogService,
     private readonly fileContentRepository: FileContentRepository,
     @Inject('BlobService') private readonly blobService: BlobService,
@@ -75,7 +75,7 @@ export class ContentService extends BaseService<Content> {
     }
     return await this.blobService.getFile(
       file.fileKey,
-      this.configService.get<string>('BUCKET_CONTENT'),
+      this.envService.get('BUCKET_CONTENT'),
     );
   }
 
@@ -131,7 +131,7 @@ export class ContentService extends BaseService<Content> {
     const diretory = this.getDiretory(demand);
     const fileKey = await this.blobService.uploadFile(
       file,
-      this.configService.get<string>('BUCKET_CONTENT'),
+      this.envService.get('BUCKET_CONTENT'),
       undefined,
       diretory,
     );
@@ -166,7 +166,7 @@ export class ContentService extends BaseService<Content> {
     for (const file of content.files) {
       await this.blobService.deleteFile(
         file.fileKey,
-        this.configService.get<string>('BUCKET_CONTENT'),
+        this.envService.get('BUCKET_CONTENT'),
       );
       await this.fileContentRepository.delete(file.id);
     }

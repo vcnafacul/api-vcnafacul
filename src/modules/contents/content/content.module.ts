@@ -5,6 +5,7 @@ import { RoleRepository } from 'src/modules/role/role.repository';
 import { UserModule } from 'src/modules/user/user.module';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
+import { EnvModule } from 'src/shared/modules/env/env.module';
 import { BlobModule } from 'src/shared/services/blob/blob.module';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
@@ -16,7 +17,7 @@ import { ContentService } from './content.service';
 
 @Module({
   controllers: [ContentController],
-  imports: [AuditLogModule, UserModule, BlobModule],
+  imports: [AuditLogModule, UserModule, BlobModule, EnvModule],
   providers: [
     ContentService,
     ContentRepository,

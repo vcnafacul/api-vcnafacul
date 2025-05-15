@@ -6,7 +6,6 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import * as dayjs from 'dayjs';
@@ -24,6 +23,7 @@ import {
   Sort,
 } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { EnvService } from 'src/shared/modules/env/env.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
@@ -74,7 +74,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly logStudentRepository: LogStudentRepository,
-    private configService: ConfigService,
+    private envService: EnvService,
     private readonly collaboratorRepository: CollaboratorRepository,
     private readonly classService: ClassService,
     private readonly discordWebhook: DiscordWebhook,
@@ -199,7 +199,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     try {
       await this.blobService.deleteFile(
         student.photo,
-        this.configService.get<string>('BUCKET_PROFILE'),
+        this.envService.get('BUCKET_PROFILE'),
       );
     } catch (error) {
       const log = new LogStudent();
@@ -210,7 +210,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     }
     const fileKey = await this.blobService.uploadFile(
       file,
-      this.configService.get<string>('BUCKET_PROFILE'),
+      this.envService.get('BUCKET_PROFILE'),
     );
     student.photo = fileKey;
 
@@ -251,7 +251,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       files.map(async (file) => {
         const fileKey = await this.blobService.uploadFile(
           file,
-          this.configService.get<string>('BUCKET_DOC'),
+          this.envService.get('BUCKET_DOC'),
           exprires,
         );
         const document: DocumentStudent = new DocumentStudent();
@@ -265,7 +265,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     );
     const fileKey = await this.blobService.uploadFile(
       photo,
-      this.configService.get<string>('BUCKET_PROFILE'),
+      this.envService.get('BUCKET_PROFILE'),
     );
 
     student.applicationStatus = StatusApplication.DeclaredInterest;
@@ -285,7 +285,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   async getDocument(fileKey: string) {
     const file = await this.blobService.getFile(
       fileKey,
-      this.configService.get<string>('BUCKET_DOC'),
+      this.envService.get('BUCKET_DOC'),
     );
     return file;
   }
@@ -293,7 +293,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   async getProfilePhoto(fileKey: string) {
     const file = await this.blobService.getFile(
       fileKey,
-      this.configService.get<string>('BUCKET_PROFILE'),
+      this.envService.get('BUCKET_PROFILE'),
     );
     return file;
   }
