@@ -27,7 +27,9 @@ import { EnvService } from 'src/shared/modules/env/env.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
+import { maskCpf } from 'src/utils/maskCpf';
 import { maskEmail } from 'src/utils/maskEmail';
+import { maskPhone } from 'src/utils/maskPhone';
 import { IsNull, Not } from 'typeorm';
 import { ClassService } from '../class/class.service';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
@@ -822,6 +824,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     const user = await this.userService.findUserById(userId);
     const role = await this.roleService.findOneById(user.role.id);
     const manager = role.gerenciarEstudantes;
+    const admin = role.gerenciarProcessoSeletivo;
 
     return {
       name: partnerPrepCourse.geo.name,
@@ -839,8 +842,11 @@ export class StudentCourseService extends BaseService<StudentCourse> {
               email: manager
                 ? student.user.email
                 : maskEmail(student.user.email),
-              whatsapp: student.whatsapp,
+              whatsapp: manager
+                ? student.whatsapp
+                : maskPhone(student.whatsapp),
               urgencyPhone: student.urgencyPhone,
+              cpf: admin ? student.cpf : maskCpf(student.cpf),
               applicationStatus: student.applicationStatus,
               cod_enrolled: student.cod_enrolled,
               birthday: student.user.birthday,
