@@ -22,18 +22,21 @@ export class StudentAttendanceRepository extends BaseRepository<StudentAttendanc
   }
 
   async findAllByAttendanceRecordsWithJustification(
-    studentAttendanceId: string,
+    studentCourseId: string,
     attendanceRecordIds: string[],
   ): Promise<StudentAttendance[]> {
     return await this.repository
       .createQueryBuilder('studentAttendance')
+      .innerJoin('studentAttendance.studentCourse', 'studentCourse')
       .leftJoinAndSelect('studentAttendance.justification', 'justification')
       .leftJoinAndSelect(
         'studentAttendance.attendanceRecord',
         'attendanceRecord',
       )
-      .where('studentAttendance.id = :id', { id: studentAttendanceId })
-      .orWhere('attendanceRecord.id IN (:...ids)', { ids: attendanceRecordIds })
+      .where('attendanceRecord.id IN (:...ids)', {
+        ids: attendanceRecordIds,
+      })
+      .andWhere('studentCourse.id = :id', { id: studentCourseId })
       .getMany();
   }
 }
