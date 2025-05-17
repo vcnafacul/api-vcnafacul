@@ -10,7 +10,9 @@ import {
   SetMetadata,
   UploadedFiles,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
@@ -36,6 +38,12 @@ export class PartnerPrepCourseController {
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'partnershipAgreement', maxCount: 1 },
+      { name: 'logo', maxCount: 1 },
+    ]),
+  )
   @ApiResponse({
     status: 201,
     description: 'criar cursinho parceiro',
