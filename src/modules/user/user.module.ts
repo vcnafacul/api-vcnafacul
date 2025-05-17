@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { EnvModule } from 'src/shared/modules/env/env.module';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { AuditLogModule } from '../audit-log/audit-log.module';
@@ -13,7 +14,7 @@ import { UserExistValidator } from './validator/user-exist.validator';
 
 @Module({
   controllers: [UserController],
-  imports: [AuditLogModule],
+  imports: [AuditLogModule, EnvModule],
   providers: [
     UserService,
     UserRepository,

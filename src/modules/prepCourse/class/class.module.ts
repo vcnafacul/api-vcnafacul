@@ -11,10 +11,11 @@ import { PartnerPrepCourseModule } from '../partnerPrepCourse/partner-prep-cours
 import { ClassController } from './class.controller';
 import { ClassRepository } from './class.repository';
 import { ClassService } from './class.service';
+import { EnvModule } from 'src/shared/modules/env/env.module';
 
 @Module({
   controllers: [ClassController],
-  imports: [PartnerPrepCourseModule, UserModule, RoleModule],
+  imports: [PartnerPrepCourseModule, UserModule, RoleModule, EnvModule],
   providers: [
     ClassRepository,
     ClassService,

@@ -1,5 +1,5 @@
 import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { EnvService } from 'src/shared/modules/env/env.service';
 import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { CreateProvaDTORequest } from '../dtos/prova-create.dto.request';
@@ -9,16 +9,16 @@ import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
 export class ProvaService {
   constructor(
     private readonly axios: HttpServiceAxios,
-    private readonly configService: ConfigService,
+    private readonly envService: EnvService,
     @Inject('BlobService') private readonly blobService: BlobService,
   ) {
-    this.axios.setBaseURL(this.configService.get<string>('SIMULADO_URL'));
+    this.axios.setBaseURL(this.envService.get('SIMULADO_URL'));
   }
 
   public async createProva(prova: CreateProvaDTOInput, file: any) {
     const fileName = await this.blobService.uploadFile(
       file,
-      this.configService.get<string>('BUCKET_SIMULADO'),
+      this.envService.get('BUCKET_SIMULADO'),
     );
 
     if (!fileName) {

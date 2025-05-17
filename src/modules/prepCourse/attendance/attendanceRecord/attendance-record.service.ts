@@ -166,15 +166,9 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
   async findManyByStudentId({
     page,
     limit,
-    id,
     studentId,
   }: GetAttendanceRecordByStudent): Promise<GetAllOutput<AttendanceRecord>> {
-    return await this.repository.findManyByStudentId(
-      page,
-      limit,
-      id,
-      studentId,
-    );
+    return await this.repository.findManyByStudentId(page, limit, studentId);
   }
 
   async delete(id: string): Promise<void> {

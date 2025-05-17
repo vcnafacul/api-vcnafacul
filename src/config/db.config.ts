@@ -1,18 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions, TypeOrmOptionsFactory } from '@nestjs/typeorm';
+import { EnvService } from 'src/shared/modules/env/env.service';
 
 @Injectable()
 export class TypeOrmOptions implements TypeOrmOptionsFactory {
-  constructor(private configService: ConfigService) {}
+  constructor(private envService: EnvService) {}
   createTypeOrmOptions(): TypeOrmModuleOptions {
     return {
       type: 'mysql',
-      host: this.configService.get<string>('MY_HOST'),
-      port: this.configService.get<number>('MY_PORT'),
-      username: this.configService.get<string>('MY_USER'),
-      password: this.configService.get<string>('MY_PASSWORD'),
-      database: this.configService.get<string>('MY_DB_NAME'),
+      host: this.envService.get('MY_HOST'),
+      port: this.envService.get('MY_PORT'),
+      username: this.envService.get('MY_USER'),
+      password: this.envService.get('MY_PASSWORD'),
+      database: this.envService.get('MY_DB_NAME'),
       entities: [__dirname + '/../**/*.entity.{js,ts}'],
       migrations: [__dirname + '/migrations/*.{js,ts}'],
       keepConnectionAlive: true,

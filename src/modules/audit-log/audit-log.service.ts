@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { EnvService } from 'src/shared/modules/env/env.service';
 import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
 import { AuditLog } from './audit-log.entity';
 import { AuditLogRepository } from './audit-log.repository';
@@ -11,9 +11,9 @@ export class AuditLogService {
   constructor(
     private readonly auditLogRepository: AuditLogRepository,
     private readonly axios: HttpServiceAxios,
-    private readonly configService: ConfigService,
+    private readonly envService: EnvService,
   ) {
-    this.axios.setBaseURL(this.configService.get<string>('SIMULADO_URL'));
+    this.axios.setBaseURL(this.envService.get('SIMULADO_URL'));
   }
 
   async create(request: CreateAuditDtoInput): Promise<AuditLog> {

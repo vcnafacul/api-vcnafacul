@@ -24,6 +24,7 @@ import { CreateAttendanceRecordDtoInput } from './dtos/create-attendance-record.
 import { GetAttendanceRecordByIdDtoOutput } from './dtos/get-attendance-record-by-id.dto.output';
 import { GetAttendanceRecordByStudent } from './dtos/get-attendance-record-by-student';
 import { GetAttendanceRecord } from './dtos/get-attendance-record.dto.input';
+import { AttendanceRecordByStudentDtoOutput } from './dtos/attendance-record-by-student.dto.output';
 
 @ApiTags('Attendance Record')
 @Controller('attendance-record')
@@ -75,7 +76,7 @@ export class AttendanceRecordController {
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
   async summaryByStudent(
     @Query() dto: AttendanceRecordByClassInput,
-  ): Promise<AttendanceRecordByClassOutput> {
+  ): Promise<AttendanceRecordByStudentDtoOutput> {
     return await this.service.getStudentPresenceReportByClassId(dto);
   }
 
