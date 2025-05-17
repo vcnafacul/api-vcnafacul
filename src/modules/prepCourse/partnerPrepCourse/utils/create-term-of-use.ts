@@ -1,18 +1,18 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-import { ConfigService } from '@nestjs/config';
 import Docxtemplater from 'docxtemplater';
 import PizZip from 'pizzip';
+import { EnvService } from 'src/shared/modules/env/env.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { convertDocxToPdfBuffer } from 'src/utils/convertDocxToPdfBuffer';
 
 export const createTermOfUse = async (
   blobService: BlobService,
-  configService: ConfigService,
+  envService: EnvService,
 ) => {
   // 1. Carrega o template .docx
   const file = await blobService.getFile(
     'termo_template.docx',
-    configService.get<string>('BUCKET_PARTNERSHIP_DOC'),
+    envService.get('BUCKET_PARTNERSHIP_DOC'),
   );
   const zip = new PizZip(Buffer.from(file.buffer, 'base64'));
   const doc = new Docxtemplater(zip, {

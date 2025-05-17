@@ -5,7 +5,6 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { StatusLogGeo } from 'src/modules/geo/enum/status-log-geo';
@@ -17,6 +16,7 @@ import { Role } from 'src/modules/role/role.entity';
 import { RoleService } from 'src/modules/role/role.service';
 import { UserService } from 'src/modules/user/user.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
+import { EnvService } from 'src/shared/modules/env/env.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DataSource } from 'typeorm';
@@ -40,7 +40,7 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     @Inject('BlobService') private readonly blobService: BlobService,
     @InjectDataSource()
     private dataSource: DataSource,
-    private configService: ConfigService,
+    private envSerrvice: EnvService,
   ) {
     super(repository);
   }
@@ -69,7 +69,6 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
       const representative = await this.userService.findOneBy({
         id: dto.representative,
       });
-
       if (!representative) {
         throw new HttpException(
           'Representante nao encontrado',
@@ -87,24 +86,23 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
         );
       }
 
-      const file = await createTermOfUse(this.blobService, this.configService);
+      partnerPrepCourse = new PartnerPrepCourse();
+
+      const file = await createTermOfUse(this.blobService, this.envSerrvice);
       const key = await this.blobService.uploadFile(
         file,
-        this.configService.get<string>('BUCKET_PARTNERSHIP_DOC'),
+        this.envSerrvice.get('BUCKET_PARTNERSHIP_DOC'),
       );
-
-      partnerPrepCourse = new PartnerPrepCourse();
       partnerPrepCourse.termOfUseUrl = key;
       const agreementKey = await this.blobService.uploadFile(
         partnershipAgreement,
-        this.configService.get<string>('BUCKET_PARTNERSHIP_DOC'),
+        this.envSerrvice.get('BUCKET_PARTNERSHIP_DOC'),
       );
       partnerPrepCourse.partnershipAgreement = agreementKey;
-
       if (logo) {
         const logoKey = await this.blobService.uploadFile(
           logo,
-          this.configService.get<string>('BUCKET_PARTNERSHIP_LOGO'),
+          this.envSerrvice.get('BUCKET_PARTNERSHIP_DOC'),
         );
         partnerPrepCourse.logo = logoKey;
       }
