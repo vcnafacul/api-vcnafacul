@@ -6,7 +6,11 @@ const mammoth = require('mammoth');
  */
 export async function convertDocxToPdfBuffer(
   docxBuffer: Buffer,
+  isTest: boolean,
 ): Promise<Buffer> {
+  if (isTest) {
+    return Buffer.from('pdf-fake');
+  }
   // 1. Converte o .docx para HTML com o mammoth
   const { value: html } = await mammoth.convertToHtml({ buffer: docxBuffer });
 

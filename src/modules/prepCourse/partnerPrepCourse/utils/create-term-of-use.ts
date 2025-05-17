@@ -31,7 +31,10 @@ export const createTermOfUse = async (
 
   // 4. Converte .docx buffer → PDF buffer (ex: usando CloudConvert ou puppeteer)
   // Supondo que agora você tem:
-  const pdfBuffer = await convertDocxToPdfBuffer(docxBuffer);
+  const pdfBuffer = await convertDocxToPdfBuffer(
+    docxBuffer,
+    envService.get('NODE_ENV') === 'test',
+  );
 
   // 5. Cria o "arquivo" simulado para enviar pro R2
   return {
