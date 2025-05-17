@@ -13,14 +13,18 @@ import { Status } from 'src/modules/simulado/enum/status.enum';
 import { User } from 'src/modules/user/user.entity';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
+import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { CreateGeoDTOInputFaker } from './faker/create-geo.dto.input.faker';
 import { CreateInscriptionCourseDTOInputFaker } from './faker/create-inscription-course.dto.faker';
 import { CreateUserDtoInputFaker } from './faker/create-user.dto.input.faker';
 import { createNestAppTest } from './utils/createNestAppTest';
+import createFakeDocxBase64 from './utils/createFakeDocxBase64';
 
 // Mock the EmailService globally
 jest.mock('src/shared/services/email/email.service');
+
+jest.mock('src/shared/services/blob/blob-service.ts');
 
 describe('InscriptionCourse', () => {
   let app: INestApplication;
@@ -35,6 +39,7 @@ describe('InscriptionCourse', () => {
   let userRepresentative: User;
   let inscriptionService: InscriptionCourseService;
   let inscriptionRepository: InscriptionCourseRepository;
+  let blobService: BlobService;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -62,10 +67,32 @@ describe('InscriptionCourse', () => {
     inscriptionRepository = moduleFixture.get<InscriptionCourseRepository>(
       InscriptionCourseRepository,
     );
+    blobService = moduleFixture.get<BlobService>('BlobService');
 
     jest
       .spyOn(emailService, 'sendCreateUser')
       .mockImplementation(async () => {});
+
+    jest
+      .spyOn(blobService, 'uploadFile')
+      .mockImplementation(async () => 'hashKeyFile');
+
+    jest
+      .spyOn(blobService, 'getFile')
+      .mockImplementation(async (fileKey: string) => {
+        if (fileKey === 'termo_template.docx') {
+          return {
+            buffer: createFakeDocxBase64(),
+          };
+        }
+        return Buffer.from('conteúdo fake de um arquivo');
+      });
+
+    jest.mock('src/utils/convertDocxToPdfBuffer.ts', () => ({
+      convertDocxToPdfBuffer: jest
+        .fn()
+        .mockResolvedValue(Buffer.from('pdf-fake')),
+    }));
 
     await app.init();
     await roleSeedService.seed();
