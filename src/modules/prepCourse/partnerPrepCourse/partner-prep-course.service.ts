@@ -16,6 +16,7 @@ import { Role } from 'src/modules/role/role.entity';
 import { RoleService } from 'src/modules/role/role.service';
 import { UserService } from 'src/modules/user/user.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
+import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { EnvService } from 'src/shared/modules/env/env.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
@@ -23,6 +24,8 @@ import { DataSource } from 'typeorm';
 import { Collaborator } from '../collaborator/collaborator.entity';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
 import { PartnerPrepCourseDtoInput } from './dtos/create-partner-prep-course.input.dto';
+import { GetAllPrepCourseDtoOutput } from './dtos/get-all-prep-course.dto.outoput';
+import { GetOnePrepCourseByIdDtoOutput } from './dtos/get-one-prep-course-by-id.dto.output';
 import { PartnerPrepCourse } from './partner-prep-course.entity';
 import { PartnerPrepCourseRepository } from './partner-prep-course.repository';
 import { createTermOfUse } from './utils/create-term-of-use';
@@ -134,6 +137,67 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
       'Erro ao criar cursinho parceiro',
       HttpStatus.INTERNAL_SERVER_ERROR,
     );
+  }
+
+  async getAll(
+    page: number,
+    limit: number,
+  ): Promise<GetAllOutput<GetAllPrepCourseDtoOutput>> {
+    const prepCourses = await this.repository.findAllBy({
+      page: page,
+      limit: limit,
+    });
+    return {
+      data: prepCourses.data.map((i) =>
+        Object.assign(new GetAllPrepCourseDtoOutput(), {
+          id: i.id,
+          geo: {
+            id: i.geo.id,
+            name: i.geo.name,
+            category: i.geo.category,
+            city: i.geo.city,
+            state: i.geo.state,
+            phone: i.geo.phone,
+          },
+          representative: {
+            name: i.representative.useSocialName
+              ? i.representative.firstName + ' ' + i.representative.lastName
+              : i.representative.socialName + ' ' + i.representative.lastName,
+          },
+          createdAt: i.createdAt,
+          updatedAt: i.updatedAt,
+        }),
+      ),
+      page: prepCourses.page,
+      limit: prepCourses.limit,
+      totalItems: prepCourses.totalItems,
+    };
+  }
+
+  async getOneById(id: string): Promise<GetOnePrepCourseByIdDtoOutput> {
+    const prepCourses = await this.repository.findOneById(id);
+    return Object.assign(new GetOnePrepCourseByIdDtoOutput(), {
+      id: prepCourses.id,
+      geo: prepCourses.geo,
+      representative: {
+        name: prepCourses.representative.useSocialName
+          ? prepCourses.representative.firstName +
+            ' ' +
+            prepCourses.representative.lastName
+          : prepCourses.representative.socialName +
+            ' ' +
+            prepCourses.representative.lastName,
+        email: prepCourses.representative.email,
+        phone: prepCourses.representative.phone,
+      },
+      partnershipAgreement: prepCourses.partnershipAgreement,
+      logo: prepCourses.logo,
+      termOfUseUrl: prepCourses.termOfUseUrl,
+      numberMembers: prepCourses.members?.length || 0,
+      numberStudents: prepCourses.students?.length || 0,
+      createdAt: prepCourses.createdAt,
+      updatedAt: prepCourses.updatedAt,
+    });
   }
 
   async update(entity: PartnerPrepCourse): Promise<void> {
