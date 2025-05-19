@@ -163,4 +163,9 @@ export class CreateGeoDTOInput {
   @ApiProperty({ enum: TypeGeo, default: TypeGeo.PREP_COURSE })
   @IsOptional()
   type: TypeGeo;
+
+  @IsString()
+  @ApiProperty({ required: false })
+  @IsOptional()
+  alias?: string;
 }
