@@ -99,39 +99,6 @@ export class UserService extends BaseService<User> {
     }
   }
 
-  // async createUser(userDto: CreateUserDtoInput) {
-  //   try {
-  //     if (userDto.password !== userDto.password_confirmation) {
-  //       throw new HttpException(
-  //         'password and password_confirmation do not match',
-  //         HttpStatus.CONFLICT,
-  //       );
-  //     }
-  //     const newUser = this.convertDtoToDomain(userDto);
-  //     const role = await this.roleRepository.findOneBy({ name: 'aluno' });
-  //     if (!role) {
-  //       throw new HttpException('role not found', HttpStatus.BAD_REQUEST);
-  //     }
-  //     newUser.role = role;
-  //     if (userDto.socialName) newUser.useSocialName = true;
-  //     const user = await this.userRepository.create(newUser);
-  //     this.logger.log('User created: ' + user.id + ' - ' + user.email);
-  //     return user;
-  //   } catch (error) {
-  //     const env = this.envService.get('NODE_ENV');
-  //     if (env !== 'test') {
-  //       await this.discordWebhook.sendMessage(
-  //         `Erro ao criar usuário: ${error}`,
-  //       );
-  //     }
-  //     this.logger.error(`Erro ao criar usuário: ${error}`);
-  //     if (error.code === '23505') {
-  //       throw new HttpException('Email already exist', HttpStatus.CONFLICT);
-  //     }
-  //     throw error;
-  //   }
-  // }
-
   async confirmEmail(id: string) {
     const user = await this.userRepository.findOneBy({ id });
     if (!user) {
