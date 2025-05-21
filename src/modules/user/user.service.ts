@@ -46,20 +46,42 @@ export class UserService extends BaseService<User> {
 
   async createUser(userDto: CreateUserDtoInput) {
     try {
+      // Validação de senha
       if (userDto.password !== userDto.password_confirmation) {
+        throw new HttpException('As senhas não coincidem', HttpStatus.CONFLICT);
+      }
+
+      // Validação de idade mínima
+      const birthDate = new Date(userDto.birthday);
+      const today = new Date();
+      const age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      const dayDiff = today.getDate() - birthDate.getDate();
+
+      const hasMinAge =
+        age > 14 ||
+        (age === 14 && (monthDiff > 0 || (monthDiff === 0 && dayDiff >= 0)));
+
+      if (!hasMinAge) {
         throw new HttpException(
-          'password and password_confirmation do not match',
-          HttpStatus.CONFLICT,
+          'Você deve ter no mínimo 14 anos para se cadastrar',
+          HttpStatus.BAD_REQUEST,
         );
       }
+
+      // Criação do usuário
       const newUser = this.convertDtoToDomain(userDto);
       const role = await this.roleRepository.findOneBy({ name: 'aluno' });
+
       if (!role) {
-        throw new HttpException('role not found', HttpStatus.BAD_REQUEST);
+        throw new HttpException('Role não encontrada', HttpStatus.BAD_REQUEST);
       }
+
       newUser.role = role;
       if (userDto.socialName) newUser.useSocialName = true;
+
       const user = await this.userRepository.create(newUser);
+
       this.logger.log('User created: ' + user.id + ' - ' + user.email);
       return user;
     } catch (error) {
@@ -71,7 +93,7 @@ export class UserService extends BaseService<User> {
       }
       this.logger.error(`Erro ao criar usuário: ${error}`);
       if (error.code === '23505') {
-        throw new HttpException('Email already exist', HttpStatus.CONFLICT);
+        throw new HttpException('Email já cadastrado', HttpStatus.CONFLICT);
       }
       throw error;
     }
