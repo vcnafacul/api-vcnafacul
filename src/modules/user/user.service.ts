@@ -126,6 +126,8 @@ export class UserService extends BaseService<User> {
       throw new HttpException('password invalid', HttpStatus.CONFLICT);
     }
     if (!userFullInfo.emailConfirmSended) {
+      userFullInfo.lastAccess = new Date();
+      await this._repository.update(userFullInfo);
       return this.getAccessToken(userFullInfo);
     }
 
@@ -262,6 +264,7 @@ export class UserService extends BaseService<User> {
         city: user.city,
         state: user.state,
         lgpd: user.lgpd,
+        lastAccess: user.lastAccess,
       },
       roleId: user.role.id,
       roleName: user.role.name,

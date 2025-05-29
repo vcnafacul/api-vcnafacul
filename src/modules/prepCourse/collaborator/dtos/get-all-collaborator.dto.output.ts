@@ -3,7 +3,6 @@ export interface CollaboratorDTOOutput {
   photo: string;
   description: string;
   actived: boolean;
-  lastAccess: Date;
   createdAt: Date;
   updatedAt: Date;
   user: {
