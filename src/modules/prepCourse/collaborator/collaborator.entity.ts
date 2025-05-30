@@ -38,9 +38,6 @@ export class Collaborator extends BaseEntity {
   @Column({ default: true })
   public actived: boolean;
 
-  @Column({ nullable: true })
-  public lastAccess: Date;
-
   @ManyToMany(() => Class, (classes) => classes.admins)
   public Class: Class[];
 

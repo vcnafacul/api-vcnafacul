@@ -48,7 +48,6 @@ export class CollaboratorService extends BaseService<Collaborator> {
       photo: c.photo,
       description: c.description,
       actived: c.actived,
-      lastAccess: c.lastAccess,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
       user: {
@@ -62,6 +61,7 @@ export class CollaboratorService extends BaseService<Collaborator> {
           id: c.user.role.id,
           name: c.user.role.name,
         },
+        lastAccess: c.user.lastAccess,
       },
     }));
     return {

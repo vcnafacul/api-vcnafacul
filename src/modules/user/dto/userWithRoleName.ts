@@ -14,6 +14,7 @@ export class UserWithRoleName {
     city: string;
     state: string;
     lgpd: boolean;
+    lastAccess: Date | null;
   };
   roleId: string;
   roleName: string;
