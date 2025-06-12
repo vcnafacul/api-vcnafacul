@@ -48,7 +48,7 @@ export class SimuladoService {
   }
 
   public async answer(dto: AnswerSimulado, userId: string) {
-    await this.axios.post(`v1/simulado/answer`, {
+    return await this.axios.post(`v1/simulado/answer`, {
       ...dto,
       idEstudante: userId,
     });

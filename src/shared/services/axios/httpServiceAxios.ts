@@ -2,19 +2,19 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
 import { AxiosError } from 'axios';
-import { Observable, catchError, map, throwError } from 'rxjs';
+import { catchError, firstValueFrom, map } from 'rxjs';
 
 @Injectable()
 export class HttpServiceAxios {
-  constructor(private readonly http: HttpService) {}
-
   private readonly logger = new Logger(HttpServiceAxios.name);
+
+  constructor(private readonly http: HttpService) {}
 
   public setBaseURL(baseURL: string) {
     this.http.axiosRef.defaults.baseURL = baseURL;
   }
 
-  private handleError(error: any): Observable<never> {
+  private handleError(error: any): never {
     const axiosError = error as AxiosError;
 
     const errorData =
@@ -30,29 +30,43 @@ export class HttpServiceAxios {
       stack: axiosError?.stack,
     });
 
-    return throwError(() => errorData);
+    throw errorData;
   }
 
-  private requestWrapper<T>(request: Observable<any>): Observable<T> {
-    return request.pipe(
-      map((res) => res.data),
-      catchError((error) => this.handleError(error)),
+  private async requestWrapper<T>(request: Promise<T>): Promise<T> {
+    try {
+      return await request;
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  private async observableRequest<T>(observable): Promise<T> {
+    return this.requestWrapper(
+      firstValueFrom(
+        observable.pipe(
+          map((res: any) => res.data),
+          catchError((error) => {
+            throw this.handleError(error);
+          }),
+        ),
+      ),
     );
   }
 
-  public get<T>(url: string): Observable<T> {
-    return this.requestWrapper<T>(this.http.get<T>(url));
+  public async get<T>(url: string): Promise<T> {
+    return this.observableRequest<T>(this.http.get<T>(url));
   }
 
-  public post<T>(url: string, body: any): Observable<T> {
-    return this.requestWrapper<T>(this.http.post<T>(url, body));
+  public async post<T>(url: string, body: any): Promise<T> {
+    return this.observableRequest<T>(this.http.post<T>(url, body));
   }
 
-  public patch<T>(url: string, body?: any): Observable<T> {
-    return this.requestWrapper<T>(this.http.patch<T>(url, body));
+  public async patch<T>(url: string, body?: any): Promise<T> {
+    return this.observableRequest<T>(this.http.patch<T>(url, body));
   }
 
-  public delete<T>(url: string): Observable<T> {
-    return this.requestWrapper<T>(this.http.delete<T>(url));
+  public async delete<T>(url: string): Promise<T> {
+    return this.observableRequest<T>(this.http.delete<T>(url));
   }
 }
