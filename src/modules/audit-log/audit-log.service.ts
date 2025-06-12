@@ -27,8 +27,6 @@ export class AuditLogService {
   }
 
   async getMSByEntityId(id: string): Promise<AuditLogMS[]> {
-    return (
-      await this.axios.get<AuditLogMS[]>(`v1/auditLog/${id}`)
-    ).toPromise();
+    return await this.axios.get<AuditLogMS[]>(`v1/auditLog/${id}`);
   }
 }

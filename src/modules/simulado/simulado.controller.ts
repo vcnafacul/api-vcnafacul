@@ -13,11 +13,10 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
-import { Observable } from 'rxjs';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
-import { User } from '../user/user.entity';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { Permissions } from '../role/role.entity';
+import { User } from '../user/user.entity';
 import { AnswerSimulado } from './dtos/answer-simulado.dto.input';
 import { AvailableSimuladoDTOoutput } from './dtos/available-simulado.dto.output';
 import { CreateSimuladoDTOInput } from './dtos/create-simulado.dto.input';
@@ -41,9 +40,7 @@ export class SimuladoController {
   })
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.criarSimulado)
-  async create(
-    @Body() dto: CreateSimuladoDTOInput,
-  ): Promise<Observable<SimuladoDTO>> {
+  async create(@Body() dto: CreateSimuladoDTOInput): Promise<SimuladoDTO> {
     return await this.simuladoService.create(dto);
   }
 
@@ -54,7 +51,7 @@ export class SimuladoController {
     type: SimuladoDTO,
     isArray: true,
   })
-  async getAdd(): Promise<Observable<SimuladoDTO[]>> {
+  async getAdd(): Promise<SimuladoDTO[]> {
     return await this.simuladoService.getAll();
   }
 
@@ -65,7 +62,7 @@ export class SimuladoController {
     type: SimuladoDTO,
     isArray: true,
   })
-  async getTipos(): Promise<Observable<TipoSimuladoDTO[]>> {
+  async getTipos(): Promise<TipoSimuladoDTO[]> {
     return await this.simuladoService.getTipos();
   }
 
@@ -95,8 +92,15 @@ export class SimuladoController {
     @Req() req: Request,
     @Res() res: Response,
   ) {
-    await this.simuladoService.answer(answer, (req.user as User).id);
-    return res.status(204).send();
+    try {
+      await this.simuladoService.answer(answer, (req.user as User).id);
+      return res.status(204).send();
+    } catch (error) {
+      // Retorna 502 ou o erro apropriado com base no erro recebido
+      return res.status(error?.status || 502).json({
+        message: error?.message || 'Erro ao processar simulado',
+      });
+    }
   }
 
   @Get('available')
@@ -119,9 +123,7 @@ export class SimuladoController {
     isArray: false,
   })
   @UseGuards(JwtAuthGuard)
-  public async getById(
-    @Param('id') id: string,
-  ): Promise<Observable<SimuladoDTO>> {
+  public async getById(@Param('id') id: string): Promise<SimuladoDTO> {
     return await this.simuladoService.getById(id);
   }
 
