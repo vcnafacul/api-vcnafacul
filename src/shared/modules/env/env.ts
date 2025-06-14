@@ -4,7 +4,7 @@ export const envSchema = z.object({
   API_PORT: z.coerce.number().default(3333),
   HOST: z.string().ip().default('0.0.0.0'),
   NODE_ENV: z
-    .enum(['development', 'test', 'production'])
+    .enum(['development', 'homologation', 'test', 'production'])
     .default('development'),
   APP_KEY: z.string().default('vcnafacul'),
 
