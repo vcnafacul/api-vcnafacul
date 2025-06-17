@@ -4,6 +4,7 @@ import { Status } from 'src/modules/simulado/enum/status.enum';
 import { Gender } from 'src/modules/user/enum/gender';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { adjustDate } from 'src/utils/adjustDate';
@@ -32,6 +33,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     private readonly emailService: EmailService,
     private readonly logStudentRepository: LogStudentRepository,
     private readonly discordWebhook: DiscordWebhook,
+    private readonly cache: CacheService,
   ) {
     super(repository);
   }
@@ -404,5 +406,31 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
         await this.logStudentRepository.create(log);
       }),
     );
+  }
+
+  async getSummary() {
+    const inscriptionTotal = await this.cache.wrap<number>(
+      'inscription:total',
+      async () => this.repository.getTotalEntity(),
+    );
+    const inscriptionPending = await this.cache.wrap<number>(
+      'inscription:pending',
+      async () => this.repository.entityByStatus(Status.Pending),
+    );
+    const inscriptionApproved = await this.cache.wrap<number>(
+      'inscription:approved',
+      async () => this.repository.entityByStatus(Status.Approved),
+    );
+    const inscriptionRejected = await this.cache.wrap<number>(
+      'inscription:rejected',
+      async () => this.repository.entityByStatus(Status.Rejected),
+    );
+
+    return {
+      inscriptionTotal,
+      inscriptionPending,
+      inscriptionApproved,
+      inscriptionRejected,
+    };
   }
 }

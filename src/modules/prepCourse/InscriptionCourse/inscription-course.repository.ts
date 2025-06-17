@@ -145,4 +145,19 @@ export class InscriptionCourseRepository extends LinkedListRepository<
       ],
     );
   }
+
+  async getTotalEntity() {
+    return this.repository
+      .createQueryBuilder('entity')
+      .where('entity.deletedAt IS NULL')
+      .getCount();
+  }
+
+  async entityByStatus(status: Status) {
+    return this.repository
+      .createQueryBuilder('entity')
+      .where('entity.deletedAt IS NULL')
+      .andWhere('entity.actived = :status', { status })
+      .getCount();
+  }
 }

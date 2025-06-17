@@ -99,4 +99,8 @@ export class SimuladoService {
       `v1/simulado/available?tipo=${type}`,
     );
   }
+
+  public async getSummary() {
+    return await this.axios.get<any>(`v1/simulado/summary`);
+  }
 }

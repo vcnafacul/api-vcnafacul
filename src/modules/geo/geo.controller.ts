@@ -21,10 +21,10 @@ import { User } from '../user/user.entity';
 import { CreateGeoDTOInput } from './dto/create-geo.dto.input';
 import { GeoStatusChangeDTOInput } from './dto/geo-status.dto.input';
 import { ListGeoDTOInput } from './dto/list-geo.dto.input';
+import { ReportMapHome } from './dto/report-map-home';
 import { UpdateGeoDTOInput } from './dto/update-geo.dto.input';
 import { Geolocation } from './geo.entity';
 import { GeoService } from './geo.service';
-import { ReportMapHome } from './dto/report-map-home';
 
 @ApiTags('Geolocation')
 @Controller('geo')
@@ -95,5 +95,10 @@ export class GeoController {
   @Post('report-map-home')
   async reportMapHome(@Body() request: ReportMapHome) {
     return await this.geoService.reportMapHome(request);
+  }
+
+  @Get('summary')
+  async getSummary() {
+    return await this.geoService.getSummary();
   }
 }

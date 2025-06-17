@@ -149,6 +149,11 @@ export class PartnerPrepCourseController {
     return await this.service.inviteMember(dto.email, (req.user as User).id);
   }
 
+  @Get('summary')
+  async getSummary() {
+    return await this.service.getSummary();
+  }
+
   @Get(':id')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)

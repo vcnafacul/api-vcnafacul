@@ -159,4 +159,8 @@ export class QuestaoService {
       this.envService.get('BUCKET_QUESTION'),
     );
   }
+
+  public async getSummary() {
+    return await this.axios.get<any>(`v1/questao/summary`);
+  }
 }

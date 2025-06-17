@@ -90,4 +90,9 @@ export class NewsController {
   async delete(@Param('id') id: string) {
     return await this.newService.delete(id);
   }
+
+  @Get('summary')
+  async getSummary() {
+    return await this.newService.getSummary();
+  }
 }

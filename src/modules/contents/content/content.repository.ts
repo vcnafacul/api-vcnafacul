@@ -182,4 +182,19 @@ export class ContentRepository extends NodeRepository<Content> {
 
     return query.getOne();
   }
+
+  async getTotalEntity() {
+    return this.repository
+      .createQueryBuilder('entity')
+      .where('entity.deletedAt IS NULL')
+      .getCount();
+  }
+
+  async entityByStatus(status: StatusContent) {
+    return this.repository
+      .createQueryBuilder('entity')
+      .where('entity.deletedAt IS NULL')
+      .andWhere('entity.status = :status', { status })
+      .getCount();
+  }
 }
