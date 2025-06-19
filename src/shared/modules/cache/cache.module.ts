@@ -1,5 +1,5 @@
 // src/cache/cache-config.module.ts
-import { createKeyv } from '@keyv/redis';
+import { createKeyv, Keyv } from '@keyv/redis';
 import { CacheModule } from '@nestjs/cache-manager';
 import { Global, Module } from '@nestjs/common';
 import { EnvModule } from '../env/env.module';
@@ -26,6 +26,9 @@ import { CacheService } from './cache.service';
             ],
           };
         }
+        return {
+          stores: [new Keyv()],
+        };
       },
     }),
   ],

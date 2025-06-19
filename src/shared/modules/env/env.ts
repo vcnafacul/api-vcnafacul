@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { CacheDriver } from '../cache/cache-driver-enum';
 
 export const envSchema = z.object({
   API_PORT: z.coerce.number().default(3333),
@@ -15,13 +14,6 @@ export const envSchema = z.object({
   MY_USER: z.string().default('root'),
   MY_PASSWORD: z.string().default('root'),
   MY_DB_NAME: z.string().default('cursinho'),
-
-  //Cache
-  CACHE_DRIVER: z
-    .enum([CacheDriver.Memory, CacheDriver.Redis])
-    .default(CacheDriver.Memory),
-  REDIS_PORT: z.coerce.number().default(6379),
-  REDIS_HOST: z.string().default('localhost'),
 
   //Docs
   SWAGGER_AUTH_LOGIN: z.string().default('vcnafacul'),
@@ -70,6 +62,11 @@ export const envSchema = z.object({
   GRAFANA_HOST: z.string().url().default('http://localhost:3000'),
   GRAFANA_USER_ID: z.coerce.number().default(1),
   GRAFANA_TOKEN: z.string().default('vcnafacul'),
+
+  //Cache
+  CACHE_DRIVER: z.string().default('inMemory'),
+  REDIS_PORT: z.coerce.number().default(6379),
+  REDIS_HOST: z.string().default('localhost'),
 });
 
 export type Env = z.infer<typeof envSchema>;
