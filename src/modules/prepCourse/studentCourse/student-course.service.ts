@@ -23,6 +23,7 @@ import {
   Sort,
 } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
@@ -81,6 +82,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     private readonly classService: ClassService,
     private readonly discordWebhook: DiscordWebhook,
     private readonly roleService: RoleService,
+    private readonly cache: CacheService,
   ) {
     super(repository);
   }
@@ -1128,5 +1130,21 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       studentFull,
       nome_cursinho,
     );
+  }
+
+  async getSummary() {
+    const totalStudents = await this.cache.wrap<number>(
+      'student:total',
+      async () => this.repository.getTotalEntity(),
+    );
+    const studentEnrolled = await this.cache.wrap<number>(
+      'student:enrolled',
+      async () => this.repository.entityByStatus(StatusApplication.Enrolled),
+    );
+
+    return {
+      totalStudents,
+      studentEnrolled,
+    };
   }
 }

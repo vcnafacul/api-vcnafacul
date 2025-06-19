@@ -99,6 +99,11 @@ export class InscriptionCourseController {
     return await this.service.getToInscription(id);
   }
 
+  @Get('summary')
+  async getSummary() {
+    return await this.service.getSummary();
+  }
+
   @Get(':id')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)

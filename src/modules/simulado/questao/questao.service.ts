@@ -14,6 +14,7 @@ import {
 import { QuestaoDTOInput } from '../dtos/questao.dto.input';
 import { UpdateDTOInput } from '../dtos/update-questao.dto.input';
 import { Status } from '../enum/status.enum';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
 
 @Injectable()
 export class QuestaoService {
@@ -23,6 +24,7 @@ export class QuestaoService {
     private envService: EnvService,
     private readonly auditLod: AuditLogService,
     private readonly userService: UserService,
+    private readonly cache: CacheService,
   ) {
     this.axios.setBaseURL(this.envService.get('SIMULADO_URL'));
   }
@@ -157,6 +159,13 @@ export class QuestaoService {
     return await this.blobService.getFile(
       `${id}.png`,
       this.envService.get('BUCKET_QUESTION'),
+    );
+  }
+
+  public async getSummary() {
+    return this.cache.wrap<object>(
+      'questao',
+      async () => await this.axios.get<any>(`v1/questao/summary`),
     );
   }
 }

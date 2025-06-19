@@ -2,8 +2,9 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { OrConditional } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EmailService } from 'src/shared/services/email/email.service';
-import { statusLabels } from '../simulado/enum/status.enum';
+import { Status, statusLabels } from '../simulado/enum/status.enum';
 import { User } from '../user/user.entity';
 import { UserService } from '../user/user.service';
 import { CreateGeoDTOInput } from './dto/create-geo.dto.input';
@@ -24,6 +25,7 @@ export class GeoService extends BaseService<Geolocation> {
     private readonly userService: UserService,
     private readonly emailService: EmailService,
     private readonly log: LogGeoRepository,
+    private readonly cache: CacheService,
   ) {
     super(geoRepository);
   }
@@ -116,9 +118,8 @@ export class GeoService extends BaseService<Geolocation> {
     geo.status = geoStatus.status;
     await this.geoRepository.update(geo);
 
-    const changes = `Status: ${statusLabels[oldStatus]} -> ${
-      statusLabels[geoStatus.status]
-    }`;
+    const changes = `Status: ${statusLabels[oldStatus]} -> ${statusLabels[geoStatus.status]
+      }`;
 
     const logGeo = new LogGeo();
     logGeo.geoId = geo.id;
@@ -174,5 +175,29 @@ export class GeoService extends BaseService<Geolocation> {
     combinations.push({ prop: 'category', value: text });
 
     return combinations;
+  }
+
+  async getSummary() {
+    const geoTotal = await this.cache.wrap<number>('geo:total', async () =>
+      this.geoRepository.getTotalEntity(),
+    );
+    const geoPending = await this.cache.wrap<number>('geo:pending', async () =>
+      this.geoRepository.entityByStatus(Status.Pending),
+    );
+    const geoApproved = await this.cache.wrap<number>(
+      'geo:approved',
+      async () => this.geoRepository.entityByStatus(Status.Approved),
+    );
+    const geoRejected = await this.cache.wrap<number>(
+      'geo:rejected',
+      async () => this.geoRepository.entityByStatus(Status.Rejected),
+    );
+
+    return {
+      geoTotal,
+      geoPending,
+      geoApproved,
+      geoRejected,
+    };
   }
 }

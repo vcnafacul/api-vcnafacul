@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
 import { uploadFileFTP } from 'src/utils/uploadFileFtp';
 import { Status } from '../simulado/enum/status.enum';
@@ -14,6 +15,7 @@ export class NewsService extends BaseService<News> {
   constructor(
     private readonly repository: NewsRepository,
     private envService: EnvService,
+    private readonly cache: CacheService,
   ) {
     super(repository);
   }
@@ -55,5 +57,11 @@ export class NewsService extends BaseService<News> {
         actived: query.status.toString() === Status.Approved.toString(),
       },
     });
+  }
+
+  async getSummary() {
+    return await this.cache.wrap<number>('news:total', async () =>
+      this.repository.getTotalEntity(),
+    );
   }
 }

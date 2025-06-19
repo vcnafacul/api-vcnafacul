@@ -115,6 +115,11 @@ export class SimuladoController {
     return await this.simuladoService.getAvailable(type);
   }
 
+  @Get('summary')
+  async getSummary() {
+    return await this.simuladoService.getSummary();
+  }
+
   @Get(':id')
   @ApiResponse({
     status: 200,

@@ -29,10 +29,8 @@ export const envSchema = z.object({
 
   //HOSPEDAGEM HOSTINGER
   FTP_HOST: z.string().ip().default('0.0.0.0'),
-  FTP_CONTENT: z.string().default('/usr/share/nginx/html/'),
   FTP_USER: z.string().default('cursinho'),
   FTP_PASSWORD: z.string().default('cursinho'),
-  VPS_IMAGE: z.string().default('cursinho'),
   FTP_PROFILE: z.string().default('cursinho'),
 
   //MAIL
@@ -64,6 +62,11 @@ export const envSchema = z.object({
   GRAFANA_HOST: z.string().url().default('http://localhost:3000'),
   GRAFANA_USER_ID: z.coerce.number().default(1),
   GRAFANA_TOKEN: z.string().default('vcnafacul'),
+
+  //Cache
+  CACHE_DRIVER: z.string().default('inMemory'),
+  REDIS_PORT: z.coerce.number().default(6379),
+  REDIS_HOST: z.string().default('localhost'),
 });
 
 export type Env = z.infer<typeof envSchema>;

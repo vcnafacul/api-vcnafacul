@@ -103,4 +103,11 @@ export class PartnerPrepCourseRepository extends BaseRepository<PartnerPrepCours
       totalItems,
     };
   }
+
+  async getTotalEntity() {
+    return this.repository
+      .createQueryBuilder('entity')
+      .where('entity.deletedAt IS NULL')
+      .getCount();
+  }
 }

@@ -240,4 +240,19 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .andWhere('inscriptionCourse.id = :inscriptionId', { inscriptionId })
       .getOne();
   }
+
+  async getTotalEntity() {
+    return this.repository
+      .createQueryBuilder('entity')
+      .where('entity.deletedAt IS NULL')
+      .getCount();
+  }
+
+  async entityByStatus(status: StatusApplication) {
+    return this.repository
+      .createQueryBuilder('entity')
+      .where('entity.deletedAt IS NULL')
+      .andWhere('entity.applicationStatus = :status', { status })
+      .getCount();
+  }
 }

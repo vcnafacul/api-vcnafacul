@@ -17,6 +17,7 @@ import { RoleService } from 'src/modules/role/role.service';
 import { UserService } from 'src/modules/user/user.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
@@ -44,6 +45,7 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     @InjectDataSource()
     private dataSource: DataSource,
     private envSerrvice: EnvService,
+    private readonly cache: CacheService,
   ) {
     super(repository);
   }
@@ -389,5 +391,11 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
       );
     }
     return await this.roleService.update(dto);
+  }
+
+  async getSummary() {
+    return await this.cache.wrap<number>('partnerPrepCourse:total', async () =>
+      this.repository.getTotalEntity(),
+    );
   }
 }

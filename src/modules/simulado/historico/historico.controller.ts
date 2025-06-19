@@ -37,6 +37,11 @@ export class HistoricoController {
     return await this.service.getPerformance((req.user as User).id);
   }
 
+  @Get('summary')
+  async getSummary() {
+    return await this.service.getSummary();
+  }
+
   @Get(':id')
   @ApiBearerAuth()
   @ApiResponse({

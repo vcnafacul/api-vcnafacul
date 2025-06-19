@@ -49,6 +49,11 @@ export class ProvaController {
     return await this.provaService.getMissingNumbers(id);
   }
 
+  @Get('summary')
+  async getSummary() {
+    return await this.provaService.getSummary();
+  }
+
   @Get(':id')
   @ApiBearerAuth()
   @ApiResponse({

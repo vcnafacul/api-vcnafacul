@@ -3,6 +3,7 @@ import { AuditLogService } from 'src/modules/audit-log/audit-log.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
 import { ChangeOrderDTOInput } from 'src/shared/modules/node/dtos/change-order.dto.input';
 import { BlobService } from 'src/shared/services/blob/blob-service';
@@ -27,6 +28,7 @@ export class ContentService extends BaseService<Content> {
     private readonly auditLog: AuditLogService,
     private readonly fileContentRepository: FileContentRepository,
     @Inject('BlobService') private readonly blobService: BlobService,
+    private readonly cache: CacheService,
   ) {
     super(repository);
   }
@@ -172,6 +174,32 @@ export class ContentService extends BaseService<Content> {
     }
     await this.subjectRepository.removeNode(content.subject.id, content.id);
     await this.repository.delete(id);
+  }
+
+  async getSummary() {
+    const contentSumission = await this.cache.wrap<number>(
+      'content:total',
+      async () => this.repository.getTotalEntity(),
+    );
+    const contentPending = await this.cache.wrap<number>(
+      'content:pending',
+      async () => this.repository.entityByStatus(StatusContent.Pending),
+    );
+    const contentApproved = await this.cache.wrap<number>(
+      'content:approved',
+      async () => this.repository.entityByStatus(StatusContent.Approved),
+    );
+    const contentRejected = await this.cache.wrap<number>(
+      'content:rejected',
+      async () => this.repository.entityByStatus(StatusContent.Rejected),
+    );
+
+    return {
+      contentSumission,
+      contentPending,
+      contentApproved,
+      contentRejected,
+    };
   }
 
   private async IsUnique(subjectId: string, title: string) {
