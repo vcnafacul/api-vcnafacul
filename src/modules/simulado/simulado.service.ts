@@ -12,6 +12,7 @@ import { TipoSimuladoDTO } from './dtos/tipo-simulado.dto.output';
 import { UpdateDTOInput } from './dtos/update-questao.dto.input';
 import { ReportEntity } from './enum/report.enum';
 import { Status } from './enum/status.enum';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
 
 @Injectable()
 export class SimuladoService {
@@ -19,6 +20,7 @@ export class SimuladoService {
     private readonly axios: HttpServiceAxios,
     private readonly envService: EnvService,
     private readonly auditLod: AuditLogService,
+    private readonly cache: CacheService,
   ) {
     this.axios.setBaseURL(this.envService.get('SIMULADO_URL'));
   }
@@ -101,6 +103,9 @@ export class SimuladoService {
   }
 
   public async getSummary() {
-    return await this.axios.get<any>(`v1/simulado/summary`);
+    return this.cache.wrap<object>(
+      'simulado',
+      async () => await this.axios.get<any>(`v1/simulado/summary`),
+    );
   }
 }

@@ -4,6 +4,7 @@ import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { CreateProvaDTORequest } from '../dtos/prova-create.dto.request';
 import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
 
 @Injectable()
 export class ProvaService {
@@ -11,6 +12,7 @@ export class ProvaService {
     private readonly axios: HttpServiceAxios,
     private readonly envService: EnvService,
     @Inject('BlobService') private readonly blobService: BlobService,
+    private readonly cache: CacheService,
   ) {
     this.axios.setBaseURL(this.envService.get('SIMULADO_URL'));
   }
@@ -44,5 +46,12 @@ export class ProvaService {
 
   public async getMissingNumbers(id: string) {
     return await this.axios.get(`v1/prova/missing/${id}`);
+  }
+
+  public async getSummary() {
+    return this.cache.wrap<object>(
+      'prova',
+      async () => await this.axios.get<any>(`v1/prova/summary`),
+    );
   }
 }
