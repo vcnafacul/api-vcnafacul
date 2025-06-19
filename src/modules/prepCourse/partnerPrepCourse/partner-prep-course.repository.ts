@@ -105,8 +105,8 @@ export class PartnerPrepCourseRepository extends BaseRepository<PartnerPrepCours
   }
 
   async getTotalEntity() {
-    return await this.repository
-      .createQueryBuilder('partner_prep_course')
+    return this.repository
+      .createQueryBuilder('entity')
       .where('entity.deletedAt IS NULL')
       .getCount();
   }
