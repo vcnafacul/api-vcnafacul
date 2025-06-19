@@ -138,8 +138,8 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
       today < inscription.startDate
         ? Status.Pending
         : today > inscription.endDate
-        ? Status.Rejected
-        : Status.Approved;
+          ? Status.Rejected
+          : Status.Approved;
     return Object.assign(new HasInscriptionActiveDtoOutput(), {
       prepCourseName: inscription.partnerPrepCourse.geo.name,
       inscription: {
@@ -248,8 +248,8 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
             student.user.gender === Gender.Male
               ? 'Masculino'
               : student.user.gender === Gender.Female
-              ? 'Feminino'
-              : 'Outro',
+                ? 'Feminino'
+                : 'Outro',
           telefone: student.user.phone,
           bairro: student.user.neighborhood,
           rua: student.user.street,
