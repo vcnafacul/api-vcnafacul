@@ -28,6 +28,7 @@ import { CreateGeoDTOInputFaker } from './faker/create-geo.dto.input.faker';
 import { CreateInscriptionCourseDTOInputFaker } from './faker/create-inscription-course.dto.faker';
 import { createStudentCourseDTOInputFaker } from './faker/create-student-course.dto.input.faker';
 import { CreateUserDtoInputFaker } from './faker/create-user.dto.input.faker';
+import createFakeDocxBase64 from './utils/createFakeDocxBase64';
 import { createNestAppTest } from './utils/createNestAppTest';
 
 // Mock the EmailService globally
@@ -118,9 +119,20 @@ describe('StudentCourse (e2e)', () => {
 
     jest
       .spyOn(blobService, 'getFile')
-      .mockImplementation(async () =>
-        Buffer.from('conteúdo fake de um arquivo'),
-      );
+      .mockImplementation(async (fileKey: string) => {
+        if (fileKey === 'termo_template.docx') {
+          return {
+            buffer: createFakeDocxBase64(),
+          };
+        }
+        return Buffer.from('conteúdo fake de um arquivo');
+      });
+
+    jest.mock('src/utils/convertDocxToPdfBuffer.ts', () => ({
+      convertDocxToPdfBuffer: jest
+        .fn()
+        .mockResolvedValue(Buffer.from('pdf-fake')),
+    }));
 
     jest
       .spyOn(studentCourseService['discordWebhook'], 'sendMessage')

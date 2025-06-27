@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { AuditLogService } from 'src/modules/audit-log/audit-log.service';
 import { User } from 'src/modules/user/user.entity';
 import { UserService } from 'src/modules/user/user.service';
+import { EnvService } from 'src/shared/modules/env/env.service';
 import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { CreateQuestaoMsSimuladoDTOInput } from '../dtos/create-questao-mssimulado.dto.input';
@@ -14,17 +14,19 @@ import {
 import { QuestaoDTOInput } from '../dtos/questao.dto.input';
 import { UpdateDTOInput } from '../dtos/update-questao.dto.input';
 import { Status } from '../enum/status.enum';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
 
 @Injectable()
 export class QuestaoService {
   constructor(
     @Inject('BlobService') private readonly blobService: BlobService,
     private readonly axios: HttpServiceAxios,
-    private configService: ConfigService,
+    private envService: EnvService,
     private readonly auditLod: AuditLogService,
     private readonly userService: UserService,
+    private readonly cache: CacheService,
   ) {
-    this.axios.setBaseURL(this.configService.get<string>('SIMULADO_URL'));
+    this.axios.setBaseURL(this.envService.get('SIMULADO_URL'));
   }
 
   public async getAllQuestoes(query: QuestaoDTOInput) {
@@ -103,7 +105,7 @@ export class QuestaoService {
     }
     const fileKey = await this.blobService.uploadFile(
       file,
-      this.configService.get<string>('BUCKET_QUESTION'),
+      this.envService.get('BUCKET_QUESTION'),
     );
     return fileKey;
   }
@@ -156,7 +158,14 @@ export class QuestaoService {
   public async getImage(id: string) {
     return await this.blobService.getFile(
       `${id}.png`,
-      this.configService.get<string>('BUCKET_QUESTION'),
+      this.envService.get('BUCKET_QUESTION'),
+    );
+  }
+
+  public async getSummary() {
+    return this.cache.wrap<object>(
+      'questao',
+      async () => await this.axios.get<any>(`v1/questao/summary`),
     );
   }
 }

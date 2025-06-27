@@ -224,4 +224,9 @@ export class QuestaoController {
   public async history(@Param('id') id: string) {
     return await this.questaoService.getHistory(id);
   }
+
+  @Get('summary')
+  async getSummary() {
+    return await this.questaoService.getSummary();
+  }
 }

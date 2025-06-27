@@ -4,6 +4,7 @@ import { BaseRepository } from 'src/shared/modules/base/base.repository';
 import { GetAllWhereInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { EntityManager } from 'typeorm';
+import { StudentCourse } from '../../studentCourse/student-course.entity';
 import { AttendanceRecord } from './attendance-record.entity';
 import { AttendanceRecordItem } from './dtos/attendance-record-by-class.dto.output';
 
@@ -48,7 +49,6 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
   async findManyByStudentId(
     page: number,
     limit: number,
-    id: string,
     studentCourseId: string,
   ): Promise<GetAllOutput<AttendanceRecord>> {
     const [data, totalItems] = await Promise.all([
@@ -60,9 +60,8 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
         .addSelect(['studentCourse.id', 'studentCourse.cod_enrolled'])
         .leftJoinAndSelect('studentAttendance.justification', 'justification')
         .innerJoin('entity.class', 'class')
-        .addSelect(['class.id'])
+        .addSelect(['class.id', 'class.name'])
         .where('studentCourse.id = :studentCourseId', { studentCourseId })
-        .andWhere('entity.class.id = :classId', { classId: id })
         .andWhere('entity.deletedAt IS NULL')
         .skip((page - 1) * limit)
         .take(limit)
@@ -74,7 +73,6 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
         .innerJoin('studentAttendance.studentCourse', 'studentCourse')
         .where('studentCourse.id = :studentCourseId', { studentCourseId })
         .innerJoin('entity.class', 'class')
-        .andWhere('entity.class.id = :classId', { classId: id })
         .andWhere('entity.deletedAt IS NULL')
         .getCount(),
     ]);
@@ -216,16 +214,26 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
     const endDateCopy = new Date(endDate);
     endDateCopy.setDate(endDateCopy.getDate() + 1);
 
-    return await this.repository
+    const studentRepository = this._entityManager.getRepository(StudentCourse);
+
+    const studentsClass = await studentRepository
+      .createQueryBuilder('studentCourse')
+      .select('studentCourse.id')
+      .where('studentCourse.classId = :classId', { classId })
+      .getRawMany();
+
+    const studentIds = studentsClass.map((s) => s.studentCourse_id); // getRawMany -> precisa do alias completo
+
+    const raw = await this.repository
       .createQueryBuilder('attendance')
       .innerJoin('attendance.studentAttendance', 'studentAttendance')
       .innerJoin('studentAttendance.studentCourse', 'studentCourse')
       .innerJoin('studentCourse.user', 'user')
-      .where('attendance.class = :classId', { classId })
-      .andWhere('attendance.registeredAt BETWEEN :startDate AND :endDate', {
+      .where('attendance.registeredAt BETWEEN :startDate AND :endDate', {
         startDate,
         endDate: endDateCopy,
       })
+      .andWhere('studentCourse.id IN (:...studentIds)', { studentIds })
       .andWhere('attendance.deletedAt IS NULL')
       .select('user.firstName', 'name')
       .addSelect('user.socialName', 'socialName')
@@ -237,12 +245,28 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
         'studentRecords',
       )
       .addSelect(
-        `ROUND(100.0 * SUM(CASE WHEN studentAttendance.present = true THEN 1 ELSE 0 END) / COUNT(studentAttendance.id),2)`,
+        `ROUND(
+      100.0 * SUM(CASE WHEN studentAttendance.present = true THEN 1 ELSE 0 END) / COUNT(studentAttendance.id),
+      2
+    )`,
         'presencePercentage',
       )
       .groupBy('user.firstName')
+      .addGroupBy('user.socialName')
+      .addGroupBy('user.useSocialName')
       .addGroupBy('studentCourse.cod_enrolled')
+      .addGroupBy('studentCourse.id')
       .orderBy('presencePercentage', 'DESC')
       .getRawMany();
+
+    return raw.map((item) => ({
+      name: item.name,
+      socialName: item.socialName,
+      useSocialName: item.useSocialName,
+      codEnrolled: item.codEnrolled,
+      totalClassRecords: item.totalClassRecords,
+      studentRecords: item.studentRecords,
+      presencePercentage: item.presencePercentage,
+    }));
   }
 }

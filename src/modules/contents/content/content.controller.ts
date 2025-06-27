@@ -112,4 +112,9 @@ export class ContentController {
   async getFile(@Param('id') id: string) {
     return await this.contentService.getFile(id);
   }
+
+  @Get('summary')
+  async getSummary() {
+    return await this.contentService.getSummary();
+  }
 }

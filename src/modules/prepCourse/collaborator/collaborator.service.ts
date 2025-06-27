@@ -1,9 +1,9 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { RoleRepository } from 'src/modules/role/role.repository';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { EnvService } from 'src/shared/modules/env/env.service';
 import { removeFileFTP } from 'src/utils/removeFileFtp';
 import { uploadFileFTP } from 'src/utils/uploadFileFtp';
 import { Collaborator } from '../collaborator/collaborator.entity';
@@ -18,7 +18,7 @@ export class CollaboratorService extends BaseService<Collaborator> {
   constructor(
     private readonly repository: CollaboratorRepository,
     private readonly partnerPrepCourseService: PartnerPrepCourseService,
-    private configService: ConfigService,
+    private envService: EnvService,
     private readonly roleRepository: RoleRepository,
     private readonly userRepository: UserRepository,
   ) {
@@ -48,7 +48,6 @@ export class CollaboratorService extends BaseService<Collaborator> {
       photo: c.photo,
       description: c.description,
       actived: c.actived,
-      lastAccess: c.lastAccess,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
       user: {
@@ -62,6 +61,7 @@ export class CollaboratorService extends BaseService<Collaborator> {
           id: c.user.role.id,
           name: c.user.role.name,
         },
+        lastAccess: c.user.lastAccess,
       },
     }));
     return {
@@ -95,9 +95,9 @@ export class CollaboratorService extends BaseService<Collaborator> {
       try {
         await removeFileFTP(
           collaborator.photo,
-          this.configService.get<string>('FTP_HOST'),
-          this.configService.get<string>('FTP_PROFILE'),
-          this.configService.get<string>('FTP_PASSWORD'),
+          this.envService.get('FTP_HOST'),
+          this.envService.get('FTP_PROFILE'),
+          this.envService.get('FTP_PASSWORD'),
         );
       } catch (error) {
         console.log(error);
@@ -105,9 +105,9 @@ export class CollaboratorService extends BaseService<Collaborator> {
     }
     const fileName = await uploadFileFTP(
       file,
-      this.configService.get<string>('FTP_HOST'),
-      this.configService.get<string>('FTP_PROFILE'),
-      this.configService.get<string>('FTP_PASSWORD'),
+      this.envService.get('FTP_HOST'),
+      this.envService.get('FTP_PROFILE'),
+      this.envService.get('FTP_PASSWORD'),
     );
     if (!fileName) {
       throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);
@@ -121,9 +121,9 @@ export class CollaboratorService extends BaseService<Collaborator> {
     const collaborator = await this.repository.findOneByUserId(userId);
     const deleted = await removeFileFTP(
       collaborator.photo,
-      this.configService.get<string>('FTP_HOST'),
-      this.configService.get<string>('FTP_PROFILE'),
-      this.configService.get<string>('FTP_PASSWORD'),
+      this.envService.get('FTP_HOST'),
+      this.envService.get('FTP_PROFILE'),
+      this.envService.get('FTP_PASSWORD'),
     );
     if (deleted) {
       collaborator.photo = null;

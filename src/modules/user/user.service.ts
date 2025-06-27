@@ -1,8 +1,8 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { GetAllDtoOutput } from 'src/shared/dtos/get-all.dto.output';
 import { BaseService } from 'src/shared/modules/base/base.service';
+import { EnvService } from 'src/shared/modules/env/env.service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
@@ -29,7 +29,7 @@ export class UserService extends BaseService<User> {
     private readonly emailService: EmailService,
     private readonly collaboratorRepository: CollaboratorRepository,
     private readonly discordWebhook: DiscordWebhook,
-    private readonly configService: ConfigService,
+    private readonly envService: EnvService,
   ) {
     super(userRepository);
   }
@@ -46,24 +46,46 @@ export class UserService extends BaseService<User> {
 
   async createUser(userDto: CreateUserDtoInput) {
     try {
+      // Validação de senha
       if (userDto.password !== userDto.password_confirmation) {
+        throw new HttpException('As senhas não coincidem', HttpStatus.CONFLICT);
+      }
+
+      // Validação de idade mínima
+      const birthDate = new Date(userDto.birthday);
+      const today = new Date();
+      const age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      const dayDiff = today.getDate() - birthDate.getDate();
+
+      const hasMinAge =
+        age > 14 ||
+        (age === 14 && (monthDiff > 0 || (monthDiff === 0 && dayDiff >= 0)));
+
+      if (!hasMinAge) {
         throw new HttpException(
-          'password and password_confirmation do not match',
-          HttpStatus.CONFLICT,
+          'Você deve ter no mínimo 14 anos para se cadastrar',
+          HttpStatus.BAD_REQUEST,
         );
       }
+
+      // Criação do usuário
       const newUser = this.convertDtoToDomain(userDto);
       const role = await this.roleRepository.findOneBy({ name: 'aluno' });
+
       if (!role) {
-        throw new HttpException('role not found', HttpStatus.BAD_REQUEST);
+        throw new HttpException('Role não encontrada', HttpStatus.BAD_REQUEST);
       }
+
       newUser.role = role;
       if (userDto.socialName) newUser.useSocialName = true;
+
       const user = await this.userRepository.create(newUser);
+
       this.logger.log('User created: ' + user.id + ' - ' + user.email);
       return user;
     } catch (error) {
-      const env = this.configService.get('NODE_ENV');
+      const env = this.envService.get('NODE_ENV');
       if (env !== 'test') {
         await this.discordWebhook.sendMessage(
           `Erro ao criar usuário: ${error}`,
@@ -71,7 +93,7 @@ export class UserService extends BaseService<User> {
       }
       this.logger.error(`Erro ao criar usuário: ${error}`);
       if (error.code === '23505') {
-        throw new HttpException('Email already exist', HttpStatus.CONFLICT);
+        throw new HttpException('Email já cadastrado', HttpStatus.CONFLICT);
       }
       throw error;
     }
@@ -104,6 +126,8 @@ export class UserService extends BaseService<User> {
       throw new HttpException('password invalid', HttpStatus.CONFLICT);
     }
     if (!userFullInfo.emailConfirmSended) {
+      userFullInfo.lastAccess = new Date();
+      await this._repository.update(userFullInfo);
       return this.getAccessToken(userFullInfo);
     }
 
@@ -240,6 +264,7 @@ export class UserService extends BaseService<User> {
         city: user.city,
         state: user.state,
         lgpd: user.lgpd,
+        lastAccess: user.lastAccess,
       },
       roleId: user.role.id,
       roleName: user.role.name,

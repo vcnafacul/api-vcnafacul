@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { EnvService } from 'src/shared/modules/env/env.service';
 import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AnswerSimulado } from './dtos/answer-simulado.dto.input';
@@ -12,15 +12,17 @@ import { TipoSimuladoDTO } from './dtos/tipo-simulado.dto.output';
 import { UpdateDTOInput } from './dtos/update-questao.dto.input';
 import { ReportEntity } from './enum/report.enum';
 import { Status } from './enum/status.enum';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
 
 @Injectable()
 export class SimuladoService {
   constructor(
     private readonly axios: HttpServiceAxios,
-    private readonly configService: ConfigService,
+    private readonly envService: EnvService,
     private readonly auditLod: AuditLogService,
+    private readonly cache: CacheService,
   ) {
-    this.axios.setBaseURL(this.configService.get<string>('SIMULADO_URL'));
+    this.axios.setBaseURL(this.envService.get('SIMULADO_URL'));
   }
 
   async create(dto: CreateSimuladoDTOInput) {
@@ -48,7 +50,7 @@ export class SimuladoService {
   }
 
   public async answer(dto: AnswerSimulado, userId: string) {
-    await this.axios.post(`v1/simulado/answer`, {
+    return await this.axios.post(`v1/simulado/answer`, {
       ...dto,
       idEstudante: userId,
     });
@@ -97,6 +99,13 @@ export class SimuladoService {
   public async getAvailable(type: string) {
     return await this.axios.get<AvailableSimuladoDTOoutput[]>(
       `v1/simulado/available?tipo=${type}`,
+    );
+  }
+
+  public async getSummary() {
+    return this.cache.wrap<object>(
+      'simulado',
+      async () => await this.axios.get<any>(`v1/simulado/summary`),
     );
   }
 }

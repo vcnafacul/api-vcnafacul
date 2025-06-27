@@ -102,4 +102,7 @@ export class User extends BaseEntity {
       this.password = await bcrypt.hash(this.password, 10); // Gere o hash com 10 salt rounds
     }
   }
+
+  @Column({ nullable: true })
+  public lastAccess: Date;
 }

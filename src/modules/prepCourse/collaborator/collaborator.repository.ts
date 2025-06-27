@@ -38,6 +38,7 @@ export class CollaboratorRepository extends BaseRepository<Collaborator> {
           'user.email',
           'user.phone',
           'user.useSocialName',
+          'user.lastAccess',
         ])
         .innerJoinAndSelect('user.role', 'role')
         .getMany(),

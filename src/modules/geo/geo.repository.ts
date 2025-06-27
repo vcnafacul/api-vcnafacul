@@ -4,6 +4,7 @@ import { GetAllWhereInput } from 'src/shared/modules/base/interfaces/get-all.inp
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { Brackets, EntityManager } from 'typeorm';
 import { BaseRepository } from '../../shared/modules/base/base.repository';
+import { Status } from '../simulado/enum/status.enum';
 import { Geolocation } from './geo.entity';
 
 @Injectable()
@@ -83,5 +84,20 @@ export class GeoRepository extends BaseRepository<Geolocation> {
 
   async update(geo: Geolocation) {
     this.repository.save(geo);
+  }
+
+  async getTotalEntity() {
+    return this.repository
+      .createQueryBuilder('entity')
+      .where('entity.deletedAt IS NULL')
+      .getCount();
+  }
+
+  async entityByStatus(status: Status) {
+    return this.repository
+      .createQueryBuilder('entity')
+      .where('entity.deletedAt IS NULL')
+      .andWhere('entity.status = :status', { status })
+      .getCount();
   }
 }

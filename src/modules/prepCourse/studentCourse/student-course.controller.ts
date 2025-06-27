@@ -319,4 +319,9 @@ export class StudentCourseController {
   ) {
     await this.service.updateProfilePhotoByStudent(file, req.body.studentId);
   }
+
+  @Get('summary')
+  async getSummary() {
+    return await this.service.getSummary();
+  }
 }

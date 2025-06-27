@@ -26,6 +26,9 @@ import { PartnerPrepCourseModule } from './modules/prepCourse/partnerPrepCourse/
 import { StudentCourseModule } from './modules/prepCourse/studentCourse/student-course.module';
 import { RoleModule } from './modules/role/role.module';
 import { SimuladoModule } from './modules/simulado/simulado.module';
+import { CacheManagerModule } from './shared/modules/cache/cache.module';
+import { envSchema } from './shared/modules/env/env';
+import { EnvModule } from './shared/modules/env/env.module';
 import { BlobModule } from './shared/services/blob/blob.module';
 import { DiscordWebhook } from './shared/services/webhooks/discord';
 import { JwtStrategy } from './shared/strategy/jwt.strategy';
@@ -33,9 +36,12 @@ import { JwtStrategy } from './shared/strategy/jwt.strategy';
 @Module({
   imports: [
     ConfigModule.forRoot({
+      validate: (env) => envSchema.parse(env),
       isGlobal: true,
     }),
+    EnvModule,
     TypeOrmModule.forRootAsync({
+      imports: [EnvModule],
       useClass: TypeOrmOptions,
       inject: [TypeOrmOptions],
     }),
@@ -70,6 +76,7 @@ import { JwtStrategy } from './shared/strategy/jwt.strategy';
     AttendanceRecordModule,
     StudentAttendanceModule,
     AbsenceJustificationModule,
+    CacheManagerModule,
   ],
   controllers: [AppController],
   providers: [

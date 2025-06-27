@@ -6,7 +6,6 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import * as dayjs from 'dayjs';
@@ -24,10 +23,14 @@ import {
   Sort,
 } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
+import { EnvService } from 'src/shared/modules/env/env.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
+import { maskCpf } from 'src/utils/maskCpf';
 import { maskEmail } from 'src/utils/maskEmail';
+import { maskPhone } from 'src/utils/maskPhone';
 import { IsNull, Not } from 'typeorm';
 import { ClassService } from '../class/class.service';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
@@ -74,11 +77,12 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly logStudentRepository: LogStudentRepository,
-    private configService: ConfigService,
+    private envService: EnvService,
     private readonly collaboratorRepository: CollaboratorRepository,
     private readonly classService: ClassService,
     private readonly discordWebhook: DiscordWebhook,
     private readonly roleService: RoleService,
+    private readonly cache: CacheService,
   ) {
     super(repository);
   }
@@ -199,7 +203,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     try {
       await this.blobService.deleteFile(
         student.photo,
-        this.configService.get<string>('BUCKET_PROFILE'),
+        this.envService.get('BUCKET_PROFILE'),
       );
     } catch (error) {
       const log = new LogStudent();
@@ -210,7 +214,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     }
     const fileKey = await this.blobService.uploadFile(
       file,
-      this.configService.get<string>('BUCKET_PROFILE'),
+      this.envService.get('BUCKET_PROFILE'),
     );
     student.photo = fileKey;
 
@@ -251,7 +255,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       files.map(async (file) => {
         const fileKey = await this.blobService.uploadFile(
           file,
-          this.configService.get<string>('BUCKET_DOC'),
+          this.envService.get('BUCKET_DOC'),
           exprires,
         );
         const document: DocumentStudent = new DocumentStudent();
@@ -265,7 +269,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     );
     const fileKey = await this.blobService.uploadFile(
       photo,
-      this.configService.get<string>('BUCKET_PROFILE'),
+      this.envService.get('BUCKET_PROFILE'),
     );
 
     student.applicationStatus = StatusApplication.DeclaredInterest;
@@ -285,7 +289,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   async getDocument(fileKey: string) {
     const file = await this.blobService.getFile(
       fileKey,
-      this.configService.get<string>('BUCKET_DOC'),
+      this.envService.get('BUCKET_DOC'),
     );
     return file;
   }
@@ -293,7 +297,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   async getProfilePhoto(fileKey: string) {
     const file = await this.blobService.getFile(
       fileKey,
-      this.configService.get<string>('BUCKET_PROFILE'),
+      this.envService.get('BUCKET_PROFILE'),
     );
     return file;
   }
@@ -822,6 +826,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     const user = await this.userService.findUserById(userId);
     const role = await this.roleService.findOneById(user.role.id);
     const manager = role.gerenciarEstudantes;
+    const admin = role.gerenciarProcessoSeletivo;
 
     return {
       name: partnerPrepCourse.geo.name,
@@ -839,8 +844,11 @@ export class StudentCourseService extends BaseService<StudentCourse> {
               email: manager
                 ? student.user.email
                 : maskEmail(student.user.email),
-              whatsapp: student.whatsapp,
+              whatsapp: manager
+                ? student.whatsapp
+                : maskPhone(student.whatsapp),
               urgencyPhone: student.urgencyPhone,
+              cpf: admin ? student.cpf : maskCpf(student.cpf),
               applicationStatus: student.applicationStatus,
               cod_enrolled: student.cod_enrolled,
               birthday: student.user.birthday,
@@ -1122,5 +1130,21 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       studentFull,
       nome_cursinho,
     );
+  }
+
+  async getSummary() {
+    const totalStudents = await this.cache.wrap<number>(
+      'student:total',
+      async () => this.repository.getTotalEntity(),
+    );
+    const studentEnrolled = await this.cache.wrap<number>(
+      'student:enrolled',
+      async () => this.repository.entityByStatus(StatusApplication.Enrolled),
+    );
+
+    return {
+      totalStudents,
+      studentEnrolled,
+    };
   }
 }

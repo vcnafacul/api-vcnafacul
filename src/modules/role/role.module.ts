@@ -8,9 +8,10 @@ import { RoleController } from './role.controller';
 import { RoleRepository } from './role.repository';
 import { RoleService } from './role.service';
 import { RoleExistValidator } from './validator/role-exist.validator';
+import { EnvModule } from 'src/shared/modules/env/env.module';
 
 @Module({
-  imports: [HttpModule, UserModule],
+  imports: [HttpModule, UserModule, EnvModule],
   controllers: [RoleController],
   providers: [
     RoleService,

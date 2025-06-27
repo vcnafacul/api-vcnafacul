@@ -1,4 +1,5 @@
 import { Module, OnModuleInit } from '@nestjs/common';
+import { EnvModule } from 'src/shared/modules/env/env.module';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { PartnerPrepCourseModule } from '../partnerPrepCourse/partner-prep-course.module';
@@ -11,7 +12,7 @@ import { InscriptionCourseExistValidator } from './validator/inscription-course-
 
 @Module({
   controllers: [InscriptionCourseController],
-  imports: [PartnerPrepCourseModule, StudentCourseModule],
+  imports: [PartnerPrepCourseModule, StudentCourseModule, EnvModule],
   providers: [
     InscriptionCourseService,
     InscriptionCourseRepository,

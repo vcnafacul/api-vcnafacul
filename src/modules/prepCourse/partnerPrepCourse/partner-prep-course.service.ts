@@ -1,4 +1,10 @@
-import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { StatusLogGeo } from 'src/modules/geo/enum/status-log-geo';
@@ -10,13 +16,20 @@ import { Role } from 'src/modules/role/role.entity';
 import { RoleService } from 'src/modules/role/role.service';
 import { UserService } from 'src/modules/user/user.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
+import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
+import { EnvService } from 'src/shared/modules/env/env.service';
+import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DataSource } from 'typeorm';
 import { Collaborator } from '../collaborator/collaborator.entity';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
 import { PartnerPrepCourseDtoInput } from './dtos/create-partner-prep-course.input.dto';
+import { GetAllPrepCourseDtoOutput } from './dtos/get-all-prep-course.dto.outoput';
+import { GetOnePrepCourseByIdDtoOutput } from './dtos/get-one-prep-course-by-id.dto.output';
 import { PartnerPrepCourse } from './partner-prep-course.entity';
 import { PartnerPrepCourseRepository } from './partner-prep-course.repository';
+import { createTermOfUse } from './utils/create-term-of-use';
 
 @Injectable()
 export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
@@ -28,8 +41,11 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     private readonly collaboratorRepository: CollaboratorRepository,
     private readonly logGeoRepository: LogGeoRepository,
     private readonly roleService: RoleService,
+    @Inject('BlobService') private readonly blobService: BlobService,
     @InjectDataSource()
     private dataSource: DataSource,
+    private envSerrvice: EnvService,
+    private readonly cache: CacheService,
   ) {
     super(repository);
   }
@@ -39,6 +55,8 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
   async create(
     dto: PartnerPrepCourseDtoInput,
     userId: string,
+    partnershipAgreement?: Express.Multer.File,
+    logo?: Express.Multer.File,
   ): Promise<PartnerPrepCourse> {
     let partnerPrepCourse: PartnerPrepCourse = null;
     const user = await this.userService.findOneBy({ id: userId });
@@ -56,19 +74,50 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
       const representative = await this.userService.findOneBy({
         id: dto.representative,
       });
+      if (!representative) {
+        throw new HttpException(
+          'Representante nao encontrado',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
 
-      partnerPrepCourse = new PartnerPrepCourse();
-      partnerPrepCourse.geoId = dto.geoId;
-
-      let collaborator = await manager
+      const existingCollaborador = await manager
         .getRepository(Collaborator)
         .findOneBy({ user: { id: representative.id } });
-
-      if (!collaborator) {
-        collaborator = new Collaborator();
-        collaborator.user = representative;
-        collaborator.description = 'Representante Cursinho';
+      if (existingCollaborador) {
+        throw new HttpException(
+          'Representante ja cadastrado como colaborador',
+          HttpStatus.CONFLICT,
+        );
       }
+
+      partnerPrepCourse = new PartnerPrepCourse();
+
+      const file = await createTermOfUse(this.blobService, this.envSerrvice);
+      const key = await this.blobService.uploadFile(
+        file,
+        this.envSerrvice.get('BUCKET_PARTNERSHIP_DOC'),
+      );
+      partnerPrepCourse.termOfUseUrl = key;
+      const agreementKey = await this.blobService.uploadFile(
+        partnershipAgreement,
+        this.envSerrvice.get('BUCKET_PARTNERSHIP_DOC'),
+      );
+      partnerPrepCourse.partnershipAgreement = agreementKey;
+      if (logo) {
+        const logoKey = await this.blobService.uploadFile(
+          logo,
+          this.envSerrvice.get('BUCKET_PARTNERSHIP_DOC'),
+        );
+        partnerPrepCourse.logo = logoKey;
+      }
+
+      partnerPrepCourse.geoId = dto.geoId;
+      partnerPrepCourse.representative = representative;
+
+      const collaborator = new Collaborator();
+      collaborator.user = representative;
+      collaborator.description = 'Representante Cursinho';
 
       collaborator.partnerPrepCourse = partnerPrepCourse;
 
@@ -90,6 +139,67 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
       'Erro ao criar cursinho parceiro',
       HttpStatus.INTERNAL_SERVER_ERROR,
     );
+  }
+
+  async getAll(
+    page: number,
+    limit: number,
+  ): Promise<GetAllOutput<GetAllPrepCourseDtoOutput>> {
+    const prepCourses = await this.repository.findAllBy({
+      page: page,
+      limit: limit,
+    });
+    return {
+      data: prepCourses.data.map((i) =>
+        Object.assign(new GetAllPrepCourseDtoOutput(), {
+          id: i.id,
+          geo: {
+            id: i.geo.id,
+            name: i.geo.name,
+            category: i.geo.category,
+            city: i.geo.city,
+            state: i.geo.state,
+            phone: i.geo.phone,
+          },
+          representative: {
+            name: i.representative.useSocialName
+              ? i.representative.firstName + ' ' + i.representative.lastName
+              : i.representative.socialName + ' ' + i.representative.lastName,
+          },
+          createdAt: i.createdAt,
+          updatedAt: i.updatedAt,
+        }),
+      ),
+      page: prepCourses.page,
+      limit: prepCourses.limit,
+      totalItems: prepCourses.totalItems,
+    };
+  }
+
+  async getOneById(id: string): Promise<GetOnePrepCourseByIdDtoOutput> {
+    const prepCourses = await this.repository.findOneById(id);
+    return Object.assign(new GetOnePrepCourseByIdDtoOutput(), {
+      id: prepCourses.id,
+      geo: prepCourses.geo,
+      representative: {
+        name: prepCourses.representative.useSocialName
+          ? prepCourses.representative.firstName +
+            ' ' +
+            prepCourses.representative.lastName
+          : prepCourses.representative.socialName +
+            ' ' +
+            prepCourses.representative.lastName,
+        email: prepCourses.representative.email,
+        phone: prepCourses.representative.phone,
+      },
+      partnershipAgreement: prepCourses.partnershipAgreement,
+      logo: prepCourses.logo,
+      termOfUseUrl: prepCourses.termOfUseUrl,
+      numberMembers: prepCourses.members?.length || 0,
+      numberStudents: prepCourses.students?.length || 0,
+      createdAt: prepCourses.createdAt,
+      updatedAt: prepCourses.updatedAt,
+    });
   }
 
   async update(entity: PartnerPrepCourse): Promise<void> {
@@ -281,5 +391,11 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
       );
     }
     return await this.roleService.update(dto);
+  }
+
+  async getSummary() {
+    return await this.cache.wrap<number>('partnerPrepCourse:total', async () =>
+      this.repository.getTotalEntity(),
+    );
   }
 }

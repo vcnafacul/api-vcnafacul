@@ -79,7 +79,7 @@ describe('User e2e', () => {
       .expect((res) => {
         expect(res.body).toEqual({
           statusCode: 409,
-          message: 'password and password_confirmation do not match',
+          message: 'As senhas não coincidem',
         });
       });
     expect(emailService.sendCreateUser).toHaveBeenCalledTimes(0);
