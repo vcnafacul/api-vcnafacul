@@ -28,9 +28,6 @@ export class PartnerPrepCourse extends BaseEntity {
   @Column({ nullable: true })
   logo?: string;
 
-  @Column()
-  termOfUseUrl?: string;
-
   @OneToMany(
     () => InscriptionCourse,
     (inscriptionCourse) => inscriptionCourse.partnerPrepCourse,
