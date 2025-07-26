@@ -29,7 +29,6 @@ import { GetAllPrepCourseDtoOutput } from './dtos/get-all-prep-course.dto.outopu
 import { GetOnePrepCourseByIdDtoOutput } from './dtos/get-one-prep-course-by-id.dto.output';
 import { PartnerPrepCourse } from './partner-prep-course.entity';
 import { PartnerPrepCourseRepository } from './partner-prep-course.repository';
-import { createTermOfUse } from './utils/create-term-of-use';
 
 @Injectable()
 export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
@@ -93,12 +92,6 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
 
       partnerPrepCourse = new PartnerPrepCourse();
 
-      const file = await createTermOfUse(this.blobService, this.envSerrvice);
-      const key = await this.blobService.uploadFile(
-        file,
-        this.envSerrvice.get('BUCKET_PARTNERSHIP_DOC'),
-      );
-      partnerPrepCourse.termOfUseUrl = key;
       const agreementKey = await this.blobService.uploadFile(
         partnershipAgreement,
         this.envSerrvice.get('BUCKET_PARTNERSHIP_DOC'),
@@ -194,7 +187,6 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
       },
       partnershipAgreement: prepCourses.partnershipAgreement,
       logo: prepCourses.logo,
-      termOfUseUrl: prepCourses.termOfUseUrl,
       numberMembers: prepCourses.members?.length || 0,
       numberStudents: prepCourses.students?.length || 0,
       createdAt: prepCourses.createdAt,
