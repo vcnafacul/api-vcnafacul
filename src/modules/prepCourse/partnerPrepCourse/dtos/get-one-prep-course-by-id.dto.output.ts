@@ -8,7 +8,6 @@ export class GetOnePrepCourseByIdDtoOutput {
   };
   partnershipAgreement: string;
   logo?: string;
-  termOfUseUrl: string;
   numberMembers: number;
   numberStudents: number;
   createdAt: Date;
