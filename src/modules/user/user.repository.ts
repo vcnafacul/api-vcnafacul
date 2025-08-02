@@ -66,6 +66,11 @@ export class UserRepository extends BaseRepository<User> {
     await this.repository.save(user);
   }
 
+  async updateLastAcess(user: User) {
+    user.lastAccess = new Date();
+    await this.repository.save(user);
+  }
+
   async deleteUser(user: User) {
     await this.repository.softDelete({ id: user.id });
   }

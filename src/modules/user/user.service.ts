@@ -126,8 +126,7 @@ export class UserService extends BaseService<User> {
       throw new HttpException('password invalid', HttpStatus.CONFLICT);
     }
     if (!userFullInfo.emailConfirmSended) {
-      userFullInfo.lastAccess = new Date();
-      await this._repository.update(userFullInfo);
+      await this.userRepository.updateLastAcess(userFullInfo);
       return this.getAccessToken(userFullInfo);
     }
 
