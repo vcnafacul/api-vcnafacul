@@ -300,7 +300,10 @@ export class UserService extends BaseService<User> {
     const roles = this.mapperRole(domain.role);
     const user = this.MapUsertoUserDTO(domain);
     return {
-      access_token: await this.jwtService.signAsync({ user, roles }),
+      access_token: await this.jwtService.signAsync(
+        { user, roles },
+        { expiresIn: '24h' },
+      ),
     };
   }
 
