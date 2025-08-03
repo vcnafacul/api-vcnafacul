@@ -210,7 +210,7 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
 
   async notConfirmedEnrolled() {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0); // Zera a hora para comparar só a data
 
     await this.repository
       .createQueryBuilder('entity')
@@ -219,7 +219,7 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
         applicationStatus: StatusApplication.MissedDeadline,
         updatedAt: new Date(),
       })
-      .where('limitEnrolledAt = :today', { today })
+      .where('limitEnrolledAt <= :today', { today })
       .andWhere('applicationStatus = :status', {
         status: StatusApplication.CalledForEnrollment,
       })
