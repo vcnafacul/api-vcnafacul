@@ -147,7 +147,8 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
         description: inscription.description,
         startDate: inscription.startDate,
         endDate: inscription.endDate,
-        status,
+        status:
+          inscription.actived === Status.Rejected ? Status.Rejected : status,
       },
     });
   }
