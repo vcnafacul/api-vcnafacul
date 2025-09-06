@@ -100,4 +100,13 @@ export class GeoRepository extends BaseRepository<Geolocation> {
       .andWhere('entity.status = :status', { status })
       .getCount();
   }
+
+  async EntityByTypeAndStatus(type: number, status: Status) {
+    return this.repository
+      .createQueryBuilder('entity')
+      .where('entity.deletedAt IS NULL')
+      .andWhere('entity.type = :type', { type })
+      .andWhere('entity.status = :status', { status })
+      .getCount();
+  }
 }
