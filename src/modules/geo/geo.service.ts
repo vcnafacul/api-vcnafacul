@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { OrConditional } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
@@ -198,6 +199,42 @@ export class GeoService extends BaseService<Geolocation> {
       geoPending,
       geoApproved,
       geoRejected,
+    };
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
+    timeZone: 'America/Sao_Paulo',
+  })
+  async getTotalEntityByTypeAndStatus() {
+    // type 1 são universidades e type 0 são cursinhos
+    const approvedUniversities = await this.geoRepository.EntityByTypeAndStatus(
+      1,
+      Status.Approved,
+    );
+    const pendingUniversities = await this.geoRepository.EntityByTypeAndStatus(
+      1,
+      Status.Pending,
+    );
+    const approvedCourses = await this.geoRepository.EntityByTypeAndStatus(
+      0,
+      Status.Approved,
+    );
+
+    const pendingCourses = await this.geoRepository.EntityByTypeAndStatus(
+      0,
+      Status.Pending,
+    );
+    await this.cache.wrap<any>('geo:totalByTypeAndStatus', async () => ({
+      approvedUniversities,
+      pendingUniversities,
+      approvedCourses,
+      pendingCourses,
+    }));
+    return {
+      approvedUniversities,
+      pendingUniversities,
+      approvedCourses,
+      pendingCourses,
     };
   }
 }

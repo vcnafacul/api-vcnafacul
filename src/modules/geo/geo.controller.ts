@@ -43,6 +43,11 @@ export class GeoController {
     return await this.geoService.findAllByFilter(filterDto);
   }
 
+  @Get('status')
+  async getCountGeoByTypeUniversity() {
+    return await this.geoService.getTotalEntityByTypeAndStatus();
+  }
+
   @Put()
   @ApiBearerAuth()
   @ApiResponse({
