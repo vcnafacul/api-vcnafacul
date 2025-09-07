@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
+import { AggregatePeriodDtoInput } from 'src/shared/dtos/aggregate-period.dto.input';
 import { GetAllDtoOutput } from 'src/shared/dtos/get-all.dto.output';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
@@ -101,6 +102,11 @@ export class UserController {
   @UseGuards(JwtAuthGuard)
   async me(@Req() req: Request) {
     return await this.userService.me((req.user as User).id);
+  }
+
+  @Get('aggregate')
+  async aggregate(@Query() query: AggregatePeriodDtoInput) {
+    return await this.userService.aggregateUsersByPeriod(query);
   }
 
   @Get(':id')
