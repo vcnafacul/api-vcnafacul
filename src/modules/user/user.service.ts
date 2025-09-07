@@ -1,13 +1,16 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { AggregatePeriodDtoInput } from 'src/shared/dtos/aggregate-period.dto.input';
 import { GetAllDtoOutput } from 'src/shared/dtos/get-all.dto.output';
 import { BaseService } from 'src/shared/modules/base/base.service';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
 import { Role } from '../role/role.entity';
 import { RoleRepository } from '../role/role.repository';
+import { AggregateUserPeriodDtoOutput } from './dto/aggregate-user-period-dto-output';
 import { CreateUserDtoInput } from './dto/create.dto.input';
 import { GetUserDtoInput } from './dto/get-user.dto.input';
 import { LoginTokenDTO } from './dto/login-token.dto.input';
@@ -30,6 +33,7 @@ export class UserService extends BaseService<User> {
     private readonly collaboratorRepository: CollaboratorRepository,
     private readonly discordWebhook: DiscordWebhook,
     private readonly envService: EnvService,
+    private readonly cache: CacheService,
   ) {
     super(userRepository);
   }
@@ -288,6 +292,16 @@ export class UserService extends BaseService<User> {
     }
     user.role = role;
     await this.userRepository.update(user);
+  }
+
+  async aggregateUsersByPeriod({
+    groupBy,
+  }: AggregatePeriodDtoInput): Promise<AggregateUserPeriodDtoOutput[]> {
+    // return this.userRepository.aggregateUsersByPeriod(groupBy);
+    return this.cache.wrap<AggregateUserPeriodDtoOutput[]>(
+      `aggregateUsersByPeriod:${groupBy}`,
+      async () => await this.userRepository.aggregateUsersByPeriod(groupBy),
+    );
   }
 
   private convertDtoToDomain(userDto: CreateUserDtoInput): User {

@@ -142,6 +142,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
           : Status.Approved;
     return Object.assign(new HasInscriptionActiveDtoOutput(), {
       prepCourseName: inscription.partnerPrepCourse.geo.name,
+      prepCourseEmail: inscription.partnerPrepCourse.geo.email,
       inscription: {
         name: inscription.name,
         description: inscription.description,
