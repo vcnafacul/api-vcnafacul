@@ -109,6 +109,16 @@ export class UserController {
     return await this.userService.aggregateUsersByPeriod(query);
   }
 
+  @Get('aggregate-role')
+  async aggregateUsersByRole() {
+    return await this.userService.aggregateUsersByRole();
+  }
+
+  @Get('aggregate-last-access')
+  async aggregateUsersByLastAcess(@Query() query: AggregatePeriodDtoInput) {
+    return await this.userService.aggregateUsersByLastAcess(query);
+  }
+
   @Get(':id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)

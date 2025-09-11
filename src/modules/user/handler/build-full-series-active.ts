@@ -1,8 +1,8 @@
 import { addDays, addMonths, format } from 'date-fns';
-import { AggregateUserPeriodDtoOutput } from '../dto/aggregate-user-period-dto-output';
+import { AggregateUserPeriodDtoOutput } from '../dto/aggregate-user-period.dto.output';
 import { Period } from '../enum/period';
 
-export function buildFullSeries(
+export function buildFullSeriesActive(
   groupBy: Period,
   rawData: AggregateUserPeriodDtoOutput[],
 ): AggregateUserPeriodDtoOutput[] {
@@ -13,10 +13,14 @@ export function buildFullSeries(
     groupBy === Period.year
       ? parseInt(rawData[0].period)
       : new Date(rawData[0].period);
-  const end =
+  let end =
     groupBy === Period.year
       ? parseInt(rawData[rawData.length - 1].period)
       : new Date(rawData[rawData.length - 1].period);
+
+  if (groupBy === Period.year) end = end;
+  else if (groupBy === Period.month) end = addMonths(end, 1);
+  else end = addDays(end, 1);
 
   const results: AggregateUserPeriodDtoOutput[] = [];
   const dataMap = new Map(rawData.map((r) => [r.period.toString(), r]));
