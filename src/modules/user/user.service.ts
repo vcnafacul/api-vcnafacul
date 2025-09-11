@@ -10,7 +10,9 @@ import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
 import { Role } from '../role/role.entity';
 import { RoleRepository } from '../role/role.repository';
-import { AggregateUserPeriodDtoOutput } from './dto/aggregate-user-period-dto-output';
+import { AggregateUserLastAcessDtoOutput } from './dto/aggregate-user-last-acess.dto.output';
+import { AggregateUserPeriodDtoOutput } from './dto/aggregate-user-period.dto.output';
+import { AggregateUsersByRoleDtoOutput } from './dto/aggregate-users-by-role.dto.output';
 import { CreateUserDtoInput } from './dto/create.dto.input';
 import { GetUserDtoInput } from './dto/get-user.dto.input';
 import { LoginTokenDTO } from './dto/login-token.dto.input';
@@ -298,9 +300,23 @@ export class UserService extends BaseService<User> {
     groupBy,
   }: AggregatePeriodDtoInput): Promise<AggregateUserPeriodDtoOutput[]> {
     // return this.userRepository.aggregateUsersByPeriod(groupBy);
-    return this.cache.wrap<AggregateUserPeriodDtoOutput[]>(
+    return await this.cache.wrap<AggregateUserPeriodDtoOutput[]>(
       `aggregateUsersByPeriod:${groupBy}`,
       async () => await this.userRepository.aggregateUsersByPeriod(groupBy),
+    );
+  }
+
+  async aggregateUsersByRole() {
+    return await this.cache.wrap<AggregateUsersByRoleDtoOutput[]>(
+      'aggregateUsersByRole',
+      async () => await this.userRepository.aggregateUsersByRole(),
+    );
+  }
+
+  async aggregateUsersByLastAcess({ groupBy }: AggregatePeriodDtoInput) {
+    return await this.cache.wrap<AggregateUserLastAcessDtoOutput[]>(
+      `aggregateUsersByLastAcess:${groupBy}`,
+      async () => await this.userRepository.aggregateUsersByLastAcess(groupBy),
     );
   }
 
