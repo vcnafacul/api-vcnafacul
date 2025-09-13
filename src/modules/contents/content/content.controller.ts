@@ -14,7 +14,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { Permissions } from 'src/modules/role/role.entity';
 import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
@@ -24,6 +24,7 @@ import { ChangeOrderDTOInput } from 'src/shared/modules/node/dtos/change-order.d
 import { User } from '../../user/user.entity';
 import { ContentService } from './content.service';
 import { CreateContentDTOInput } from './dtos/create-content.dto.input';
+import { ContentStatsByFrenteDtoOutput } from './dtos/content-stats-by-frente.dto.output';
 import { GetAllContentDtoInput } from './dtos/get-all-content.dto.input';
 import { UpdateStatusDTOInput } from './dtos/update-status.dto.input';
 import { StatusContent } from './enum/status-content';
@@ -116,5 +117,19 @@ export class ContentController {
   @Get('summary')
   async getSummary() {
     return await this.contentService.getSummary();
+  }
+
+  @Get('stats-by-frente')
+  @ApiOperation({ 
+    summary: 'Obter estatísticas de conteúdos agrupadas por frente',
+    description: 'Retorna estatísticas de conteúdos (pendentes, aprovados, reprovados, pendentes de upload e total) agrupadas por matéria e frente'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Estatísticas retornadas com sucesso',
+    type: [ContentStatsByFrenteDtoOutput]
+  })
+  async getStatsByFrente(): Promise<ContentStatsByFrenteDtoOutput[]> {
+    return await this.contentService.getStatsByFrente();
   }
 }

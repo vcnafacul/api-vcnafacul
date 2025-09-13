@@ -16,6 +16,7 @@ import { SubjectRepository } from '../subject/subject.repository';
 import { Content } from './content.entity';
 import { ContentRepository } from './content.repository';
 import { CreateContentDTOInput } from './dtos/create-content.dto.input';
+import { ContentStatsByFrenteDtoOutput } from './dtos/content-stats-by-frente.dto.output';
 import { StatusContent } from './enum/status-content';
 import { GetAllContentInput } from './interface/get-all-content.input';
 
@@ -200,6 +201,14 @@ export class ContentService extends BaseService<Content> {
       contentApproved,
       contentRejected,
     };
+  }
+
+  async getStatsByFrente(): Promise<ContentStatsByFrenteDtoOutput[]> {
+    const stats = await this.cache.wrap<ContentStatsByFrenteDtoOutput[]>(
+      'content:stats-by-frente',
+      async () => await this.repository.getStatsByFrente(),
+    );
+    return stats;
   }
 
   private async IsUnique(subjectId: string, title: string) {
