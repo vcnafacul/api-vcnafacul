@@ -221,4 +221,12 @@ export class ContentRepository extends NodeRepository<Content> {
 
     return query.getRawMany();
   }
+
+  async getSnapshotContentStatus() {
+    return this.repository
+      .createQueryBuilder('c')
+      .select(['DATE_FORMAT(CURRENT_DATE(), "%d-%m-%Y") as data', 'SUM(CASE WHEN c.status = 0 THEN 1 ELSE 0 END) as pendentes', 'SUM(CASE WHEN c.status = 1 THEN 1 ELSE 0 END) as aprovados', 'SUM(CASE WHEN c.status = 2 THEN 1 ELSE 0 END) as reprovados', 'SUM(CASE WHEN c.status = 3 THEN 1 ELSE 0 END) as pendentes_upload', 'COUNT(*) as total'])
+      .where('c.deletedAt IS NULL')
+      .getRawOne();
+  }
 }

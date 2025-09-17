@@ -19,6 +19,9 @@ import { CreateContentDTOInput } from './dtos/create-content.dto.input';
 import { ContentStatsByFrenteDtoOutput } from './dtos/content-stats-by-frente.dto.output';
 import { StatusContent } from './enum/status-content';
 import { GetAllContentInput } from './interface/get-all-content.input';
+import { SnapshotContentStatus } from './entities/snapshot-content-status/snapshot-content-status.entity';
+import { SnapshotContentStatusRepository } from './entities/snapshot-content-status/snapshot-content-status.repository';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class ContentService extends BaseService<Content> {
@@ -28,6 +31,7 @@ export class ContentService extends BaseService<Content> {
     private readonly envService: EnvService,
     private readonly auditLog: AuditLogService,
     private readonly fileContentRepository: FileContentRepository,
+    private readonly snapshotContentStatusRepository: SnapshotContentStatusRepository,
     @Inject('BlobService') private readonly blobService: BlobService,
     private readonly cache: CacheService,
   ) {
@@ -224,5 +228,19 @@ export class ContentService extends BaseService<Content> {
         .label,
     );
     return `${materiaName}/${frenteName}/${subjectName}/${title}`;
+  }
+
+  // @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron(CronExpression.EVERY_MINUTE)
+  async getSnapshotContentStatus() {
+    const snapshot = await this.repository.getSnapshotContentStatus();
+    const snapshotContentStatus = new SnapshotContentStatus();
+    snapshotContentStatus.snapshot_date = snapshot.data;
+    snapshotContentStatus.pendentes = snapshot.pendentes;
+    snapshotContentStatus.aprovados = snapshot.aprovados;
+    snapshotContentStatus.reprovados = snapshot.reprovados;
+    snapshotContentStatus.pendentes_upload = snapshot.pendentes_upload;
+    snapshotContentStatus.total = snapshot.total;
+    await this.snapshotContentStatusRepository.create(snapshotContentStatus);
   }
 }

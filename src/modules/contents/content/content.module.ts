@@ -14,6 +14,7 @@ import { SubjectRepository } from '../subject/subject.repository';
 import { ContentController } from './content.controller';
 import { ContentRepository } from './content.repository';
 import { ContentService } from './content.service';
+import { SnapshotContentStatusRepository } from './entities/snapshot-content-status/snapshot-content-status.repository';
 
 @Module({
   controllers: [ContentController],
@@ -29,6 +30,7 @@ import { ContentService } from './content.service';
     CollaboratorRepository,
     DiscordWebhook,
     FileContentRepository,
+    SnapshotContentStatusRepository,
   ],
   exports: [
     ContentService,
