@@ -6,7 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "nest build && cp -r src/fonts dist/fonts",
+    "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"src/**/*.jsx\" \"test/**/*.ts\"",
     "start": "nest start",
     "dev": "nest start --watch && cp -r src/fonts dist/fonts",
