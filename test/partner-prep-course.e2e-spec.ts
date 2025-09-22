@@ -94,12 +94,6 @@ describe('PartnerPrepCourse (e2e)', () => {
         return Buffer.from('conteúdo fake de um arquivo');
       });
 
-    jest.mock('src/utils/convertDocxToPdfBuffer.ts', () => ({
-      convertDocxToPdfBuffer: jest
-        .fn()
-        .mockResolvedValue(Buffer.from('pdf-fake')),
-    }));
-
     await app.init();
     await roleSeedService.seed();
     await roleUpdateAdminSeedService.seed();

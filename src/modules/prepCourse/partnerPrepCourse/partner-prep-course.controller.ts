@@ -7,6 +7,7 @@ import {
   Post,
   Query,
   Req,
+  Res,
   SetMetadata,
   UploadedFiles,
   UseGuards,
@@ -14,7 +15,7 @@ import {
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
 import { UpdateRoleDtoInput } from 'src/modules/role/dto/update.role.dto';
 import { Permissions, Role } from 'src/modules/role/role.entity';
@@ -152,6 +153,18 @@ export class PartnerPrepCourseController {
   @Get('summary')
   async getSummary() {
     return await this.service.getSummary();
+  }
+
+  @Get('term-of-use/:id')
+  async getTermOfUse(@Param('id') id: string, @Res() res: Response) {
+    const file = await this.service.getTermOfUse(id);
+
+    res.setHeader('Content-Type', file.mimetype);
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename=' + file.originalname,
+    );
+    res.send(file.buffer);
   }
 
   @Get(':id')
