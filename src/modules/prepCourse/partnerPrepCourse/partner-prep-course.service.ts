@@ -29,6 +29,7 @@ import { GetAllPrepCourseDtoOutput } from './dtos/get-all-prep-course.dto.outopu
 import { GetOnePrepCourseByIdDtoOutput } from './dtos/get-one-prep-course-by-id.dto.output';
 import { PartnerPrepCourse } from './partner-prep-course.entity';
 import { PartnerPrepCourseRepository } from './partner-prep-course.repository';
+import { createTermOfUse } from './utils/create-term-of-use';
 
 @Injectable()
 export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
@@ -43,7 +44,7 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     @Inject('BlobService') private readonly blobService: BlobService,
     @InjectDataSource()
     private dataSource: DataSource,
-    private envSerrvice: EnvService,
+    private envService: EnvService,
     private readonly cache: CacheService,
   ) {
     super(repository);
@@ -94,13 +95,13 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
 
       const agreementKey = await this.blobService.uploadFile(
         partnershipAgreement,
-        this.envSerrvice.get('BUCKET_PARTNERSHIP_DOC'),
+        this.envService.get('BUCKET_PARTNERSHIP_DOC'),
       );
       partnerPrepCourse.partnershipAgreement = agreementKey;
       if (logo) {
         const logoKey = await this.blobService.uploadFile(
           logo,
-          this.envSerrvice.get('BUCKET_PARTNERSHIP_DOC'),
+          this.envService.get('BUCKET_PARTNERSHIP_DOC'),
         );
         partnerPrepCourse.logo = logoKey;
       }
@@ -388,6 +389,20 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
   async getSummary() {
     return await this.cache.wrap<number>('partnerPrepCourse:total', async () =>
       this.repository.getTotalEntity(),
+    );
+  }
+
+  async getTermOfUse(ParnerId: string) {
+    const partnerPrepCourse = await this.repository.findOneById(ParnerId);
+    if (!partnerPrepCourse) {
+      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
+    }
+    return createTermOfUse(
+      this.blobService,
+      this.envService,
+      this.cache,
+      partnerPrepCourse.geo.name,
+      partnerPrepCourse.geo.email,
     );
   }
 }

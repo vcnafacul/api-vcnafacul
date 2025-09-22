@@ -61,7 +61,6 @@ export class PartnerPrepCourseRepository extends BaseRepository<PartnerPrepCours
         'representative',
       )
       .leftJoinAndSelect('partner_prep_course.members', 'members')
-      .select(['members.id'])
       .addSelect('COALESCE(COUNT(members.id), 0)', 'numberMembers')
       .leftJoin('partner_prep_course.students', 'student_course')
       .addSelect('COALESCE(COUNT(student_course.id), 0)', 'numberStudents')
