@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { AuditLogService } from 'src/modules/audit-log/audit-log.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
@@ -15,13 +16,12 @@ import { MateriasLabel } from '../frente/types/materiaLabel';
 import { SubjectRepository } from '../subject/subject.repository';
 import { Content } from './content.entity';
 import { ContentRepository } from './content.repository';
-import { CreateContentDTOInput } from './dtos/create-content.dto.input';
 import { ContentStatsByFrenteDtoOutput } from './dtos/content-stats-by-frente.dto.output';
-import { StatusContent } from './enum/status-content';
-import { GetAllContentInput } from './interface/get-all-content.input';
+import { CreateContentDTOInput } from './dtos/create-content.dto.input';
 import { SnapshotContentStatus } from './entities/snapshot-content-status/snapshot-content-status.entity';
 import { SnapshotContentStatusRepository } from './entities/snapshot-content-status/snapshot-content-status.repository';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { StatusContent } from './enum/status-content';
+import { GetAllContentInput } from './interface/get-all-content.input';
 
 @Injectable()
 export class ContentService extends BaseService<Content> {
@@ -230,8 +230,7 @@ export class ContentService extends BaseService<Content> {
     return `${materiaName}/${frenteName}/${subjectName}/${title}`;
   }
 
-  // @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  @Cron(CronExpression.EVERY_MINUTE)
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async getSnapshotContentStatus() {
     const snapshot = await this.repository.getSnapshotContentStatus();
     const snapshotContentStatus = new SnapshotContentStatus();
