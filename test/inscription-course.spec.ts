@@ -18,8 +18,8 @@ import { EmailService } from 'src/shared/services/email/email.service';
 import { CreateGeoDTOInputFaker } from './faker/create-geo.dto.input.faker';
 import { CreateInscriptionCourseDTOInputFaker } from './faker/create-inscription-course.dto.faker';
 import { CreateUserDtoInputFaker } from './faker/create-user.dto.input.faker';
-import { createNestAppTest } from './utils/createNestAppTest';
 import createFakeDocxBase64 from './utils/createFakeDocxBase64';
+import { createNestAppTest } from './utils/createNestAppTest';
 
 // Mock the EmailService globally
 jest.mock('src/shared/services/email/email.service');
@@ -87,12 +87,6 @@ describe('InscriptionCourse', () => {
         }
         return Buffer.from('conteúdo fake de um arquivo');
       });
-
-    jest.mock('src/utils/convertDocxToPdfBuffer.ts', () => ({
-      convertDocxToPdfBuffer: jest
-        .fn()
-        .mockResolvedValue(Buffer.from('pdf-fake')),
-    }));
 
     await app.init();
     await roleSeedService.seed();
