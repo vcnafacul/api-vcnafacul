@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
@@ -50,6 +50,12 @@ export class RoleService extends BaseService<Role> {
     roleDto: CreateRoleDtoInput,
     partnerPrepCourse: PartnerPrepCourse = null,
   ) {
+    const roleBase = await this.roleRepository.findOneBy({
+      id: roleDto.roleBase,
+    });
+    if (roleDto.roleBase && !roleBase) {
+      throw new HttpException('Role Base not found', HttpStatus.NOT_FOUND);
+    }
     const role = new Role();
 
     role.name = roleDto.name;
@@ -103,6 +109,7 @@ export class RoleService extends BaseService<Role> {
       role.partnerPrepCourse = partnerPrepCourse;
     }
 
+    role.roleBase = roleBase;
     return await this.roleRepository.create(role);
   }
 
