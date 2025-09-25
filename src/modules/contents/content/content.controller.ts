@@ -14,7 +14,12 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Request } from 'express';
 import { Permissions } from 'src/modules/role/role.entity';
 import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
@@ -23,11 +28,12 @@ import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { ChangeOrderDTOInput } from 'src/shared/modules/node/dtos/change-order.dto.input';
 import { User } from '../../user/user.entity';
 import { ContentService } from './content.service';
-import { CreateContentDTOInput } from './dtos/create-content.dto.input';
 import { ContentStatsByFrenteDtoOutput } from './dtos/content-stats-by-frente.dto.output';
+import { CreateContentDTOInput } from './dtos/create-content.dto.input';
 import { GetAllContentDtoInput } from './dtos/get-all-content.dto.input';
 import { UpdateStatusDTOInput } from './dtos/update-status.dto.input';
 import { StatusContent } from './enum/status-content';
+import { SnapshotContentStatus } from './entities/snapshot-content-status/snapshot-content-status.entity';
 
 @ApiTags('Content')
 @Controller('content')
@@ -120,16 +126,31 @@ export class ContentController {
   }
 
   @Get('stats-by-frente')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Obter estatísticas de conteúdos agrupadas por frente',
-    description: 'Retorna estatísticas de conteúdos (pendentes, aprovados, reprovados, pendentes de upload e total) agrupadas por matéria e frente'
+    description:
+      'Retorna estatísticas de conteúdos (pendentes, aprovados, reprovados, pendentes de upload e total) agrupadas por matéria e frente',
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Estatísticas retornadas com sucesso',
-    type: [ContentStatsByFrenteDtoOutput]
+    type: [ContentStatsByFrenteDtoOutput],
   })
   async getStatsByFrente(): Promise<ContentStatsByFrenteDtoOutput[]> {
     return await this.contentService.getStatsByFrente();
+  }
+
+  @Get('snapshot-content-status')
+  @ApiOperation({
+    summary: 'Obter snapshot de estatísticas de conteúdos',
+    description: 'Retorna snapshot de estatísticas de conteúdos',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Estatísticas retornadas com sucesso',
+    type: [ContentStatsByFrenteDtoOutput],
+  })
+  async getSnapshotContentStatus(): Promise<SnapshotContentStatus[]> {
+    return await this.contentService.getSnapshotContentStatus();
   }
 }

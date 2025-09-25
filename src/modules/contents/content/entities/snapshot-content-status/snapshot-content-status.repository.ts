@@ -1,8 +1,8 @@
-import { Injectable } from "@nestjs/common";
-import { BaseRepository } from "src/shared/modules/base/base.repository";
-import { SnapshotContentStatus } from "./snapshot-content-status.entity";
-import { InjectEntityManager } from "@nestjs/typeorm";
-import { EntityManager } from "typeorm";
+import { Injectable } from '@nestjs/common';
+import { InjectEntityManager } from '@nestjs/typeorm';
+import { BaseRepository } from 'src/shared/modules/base/base.repository';
+import { EntityManager } from 'typeorm';
+import { SnapshotContentStatus } from './snapshot-content-status.entity';
 
 @Injectable()
 export class SnapshotContentStatusRepository extends BaseRepository<SnapshotContentStatus> {

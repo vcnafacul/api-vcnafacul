@@ -231,7 +231,7 @@ export class ContentService extends BaseService<Content> {
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  async getSnapshotContentStatus() {
+  async saveSnapshotContentStatus() {
     const snapshot = await this.repository.getSnapshotContentStatus();
     const snapshotContentStatus = new SnapshotContentStatus();
     snapshotContentStatus.snapshot_date = snapshot.data;
@@ -241,5 +241,19 @@ export class ContentService extends BaseService<Content> {
     snapshotContentStatus.pendentes_upload = snapshot.pendentes_upload;
     snapshotContentStatus.total = snapshot.total;
     await this.snapshotContentStatusRepository.create(snapshotContentStatus);
+  }
+
+  async getSnapshotContentStatus() {
+    const result = await this.cache.wrap<SnapshotContentStatus[]>(
+      'content:snapshot-content-status',
+      async () => {
+        const snapshot = await this.snapshotContentStatusRepository.findAllBy({
+          page: 1,
+          limit: 9999,
+        });
+        return snapshot.data;
+      },
+    );
+    return result;
   }
 }
