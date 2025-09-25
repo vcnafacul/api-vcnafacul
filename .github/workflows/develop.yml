@@ -10,13 +10,15 @@ jobs:
     runs-on: ubuntu-latest
     services:
       mysql:
-        image: mysql
+        image: mysql:8.0
         ports:
           - 3307:3306
         env:
           MYSQL_ROOT_PASSWORD: 123456
           MYSQL_DATABASE: vcnafacul
     steps:
+      - name: Docker login
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USER }}" --password-stdin
       - uses: actions/checkout@v3
       - name: Iniciando CI
         run: echo "Iniciando CI"

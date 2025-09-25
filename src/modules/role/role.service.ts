@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
@@ -50,38 +50,56 @@ export class RoleService extends BaseService<Role> {
     roleDto: CreateRoleDtoInput,
     partnerPrepCourse: PartnerPrepCourse = null,
   ) {
+    const roleBase = await this.roleRepository.findOneBy({
+      id: roleDto.roleBase,
+    });
+    if (roleDto.roleBase && !roleBase) {
+      throw new HttpException('Role Base not found', HttpStatus.NOT_FOUND);
+    }
     const role = new Role();
 
     role.name = roleDto.name;
     role.base = roleDto.base;
-    role.validarCursinho = roleDto.validarCursinho;
-    role.criarSimulado = roleDto.criarSimulado;
-    role.criarQuestao = roleDto.criarQuestao;
-    role.validarQuestao = roleDto.validarQuestao;
+    role.validarCursinho = roleBase?.validarCursinho || roleDto.validarCursinho;
+    role.criarSimulado = roleBase?.criarSimulado || roleDto.criarSimulado;
+    role.criarQuestao = roleBase?.criarQuestao || roleDto.criarQuestao;
+    role.validarQuestao = roleBase?.validarQuestao || roleDto.validarQuestao;
     role.visualizarQuestao =
-      roleDto.validarQuestao || roleDto.criarQuestao
+      roleBase?.visualizarQuestao ||
+      roleDto.validarQuestao ||
+      roleDto.criarQuestao
         ? true
         : roleDto.visualizarQuestao;
 
-    role.uploadNews = roleDto.uploadNews;
-    role.cadastrarProvas = roleDto.cadastrarProvas;
-    role.visualizarProvas = roleDto.cadastrarProvas
-      ? true
-      : roleDto.visualizarProvas;
+    role.uploadNews = roleBase?.uploadNews || roleDto.uploadNews;
+    role.cadastrarProvas = roleBase?.cadastrarProvas || roleDto.cadastrarProvas;
+    role.visualizarProvas =
+      roleBase?.visualizarProvas || roleDto.cadastrarProvas
+        ? true
+        : roleDto.visualizarProvas;
 
-    role.gerenciadorDemanda = roleDto.gerenciadorDemanda;
-    role.uploadDemanda = roleDto.gerenciadorDemanda
-      ? true
-      : roleDto.uploadDemanda;
-    role.validarDemanda = roleDto.gerenciadorDemanda
-      ? true
-      : roleDto.validarDemanda;
+    role.gerenciadorDemanda =
+      roleBase?.gerenciadorDemanda || roleDto.gerenciadorDemanda;
+    role.uploadDemanda =
+      roleBase?.uploadDemanda || roleDto.gerenciadorDemanda
+        ? true
+        : roleDto.uploadDemanda;
+    role.validarDemanda =
+      roleBase?.validarDemanda || roleDto.gerenciadorDemanda
+        ? true
+        : roleDto.validarDemanda;
     role.visualizarDemanda =
+      roleBase?.visualizarDemanda ||
       roleDto.uploadDemanda ||
       roleDto.validarDemanda ||
       roleDto.gerenciadorDemanda
         ? true
         : roleDto.visualizarDemanda;
+
+    role.alterarPermissao =
+      roleBase?.alterarPermissao || roleDto.alterarPermissao;
+
+    // Não são permissões base
     role.gerenciarProcessoSeletivo = roleDto.gerenciarProcessoSeletivo;
     role.gerenciarColaboradores = roleDto.gerenciarColaboradores;
     role.gerenciarTurmas = roleDto.gerenciarTurmas;
@@ -92,7 +110,6 @@ export class RoleService extends BaseService<Role> {
     role.visualizarEstudantes = roleDto.gerenciarEstudantes
       ? true
       : roleDto.visualizarEstudantes;
-    role.alterarPermissao = roleDto.alterarPermissao;
     role.gerenciarPermissoesCursinho = !roleDto.gerenciarPermissoesCursinho
       ? role.alterarPermissao
         ? true
@@ -101,8 +118,10 @@ export class RoleService extends BaseService<Role> {
 
     if (partnerPrepCourse) {
       role.partnerPrepCourse = partnerPrepCourse;
+      role.base = false;
     }
 
+    role.roleBase = roleBase;
     return await this.roleRepository.create(role);
   }
 
@@ -113,8 +132,8 @@ export class RoleService extends BaseService<Role> {
     if (!role) {
       throw new Error('Role not found');
     }
+
     role.name = roleDto.name;
-    role.base = roleDto.base;
     role.validarCursinho = roleDto.validarCursinho;
     role.criarSimulado = roleDto.criarSimulado;
     role.criarQuestao = roleDto.criarQuestao;
@@ -159,6 +178,33 @@ export class RoleService extends BaseService<Role> {
         ? true
         : false
       : true;
+
+    // Atualiza permissões das filhas
+    if (role.children?.length > 0) {
+      await Promise.all(
+        role.children.map(async (child) => {
+          child.validarCursinho = role.validarCursinho;
+          child.criarSimulado = role.criarSimulado;
+          child.criarQuestao = role.criarQuestao;
+          child.validarQuestao = role.validarQuestao;
+          child.visualizarQuestao = role.visualizarQuestao;
+          child.uploadNews = role.uploadNews;
+          child.cadastrarProvas = role.cadastrarProvas;
+          child.visualizarProvas = role.visualizarProvas;
+          child.gerenciadorDemanda = role.gerenciadorDemanda;
+          child.uploadDemanda = role.uploadDemanda;
+          child.validarDemanda = role.validarDemanda;
+          child.visualizarDemanda = role.visualizarDemanda;
+          child.alterarPermissao = role.alterarPermissao;
+          await this.roleRepository.update(child);
+        }),
+      );
+    }
+    // só atualiza role.base se não é base ou se é base mas não tem filhos
+    if (!role.base || (role.base && role.children?.length === 0)) {
+      role.base = roleDto.base;
+    }
+
     return await this.roleRepository.update(role);
   }
 

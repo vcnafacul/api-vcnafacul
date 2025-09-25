@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../shared/modules/base/entity.base';
 import { PartnerPrepCourse } from '../prepCourse/partnerPrepCourse/partner-prep-course.entity';
 import { User } from '../user/user.entity';
@@ -117,4 +117,13 @@ export class Role extends BaseEntity {
     (partnerPrepCourse) => partnerPrepCourse.roles,
   )
   partnerPrepCourse?: PartnerPrepCourse;
+
+  // várias roles podem ter a mesma roleBase
+  @ManyToOne(() => Role, (role) => role.children, { nullable: true })
+  @JoinColumn({ name: 'roleBaseId' })
+  roleBase?: Role;
+
+  // relação inversa: uma role pode ter várias filhas
+  @OneToMany(() => Role, (role) => role.roleBase)
+  children: Role[];
 }

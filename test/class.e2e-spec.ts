@@ -22,6 +22,7 @@ import { createStudentCourseDTOInputFaker } from './faker/create-student-course.
 import { CreateUserDtoInputFaker } from './faker/create-user.dto.input.faker';
 import createFakeDocxBase64 from './utils/createFakeDocxBase64';
 import { createNestAppTest } from './utils/createNestAppTest';
+import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
 
 // Mock the EmailService globally
 jest.mock('src/shared/services/email/email.service');
@@ -91,7 +92,7 @@ describe('Class (e2e)', () => {
 
     role = await roleService.findOneBy({ name: 'custom_role_class' });
     if (!role) {
-      const newRole = new Role();
+      const newRole = new CreateRoleDtoInput();
       newRole.name = 'custom_role_class';
       newRole.gerenciarTurmas = true;
       role = await roleService.create(newRole);

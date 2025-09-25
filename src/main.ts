@@ -30,7 +30,11 @@ async function bootstrap() {
   app.useGlobalInterceptors(new LoggingInterceptor());
   app.use(json({ limit: '30mb' }));
   app.use(urlencoded({ limit: '30mb', extended: true }));
-  SwaggerModule.setup('api', app, document(app));
+  SwaggerModule.setup(
+    'api',
+    app,
+    document(app, process.env.SWAGGER_AUTH_PASSWORD),
+  );
   await app.listen(port, process.env.HOST);
 
   console.log(

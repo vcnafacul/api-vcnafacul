@@ -49,6 +49,7 @@
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
     "docxtemplater": "^3.61.1",
+    "express-basic-auth": "^1.2.1",
     "express-handlebars": "^7.1.2",
     "handlebars": "^4.7.8",
     "html-to-pdfmake": "^2.5.31",

@@ -9,6 +9,7 @@ import { GeoService } from 'src/modules/geo/geo.service';
 import { InscriptionCourseService } from 'src/modules/prepCourse/InscriptionCourse/inscription-course.service';
 import { PartnerPrepCourseDtoInput } from 'src/modules/prepCourse/partnerPrepCourse/dtos/create-partner-prep-course.input.dto';
 import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
+import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
 import { Role } from 'src/modules/role/role.entity';
 import { RoleService } from 'src/modules/role/role.service';
 import { UserRepository } from 'src/modules/user/user.repository';
@@ -157,7 +158,7 @@ describe('PartnerPrepCourse (e2e)', () => {
     let role: Role = null;
     role = await roleService.findOneBy({ name: 'custom_role' });
     if (!role) {
-      const newRole = new Role();
+      const newRole = new CreateRoleDtoInput();
       newRole.name = 'custom_role';
       newRole.alterarPermissao = true;
       role = await roleService.create(newRole);

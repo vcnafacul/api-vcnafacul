@@ -29,7 +29,11 @@ export class RoleRepository extends BaseRepository<Role> {
   }
 
   async findOneBy(filter: object): Promise<Role> {
-    return await this.repository.findOneBy(filter);
+    return await this.repository
+      .createQueryBuilder('role')
+      .where(filter)
+      .leftJoinAndSelect('role.children', 'children')
+      .getOne();
   }
 
   async findOneByIdWithPartner(id: string): Promise<Role> {
