@@ -16,7 +16,9 @@ export class ContentStatsByFrenteDtoOutput {
   @ApiProperty({ description: 'Número de conteúdos reprovados (status 2)' })
   reprovados: number;
 
-  @ApiProperty({ description: 'Número de conteúdos pendentes de upload (status 3)' })
+  @ApiProperty({
+    description: 'Número de conteúdos pendentes de upload (status 3)',
+  })
   pendentes_upload: number;
 
   @ApiProperty({ description: 'Total de conteúdos' })
