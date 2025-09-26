@@ -61,3 +61,17 @@ jobs:
         run: docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }}
       - name: Image Push
         run: docker push vcnafacul/api:latest
+  DEPLOY_HOMOL:
+  if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.base_ref == 'develop'
+  needs: PUSH
+  runs-on: ubuntu-latest
+  steps:
+    - name: Deploy em Homolog (Oracle VPS)
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.DEPLOY_HOST_HOMOL }}
+        username: ${{ secrets.DEPLOY_USER_HOMOL }}
+        key: ${{ secrets.DEPLOY_KEY_HOMOL }}
+        script: |
+          chmod +x ~/subir_api.sh
+          ~/subir_api.sh
