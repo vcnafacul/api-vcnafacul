@@ -86,21 +86,6 @@ export class GeoRepository extends BaseRepository<Geolocation> {
     this.repository.save(geo);
   }
 
-  async getTotalEntity() {
-    return this.repository
-      .createQueryBuilder('entity')
-      .where('entity.deletedAt IS NULL')
-      .getCount();
-  }
-
-  async entityByStatus(status: Status) {
-    return this.repository
-      .createQueryBuilder('entity')
-      .where('entity.deletedAt IS NULL')
-      .andWhere('entity.status = :status', { status })
-      .getCount();
-  }
-
   async EntityByTypeAndStatus(type: number, status: Status) {
     return this.repository
       .createQueryBuilder('entity')
@@ -108,5 +93,23 @@ export class GeoRepository extends BaseRepository<Geolocation> {
       .andWhere('entity.type = :type', { type })
       .andWhere('entity.status = :status', { status })
       .getCount();
+  }
+
+  async EntityWithReport(type: number) {
+    return (
+      this.repository
+        .createQueryBuilder('entity')
+        .where('entity.deletedAt IS NULL')
+        .andWhere('entity.type = :type', { type })
+        // se tem algum dos reports true
+        .andWhere('entity.reportAddress = :reportAddress', {
+          reportAddress: true,
+        })
+        .orWhere('entity.reportContact = :reportContact', {
+          reportContact: true,
+        })
+        .orWhere('entity.reportOther = :reportOther', { reportOther: true })
+        .getCount()
+    );
   }
 }

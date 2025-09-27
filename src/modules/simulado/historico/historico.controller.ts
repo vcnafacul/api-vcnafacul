@@ -2,6 +2,7 @@ import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { User } from 'src/modules/user/user.entity';
+import { AggregatePeriodDtoInput } from 'src/shared/dtos/aggregate-period.dto.input';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { GetHistoricoDTOInput } from '../dtos/get-historico.dto';
 import { HistoricoService } from './historico.service';
@@ -40,6 +41,16 @@ export class HistoricoController {
   @Get('summary')
   async getSummary() {
     return await this.service.getSummary();
+  }
+
+  @Get('aggregate-by-period')
+  async getAggregateByPeriod(@Query() query: AggregatePeriodDtoInput) {
+    return await this.service.getAggregateByPeriod(query.groupBy);
+  }
+
+  @Get('aggregate-by-period-and-type')
+  async getAggregateByPeriodAndType(@Query() query: AggregatePeriodDtoInput) {
+    return await this.service.getAggregateByPeriodAndType(query.groupBy);
   }
 
   @Get(':id')

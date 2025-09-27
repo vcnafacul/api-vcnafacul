@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { Period } from 'src/modules/user/enum/period';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
+import { EnvService } from 'src/shared/modules/env/env.service';
 import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
 import { GetHistoricoDTOInput } from '../dtos/get-historico.dto';
-import { EnvService } from 'src/shared/modules/env/env.service';
-import { CacheService } from 'src/shared/modules/cache/cache.service';
 
 @Injectable()
 export class HistoricoService {
@@ -36,6 +37,26 @@ export class HistoricoService {
     return this.cache.wrap<object>(
       'historico',
       async () => await this.axios.get<any>(`v1/historico/summary`),
+    );
+  }
+
+  public async getAggregateByPeriod(period: Period) {
+    return this.cache.wrap<object>(
+      'historico:aggregateByPeriod',
+      async () =>
+        await this.axios.get<object>(
+          `v1/historico/aggregate-by-Period?groupBy=${period}`,
+        ),
+    );
+  }
+
+  public async getAggregateByPeriodAndType(period: Period) {
+    return this.cache.wrap<object>(
+      'historico:aggregateByPeriodAndType',
+      async () =>
+        await this.axios.get<object>(
+          `v1/historico/aggregate-by-Period-and-Type?groupBy=${period}`,
+        ),
     );
   }
 }
