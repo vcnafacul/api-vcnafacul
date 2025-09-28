@@ -43,7 +43,7 @@ export class GeoController {
     return await this.geoService.findAllByFilter(filterDto);
   }
 
-  @Get('status')
+  @Get('summary-status')
   async getCountGeoByTypeUniversity() {
     return await this.geoService.getTotalEntityByTypeAndStatus();
   }
@@ -100,10 +100,5 @@ export class GeoController {
   @Post('report-map-home')
   async reportMapHome(@Body() request: ReportMapHome) {
     return await this.geoService.reportMapHome(request);
-  }
-
-  @Get('summary')
-  async getSummary() {
-    return await this.geoService.getSummary();
   }
 }

@@ -14,6 +14,7 @@ import { ListGeoDTOInput } from './dto/list-geo.dto.input';
 import { ReportMapHome } from './dto/report-map-home';
 import { UpdateGeoDTOInput } from './dto/update-geo.dto.input';
 import { StatusLogGeo } from './enum/status-log-geo';
+import { TypeGeo } from './enum/typeGeo';
 import { Geolocation } from './geo.entity';
 import { GeoRepository } from './geo.repository';
 import { LogGeo } from './log-geo/log-geo.entity';
@@ -119,8 +120,9 @@ export class GeoService extends BaseService<Geolocation> {
     geo.status = geoStatus.status;
     await this.geoRepository.update(geo);
 
-    const changes = `Status: ${statusLabels[oldStatus]} -> ${statusLabels[geoStatus.status]
-      }`;
+    const changes = `Status: ${statusLabels[oldStatus]} -> ${
+      statusLabels[geoStatus.status]
+    }`;
 
     const logGeo = new LogGeo();
     logGeo.geoId = geo.id;
@@ -178,63 +180,61 @@ export class GeoService extends BaseService<Geolocation> {
     return combinations;
   }
 
-  async getSummary() {
-    const geoTotal = await this.cache.wrap<number>('geo:total', async () =>
-      this.geoRepository.getTotalEntity(),
-    );
-    const geoPending = await this.cache.wrap<number>('geo:pending', async () =>
-      this.geoRepository.entityByStatus(Status.Pending),
-    );
-    const geoApproved = await this.cache.wrap<number>(
-      'geo:approved',
-      async () => this.geoRepository.entityByStatus(Status.Approved),
-    );
-    const geoRejected = await this.cache.wrap<number>(
-      'geo:rejected',
-      async () => this.geoRepository.entityByStatus(Status.Rejected),
-    );
-
-    return {
-      geoTotal,
-      geoPending,
-      geoApproved,
-      geoRejected,
-    };
-  }
-
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
     timeZone: 'America/Sao_Paulo',
   })
   async getTotalEntityByTypeAndStatus() {
-    // type 1 são universidades e type 0 são cursinhos
-    const approvedUniversities = await this.geoRepository.EntityByTypeAndStatus(
-      1,
-      Status.Approved,
-    );
-    const pendingUniversities = await this.geoRepository.EntityByTypeAndStatus(
-      1,
-      Status.Pending,
-    );
-    const approvedCourses = await this.geoRepository.EntityByTypeAndStatus(
-      0,
-      Status.Approved,
+    const result = await this.cache.wrap<object>(
+      'geo:totalByTypeAndStatus',
+      async () => {
+        const approvedUniversities =
+          await this.geoRepository.EntityByTypeAndStatus(
+            TypeGeo.COLLEGE,
+            Status.Approved,
+          );
+        const pendingUniversities =
+          await this.geoRepository.EntityByTypeAndStatus(
+            TypeGeo.COLLEGE,
+            Status.Pending,
+          );
+        const rejectedUniversities =
+          await this.geoRepository.EntityByTypeAndStatus(
+            TypeGeo.COLLEGE,
+            Status.Rejected,
+          );
+        const withReportUniversities =
+          await this.geoRepository.EntityWithReport(TypeGeo.COLLEGE);
+        const approvedCourses = await this.geoRepository.EntityByTypeAndStatus(
+          TypeGeo.PREP_COURSE,
+          Status.Approved,
+        );
+        const pendingCourses = await this.geoRepository.EntityByTypeAndStatus(
+          TypeGeo.PREP_COURSE,
+          Status.Pending,
+        );
+        const rejectedCourses = await this.geoRepository.EntityByTypeAndStatus(
+          TypeGeo.PREP_COURSE,
+          Status.Rejected,
+        );
+        const withReportCourses = await this.geoRepository.EntityWithReport(
+          TypeGeo.PREP_COURSE,
+        );
+        return {
+          approvedUniversities,
+          pendingUniversities,
+          rejectedUniversities,
+          withReportUniversities,
+          totalUniversities:
+            approvedUniversities + pendingUniversities + rejectedUniversities,
+          approvedCourses,
+          pendingCourses,
+          rejectedCourses,
+          withReportCourses,
+          totalCourses: approvedCourses + pendingCourses + rejectedCourses,
+        };
+      },
     );
 
-    const pendingCourses = await this.geoRepository.EntityByTypeAndStatus(
-      0,
-      Status.Pending,
-    );
-    await this.cache.wrap<any>('geo:totalByTypeAndStatus', async () => ({
-      approvedUniversities,
-      pendingUniversities,
-      approvedCourses,
-      pendingCourses,
-    }));
-    return {
-      approvedUniversities,
-      pendingUniversities,
-      approvedCourses,
-      pendingCourses,
-    };
+    return result;
   }
 }
