@@ -82,12 +82,23 @@ export class PartnerPrepCourseRepository extends BaseRepository<PartnerPrepCours
           'geo.id',
           'geo.name',
           'geo.category',
+          'geo.street',
+          'geo.number',
+          'geo.complement',
+          'geo.neighborhood',
           'geo.city',
           'geo.state',
-          'geo.phone',
         ])
         .innerJoin('partner_prep_course.representative', 'representative')
-        .addSelect(['representative.id', 'representative.name'])
+        .addSelect([
+          'representative.id',
+          'representative.firstName',
+          'representative.lastName',
+          'representative.socialName',
+          'representative.useSocialName',
+          'representative.email',
+          'representative.phone',
+        ])
         .orderBy('partner_prep_course.createdAt', 'DESC')
         .skip((page - 1) * limit)
         .take(limit)

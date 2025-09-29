@@ -70,6 +70,13 @@ export class PartnerPrepCourseController {
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
+  @ApiResponse({
+    status: 200,
+    description:
+      'obter todos os cursinhos parceiros paginados, na qual o data é representado por um array de GetAllPrepCourseDtoOutput',
+    type: GetAllPrepCourseDtoOutput,
+    isArray: true,
+  })
   async getAll(
     @Query() dto: GetAllDtoInput,
   ): Promise<GetAllOutput<GetAllPrepCourseDtoOutput>> {
