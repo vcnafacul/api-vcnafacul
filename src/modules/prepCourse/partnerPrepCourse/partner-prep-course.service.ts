@@ -21,6 +21,7 @@ import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
+import { createThumbnail } from 'src/utils/createThumbnail';
 import { DataSource } from 'typeorm';
 import { Collaborator } from '../collaborator/collaborator.entity';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
@@ -104,6 +105,8 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
           this.envService.get('BUCKET_PARTNERSHIP_DOC'),
         );
         partnerPrepCourse.logo = logoKey;
+        const thumbnail = await createThumbnail(logo.buffer);
+        partnerPrepCourse.thumbnail = thumbnail;
       }
 
       partnerPrepCourse.geoId = dto.geoId;
@@ -135,6 +138,22 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     );
   }
 
+  async updateLogo(id: string, file: Express.Multer.File) {
+    const partnerPrepCourse = await this.repository.findOneBy({ id });
+    if (!partnerPrepCourse) {
+      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
+    }
+    const logoKey = await this.blobService.uploadFile(
+      file,
+      this.envService.get('BUCKET_PARTNERSHIP_DOC'),
+    );
+    partnerPrepCourse.logo = logoKey;
+    const thumbnail = await createThumbnail(file.buffer);
+    partnerPrepCourse.thumbnail = thumbnail;
+    await this.repository.update(partnerPrepCourse);
+    return `data:image/webp;base64,${thumbnail.toString('base64')}`;
+  }
+
   async getAll(
     page: number,
     limit: number,
@@ -157,16 +176,20 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
             neighborhood: i.geo.neighborhood,
             city: i.geo.city,
             state: i.geo.state,
+            phone: i.geo.phone,
           },
           representative: {
             id: i.representative.id,
-            name: i.representative.useSocialName
+            name: !i.representative.useSocialName
               ? i.representative.firstName + ' ' + i.representative.lastName
               : i.representative.socialName + ' ' + i.representative.lastName,
             email: i.representative.email,
             phone: i.representative.phone,
           },
           logo: i.logo,
+          thumbnail: i.thumbnail
+            ? `data:image/webp;base64,${i.thumbnail.toString('base64')}`
+            : null,
           numberStudents: i.students?.length || 0,
           numberMembers: i.members?.length || 0,
           createdAt: i.createdAt,

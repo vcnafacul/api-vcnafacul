@@ -55,6 +55,9 @@ export class GetAllPrepCourseDtoOutput {
   logo: string;
 
   @ApiProperty()
+  thumbnail: string;
+
+  @ApiProperty()
   number_students: number;
 
   @ApiProperty()

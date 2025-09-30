@@ -88,6 +88,7 @@ export class PartnerPrepCourseRepository extends BaseRepository<PartnerPrepCours
           'geo.neighborhood',
           'geo.city',
           'geo.state',
+          'geo.phone',
         ])
         .innerJoin('partner_prep_course.representative', 'representative')
         .addSelect([

@@ -9,11 +9,15 @@ import {
   Req,
   Res,
   SetMetadata,
+  UploadedFile,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
@@ -172,6 +176,18 @@ export class PartnerPrepCourseController {
       'attachment; filename=' + file.originalname,
     );
     res.send(file.buffer);
+  }
+
+  @Post('logo/:id')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
+  @UseInterceptors(FileInterceptor('logo'))
+  async updateLogo(
+    @UploadedFile() file: Express.Multer.File,
+    @Param('id') id: string,
+  ) {
+    return await this.service.updateLogo(id, file);
   }
 
   @Get(':id')

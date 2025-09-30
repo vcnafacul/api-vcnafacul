@@ -28,6 +28,9 @@ export class PartnerPrepCourse extends BaseEntity {
   @Column({ nullable: true })
   logo?: string;
 
+  @Column({ nullable: true, type: 'blob' })
+  thumbnail?: Buffer;
+
   @OneToMany(
     () => InscriptionCourse,
     (inscriptionCourse) => inscriptionCourse.partnerPrepCourse,
