@@ -2,9 +2,11 @@ import {
   Body,
   Controller,
   Get,
+  HttpStatus,
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   Res,
@@ -188,6 +190,45 @@ export class PartnerPrepCourseController {
     @Param('id') id: string,
   ) {
     return await this.service.updateLogo(id, file);
+  }
+
+  @Post('agreement/:id')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
+  @UseInterceptors(FileInterceptor('agreement'))
+  async updateAgreement(
+    @UploadedFile() file: Express.Multer.File,
+    @Param('id') id: string,
+  ) {
+    return await this.service.updateAgreement(id, file);
+  }
+
+  @Put('representative/:id')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
+  async updateRepresentative(
+    @Param('id') id: string,
+    @Body() dto: { representative: string },
+  ) {
+    return await this.service.updateRepresentative(id, dto.representative);
+  }
+
+  @Get('agreement/:id')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
+  async getAgreement(@Param('id') id: string, @Res() res: Response) {
+    const { buffer, contentType } = await this.service.getAgreement(id);
+    res.set({
+      'Content-Type': contentType,
+      'Content-Disposition': `inline; filename="${id}"`,
+    });
+    return res.status(HttpStatus.OK).json({
+      buffer: buffer,
+      contentType,
+    });
   }
 
   @Get(':id')

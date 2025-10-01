@@ -60,7 +60,10 @@ export class S3Service implements BlobService {
     return fileKey;
   }
 
-  async getFile(fileKey: string, bucketName: string) {
+  async getFile(
+    fileKey: string,
+    bucketName: string,
+  ): Promise<{ buffer: string; contentType: string }> {
     const command = new GetObjectCommand({
       Bucket: bucketName,
       Key: fileKey,

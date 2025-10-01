@@ -154,6 +154,32 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     return `data:image/webp;base64,${thumbnail.toString('base64')}`;
   }
 
+  async updateAgreement(id: string, file: Express.Multer.File) {
+    const partnerPrepCourse = await this.repository.findOneBy({ id });
+    if (!partnerPrepCourse) {
+      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
+    }
+    const agreementKey = await this.blobService.uploadFile(
+      file,
+      this.envService.get('BUCKET_PARTNERSHIP_DOC'),
+    );
+    partnerPrepCourse.partnershipAgreement = agreementKey;
+    await this.repository.update(partnerPrepCourse);
+    return agreementKey;
+  }
+
+  async getAgreement(id: string) {
+    const partnerPrepCourse = await this.repository.findOneBy({ id });
+    if (!partnerPrepCourse) {
+      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
+    }
+    const ag = await this.blobService.getFile(
+      partnerPrepCourse.partnershipAgreement,
+      this.envService.get('BUCKET_PARTNERSHIP_DOC'),
+    );
+    return ag;
+  }
+
   async getAll(
     page: number,
     limit: number,
@@ -187,6 +213,7 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
             phone: i.representative.phone,
           },
           logo: i.logo,
+          agreement: i.partnershipAgreement,
           thumbnail: i.thumbnail
             ? `data:image/webp;base64,${i.thumbnail.toString('base64')}`
             : null,
@@ -436,5 +463,17 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
       partnerPrepCourse.geo.name,
       partnerPrepCourse.geo.email,
     );
+  }
+  async updateRepresentative(id: string, userId: string) {
+    const partnerPrepCourse = await this.repository.findOneBy({ id });
+    if (!partnerPrepCourse) {
+      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
+    }
+    const user = await this.userService.findOneBy({ id: userId });
+    if (!user) {
+      throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
+    }
+    partnerPrepCourse.representative = user;
+    await this.repository.update(partnerPrepCourse);
   }
 }

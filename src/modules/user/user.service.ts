@@ -18,6 +18,8 @@ import { GetUserDtoInput } from './dto/get-user.dto.input';
 import { LoginTokenDTO } from './dto/login-token.dto.input';
 import { LoginDtoInput } from './dto/login.dto.input';
 import { ResetPasswordDtoInput } from './dto/reset-password.dto.input';
+import { SearchUsersDtoInput } from './dto/search-users.dto.input';
+import { SearchUsersDtoOutput } from './dto/search-users.dto.output';
 import { UpdateUserDTOInput } from './dto/update.dto.input';
 import { UserDtoOutput } from './dto/user.dto.output';
 import { UserWithRoleName } from './dto/userWithRoleName';
@@ -366,5 +368,20 @@ export class UserService extends BaseService<User> {
     const diff = new Date().getTime() - date.getTime();
     if (diff / 3600000 < 2) return true;
     return false;
+  }
+
+  async searchUsersByName({
+    name,
+  }: SearchUsersDtoInput): Promise<SearchUsersDtoOutput[]> {
+    const users = await this.userRepository.searchUsersByName(name);
+
+    return users.map((user) => ({
+      id: user.id,
+      name: user.useSocialName
+        ? `${user.socialName} ${user.lastName}`
+        : `${user.firstName} ${user.lastName}`,
+      email: user.email,
+      phone: user.phone,
+    }));
   }
 }
