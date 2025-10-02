@@ -8,6 +8,6 @@ export interface BlobService {
   getFile(
     fileKey: string,
     bucketName: string,
-  ): Promise<{ buffer: string; contentType: string }>;
+  ): Promise<{ buffer: string; contentType: string } | any>;
   deleteFile(fileKey: string, bucketName: string): Promise<void>;
 }
