@@ -56,8 +56,6 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
   async create(
     dto: PartnerPrepCourseDtoInput,
     userId: string,
-    partnershipAgreement?: Express.Multer.File,
-    logo?: Express.Multer.File,
   ): Promise<PartnerPrepCourse> {
     let partnerPrepCourse: PartnerPrepCourse = null;
     const user = await this.userService.findOneBy({ id: userId });
@@ -94,21 +92,6 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
 
       partnerPrepCourse = new PartnerPrepCourse();
 
-      const agreementKey = await this.blobService.uploadFile(
-        partnershipAgreement,
-        this.envService.get('BUCKET_PARTNERSHIP_DOC'),
-      );
-      partnerPrepCourse.partnershipAgreement = agreementKey;
-      if (logo) {
-        const logoKey = await this.blobService.uploadFile(
-          logo,
-          this.envService.get('BUCKET_PARTNERSHIP_DOC'),
-        );
-        partnerPrepCourse.logo = logoKey;
-        const thumbnail = await createThumbnail(logo.buffer);
-        partnerPrepCourse.thumbnail = thumbnail;
-      }
-
       partnerPrepCourse.geoId = dto.geoId;
       partnerPrepCourse.representative = representative;
 
@@ -131,11 +114,12 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
       logGeo.user = user;
       await this.logGeoRepository.create(logGeo);
       return partnerPrepCourse;
+    } else {
+      throw new HttpException(
+        'Erro ao criar cursinho parceiro',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
-    throw new HttpException(
-      'Erro ao criar cursinho parceiro',
-      HttpStatus.INTERNAL_SERVER_ERROR,
-    );
   }
 
   async updateLogo(id: string, file: Express.Multer.File) {

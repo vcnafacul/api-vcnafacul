@@ -121,6 +121,9 @@ export class UserController {
   }
 
   @Get('search-users-by-name')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
   async searchUsersByName(@Query() query: SearchUsersDtoInput) {
     return await this.userService.searchUsersByName(query);
   }

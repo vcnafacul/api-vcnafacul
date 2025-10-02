@@ -22,7 +22,7 @@ export class PartnerPrepCourse extends BaseEntity {
   @JoinColumn({ name: 'representative' })
   representative: User;
 
-  @Column()
+  @Column({ nullable: true })
   partnershipAgreement: string;
 
   @Column({ nullable: true })

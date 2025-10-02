@@ -12,6 +12,7 @@ import { CreateGeoDTOInput } from './dto/create-geo.dto.input';
 import { GeoStatusChangeDTOInput } from './dto/geo-status.dto.input';
 import { ListGeoDTOInput } from './dto/list-geo.dto.input';
 import { ReportMapHome } from './dto/report-map-home';
+import { SearchGeoDtoOutput } from './dto/search-geo.dto.output';
 import { UpdateGeoDTOInput } from './dto/update-geo.dto.input';
 import { StatusLogGeo } from './enum/status-log-geo';
 import { TypeGeo } from './enum/typeGeo';
@@ -43,11 +44,11 @@ export class GeoService extends BaseService<Geolocation> {
     logGeo.geo = newGeo;
     await this.log.create(logGeo);
 
-    const listEmail = await this.userService.getvalidateGeo();
-    await this.emailService.sendEmailGeo({
-      geo: newGeo,
-      emails: listEmail,
-    });
+    // const listEmail = await this.userService.getvalidateGeo();
+    // await this.emailService.sendEmailGeo({
+    //   geo: newGeo,
+    //   emails: listEmail,
+    // });
 
     return newGeo;
   }
@@ -236,5 +237,13 @@ export class GeoService extends BaseService<Geolocation> {
     );
 
     return result;
+  }
+
+  async searchGeoByName(name: string): Promise<SearchGeoDtoOutput[]> {
+    const geo = await this.geoRepository.searchGeoByName(name);
+    return geo.map((geo) => ({
+      id: geo.id,
+      name: geo.name,
+    }));
   }
 }

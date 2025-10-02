@@ -22,6 +22,7 @@ import { CreateGeoDTOInput } from './dto/create-geo.dto.input';
 import { GeoStatusChangeDTOInput } from './dto/geo-status.dto.input';
 import { ListGeoDTOInput } from './dto/list-geo.dto.input';
 import { ReportMapHome } from './dto/report-map-home';
+import { SearchGeoDtoInput } from './dto/search-geo.input';
 import { UpdateGeoDTOInput } from './dto/update-geo.dto.input';
 import { Geolocation } from './geo.entity';
 import { GeoService } from './geo.service';
@@ -46,6 +47,14 @@ export class GeoController {
   @Get('summary-status')
   async getCountGeoByTypeUniversity() {
     return await this.geoService.getTotalEntityByTypeAndStatus();
+  }
+
+  @Get('search-geo-by-name')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
+  async searchGeoByName(@Query() query: SearchGeoDtoInput) {
+    return await this.geoService.searchGeoByName(query.name);
   }
 
   @Put()

@@ -12,7 +12,6 @@ import {
   Res,
   SetMetadata,
   UploadedFile,
-  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
@@ -57,19 +56,9 @@ export class PartnerPrepCourseController {
   })
   async createPartnerPrepCourse(
     @Body() dto: PartnerPrepCourseDtoInput,
-    @UploadedFiles()
-    files: {
-      partnershipAgreement?: Express.Multer.File;
-      logo?: Express.Multer.File;
-    },
     @Req() req: Request,
   ): Promise<void> {
-    await this.service.create(
-      dto,
-      (req.user as User).id,
-      files.partnershipAgreement,
-      files.logo,
-    );
+    await this.service.create(dto, (req.user as User).id);
   }
 
   @Get()

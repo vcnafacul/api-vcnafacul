@@ -112,4 +112,15 @@ export class GeoRepository extends BaseRepository<Geolocation> {
         .getCount()
     );
   }
+
+  async searchGeoByName(name: string): Promise<Geolocation[]> {
+    return await this.repository
+      .createQueryBuilder('geo')
+      .select(['geo.id', 'geo.name'])
+      .where('geo.name LIKE :name', {
+        name: `%${name}%`,
+      })
+      .limit(10)
+      .getMany();
+  }
 }
