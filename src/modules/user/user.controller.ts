@@ -26,6 +26,7 @@ import { GetUserDtoInput } from './dto/get-user.dto.input';
 import { HasEmailDtoInput } from './dto/has-email.dto.input';
 import { LoginDtoInput } from './dto/login.dto.input';
 import { ResetPasswordDtoInput } from './dto/reset-password.dto.input';
+import { SearchUsersDtoInput } from './dto/search-users.dto.input';
 import { UpdateUserRoleInput } from './dto/update-user-role.dto.input';
 import { UpdateUserDTOInput } from './dto/update.dto.input';
 import { UserWithRoleName } from './dto/userWithRoleName';
@@ -117,6 +118,14 @@ export class UserController {
   @Get('aggregate-last-access')
   async aggregateUsersByLastAcess(@Query() query: AggregatePeriodDtoInput) {
     return await this.userService.aggregateUsersByLastAcess(query);
+  }
+
+  @Get('search-users-by-name')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
+  async searchUsersByName(@Query() query: SearchUsersDtoInput) {
+    return await this.userService.searchUsersByName(query);
   }
 
   @Get(':id')

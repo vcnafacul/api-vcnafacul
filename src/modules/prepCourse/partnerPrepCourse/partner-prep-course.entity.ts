@@ -22,11 +22,14 @@ export class PartnerPrepCourse extends BaseEntity {
   @JoinColumn({ name: 'representative' })
   representative: User;
 
-  @Column()
+  @Column({ nullable: true })
   partnershipAgreement: string;
 
   @Column({ nullable: true })
   logo?: string;
+
+  @Column({ nullable: true, type: 'blob' })
+  thumbnail?: Buffer;
 
   @OneToMany(
     () => InscriptionCourse,

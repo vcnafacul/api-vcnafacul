@@ -21,6 +21,7 @@ import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
+import { createThumbnail } from 'src/utils/createThumbnail';
 import { DataSource } from 'typeorm';
 import { Collaborator } from '../collaborator/collaborator.entity';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
@@ -55,8 +56,6 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
   async create(
     dto: PartnerPrepCourseDtoInput,
     userId: string,
-    partnershipAgreement?: Express.Multer.File,
-    logo?: Express.Multer.File,
   ): Promise<PartnerPrepCourse> {
     let partnerPrepCourse: PartnerPrepCourse = null;
     const user = await this.userService.findOneBy({ id: userId });
@@ -93,19 +92,6 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
 
       partnerPrepCourse = new PartnerPrepCourse();
 
-      const agreementKey = await this.blobService.uploadFile(
-        partnershipAgreement,
-        this.envService.get('BUCKET_PARTNERSHIP_DOC'),
-      );
-      partnerPrepCourse.partnershipAgreement = agreementKey;
-      if (logo) {
-        const logoKey = await this.blobService.uploadFile(
-          logo,
-          this.envService.get('BUCKET_PARTNERSHIP_DOC'),
-        );
-        partnerPrepCourse.logo = logoKey;
-      }
-
       partnerPrepCourse.geoId = dto.geoId;
       partnerPrepCourse.representative = representative;
 
@@ -128,11 +114,54 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
       logGeo.user = user;
       await this.logGeoRepository.create(logGeo);
       return partnerPrepCourse;
+    } else {
+      throw new HttpException(
+        'Erro ao criar cursinho parceiro',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
-    throw new HttpException(
-      'Erro ao criar cursinho parceiro',
-      HttpStatus.INTERNAL_SERVER_ERROR,
+  }
+
+  async updateLogo(id: string, file: Express.Multer.File) {
+    const partnerPrepCourse = await this.repository.findOneBy({ id });
+    if (!partnerPrepCourse) {
+      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
+    }
+    const logoKey = await this.blobService.uploadFile(
+      file,
+      this.envService.get('BUCKET_PARTNERSHIP_DOC'),
     );
+    partnerPrepCourse.logo = logoKey;
+    const thumbnail = await createThumbnail(file.buffer);
+    partnerPrepCourse.thumbnail = thumbnail;
+    await this.repository.update(partnerPrepCourse);
+    return `data:image/webp;base64,${thumbnail.toString('base64')}`;
+  }
+
+  async updateAgreement(id: string, file: Express.Multer.File) {
+    const partnerPrepCourse = await this.repository.findOneBy({ id });
+    if (!partnerPrepCourse) {
+      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
+    }
+    const agreementKey = await this.blobService.uploadFile(
+      file,
+      this.envService.get('BUCKET_PARTNERSHIP_DOC'),
+    );
+    partnerPrepCourse.partnershipAgreement = agreementKey;
+    await this.repository.update(partnerPrepCourse);
+    return agreementKey;
+  }
+
+  async getAgreement(id: string) {
+    const partnerPrepCourse = await this.repository.findOneBy({ id });
+    if (!partnerPrepCourse) {
+      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
+    }
+    const ag = await this.blobService.getFile(
+      partnerPrepCourse.partnershipAgreement,
+      this.envService.get('BUCKET_PARTNERSHIP_DOC'),
+    );
+    return ag;
   }
 
   async getAll(
@@ -151,15 +180,29 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
             id: i.geo.id,
             name: i.geo.name,
             category: i.geo.category,
+            street: i.geo.street,
+            number: i.geo.number,
+            complement: i.geo.complement,
+            neighborhood: i.geo.neighborhood,
             city: i.geo.city,
             state: i.geo.state,
             phone: i.geo.phone,
           },
           representative: {
-            name: i.representative.useSocialName
+            id: i.representative.id,
+            name: !i.representative.useSocialName
               ? i.representative.firstName + ' ' + i.representative.lastName
               : i.representative.socialName + ' ' + i.representative.lastName,
+            email: i.representative.email,
+            phone: i.representative.phone,
           },
+          logo: i.logo,
+          agreement: i.partnershipAgreement,
+          thumbnail: i.thumbnail
+            ? `data:image/webp;base64,${i.thumbnail.toString('base64')}`
+            : null,
+          numberStudents: i.students?.length || 0,
+          numberMembers: i.members?.length || 0,
           createdAt: i.createdAt,
           updatedAt: i.updatedAt,
         }),
@@ -404,5 +447,17 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
       partnerPrepCourse.geo.name,
       partnerPrepCourse.geo.email,
     );
+  }
+  async updateRepresentative(id: string, userId: string) {
+    const partnerPrepCourse = await this.repository.findOneBy({ id });
+    if (!partnerPrepCourse) {
+      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
+    }
+    const user = await this.userService.findOneBy({ id: userId });
+    if (!user) {
+      throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
+    }
+    partnerPrepCourse.representative = user;
+    await this.repository.update(partnerPrepCourse);
   }
 }

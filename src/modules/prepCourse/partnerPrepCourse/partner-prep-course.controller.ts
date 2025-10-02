@@ -2,18 +2,23 @@ import {
   Body,
   Controller,
   Get,
+  HttpStatus,
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   Res,
   SetMetadata,
-  UploadedFiles,
+  UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
@@ -51,25 +56,22 @@ export class PartnerPrepCourseController {
   })
   async createPartnerPrepCourse(
     @Body() dto: PartnerPrepCourseDtoInput,
-    @UploadedFiles()
-    files: {
-      partnershipAgreement?: Express.Multer.File;
-      logo?: Express.Multer.File;
-    },
     @Req() req: Request,
   ): Promise<void> {
-    await this.service.create(
-      dto,
-      (req.user as User).id,
-      files.partnershipAgreement,
-      files.logo,
-    );
+    await this.service.create(dto, (req.user as User).id);
   }
 
   @Get()
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
+  @ApiResponse({
+    status: 200,
+    description:
+      'obter todos os cursinhos parceiros paginados, na qual o data é representado por um array de GetAllPrepCourseDtoOutput',
+    type: GetAllPrepCourseDtoOutput,
+    isArray: true,
+  })
   async getAll(
     @Query() dto: GetAllDtoInput,
   ): Promise<GetAllOutput<GetAllPrepCourseDtoOutput>> {
@@ -165,6 +167,57 @@ export class PartnerPrepCourseController {
       'attachment; filename=' + file.originalname,
     );
     res.send(file.buffer);
+  }
+
+  @Post('logo/:id')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
+  @UseInterceptors(FileInterceptor('logo'))
+  async updateLogo(
+    @UploadedFile() file: Express.Multer.File,
+    @Param('id') id: string,
+  ) {
+    return await this.service.updateLogo(id, file);
+  }
+
+  @Post('agreement/:id')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
+  @UseInterceptors(FileInterceptor('agreement'))
+  async updateAgreement(
+    @UploadedFile() file: Express.Multer.File,
+    @Param('id') id: string,
+  ) {
+    return await this.service.updateAgreement(id, file);
+  }
+
+  @Put('representative/:id')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
+  async updateRepresentative(
+    @Param('id') id: string,
+    @Body() dto: { representative: string },
+  ) {
+    return await this.service.updateRepresentative(id, dto.representative);
+  }
+
+  @Get('agreement/:id')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
+  async getAgreement(@Param('id') id: string, @Res() res: Response) {
+    const { buffer, contentType } = await this.service.getAgreement(id);
+    res.set({
+      'Content-Type': contentType,
+      'Content-Disposition': `inline; filename="${id}"`,
+    });
+    return res.status(HttpStatus.OK).json({
+      buffer: buffer,
+      contentType,
+    });
   }
 
   @Get(':id')

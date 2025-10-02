@@ -145,11 +145,8 @@ export class StudentCourseController {
       'Content-Disposition': `inline; filename="${fileKey}"`,
     });
 
-    // Codifique o buffer em Base64
-    const base64Buffer = buffer.toString('base64');
-
     return res.status(HttpStatus.OK).json({
-      buffer: base64Buffer,
+      buffer: buffer,
       contentType,
     });
   }
@@ -176,11 +173,8 @@ export class StudentCourseController {
       'Content-Disposition': `inline; filename="${fileKey}"`,
     });
 
-    // Codifique o buffer em Base64
-    const base64Buffer = buffer.toString('base64');
-
     return res.status(HttpStatus.OK).json({
-      buffer: base64Buffer,
+      buffer: buffer,
       contentType,
     });
   }

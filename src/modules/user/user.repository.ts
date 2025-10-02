@@ -177,4 +177,26 @@ export class UserRepository extends BaseRepository<User> {
     }));
     return buildFullSeriesLastAccess(groupBy, raw);
   }
+
+  async searchUsersByName(name: string): Promise<User[]> {
+    return await this.repository
+      .createQueryBuilder('user')
+      .select([
+        'user.id',
+        'user.email',
+        'user.phone',
+        'user.firstName',
+        'user.lastName',
+        'user.socialName',
+        'user.useSocialName',
+      ])
+      .where('CONCAT(user.firstName, " ", user.lastName) LIKE :name', {
+        name: `%${name}%`,
+      })
+      .orWhere('CONCAT(user.socialName, " ", user.lastName) LIKE :name', {
+        name: `%${name}%`,
+      })
+      .limit(10)
+      .getMany();
+  }
 }
