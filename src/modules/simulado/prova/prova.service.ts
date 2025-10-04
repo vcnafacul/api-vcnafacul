@@ -38,7 +38,7 @@ export class ProvaService {
     request.aplicacao = parseInt(prova.aplicacao as unknown as string);
     request.tipo = prova.tipo;
     request.filename = fileName;
-    request.gabartio = gabaritoNome;
+    request.gabarito = gabaritoName;
     return await this.axios.post(`v1/prova`, request);
   }
 
