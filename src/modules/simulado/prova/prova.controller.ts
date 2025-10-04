@@ -74,11 +74,16 @@ export class ProvaController {
   })
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.cadastrarProvas)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileFieldsInterceptor([
+        { name: 'file', maxCount: 1 },
+        { name: 'gabarito', maxCount: 1 },
+      ]),
+    )
   public async createProvas(
     @Body() dto: CreateProvaDTOInput,
-    @UploadedFile() file,
+    @UploadedFile() files: { file: Express.Multer.File[]; gabarito?: Express.Multer.File[] },
   ) {
-    return await this.provaService.createProva(dto, file);
+    return await this.provaService.createProva(dto, files.file[0], files.gabarito[0]);
   }
 }

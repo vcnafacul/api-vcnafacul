@@ -17,13 +17,18 @@ export class ProvaService {
     this.axios.setBaseURL(this.envService.get('SIMULADO_URL'));
   }
 
-  public async createProva(prova: CreateProvaDTOInput, file: any) {
+  public async createProva(prova: CreateProvaDTOInput, file: any, gabarito:any) {
     const fileName = await this.blobService.uploadFile(
       file,
       this.envService.get('BUCKET_SIMULADO'),
     );
 
-    if (!fileName) {
+    const gabaritoName = await this.blobService.uploadFile(
+      gabarito,
+      this.envService.get('BUCKET_SIMULADO'),
+    );
+
+    if (!fileName || !gabaritoName) {
       throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);
     }
     const request = new CreateProvaDTORequest();
@@ -33,6 +38,7 @@ export class ProvaService {
     request.aplicacao = parseInt(prova.aplicacao as unknown as string);
     request.tipo = prova.tipo;
     request.filename = fileName;
+    request.gabartio = gabaritoNome;
     return await this.axios.post(`v1/prova`, request);
   }
 
