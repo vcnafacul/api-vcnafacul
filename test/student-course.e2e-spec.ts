@@ -165,7 +165,17 @@ describe('StudentCourse (e2e)', () => {
       },
       representative.id,
     );
-    partnerPrepCourse.geo = geo;
+    partnerPrepCourse.geo = {
+      id: geo.id,
+      name: geo.name,
+      category: geo.category,
+      street: geo.street,
+      number: geo.number,
+      complement: geo.complement,
+      neighborhood: geo.neighborhood,
+      state: geo.state,
+      city: geo.city,
+    };
 
     const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker();
     const inscription = await inscriptionCourseService.create(

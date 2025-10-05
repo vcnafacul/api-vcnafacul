@@ -26,7 +26,7 @@ import { DataSource } from 'typeorm';
 import { Collaborator } from '../collaborator/collaborator.entity';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
 import { PartnerPrepCourseDtoInput } from './dtos/create-partner-prep-course.input.dto';
-import { GetAllPrepCourseDtoOutput } from './dtos/get-all-prep-course.dto.outoput';
+import { PrepCourseDtoOutput } from './dtos/get-all-prep-course.dto.outoput';
 import { GetOnePrepCourseByIdDtoOutput } from './dtos/get-one-prep-course-by-id.dto.output';
 import { PartnerPrepCourse } from './partner-prep-course.entity';
 import { PartnerPrepCourseRepository } from './partner-prep-course.repository';
@@ -56,70 +56,142 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
   async create(
     dto: PartnerPrepCourseDtoInput,
     userId: string,
-  ): Promise<PartnerPrepCourse> {
+  ): Promise<PrepCourseDtoOutput | null | undefined> {
     let partnerPrepCourse: PartnerPrepCourse = null;
     const user = await this.userService.findOneBy({ id: userId });
-    await this.dataSource.transaction(async (manager) => {
-      const existingCourse = await manager
-        .getRepository(PartnerPrepCourse)
-        .findOneBy({ geoId: dto.geoId });
-      if (existingCourse) {
-        throw new HttpException(
-          'Cursinho parceiro já existe',
-          HttpStatus.CONFLICT,
-        );
-      }
 
-      const representative = await this.userService.findOneBy({
-        id: dto.representative,
-      });
-      if (!representative) {
-        throw new HttpException(
-          'Representante nao encontrado',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      const existingCollaborador = await manager
-        .getRepository(Collaborator)
-        .findOneBy({ user: { id: representative.id } });
-      if (existingCollaborador) {
-        throw new HttpException(
-          'Representante ja cadastrado como colaborador',
-          HttpStatus.CONFLICT,
-        );
-      }
-
-      partnerPrepCourse = new PartnerPrepCourse();
-
-      partnerPrepCourse.geoId = dto.geoId;
-      partnerPrepCourse.representative = representative;
-
-      const collaborator = new Collaborator();
-      collaborator.user = representative;
-      collaborator.description = 'Representante Cursinho';
-
-      collaborator.partnerPrepCourse = partnerPrepCourse;
-
-      // Salvar cursinho e colaborador na mesma transação
-      await manager.getRepository(PartnerPrepCourse).save(partnerPrepCourse);
-      await manager.getRepository(Collaborator).save(collaborator);
+    const existingCourse = await this.repository.findOneBy({
+      geoId: dto.geoId,
     });
-    if (partnerPrepCourse) {
-      const logGeo = new LogGeo();
-      logGeo.geoId = partnerPrepCourse.geoId;
-      logGeo.status = StatusLogGeo.Partner;
-      logGeo.description = 'Criaçao de cursinho parceiro';
-      logGeo.geo = partnerPrepCourse.geo;
-      logGeo.user = user;
-      await this.logGeoRepository.create(logGeo);
-      return partnerPrepCourse;
-    } else {
+    if (existingCourse) {
       throw new HttpException(
-        'Erro ao criar cursinho parceiro',
+        'Cursinho parceiro já existe',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    const futureRepresentative = await this.userService.findOneBy({
+      id: dto.representative,
+    });
+    if (!futureRepresentative) {
+      throw new HttpException(
+        'Representante nao encontrado',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Verificar se o usuário já é representante de outro cursinho
+    const existingRepresentative = await this.repository.findOneBy({
+      representative: { id: futureRepresentative.id },
+    });
+    if (existingRepresentative && !dto.force) {
+      throw new HttpException(
+        'Usuário já é representante de outro cursinho',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    // Verificar se o colaborador já está associado a outro cursinho
+    const existingCollaborador =
+      await this.collaboratorRepository.findOneByUserId(
+        futureRepresentative.id,
+      );
+    if (
+      existingCollaborador &&
+      existingCollaborador.partnerPrepCourse &&
+      !dto.force
+    ) {
+      throw new HttpException(
+        'Representante já cadastrado como colaborador em outro cursinho',
+        HttpStatus.CONFLICT,
+      );
+    }
+    try {
+      await this.dataSource.transaction(async (manager) => {
+        // Criar o cursinho primeiro
+        partnerPrepCourse = new PartnerPrepCourse();
+        partnerPrepCourse.geoId = dto.geoId;
+        partnerPrepCourse.representative = futureRepresentative;
+
+        // Salvar o cursinho primeiro
+        await manager.getRepository(PartnerPrepCourse).save(partnerPrepCourse);
+
+        // Depois, lidar com o colaborador
+        if (!existingCollaborador) {
+          const collaborator = new Collaborator();
+          collaborator.user = futureRepresentative;
+          collaborator.description = 'Representante Cursinho';
+          collaborator.partnerPrepCourse = {
+            id: partnerPrepCourse.id,
+          } as PartnerPrepCourse;
+          await manager.getRepository(Collaborator).save(collaborator);
+        } else {
+          // Atualizar colaborador existente para associar ao novo cursinho
+          await manager
+            .getRepository(Collaborator)
+            .update(existingCollaborador.id, {
+              partnerPrepCourse: { id: partnerPrepCourse.id },
+              description: 'Representante Cursinho',
+            });
+        }
+        if (partnerPrepCourse) {
+          const logGeo = new LogGeo();
+          logGeo.geoId = partnerPrepCourse.geoId;
+          logGeo.status = StatusLogGeo.Partner;
+          logGeo.description = 'Criaçao de cursinho parceiro';
+          logGeo.geo = partnerPrepCourse.geo;
+          logGeo.user = user;
+          await this.logGeoRepository.create(logGeo);
+        }
+      });
+    } catch (error) {
+      throw new HttpException(
+        `Erro ao criar cursinho parceiro: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
+    if (partnerPrepCourse) {
+      const newPrep = await this.repository.findOneByIdRes(
+        partnerPrepCourse.id,
+      );
+      return {
+        id: newPrep.id,
+        geo: {
+          id: newPrep.geo.id,
+          name: newPrep.geo.name,
+          category: newPrep.geo.category,
+          street: newPrep.geo.street,
+          number: newPrep.geo.number,
+          complement: newPrep.geo.complement,
+          neighborhood: newPrep.geo.neighborhood,
+          city: newPrep.geo.city,
+          state: newPrep.geo.state,
+          phone: newPrep.geo.phone,
+        },
+        representative: {
+          id: newPrep.representative.id,
+          name: !newPrep.representative.useSocialName
+            ? newPrep.representative.firstName +
+              ' ' +
+              newPrep.representative.lastName
+            : newPrep.representative.socialName +
+              ' ' +
+              newPrep.representative.lastName,
+          email: newPrep.representative.email,
+          phone: newPrep.representative.phone,
+        },
+        logo: newPrep.logo,
+        agreement: newPrep.partnershipAgreement,
+        thumbnail: newPrep.thumbnail
+          ? `data:image/webp;base64,${newPrep.thumbnail.toString('base64')}`
+          : null,
+        numberStudents: newPrep.students?.length || 0,
+        numberMembers: newPrep.members?.length || 0,
+        createdAt: newPrep.createdAt,
+        updatedAt: newPrep.updatedAt,
+      } as unknown as PrepCourseDtoOutput;
+    }
+    return null;
   }
 
   async updateLogo(id: string, file: Express.Multer.File) {
@@ -167,14 +239,14 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
   async getAll(
     page: number,
     limit: number,
-  ): Promise<GetAllOutput<GetAllPrepCourseDtoOutput>> {
+  ): Promise<GetAllOutput<PrepCourseDtoOutput>> {
     const prepCourses = await this.repository.findAllBy({
       page: page,
       limit: limit,
     });
     return {
       data: prepCourses.data.map((i) =>
-        Object.assign(new GetAllPrepCourseDtoOutput(), {
+        Object.assign(new PrepCourseDtoOutput(), {
           id: i.id,
           geo: {
             id: i.geo.id,
@@ -448,16 +520,98 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
       partnerPrepCourse.geo.email,
     );
   }
-  async updateRepresentative(id: string, userId: string) {
-    const partnerPrepCourse = await this.repository.findOneBy({ id });
-    if (!partnerPrepCourse) {
-      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
-    }
+
+  async updateRepresentative(
+    id: string,
+    userId: string,
+    forceRepresentative: boolean = false,
+  ) {
     const user = await this.userService.findOneBy({ id: userId });
     if (!user) {
       throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
     }
-    partnerPrepCourse.representative = user;
-    await this.repository.update(partnerPrepCourse);
+
+    const existingCollaborador =
+      await this.collaboratorRepository.findOneByUserId(user.id);
+
+    // Verificar se o colaborador já está associado a outro cursinho
+    if (
+      existingCollaborador &&
+      existingCollaborador.partnerPrepCourse?.id !== id &&
+      !forceRepresentative
+    ) {
+      throw new HttpException(
+        'Representante já cadastrado como colaborador em outro cursinho',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    const partnerPrepCourse = await this.repository.findOneBy({ id });
+    if (!partnerPrepCourse) {
+      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
+    }
+
+    try {
+      await this.dataSource.transaction(async (manager) => {
+        const colRepository = manager.getRepository(Collaborator);
+        const partnerRepository = manager.getRepository(PartnerPrepCourse);
+
+        // Primeiro, atualizar o representante do cursinho
+        await partnerRepository.update(
+          { id },
+          { representative: { id: user.id } },
+        );
+
+        // Depois, lidar com o colaborador
+        if (existingCollaborador) {
+          // Se já existe e não está associado a este cursinho, atualizar a associação
+          if (existingCollaborador.partnerPrepCourse?.id !== id) {
+            await colRepository.update(existingCollaborador.id, {
+              partnerPrepCourse: { id },
+              description: 'Representante Cursinho',
+            });
+          }
+        } else {
+          // Criar novo colaborador
+          const collaborator = new Collaborator();
+          collaborator.user = user;
+          collaborator.partnerPrepCourse = { id } as PartnerPrepCourse;
+          collaborator.description = 'Representante Cursinho';
+          await colRepository.save(collaborator);
+        }
+      });
+
+      this.logger.log(
+        JSON.stringify({
+          event: 'updateRepresentative',
+          status: 'success',
+          partnerId: id,
+          newRepresentativeId: userId,
+          timestamp: new Date().toISOString(),
+        }),
+      );
+    } catch (error) {
+      this.logger.error(
+        JSON.stringify({
+          event: 'updateRepresentative',
+          status: 'error',
+          partnerId: id,
+          userId,
+          error: error.message,
+          stack: error.stack,
+          timestamp: new Date().toISOString(),
+        }),
+      );
+
+      // Re-throw o erro original se for um HttpException
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        'Erro ao atualizar representante',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 }

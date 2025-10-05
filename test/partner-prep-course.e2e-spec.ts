@@ -128,7 +128,17 @@ describe('PartnerPrepCourse (e2e)', () => {
       },
       representative.id,
     );
-    partnerPrepCourse.geo = geo;
+    partnerPrepCourse.geo = {
+      id: geo.id,
+      name: geo.name,
+      category: geo.category,
+      street: geo.street,
+      number: geo.number,
+      complement: geo.complement,
+      neighborhood: geo.neighborhood,
+      state: geo.state,
+      city: geo.city,
+    };
 
     const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker();
     const inscription = await inscriptionCourseService.create(
@@ -177,18 +187,13 @@ describe('PartnerPrepCourse (e2e)', () => {
       { expiresIn: '2h' },
     );
 
-    const fakeFileBuffer = Buffer.from('conteúdo fake de um arquivo docx');
-
     return await request(app.getHttpServer())
       .post('/partner-prep-course')
       .set({
         Authorization: `Bearer ${token}`,
-        'content-type': 'multipart/form-data',
+        'content-type': 'application/json',
       })
-      .field('geoId', dto.geoId)
-      .field('representative', dto.representative)
-      .attach('partnershipAgreement', fakeFileBuffer, 'test.docx')
-      .attach('logo', fakeFileBuffer, 'logo.png')
+      .send(dto)
       .expect(201);
   }, 30000);
 
@@ -206,18 +211,13 @@ describe('PartnerPrepCourse (e2e)', () => {
       { expiresIn: '2h' },
     );
 
-    const fakeFileBuffer = Buffer.from('conteúdo fake de um arquivo docx');
-
     return await request(app.getHttpServer())
       .post('/partner-prep-course')
       .set({
         Authorization: `Bearer ${token}`,
-        'content-type': 'multipart/form-data',
+        'content-type': 'application/json',
       })
-      .field('geoId', dto.geoId)
-      .field('representative', dto.representative)
-      .attach('partnershipAgreement', fakeFileBuffer, 'test.docx')
-      .attach('logo', fakeFileBuffer, 'logo.png')
+      .send(dto)
       .expect(409)
       .expect((res) => {
         expect(res.body).toHaveProperty('message');

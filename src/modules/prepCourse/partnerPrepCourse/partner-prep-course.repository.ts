@@ -121,4 +121,35 @@ export class PartnerPrepCourseRepository extends BaseRepository<PartnerPrepCours
       .where('entity.deletedAt IS NULL')
       .getCount();
   }
+
+  //criar um findOne que retorne o mesmo que o findAllBy, mas que retorne apenas um objeto
+  async findOneByIdRes(id: string): Promise<PartnerPrepCourse> {
+    return await this.repository
+      .createQueryBuilder('partner_prep_course')
+      .innerJoin('partner_prep_course.geo', 'geo')
+      .addSelect([
+        'geo.id',
+        'geo.name',
+        'geo.category',
+        'geo.street',
+        'geo.number',
+        'geo.complement',
+        'geo.neighborhood',
+        'geo.city',
+        'geo.state',
+        'geo.phone',
+      ])
+      .innerJoin('partner_prep_course.representative', 'representative')
+      .addSelect([
+        'representative.id',
+        'representative.firstName',
+        'representative.lastName',
+        'representative.socialName',
+        'representative.useSocialName',
+        'representative.email',
+        'representative.phone',
+      ])
+      .where({ id })
+      .getOne();
+  }
 }
