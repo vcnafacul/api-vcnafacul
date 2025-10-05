@@ -60,6 +60,16 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     let partnerPrepCourse: PartnerPrepCourse = null;
     const user = await this.userService.findOneBy({ id: userId });
 
+    const existingCourse = await this.repository.findOneBy({
+      geoId: dto.geoId,
+    });
+    if (existingCourse) {
+      throw new HttpException(
+        'Cursinho parceiro já existe',
+        HttpStatus.CONFLICT,
+      );
+    }
+
     const futureRepresentative = await this.userService.findOneBy({
       id: dto.representative,
     });
@@ -98,16 +108,6 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     }
     try {
       await this.dataSource.transaction(async (manager) => {
-        const existingCourse = await manager
-          .getRepository(PartnerPrepCourse)
-          .findOneBy({ geoId: dto.geoId });
-        if (existingCourse) {
-          throw new HttpException(
-            'Cursinho parceiro já existe',
-            HttpStatus.CONFLICT,
-          );
-        }
-
         // Criar o cursinho primeiro
         partnerPrepCourse = new PartnerPrepCourse();
         partnerPrepCourse.geoId = dto.geoId;

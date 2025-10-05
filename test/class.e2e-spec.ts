@@ -9,6 +9,7 @@ import { InscriptionCourseService } from 'src/modules/prepCourse/InscriptionCour
 import { PartnerPrepCourseDtoInput } from 'src/modules/prepCourse/partnerPrepCourse/dtos/create-partner-prep-course.input.dto';
 import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
 import { StudentCourseService } from 'src/modules/prepCourse/studentCourse/student-course.service';
+import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
 import { Role } from 'src/modules/role/role.entity';
 import { RoleService } from 'src/modules/role/role.service';
 import { UserRepository } from 'src/modules/user/user.repository';
@@ -22,7 +23,6 @@ import { createStudentCourseDTOInputFaker } from './faker/create-student-course.
 import { CreateUserDtoInputFaker } from './faker/create-user.dto.input.faker';
 import createFakeDocxBase64 from './utils/createFakeDocxBase64';
 import { createNestAppTest } from './utils/createNestAppTest';
-import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
 
 // Mock the EmailService globally
 jest.mock('src/shared/services/email/email.service');

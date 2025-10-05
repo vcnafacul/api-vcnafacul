@@ -15,5 +15,5 @@ export class PartnerPrepCourseDtoInput {
   @ApiProperty()
   @IsOptional()
   @IsBoolean()
-  force: boolean = false;
+  force?: boolean = false;
 }
