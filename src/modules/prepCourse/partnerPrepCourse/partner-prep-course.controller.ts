@@ -15,10 +15,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import {
-  FileFieldsInterceptor,
-  FileInterceptor,
-} from '@nestjs/platform-express';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
@@ -30,7 +27,7 @@ import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { PartnerPrepCourseDtoInput } from './dtos/create-partner-prep-course.input.dto';
-import { GetAllPrepCourseDtoOutput } from './dtos/get-all-prep-course.dto.outoput';
+import { PrepCourseDtoOutput } from './dtos/get-all-prep-course.dto.outoput';
 import { GetOnePrepCourseByIdDtoOutput } from './dtos/get-one-prep-course-by-id.dto.output';
 import { inviteMembersInputDto } from './dtos/invite-members.input.dto';
 import { PartnerPrepCourseService } from './partner-prep-course.service';
@@ -44,12 +41,6 @@ export class PartnerPrepCourseController {
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
-  @UseInterceptors(
-    FileFieldsInterceptor([
-      { name: 'partnershipAgreement', maxCount: 1 },
-      { name: 'logo', maxCount: 1 },
-    ]),
-  )
   @ApiResponse({
     status: 201,
     description: 'criar cursinho parceiro',
@@ -57,8 +48,8 @@ export class PartnerPrepCourseController {
   async createPartnerPrepCourse(
     @Body() dto: PartnerPrepCourseDtoInput,
     @Req() req: Request,
-  ): Promise<void> {
-    await this.service.create(dto, (req.user as User).id);
+  ): Promise<PrepCourseDtoOutput | null | undefined> {
+    return await this.service.create(dto, (req.user as User).id);
   }
 
   @Get()
@@ -69,12 +60,12 @@ export class PartnerPrepCourseController {
     status: 200,
     description:
       'obter todos os cursinhos parceiros paginados, na qual o data é representado por um array de GetAllPrepCourseDtoOutput',
-    type: GetAllPrepCourseDtoOutput,
+    type: PrepCourseDtoOutput,
     isArray: true,
   })
   async getAll(
     @Query() dto: GetAllDtoInput,
-  ): Promise<GetAllOutput<GetAllPrepCourseDtoOutput>> {
+  ): Promise<GetAllOutput<PrepCourseDtoOutput>> {
     return await this.service.getAll(dto.page, dto.limit);
   }
 
@@ -199,9 +190,13 @@ export class PartnerPrepCourseController {
   @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
   async updateRepresentative(
     @Param('id') id: string,
-    @Body() dto: { representative: string },
+    @Body() dto: { representative: string; force?: boolean | undefined },
   ) {
-    return await this.service.updateRepresentative(id, dto.representative);
+    return await this.service.updateRepresentative(
+      id,
+      dto.representative,
+      dto.force,
+    );
   }
 
   @Get('agreement/:id')

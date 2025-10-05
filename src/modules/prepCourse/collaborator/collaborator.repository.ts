@@ -67,6 +67,7 @@ export class CollaboratorRepository extends BaseRepository<Collaborator> {
     return await this.repository
       .createQueryBuilder('entity')
       .leftJoinAndSelect('entity.user', 'user')
+      .leftJoinAndSelect('entity.partnerPrepCourse', 'prep')
       .where('user.id = :id', { id })
       .getOne();
   }

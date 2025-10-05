@@ -41,7 +41,7 @@ class PrepCourseRepresentativeDtoOutput {
   phone: string;
 }
 
-export class GetAllPrepCourseDtoOutput {
+export class PrepCourseDtoOutput {
   @ApiProperty()
   id: string;
 
