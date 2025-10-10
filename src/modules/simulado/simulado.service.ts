@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
-import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
+import {
+  HttpServiceAxios,
+  HttpServiceAxiosFactory,
+} from 'src/shared/services/axios/http-service-axios.factory';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AnswerSimulado } from './dtos/answer-simulado.dto.input';
 import { AvailableSimuladoDTOoutput } from './dtos/available-simulado.dto.output';
@@ -16,13 +19,17 @@ import { Status } from './enum/status.enum';
 
 @Injectable()
 export class SimuladoService {
+  private readonly axios: HttpServiceAxios;
+
   constructor(
-    private readonly axios: HttpServiceAxios,
+    private readonly httpServiceFactory: HttpServiceAxiosFactory,
     private readonly envService: EnvService,
     private readonly auditLod: AuditLogService,
     private readonly cache: CacheService,
   ) {
-    this.axios.setBaseURL(this.envService.get('SIMULADO_URL'));
+    this.axios = this.httpServiceFactory.create(
+      this.envService.get('SIMULADO_URL'),
+    );
   }
 
   async create(dto: CreateSimuladoDTOInput) {
