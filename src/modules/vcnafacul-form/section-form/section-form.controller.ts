@@ -61,4 +61,16 @@ export class SectionFormController {
   public async deleteSectionForm(@Param('id') id: string) {
     await this.service.deleteSectionForm(id);
   }
+
+  @Patch(':id')
+  @ApiResponse({
+    status: 200,
+    description: 'atualiza seção do formulário',
+  })
+  public async updateSectionForm(
+    @Param('id') id: string,
+    @Body() dto: { name: string },
+  ) {
+    await this.service.updateSectionForm(id, dto);
+  }
 }

@@ -102,4 +102,13 @@ export class HttpServiceAxios {
     const cleanURL = url.replace(/^\//, ''); // Remove barra inicial se existir
     return `${cleanBaseURL}/${cleanURL}`;
   }
+
+  public async put<T>(url: string, body: any): Promise<T> {
+    const fullURL = this.getFullURL(url);
+    return this.requestWrapper(
+      this.axiosInstance
+        .put<T>(fullURL, body)
+        .then((response) => response.data),
+    );
+  }
 }

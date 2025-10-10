@@ -49,4 +49,8 @@ export class QuestionFormService {
   public async deleteQuestionForm(id: string) {
     return await this.axios.delete(`v1/question/${id}`);
   }
+
+  public async updateQuestionForm(id: string, dto: unknown) {
+    return await this.axios.put(`v1/question/${id}`, dto);
+  }
 }

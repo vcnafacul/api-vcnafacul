@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
 } from '@nestjs/common';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
@@ -60,5 +61,17 @@ export class QuestionFormController {
   })
   public async deleteQuestionForm(@Param('id') id: string) {
     await this.service.deleteQuestionForm(id);
+  }
+
+  @Put(':id')
+  @ApiResponse({
+    status: 200,
+    description: 'atualiza seção do formulário',
+  })
+  public async updateQuestionForm(
+    @Param('id') id: string,
+    @Body() dto: unknown,
+  ) {
+    await this.service.updateQuestionForm(id, dto);
   }
 }

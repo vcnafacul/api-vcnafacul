@@ -52,4 +52,8 @@ export class SectionFormService {
   public async deleteSectionForm(id: string) {
     return await this.axios.delete(`v1/section/${id}`);
   }
+
+  public async updateSectionForm(id: string, dto: { name: string }) {
+    return await this.axios.patch(`v1/section/${id}`, dto);
+  }
 }
