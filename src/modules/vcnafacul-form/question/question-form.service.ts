@@ -5,7 +5,6 @@ import {
   HttpServiceAxios,
   HttpServiceAxiosFactory,
 } from 'src/shared/services/axios/http-service-axios.factory';
-import { CreateQuestionDtoInput } from './dtos/create-question.dto.input';
 
 @Injectable()
 export class QuestionFormService {
@@ -37,7 +36,7 @@ export class QuestionFormService {
     return await this.axios.get(`v1/question/${id}`);
   }
 
-  public async createQuestionForm(dto: CreateQuestionDtoInput) {
+  public async createQuestionForm(dto: any) {
     return await this.axios.post(`v1/question`, dto);
   }
 

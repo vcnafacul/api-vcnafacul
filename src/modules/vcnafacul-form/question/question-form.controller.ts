@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -10,7 +11,6 @@ import {
 } from '@nestjs/common';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
-import { CreateQuestionDtoInput } from './dtos/create-question.dto.input';
 import { QuestionFormService } from './question-form.service';
 
 @ApiTags('Question Form')
@@ -41,8 +41,12 @@ export class QuestionFormController {
     status: 200,
     description: 'cria seção do formulário',
   })
-  public async createQuestionForm(@Body() dto: CreateQuestionDtoInput) {
-    return await this.service.createQuestionForm(dto);
+  public async createQuestionForm(@Body() dto: unknown) {
+    try {
+      return await this.service.createQuestionForm(dto);
+    } catch (error) {
+      throw new BadRequestException(error);
+    }
   }
 
   @Patch(':id/set-active')

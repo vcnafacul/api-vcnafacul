@@ -1,12 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
-import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { EnvService } from 'src/shared/modules/env/env.service';
 import {
   HttpServiceAxios,
   HttpServiceAxiosFactory,
 } from 'src/shared/services/axios/http-service-axios.factory';
-import { SectionDtoOutput } from './dtos/section-form.output';
 
 @Injectable()
 export class SectionFormService {
@@ -21,9 +19,7 @@ export class SectionFormService {
     );
   }
 
-  public async getSectionForm(
-    query: GetAllDtoInput,
-  ): Promise<GetAllOutput<SectionDtoOutput>> {
+  public async getSectionForm(query: GetAllDtoInput): Promise<unknown> {
     let url = `v1/section`;
     const queryParams = Object.keys(query)
       .map((key) => `${key}=${query[key]}`)
