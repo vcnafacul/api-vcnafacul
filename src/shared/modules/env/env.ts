@@ -22,6 +22,7 @@ export const envSchema = z.object({
   //STACK URLS
   FRONT_URL: z.string().url().default('http://localhost:5173'),
   SIMULADO_URL: z.string().url().default('http://localhost:3000'),
+  FORMULARIO_URL: z.string().url().default('http://localhost:3334'),
   DISCORD_WEBHOOK_URL: z
     .string()
     .url()

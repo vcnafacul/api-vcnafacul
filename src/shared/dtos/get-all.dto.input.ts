@@ -7,7 +7,7 @@ export class GetAllDtoInput implements GetAllInput {
   @IsOptional()
   page: number = 1;
 
-  @ApiProperty({ default: 30, required: false })
+  @ApiProperty({ default: 100, required: false })
   @IsOptional()
-  limit: number = 30;
+  limit: number = 100;
 }

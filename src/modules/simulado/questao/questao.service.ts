@@ -2,8 +2,12 @@ import { Inject, Injectable } from '@nestjs/common';
 import { AuditLogService } from 'src/modules/audit-log/audit-log.service';
 import { User } from 'src/modules/user/user.entity';
 import { UserService } from 'src/modules/user/user.service';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
-import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
+import {
+  HttpServiceAxios,
+  HttpServiceAxiosFactory,
+} from 'src/shared/services/axios/http-service-axios.factory';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { CreateQuestaoMsSimuladoDTOInput } from '../dtos/create-questao-mssimulado.dto.input';
 import { CreateQuestaoDTOInput } from '../dtos/create-questao.dto.input';
@@ -14,19 +18,22 @@ import {
 import { QuestaoDTOInput } from '../dtos/questao.dto.input';
 import { UpdateDTOInput } from '../dtos/update-questao.dto.input';
 import { Status } from '../enum/status.enum';
-import { CacheService } from 'src/shared/modules/cache/cache.service';
 
 @Injectable()
 export class QuestaoService {
+  private readonly axios: HttpServiceAxios;
+
   constructor(
     @Inject('BlobService') private readonly blobService: BlobService,
-    private readonly axios: HttpServiceAxios,
+    private readonly httpServiceFactory: HttpServiceAxiosFactory,
     private envService: EnvService,
     private readonly auditLod: AuditLogService,
     private readonly userService: UserService,
     private readonly cache: CacheService,
   ) {
-    this.axios.setBaseURL(this.envService.get('SIMULADO_URL'));
+    this.axios = this.httpServiceFactory.create(
+      this.envService.get('SIMULADO_URL'),
+    );
   }
 
   public async getAllQuestoes(query: QuestaoDTOInput) {
