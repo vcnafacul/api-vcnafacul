@@ -1,4 +1,5 @@
 export interface SocioeconomicAnswer {
+  questionId: string;
   question: string;
   answer: string | string[] | number | number[] | boolean;
 }
