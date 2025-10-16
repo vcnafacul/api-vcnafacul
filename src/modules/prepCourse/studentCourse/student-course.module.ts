@@ -1,8 +1,12 @@
+import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { LogGeoRepository } from 'src/modules/geo/log-geo/log-geo.repository';
 import { RoleModule } from 'src/modules/role/role.module';
 import { UserService } from 'src/modules/user/user.service';
+import { FormService } from 'src/modules/vcnafacul-form/form/form.service';
+import { VcnafaculFormModule } from 'src/modules/vcnafacul-form/vcnafacul-form.module';
 import { EnvModule } from 'src/shared/modules/env/env.module';
+import { HttpServiceAxiosFactory } from 'src/shared/services/axios/http-service-axios.factory';
 import { BlobModule } from 'src/shared/services/blob/blob.module';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
@@ -21,7 +25,15 @@ import { StudentCourseService } from './student-course.service';
 
 @Module({
   controllers: [StudentCourseController],
-  imports: [BlobModule, RoleModule, CollaboratorModule, ClassModule, EnvModule],
+  imports: [
+    BlobModule,
+    RoleModule,
+    CollaboratorModule,
+    ClassModule,
+    EnvModule,
+    VcnafaculFormModule,
+    HttpModule,
+  ],
   providers: [
     StudentCourseService,
     StudentCourseRepository,
@@ -36,6 +48,8 @@ import { StudentCourseService } from './student-course.service';
     LogGeoRepository,
     UserService,
     DiscordWebhook,
+    FormService,
+    HttpServiceAxiosFactory,
   ],
   exports: [StudentCourseService, StudentCourseRepository, UserService],
 })

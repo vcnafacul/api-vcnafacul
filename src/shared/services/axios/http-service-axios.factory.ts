@@ -65,7 +65,7 @@ export class HttpServiceAxios {
     );
   }
 
-  public async post<T>(url: string, body: any): Promise<T> {
+  public async post<T>(url: string, body?: any): Promise<T> {
     const fullURL = this.getFullURL(url);
     return this.requestWrapper(
       this.axiosInstance

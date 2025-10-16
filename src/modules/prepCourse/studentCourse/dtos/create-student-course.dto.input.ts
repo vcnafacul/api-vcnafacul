@@ -1,18 +1,20 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
-    IsDateString,
-    IsNotEmpty,
-    IsNumber,
-    IsOptional,
-    IsString,
-    ValidateIf,
-    ValidateNested,
+  IsArray,
+  IsDateString,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  ValidateIf,
+  ValidateNested,
 } from 'class-validator';
 import { UserExist } from 'src/modules/user/validator/user-exist.validator';
 import { CPF } from 'src/shared/validator/cpf.validator';
 import { UF } from 'src/shared/validator/uf.validator';
 import { InscriptionCourseExist } from '../../InscriptionCourse/validator/inscription-course-exist.validator';
+import { SocioeconomicAnswer } from '../types/student-course-full';
 import { CreateLegalGuardianInput } from './create-legal-guardian.dto.input';
 
 export class CreateStudentCourseInput {
@@ -113,7 +115,6 @@ export class CreateStudentCourseInput {
   legalGuardian?: CreateLegalGuardianInput;
 
   @ApiProperty()
-  @IsString()
-  @IsOptional()
-  socioeconomic?: string | undefined;
+  @IsArray()
+  socioeconomic: SocioeconomicAnswer[];
 }

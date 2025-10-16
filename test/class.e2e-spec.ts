@@ -14,6 +14,8 @@ import { Role } from 'src/modules/role/role.entity';
 import { RoleService } from 'src/modules/role/role.service';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
+import { FormService } from 'src/modules/vcnafacul-form/form/form.service';
+import { SubmissionService } from 'src/modules/vcnafacul-form/submission/submission.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import * as request from 'supertest';
@@ -42,6 +44,8 @@ describe('Class (e2e)', () => {
   let studentCourseService: StudentCourseService;
   let role: Role = null;
   let blobService: BlobService;
+  let formService: FormService;
+  let submissionService: SubmissionService;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -65,7 +69,8 @@ describe('Class (e2e)', () => {
     );
     studentCourseService =
       moduleFixture.get<StudentCourseService>(StudentCourseService);
-
+    formService = moduleFixture.get<FormService>(FormService);
+    submissionService = moduleFixture.get<SubmissionService>(SubmissionService);
     jest.spyOn(emailService, 'sendEmailGeo').mockImplementation(async () => {});
     blobService = moduleFixture.get<BlobService>('BlobService');
 
@@ -87,6 +92,14 @@ describe('Class (e2e)', () => {
         }
         return Buffer.from('conteúdo fake de um arquivo');
       });
+
+    jest
+      .spyOn(formService, 'createFormFull')
+      .mockImplementation(async () => 'hashKeyFile');
+
+    jest
+      .spyOn(submissionService, 'createSubmission')
+      .mockImplementation(async () => 'hashKeyFile');
 
     await app.init();
 
