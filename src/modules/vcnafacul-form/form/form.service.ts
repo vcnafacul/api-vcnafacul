@@ -22,4 +22,9 @@ export class FormService {
   public async getFormFullByInscriptionId(inscriptionId: string) {
     return await this.axios.get(`v1/form-full/${inscriptionId}/inscription`);
   }
+
+  //@Post(':inscriptionId/create-form-full')
+  public async createFormFull(inscriptionId: string) {
+    return await this.axios.post(`v1/form/${inscriptionId}/create-form-full`);
+  }
 }

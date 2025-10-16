@@ -70,6 +70,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     inscriptionCourse.description = dto.description || '';
     inscriptionCourse.partnerPrepCourse = parnetPrepCourse;
     const result = await this.repository.create(inscriptionCourse);
+    await this.formService.createFormFull(result.id);
     return {
       id: result.id,
       name: result.name,
