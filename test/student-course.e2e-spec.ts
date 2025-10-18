@@ -8,6 +8,7 @@ import { RoleSeedService } from 'src/db/seeds/1-role.seed';
 import { RoleUpdateAdminSeedService } from 'src/db/seeds/2-role-update-admin.seed';
 import { GeoService } from 'src/modules/geo/geo.service';
 import { ClassService } from 'src/modules/prepCourse/class/class.service';
+import { CoursePeriodService } from 'src/modules/prepCourse/coursePeriod/course-period.service';
 import { InscriptionCourseService } from 'src/modules/prepCourse/InscriptionCourse/inscription-course.service';
 import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
 import { GetAllStudentDtoInput } from 'src/modules/prepCourse/studentCourse/dtos/get-all-student.dto.input';
@@ -24,6 +25,7 @@ import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import * as request from 'supertest';
 import CreateClassDtoInputFaker from './faker/create-class.dto.input.faker';
+import { CreateCoursePeriodDtoInputFaker } from './faker/create-course-period.dto.input.faker';
 import { CreateGeoDTOInputFaker } from './faker/create-geo.dto.input.faker';
 import { CreateInscriptionCourseDTOInputFaker } from './faker/create-inscription-course.dto.faker';
 import { createStudentCourseDTOInputFaker } from './faker/create-student-course.dto.input.faker';
@@ -53,6 +55,7 @@ describe('StudentCourse (e2e)', () => {
   let blobService: BlobService;
   let logStudentRepository: LogStudentRepository;
   let classService: ClassService;
+  let coursePeriodService: CoursePeriodService;
 
   const discordWebhookMock = {
     sendMessage: jest.fn(),
@@ -93,6 +96,8 @@ describe('StudentCourse (e2e)', () => {
     logStudentRepository =
       moduleFixture.get<LogStudentRepository>(LogStudentRepository);
     classService = moduleFixture.get<ClassService>(ClassService);
+    coursePeriodService =
+      moduleFixture.get<CoursePeriodService>(CoursePeriodService);
 
     jest
       .spyOn(emailService, 'sendCreateUser')
@@ -209,7 +214,24 @@ describe('StudentCourse (e2e)', () => {
   }
 
   async function createClass(userId: string, className?: string) {
+    // Primeiro, obter o partnerPrepCourse do usuário
+    const partnerPrepCourse =
+      await partnerPrepCourseService.getByUserId(userId);
+    if (!partnerPrepCourse) {
+      throw new Error('Partner prep course not found for user');
+    }
+
+    // Criar um período letivo
+    const coursePeriodDto = CreateCoursePeriodDtoInputFaker();
+    const coursePeriod = await coursePeriodService.create(
+      coursePeriodDto,
+      userId,
+    );
+
+    // Criar a turma com o período letivo
     const classDto = CreateClassDtoInputFaker(className);
+    classDto.coursePeriodId = coursePeriod.id;
+
     return await classService.create(classDto, userId);
   }
 

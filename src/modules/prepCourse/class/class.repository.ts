@@ -43,6 +43,7 @@ export class ClassRepository extends BaseRepository<Class> {
         .andWhere('entity.deletedAt IS NULL')
         .leftJoin('entity.students', 'student_course')
         .addSelect('student_course.id')
+        .leftJoinAndSelect('entity.coursePeriod', 'course_period')
         .getMany(),
       this.repository
         .createQueryBuilder('entity')
@@ -73,6 +74,7 @@ export class ClassRepository extends BaseRepository<Class> {
         'user.useSocialName',
       ])
       .leftJoinAndSelect('entity.admins', 'admins')
+      .leftJoinAndSelect('entity.coursePeriod', 'course_period')
       .where('entity.id = :id', { id })
       .getOne();
   }
@@ -89,6 +91,7 @@ export class ClassRepository extends BaseRepository<Class> {
         'user.socialName',
         'user.useSocialName',
       ])
+      .leftJoinAndSelect('entity.coursePeriod', 'course_period')
       .where('entity.id = :id', { id })
       .andWhere('student_course.applicationStatus = :status', {
         status: StatusApplication.Enrolled,
@@ -101,6 +104,7 @@ export class ClassRepository extends BaseRepository<Class> {
       .createQueryBuilder('entity')
       .innerJoin('entity.partnerPrepCourse', 'partner_prep_course')
       .addSelect(['partner_prep_course.id'])
+      .leftJoinAndSelect('entity.coursePeriod', 'course_period')
       .where('entity.id = :id', { id })
       .getOne();
   }

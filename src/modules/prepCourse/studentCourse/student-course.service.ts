@@ -785,7 +785,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     const log = new LogStudent();
     log.studentId = student.id;
     log.applicationStatus = StatusApplication.Enrolled;
-    log.description = `Atribuido a Turma: ${class_.name} (${class_.year})`;
+    log.description = `Atribuido a Turma: ${class_.name} (${class_.coursePeriod?.year || 'N/A'})`;
     await this.logStudentRepository.create(log);
   }
 
@@ -856,8 +856,8 @@ export class StudentCourseService extends BaseService<StudentCourse> {
               class: {
                 id: student.class?.id,
                 name: student.class?.name,
-                year: student.class?.year,
-                endDate: student.class?.endDate,
+                year: student.class?.coursePeriod?.year || 0,
+                endDate: student.class?.coursePeriod?.endDate,
               },
             }) as unknown as StudentsDtoOutput,
         ),
