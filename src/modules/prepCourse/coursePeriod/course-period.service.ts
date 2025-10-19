@@ -89,6 +89,7 @@ export class CoursePeriodService extends BaseService<CoursePeriod> {
       classesCount: 0,
       createdAt: result.createdAt,
       updatedAt: result.updatedAt,
+      classes: [],
     };
   }
 
@@ -121,6 +122,12 @@ export class CoursePeriodService extends BaseService<CoursePeriod> {
       classesCount: coursePeriod.classes?.length || 0,
       createdAt: coursePeriod.createdAt,
       updatedAt: coursePeriod.updatedAt,
+      classes: coursePeriod.classes.map((classEntity) => ({
+        id: classEntity.id,
+        name: classEntity.name,
+        description: classEntity.description,
+        number_students: classEntity.students.length,
+      })),
     };
   }
 
@@ -237,6 +244,12 @@ export class CoursePeriodService extends BaseService<CoursePeriod> {
         classesCount: period.classes?.length || 0,
         createdAt: period.createdAt,
         updatedAt: period.updatedAt,
+        classes: period.classes.map((classEntity) => ({
+          id: classEntity.id,
+          name: classEntity.name,
+          description: classEntity.description,
+          number_students: classEntity.students?.length || 0,
+        })),
       })),
       page: coursePeriods.page,
       limit: coursePeriods.limit,

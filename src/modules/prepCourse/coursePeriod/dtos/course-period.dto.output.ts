@@ -8,4 +8,10 @@ export class CoursePeriodDtoOutput {
   classesCount: number;
   createdAt: Date;
   updatedAt: Date;
+  classes: {
+    id: string;
+    name: string;
+    description?: string;
+    number_students: number;
+  }[];
 }

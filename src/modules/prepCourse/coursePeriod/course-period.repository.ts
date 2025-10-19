@@ -60,6 +60,7 @@ export class CoursePeriodRepository extends BaseRepository<CoursePeriod> {
         'partner_prep_course',
       )
       .leftJoinAndSelect('course_period.classes', 'classes')
+      .leftJoinAndSelect('classes.students', 'students')
       .loadRelationCountAndMap(
         'course_period.classesCount',
         'course_period.classes',
