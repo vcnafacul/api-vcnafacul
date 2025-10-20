@@ -16,6 +16,8 @@ import { CreateUserDtoInput } from 'src/modules/user/dto/create.dto.input';
 import { CreateFlow } from 'src/modules/user/enum/create-flow';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
+import { CreateSubmissionDtoInput } from 'src/modules/vcnafacul-form/submission/dto/create-submission.dto.input';
+import { SubmissionService } from 'src/modules/vcnafacul-form/submission/submission.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import {
   Filter,
@@ -83,6 +85,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     private readonly discordWebhook: DiscordWebhook,
     private readonly roleService: RoleService,
     private readonly cache: CacheService,
+    private readonly submissionService: SubmissionService,
   ) {
     super(repository);
   }
@@ -131,6 +134,20 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       inscriptionCourse.partnerPrepCourse,
       inscriptionCourse,
     );
+
+    const submissionDto: CreateSubmissionDtoInput = {
+      inscriptionId: inscriptionCourse.id,
+      userId: user.id,
+      studentId: studentCourse.id,
+      name: user.useSocialName
+        ? user.socialName + ' ' + user.lastName
+        : user.firstName + ' ' + user.lastName,
+      email: user.email,
+      birthday: dto.birthday,
+      answers: dto.socioeconomic,
+    };
+
+    await this.submissionService.createSubmission(submissionDto);
 
     if (this.isMinor(user.birthday)) {
       await this.createLegalGuardian(dto.legalGuardian, studentCourse);
@@ -979,7 +996,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       whatsapp: dto.whatsapp,
       urgencyPhone: dto.urgencyPhone,
       partnerPrepCourse: partnerPrepCourse,
-      socioeconomic: dto.socioeconomic,
+      socioeconomic: JSON.stringify(dto.socioeconomic),
     });
 
     studentCourse.inscriptionCourse = inscriptionCourse;
@@ -1089,15 +1106,12 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       flattenedItem.legalGuardian?.family_relationship;
     delete flattenedItem.legalGuardian;
 
-    const socioeconomic: SocioeconomicAnswer[] = JSON.parse(
-      student.socioeconomic,
-    );
-    const questions = this.getUniqueQuestions(socioeconomic);
+    const questions = this.getUniqueQuestions(student.socioeconomic);
 
     // Preenche as respostas socioeconômicas
     questions.forEach((question) => {
       // Encontra a resposta para a pergunta atual
-      const socioItem = socioeconomic.find(
+      const socioItem = student.socioeconomic.find(
         (item) => item.question === question,
       );
 

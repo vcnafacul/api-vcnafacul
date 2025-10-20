@@ -20,6 +20,8 @@ import { StudentCourseService } from 'src/modules/prepCourse/studentCourse/stude
 import { RoleService } from 'src/modules/role/role.service';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
+import { FormService } from 'src/modules/vcnafacul-form/form/form.service';
+import { SubmissionService } from 'src/modules/vcnafacul-form/submission/submission.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
@@ -56,6 +58,8 @@ describe('StudentCourse (e2e)', () => {
   let logStudentRepository: LogStudentRepository;
   let classService: ClassService;
   let coursePeriodService: CoursePeriodService;
+  let formService: FormService;
+  let submissionService: SubmissionService;
 
   const discordWebhookMock = {
     sendMessage: jest.fn(),
@@ -99,6 +103,8 @@ describe('StudentCourse (e2e)', () => {
     coursePeriodService =
       moduleFixture.get<CoursePeriodService>(CoursePeriodService);
 
+    formService = moduleFixture.get<FormService>(FormService);
+    submissionService = moduleFixture.get<SubmissionService>(SubmissionService);
     jest
       .spyOn(emailService, 'sendCreateUser')
       .mockImplementation(async () => {});
@@ -137,7 +143,16 @@ describe('StudentCourse (e2e)', () => {
       .spyOn(studentCourseService['discordWebhook'], 'sendMessage')
       .mockImplementation(async () => {});
 
+    jest
+      .spyOn(formService, 'createFormFull')
+      .mockImplementation(async () => 'hashKeyFile');
+
+    jest
+      .spyOn(submissionService, 'createSubmission')
+      .mockImplementation(async () => 'hashKeyFile');
+
     await app.init();
+
     await roleSeedService.seed();
     await roleUpdateAdminSeedService.seed();
   });
