@@ -61,4 +61,11 @@ export class ProvaService {
       async () => await this.axios.get<any>(`v1/prova/summary`),
     );
   }
+
+  public async getFile(id: string) {
+    return await this.blobService.getFile(
+      `${id}`,
+      this.envService.get('BUCKET_SIMULADO'),
+    );
+  }
 }
