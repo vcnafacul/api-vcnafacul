@@ -28,6 +28,7 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .skip((page - 1) * limit)
       .take(limit)
       .leftJoinAndSelect('entity.class', 'class')
+      .leftJoinAndSelect('class.coursePeriod', 'course_period')
       .innerJoin('entity.user', 'users')
       .addSelect([
         'users.id',
@@ -46,6 +47,7 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
     let queryBuilderCount = this.repository
       .createQueryBuilder('entity')
       .leftJoinAndSelect('entity.class', 'class')
+      .leftJoinAndSelect('class.coursePeriod', 'course_period')
       .innerJoin('entity.user', 'users')
       .addSelect(['users.birthday'])
       .where({ ...where });
@@ -121,6 +123,7 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .where({ ...where })
       .leftJoinAndSelect('entity.inscriptionCourse', 'inscriptionCourse')
       .leftJoinAndSelect('entity.class', 'class')
+      .leftJoinAndSelect('class.coursePeriod', 'course_period')
       .getOne();
   }
 
@@ -254,5 +257,24 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .where('entity.deletedAt IS NULL')
       .andWhere('entity.applicationStatus = :status', { status })
       .getCount();
+  }
+
+  async updateStudentStatus(
+    studentIds: string[],
+    status: StatusApplication,
+  ): Promise<void> {
+    if (!studentIds || studentIds.length === 0) {
+      return;
+    }
+
+    await this.repository
+      .createQueryBuilder('entity')
+      .update()
+      .set({
+        applicationStatus: status,
+        updatedAt: new Date(),
+      })
+      .where('id IN (:...studentIds)', { studentIds })
+      .execute();
   }
 }

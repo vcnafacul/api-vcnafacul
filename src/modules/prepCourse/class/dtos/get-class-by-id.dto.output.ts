@@ -5,9 +5,11 @@ export class GetClassByIdDtoOutput {
   id: string;
   name: string;
   description?: string;
-  year: number;
-  startDate: Date;
-  endDate: Date;
+  coursePeriodId: string;
+  coursePeriodName: string;
+  coursePeriodYear: number;
+  coursePeriodStartDate: Date;
+  coursePeriodEndDate: Date;
   number_students: number;
   students: StudentClass[];
 }

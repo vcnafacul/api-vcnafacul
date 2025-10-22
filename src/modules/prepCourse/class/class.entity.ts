@@ -8,10 +8,11 @@ import {
   OneToMany,
 } from 'typeorm';
 import { BaseEntity } from '../../../shared/modules/base/entity.base';
+import { AttendanceRecord } from '../attendance/attendanceRecord/attendance-record.entity';
 import { Collaborator } from '../collaborator/collaborator.entity';
+import { CoursePeriod } from '../coursePeriod/course-period.entity';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
 import { StudentCourse } from '../studentCourse/student-course.entity';
-import { AttendanceRecord } from '../attendance/attendanceRecord/attendance-record.entity';
 
 @Entity('classes')
 export class Class extends BaseEntity {
@@ -21,21 +22,18 @@ export class Class extends BaseEntity {
   @Column({ nullable: true })
   public description?: string;
 
-  @Column()
-  public year: number;
-
-  @Column()
-  public startDate: Date;
-
-  @Column()
-  public endDate: Date;
-
   @ManyToOne(
     () => PartnerPrepCourse,
     (partnerInscription) => partnerInscription.students,
   )
   @JoinColumn({ name: 'partner_prep_course_id' })
   partnerPrepCourse: PartnerPrepCourse;
+
+  @ManyToOne(() => CoursePeriod, (coursePeriod) => coursePeriod.classes, {
+    nullable: true,
+  })
+  @JoinColumn({ name: 'course_period_id' })
+  coursePeriod: CoursePeriod;
 
   @OneToMany(() => StudentCourse, (students) => students.class, {
     eager: true,

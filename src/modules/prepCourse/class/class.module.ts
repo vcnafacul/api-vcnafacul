@@ -4,14 +4,15 @@ import { RoleRepository } from 'src/modules/role/role.repository';
 import { UserModule } from 'src/modules/user/user.module';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
+import { EnvModule } from 'src/shared/modules/env/env.module';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
+import { CoursePeriodRepository } from '../coursePeriod/course-period.repository';
 import { PartnerPrepCourseModule } from '../partnerPrepCourse/partner-prep-course.module';
 import { ClassController } from './class.controller';
 import { ClassRepository } from './class.repository';
 import { ClassService } from './class.service';
-import { EnvModule } from 'src/shared/modules/env/env.module';
 
 @Module({
   controllers: [ClassController],
@@ -24,6 +25,7 @@ import { EnvModule } from 'src/shared/modules/env/env.module';
     RoleRepository,
     EmailService,
     CollaboratorRepository,
+    CoursePeriodRepository,
     DiscordWebhook,
   ],
   exports: [ClassRepository, ClassService, UserService, UserRepository],
