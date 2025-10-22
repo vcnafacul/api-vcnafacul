@@ -15,26 +15,6 @@ export class CoursePeriodRepository extends BaseRepository<CoursePeriod> {
     super(_entityManager.getRepository(CoursePeriod));
   }
 
-  async delete(id: string): Promise<void> {
-    const coursePeriod = await this.repository.findOneBy({ id });
-    if (!coursePeriod) {
-      throw new Error(`Course period not found by id ${id}`);
-    }
-    coursePeriod.deletedAt = new Date();
-    await this.repository.save(coursePeriod);
-  }
-
-  async findOneByUserId(userId: string): Promise<CoursePeriod[]> {
-    return await this.repository
-      .createQueryBuilder('course_period')
-      .innerJoin('course_period.partnerPrepCourse', 'partner_prep_course')
-      .innerJoin('partner_prep_course.representative', 'user')
-      .where('user.id = :userId', { userId })
-      .orderBy('course_period.year', 'DESC')
-      .addOrderBy('course_period.startDate', 'DESC')
-      .getMany();
-  }
-
   async findOneById(id: string): Promise<CoursePeriod> {
     return await this.repository
       .createQueryBuilder('course_period')

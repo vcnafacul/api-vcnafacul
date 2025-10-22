@@ -8,7 +8,6 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
-import { Not } from 'typeorm';
 import { PartnerPrepCourseRepository } from '../partnerPrepCourse/partner-prep-course.repository';
 import { StatusApplication } from '../studentCourse/enums/stastusApplication';
 import { StudentCourseRepository } from '../studentCourse/student-course.repository';
@@ -56,19 +55,6 @@ export class CoursePeriodService extends BaseService<CoursePeriod> {
 
     // Extrair o ano da data de início
     const year = startDate.getFullYear();
-
-    // Verificar se já existe um período com o mesmo ano para o mesmo parceiro
-    const existingPeriod = await this.repository.findOneBy({
-      year: year,
-      partnerPrepCourse: { id: partnerPrepCourse.id },
-    });
-
-    if (existingPeriod) {
-      throw new HttpException(
-        'A course period for this year already exists',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
 
     const coursePeriod = new CoursePeriod();
     coursePeriod.name = dto.name;
@@ -158,27 +144,6 @@ export class CoursePeriodService extends BaseService<CoursePeriod> {
       }
     }
 
-    // Se está atualizando a data de início, extrair o novo ano e verificar conflitos
-    if (dto.startDate) {
-      const newStartDate = new Date(dto.startDate);
-      const newYear = newStartDate.getFullYear();
-
-      if (newYear !== coursePeriod.year) {
-        const existingPeriod = await this.repository.findOneBy({
-          year: newYear,
-          partnerPrepCourse: { id: coursePeriod.partnerPrepCourse.id },
-          id: Not(dto.id),
-        });
-
-        if (existingPeriod) {
-          throw new HttpException(
-            'A course period for this year already exists',
-            HttpStatus.BAD_REQUEST,
-          );
-        }
-      }
-    }
-
     // Determinar o ano final baseado na data de início atualizada ou atual
     const finalStartDate = dto.startDate
       ? new Date(dto.startDate)
@@ -255,10 +220,6 @@ export class CoursePeriodService extends BaseService<CoursePeriod> {
       limit: coursePeriods.limit,
       totalItems: filteredPeriods.length,
     };
-  }
-
-  async getByUserId(userId: string): Promise<CoursePeriod[]> {
-    return await this.repository.findOneByUserId(userId);
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {

@@ -2,10 +2,12 @@ export class ClassDtoOutput {
   id: string;
   name: string;
   description?: string;
-  coursePeriodId: string;
-  coursePeriodName: string;
-  coursePeriodYear: number;
-  coursePeriodStartDate: Date;
-  coursePeriodEndDate: Date;
+  coursePeriod: {
+    id: string;
+    name: string;
+    year: number;
+    startDate: Date;
+    endDate: Date;
+  };
   number_students: number;
 }

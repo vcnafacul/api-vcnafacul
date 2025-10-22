@@ -6,13 +6,14 @@ export function CreateCoursePeriodDtoInputFaker(): CreateCoursePeriodDtoInput {
     min: 2020,
     max: new Date().getFullYear() + 1,
   });
+  const nextYear = new Date().getFullYear();
   const startDate = faker.date.between({
     from: new Date(year, 0, 1),
     to: new Date(year, 6, 31),
   });
   const endDate = faker.date.between({
-    from: startDate,
-    to: new Date(year, 11, 31),
+    from: new Date(nextYear + 1, 11, 31),
+    to: new Date(nextYear + 10, 11, 31),
   });
 
   return {

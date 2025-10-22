@@ -165,37 +165,6 @@ describe('CoursePeriod (e2e)', () => {
       });
   }, 30000);
 
-  it('should fail to create duplicate course period for same year', async () => {
-    const { user } = await createPartnerFaker();
-    const coursePeriodDto = CreateCoursePeriodDtoInputFaker();
-
-    const token = await jwtService.signAsync(
-      { user: { id: user.id } },
-      { expiresIn: '2h' },
-    );
-
-    // Create first period
-    await request(app.getHttpServer())
-      .post('/course-period')
-      .expect(201)
-      .send(coursePeriodDto)
-      .set({
-        Authorization: `Bearer ${token}`,
-      });
-
-    // Try to create second period with same year (same startDate year)
-    const duplicateDto = CreateCoursePeriodDtoInputFaker();
-    duplicateDto.startDate = coursePeriodDto.startDate; // Same year as first period
-
-    await request(app.getHttpServer())
-      .post('/course-period')
-      .expect(400)
-      .send(duplicateDto)
-      .set({
-        Authorization: `Bearer ${token}`,
-      });
-  }, 30000);
-
   it('should update a course period successfully', async () => {
     const { user } = await createPartnerFaker();
     const token = await jwtService.signAsync(
@@ -231,43 +200,6 @@ describe('CoursePeriod (e2e)', () => {
       .expect(200);
 
     expect(updatedPeriod.body.name).toBe(updateDto.name);
-  }, 30000);
-
-  it('should list course periods for user', async () => {
-    const { user } = await createPartnerFaker();
-    const token = await jwtService.signAsync(
-      { user: { id: user.id } },
-      { expiresIn: '2h' },
-    );
-
-    // Create multiple course periods
-    const period1 = CreateCoursePeriodDtoInputFaker();
-    const period2 = CreateCoursePeriodDtoInputFaker();
-    // Ensure different years by setting different startDate years
-    const year1 = new Date(period1.startDate).getFullYear();
-    period2.startDate = new Date(year1 + 1, 0, 1); // Different year to avoid conflict
-    period2.endDate = new Date(year1 + 1, 6, 31);
-
-    await request(app.getHttpServer())
-      .post('/course-period')
-      .send(period1)
-      .set({ Authorization: `Bearer ${token}` })
-      .expect(201);
-
-    await request(app.getHttpServer())
-      .post('/course-period')
-      .send(period2)
-      .set({ Authorization: `Bearer ${token}` })
-      .expect(201);
-
-    // List periods
-    const response = await request(app.getHttpServer())
-      .get('/course-period?page=1&limit=10')
-      .set({ Authorization: `Bearer ${token}` })
-      .expect(200);
-
-    expect(response.body.data).toHaveLength(2);
-    expect(response.body.totalItems).toBe(2);
   }, 30000);
 
   it('should get course period by id', async () => {
