@@ -9,12 +9,12 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Permissions } from 'src/modules/role/role.entity';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
 import { ProvaService } from './prova.service';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('Simulado - Prova')
 @Controller('mssimulado/prova')
@@ -74,12 +74,22 @@ export class ProvaController {
   })
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.cadastrarProvas)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'file', maxCount: 1 },
+      { name: 'gabarito', maxCount: 1 },
+    ]),
+  )
   public async createProvas(
     @Body() dto: CreateProvaDTOInput,
-    @UploadedFile() file,
+    @UploadedFile()
+    files: { file: Express.Multer.File[]; gabarito?: Express.Multer.File[] },
   ) {
-    return await this.provaService.createProva(dto, file);
+    return await this.provaService.createProva(
+      dto,
+      files.file[0],
+      files.gabarito[0],
+    );
   }
 
   @Get(':id/file')

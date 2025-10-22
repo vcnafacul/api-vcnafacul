@@ -6,5 +6,6 @@ export class CreateProvaDTORequest {
   ano: number;
   exame: string;
   filename: string;
+  gabarito: string;
   tipo: string;
 }
