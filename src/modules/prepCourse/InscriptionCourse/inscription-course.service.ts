@@ -2,6 +2,7 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Status } from 'src/modules/simulado/enum/status.enum';
 import { Gender } from 'src/modules/user/enum/gender';
+import { FormService } from 'src/modules/vcnafacul-form/form/form.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { CacheService } from 'src/shared/modules/cache/cache.service';
@@ -34,6 +35,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     private readonly logStudentRepository: LogStudentRepository,
     private readonly discordWebhook: DiscordWebhook,
     private readonly cache: CacheService,
+    private readonly formService: FormService,
   ) {
     super(repository);
   }
@@ -68,6 +70,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     inscriptionCourse.description = dto.description || '';
     inscriptionCourse.partnerPrepCourse = parnetPrepCourse;
     const result = await this.repository.create(inscriptionCourse);
+    await this.formService.createFormFull(result.id);
     return {
       id: result.id,
       name: result.name,
@@ -140,6 +143,8 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
         : today > inscription.endDate
           ? Status.Rejected
           : Status.Approved;
+    const partnerPrepForm =
+      await this.formService.getFormFullByInscriptionId(id);
     return Object.assign(new HasInscriptionActiveDtoOutput(), {
       prepCourseName: inscription.partnerPrepCourse.geo.name,
       prepCourseId: inscription.partnerPrepCourse.id,
@@ -151,6 +156,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
         status:
           inscription.actived === Status.Rejected ? Status.Rejected : status,
       },
+      partnerPrepForm,
     });
   }
 

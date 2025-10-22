@@ -14,6 +14,8 @@ import { Role } from 'src/modules/role/role.entity';
 import { RoleService } from 'src/modules/role/role.service';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
+import { FormService } from 'src/modules/vcnafacul-form/form/form.service';
+import { SubmissionService } from 'src/modules/vcnafacul-form/submission/submission.service';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
@@ -41,6 +43,8 @@ describe('PartnerPrepCourse (e2e)', () => {
   let partnerPrepCourseService: PartnerPrepCourseService;
   let inscriptionCourseService: InscriptionCourseService;
   let blobService: BlobService;
+  let formService: FormService;
+  let submissionService: SubmissionService;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -71,7 +75,8 @@ describe('PartnerPrepCourse (e2e)', () => {
       InscriptionCourseService,
     );
     blobService = moduleFixture.get<BlobService>('BlobService');
-
+    formService = moduleFixture.get<FormService>(FormService);
+    submissionService = moduleFixture.get<SubmissionService>(SubmissionService);
     jest
       .spyOn(emailService, 'sendCreateUser')
       .mockImplementation(async () => {});
@@ -94,6 +99,14 @@ describe('PartnerPrepCourse (e2e)', () => {
         }
         return Buffer.from('conteúdo fake de um arquivo');
       });
+
+    jest
+      .spyOn(formService, 'createFormFull')
+      .mockImplementation(async () => 'hashKeyFile');
+
+    jest
+      .spyOn(submissionService, 'createSubmission')
+      .mockImplementation(async () => 'hashKeyFile');
 
     await app.init();
     await roleSeedService.seed();
@@ -128,7 +141,17 @@ describe('PartnerPrepCourse (e2e)', () => {
       },
       representative.id,
     );
-    partnerPrepCourse.geo = geo;
+    partnerPrepCourse.geo = {
+      id: geo.id,
+      name: geo.name,
+      category: geo.category,
+      street: geo.street,
+      number: geo.number,
+      complement: geo.complement,
+      neighborhood: geo.neighborhood,
+      state: geo.state,
+      city: geo.city,
+    };
 
     const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker();
     const inscription = await inscriptionCourseService.create(
@@ -177,18 +200,13 @@ describe('PartnerPrepCourse (e2e)', () => {
       { expiresIn: '2h' },
     );
 
-    const fakeFileBuffer = Buffer.from('conteúdo fake de um arquivo docx');
-
     return await request(app.getHttpServer())
       .post('/partner-prep-course')
       .set({
         Authorization: `Bearer ${token}`,
-        'content-type': 'multipart/form-data',
+        'content-type': 'application/json',
       })
-      .field('geoId', dto.geoId)
-      .field('representative', dto.representative)
-      .attach('partnershipAgreement', fakeFileBuffer, 'test.docx')
-      .attach('logo', fakeFileBuffer, 'logo.png')
+      .send(dto)
       .expect(201);
   }, 30000);
 
@@ -206,18 +224,13 @@ describe('PartnerPrepCourse (e2e)', () => {
       { expiresIn: '2h' },
     );
 
-    const fakeFileBuffer = Buffer.from('conteúdo fake de um arquivo docx');
-
     return await request(app.getHttpServer())
       .post('/partner-prep-course')
       .set({
         Authorization: `Bearer ${token}`,
-        'content-type': 'multipart/form-data',
+        'content-type': 'application/json',
       })
-      .field('geoId', dto.geoId)
-      .field('representative', dto.representative)
-      .attach('partnershipAgreement', fakeFileBuffer, 'test.docx')
-      .attach('logo', fakeFileBuffer, 'logo.png')
+      .send(dto)
       .expect(409)
       .expect((res) => {
         expect(res.body).toHaveProperty('message');

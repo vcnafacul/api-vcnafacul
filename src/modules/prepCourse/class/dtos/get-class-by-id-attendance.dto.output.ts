@@ -1,7 +1,9 @@
 export class GetClassByIdAttendanceDtoOutput {
   id: string;
   name: string;
-  year: number;
+  coursePeriodId: string;
+  coursePeriodName: string;
+  coursePeriodYear: number;
   students: StudentClassAttendance[];
 }
 

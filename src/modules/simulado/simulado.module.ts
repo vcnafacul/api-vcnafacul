@@ -1,7 +1,7 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { EnvModule } from 'src/shared/modules/env/env.module';
-import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
+import { HttpServiceAxiosFactory } from 'src/shared/services/axios/http-service-axios.factory';
 import { BlobModule } from 'src/shared/services/blob/blob.module';
 import { AuditLogRepository } from '../audit-log/audit-log.repository';
 import { AuditLogService } from '../audit-log/audit-log.service';
@@ -30,7 +30,7 @@ import { SimuladoService } from './simulado.service';
     ProvaService,
     QuestaoService,
     HistoricoService,
-    HttpServiceAxios,
+    HttpServiceAxiosFactory,
   ],
 })
 export class SimuladoModule {}

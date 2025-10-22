@@ -44,11 +44,11 @@ export class GeoService extends BaseService<Geolocation> {
     logGeo.geo = newGeo;
     await this.log.create(logGeo);
 
-    // const listEmail = await this.userService.getvalidateGeo();
-    // await this.emailService.sendEmailGeo({
-    //   geo: newGeo,
-    //   emails: listEmail,
-    // });
+    const listEmail = await this.userService.getvalidateGeo();
+    await this.emailService.sendEmailGeo({
+      geo: newGeo,
+      emails: listEmail,
+    });
 
     return newGeo;
   }

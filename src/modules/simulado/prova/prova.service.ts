@@ -1,20 +1,27 @@
 import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
-import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
+import {
+  HttpServiceAxios,
+  HttpServiceAxiosFactory,
+} from 'src/shared/services/axios/http-service-axios.factory';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { CreateProvaDTORequest } from '../dtos/prova-create.dto.request';
 import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
-import { CacheService } from 'src/shared/modules/cache/cache.service';
 
 @Injectable()
 export class ProvaService {
+  private readonly axios: HttpServiceAxios;
+
   constructor(
-    private readonly axios: HttpServiceAxios,
+    private readonly httpServiceFactory: HttpServiceAxiosFactory,
     private readonly envService: EnvService,
     @Inject('BlobService') private readonly blobService: BlobService,
     private readonly cache: CacheService,
   ) {
-    this.axios.setBaseURL(this.envService.get('SIMULADO_URL'));
+    this.axios = this.httpServiceFactory.create(
+      this.envService.get('SIMULADO_URL'),
+    );
   }
 
   public async createProva(prova: CreateProvaDTOInput, file: any, gabarito:any) {

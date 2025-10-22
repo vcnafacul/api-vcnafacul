@@ -35,7 +35,7 @@ export function createStudentCourseDTOInputFaker(
       family_relationship: faker.person.firstName(),
     },
     inscriptionId: inscriptionId ?? uuidv4(),
-    socioeconomic: '[]',
+    socioeconomic: [],
   };
 }
 

@@ -16,6 +16,8 @@ import { CreateUserDtoInput } from 'src/modules/user/dto/create.dto.input';
 import { CreateFlow } from 'src/modules/user/enum/create-flow';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
+import { CreateSubmissionDtoInput } from 'src/modules/vcnafacul-form/submission/dto/create-submission.dto.input';
+import { SubmissionService } from 'src/modules/vcnafacul-form/submission/submission.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import {
   Filter,
@@ -32,7 +34,7 @@ import { maskCpf } from 'src/utils/maskCpf';
 import { maskEmail } from 'src/utils/maskEmail';
 import { maskPhone } from 'src/utils/maskPhone';
 import { IsNull, Not } from 'typeorm';
-import { ClassService } from '../class/class.service';
+import { ClassRepository } from '../class/class.repository';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
 import { InscriptionCourseService } from '../InscriptionCourse/inscription-course.service';
@@ -79,10 +81,11 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     private readonly logStudentRepository: LogStudentRepository,
     private envService: EnvService,
     private readonly collaboratorRepository: CollaboratorRepository,
-    private readonly classService: ClassService,
+    private readonly classRepository: ClassRepository,
     private readonly discordWebhook: DiscordWebhook,
     private readonly roleService: RoleService,
     private readonly cache: CacheService,
+    private readonly submissionService: SubmissionService,
   ) {
     super(repository);
   }
@@ -131,6 +134,20 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       inscriptionCourse.partnerPrepCourse,
       inscriptionCourse,
     );
+
+    const submissionDto: CreateSubmissionDtoInput = {
+      inscriptionId: inscriptionCourse.id,
+      userId: user.id,
+      studentId: studentCourse.id,
+      name: user.useSocialName
+        ? user.socialName + ' ' + user.lastName
+        : user.firstName + ' ' + user.lastName,
+      email: user.email,
+      birthday: dto.birthday,
+      answers: dto.socioeconomic,
+    };
+
+    await this.submissionService.createSubmission(submissionDto);
 
     if (this.isMinor(user.birthday)) {
       await this.createLegalGuardian(dto.legalGuardian, studentCourse);
@@ -775,9 +792,12 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     if (!student) {
       throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
-    const class_ = await this.classService.findOneBy({ id: classId });
+    const class_ = await this.classRepository.findOneById(classId);
     if (!class_) {
       throw new HttpException('Turma não encontrada', HttpStatus.NOT_FOUND);
+    }
+    if (class_.coursePeriod.endDate < new Date()) {
+      throw new HttpException('Turma já encerrada', HttpStatus.BAD_REQUEST);
     }
     student.class = class_;
     await this.repository.update(student);
@@ -785,7 +805,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     const log = new LogStudent();
     log.studentId = student.id;
     log.applicationStatus = StatusApplication.Enrolled;
-    log.description = `Atribuido a Turma: ${class_.name} (${class_.year})`;
+    log.description = `Atribuido a Turma: ${class_.name} (${class_.coursePeriod?.year || 'N/A'})`;
     await this.logStudentRepository.create(log);
   }
 
@@ -856,8 +876,8 @@ export class StudentCourseService extends BaseService<StudentCourse> {
               class: {
                 id: student.class?.id,
                 name: student.class?.name,
-                year: student.class?.year,
-                endDate: student.class?.endDate,
+                year: student.class?.coursePeriod?.year || 0,
+                endDate: student.class?.coursePeriod?.endDate,
               },
             }) as unknown as StudentsDtoOutput,
         ),
@@ -976,7 +996,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       whatsapp: dto.whatsapp,
       urgencyPhone: dto.urgencyPhone,
       partnerPrepCourse: partnerPrepCourse,
-      socioeconomic: dto.socioeconomic,
+      socioeconomic: JSON.stringify(dto.socioeconomic),
     });
 
     studentCourse.inscriptionCourse = inscriptionCourse;
@@ -1086,15 +1106,12 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       flattenedItem.legalGuardian?.family_relationship;
     delete flattenedItem.legalGuardian;
 
-    const socioeconomic: SocioeconomicAnswer[] = JSON.parse(
-      student.socioeconomic,
-    );
-    const questions = this.getUniqueQuestions(socioeconomic);
+    const questions = this.getUniqueQuestions(student.socioeconomic);
 
     // Preenche as respostas socioeconômicas
     questions.forEach((question) => {
       // Encontra a resposta para a pergunta atual
-      const socioItem = socioeconomic.find(
+      const socioItem = student.socioeconomic.find(
         (item) => item.question === question,
       );
 

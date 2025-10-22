@@ -1,7 +1,7 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { EnvModule } from 'src/shared/modules/env/env.module';
-import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
+import { HttpServiceAxiosFactory } from 'src/shared/services/axios/http-service-axios.factory';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { AuditLogModule } from '../audit-log/audit-log.module';
 import { AuditLogRepository } from '../audit-log/audit-log.repository';
@@ -23,9 +23,9 @@ import { GeoExistValidator } from './validator/geo-exist.validator';
     EmailService,
     AuditLogService,
     AuditLogRepository,
-    HttpServiceAxios,
     GeoExistValidator,
     LogGeoRepository,
+    HttpServiceAxiosFactory,
   ],
 })
 export class GeoModule {}

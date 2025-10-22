@@ -2,17 +2,24 @@ import { Injectable } from '@nestjs/common';
 import { Period } from 'src/modules/user/enum/period';
 import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
-import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
+import {
+  HttpServiceAxios,
+  HttpServiceAxiosFactory,
+} from 'src/shared/services/axios/http-service-axios.factory';
 import { GetHistoricoDTOInput } from '../dtos/get-historico.dto';
 
 @Injectable()
 export class HistoricoService {
+  private readonly axios: HttpServiceAxios;
+
   constructor(
-    private readonly axios: HttpServiceAxios,
+    private readonly httpServiceFactory: HttpServiceAxiosFactory,
     private readonly envService: EnvService,
     private readonly cache: CacheService,
   ) {
-    this.axios.setBaseURL(this.envService.get('SIMULADO_URL'));
+    this.axios = this.httpServiceFactory.create(
+      this.envService.get('SIMULADO_URL'),
+    );
   }
   async getAllByUser(query: GetHistoricoDTOInput, userId: string) {
     let baseUrl = 'v1/historico?';
