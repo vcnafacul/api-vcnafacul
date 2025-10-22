@@ -24,7 +24,11 @@ export class ProvaService {
     );
   }
 
-  public async createProva(prova: CreateProvaDTOInput, file: any, gabarito:any) {
+  public async createProva(
+    prova: CreateProvaDTOInput,
+    file: any,
+    gabarito: any,
+  ) {
     const fileName = await this.blobService.uploadFile(
       file,
       this.envService.get('BUCKET_SIMULADO'),
