@@ -5,6 +5,7 @@ import { Role } from '../../role/role.entity';
 import { User } from '../../user/user.entity';
 import { Class } from '../class/class.entity';
 import { Collaborator } from '../collaborator/collaborator.entity';
+import { CoursePeriod } from '../coursePeriod/course-period.entity';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
 import { StudentCourse } from '../studentCourse/student-course.entity';
 
@@ -51,6 +52,12 @@ export class PartnerPrepCourse extends BaseEntity {
 
   @OneToMany(() => Class, (c) => c.partnerPrepCourse)
   public classes: Class[];
+
+  @OneToMany(
+    () => CoursePeriod,
+    (coursePeriod) => coursePeriod.partnerPrepCourse,
+  )
+  public coursePeriods: CoursePeriod[];
 
   @OneToMany(() => Role, (role) => role.partnerPrepCourse)
   public roles: Role[];

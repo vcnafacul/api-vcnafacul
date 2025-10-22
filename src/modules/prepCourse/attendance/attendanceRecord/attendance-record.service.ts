@@ -230,7 +230,7 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
     return {
       class: {
         name: classEntity.name,
-        year: classEntity.year,
+        year: classEntity.coursePeriod?.year || 0,
       },
       startDate,
       endDate,
@@ -272,7 +272,7 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
     return Object.assign(new AttendanceRecordByStudentDtoOutput(), {
       class: {
         name: classEntity.name,
-        year: classEntity.year,
+        year: classEntity.coursePeriod?.year || 0,
       },
       startDate,
       endDate,

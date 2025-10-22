@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateClassDtoInput {
   @ApiProperty()
@@ -11,14 +11,6 @@ export class CreateClassDtoInput {
   description?: string;
 
   @ApiProperty()
-  @IsNumber()
-  year: number;
-
-  @ApiProperty()
-  @IsDateString()
-  startDate: Date;
-
-  @ApiProperty()
-  @IsDateString()
-  endDate: Date;
+  @IsUUID()
+  coursePeriodId: string;
 }

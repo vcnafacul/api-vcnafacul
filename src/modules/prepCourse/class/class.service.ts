@@ -9,6 +9,7 @@ import { UserService } from 'src/modules/user/user.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { maskEmail } from 'src/utils/maskEmail';
+import { CoursePeriodRepository } from '../coursePeriod/course-period.repository';
 import { PartnerPrepCourseRepository } from '../partnerPrepCourse/partner-prep-course.repository';
 import { Class } from './class.entity';
 import { ClassRepository } from './class.repository';
@@ -23,6 +24,7 @@ export class ClassService extends BaseService<Class> {
   constructor(
     private readonly repository: ClassRepository,
     private readonly partnerRepository: PartnerPrepCourseRepository,
+    private readonly coursePeriodRepository: CoursePeriodRepository,
     private readonly userService: UserService,
     private readonly roleService: RoleService,
   ) {
@@ -33,13 +35,23 @@ export class ClassService extends BaseService<Class> {
     const partnerPrepCourse =
       await this.partnerRepository.findOneByUserId(userId);
 
+    // Validar se o período letivo existe e pertence ao mesmo parceiro
+    const coursePeriod = await this.coursePeriodRepository.findOneById(
+      dto.coursePeriodId,
+    );
+
+    if (!coursePeriod) {
+      throw new HttpException(
+        'Course period not found or does not belong to this partner',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const c = new Class();
     c.name = dto.name;
     c.description = dto.description;
-    c.year = dto.year;
-    c.startDate = dto.startDate;
-    c.endDate = dto.endDate;
     c.partnerPrepCourse = partnerPrepCourse;
+    c.coursePeriod = coursePeriod;
     c.admins = [];
     c.students = [];
     const entity = await this.repository.create(c);
@@ -83,6 +95,11 @@ export class ClassService extends BaseService<Class> {
     });
     const result = {
       ...classEntity,
+      coursePeriodId: classEntity.coursePeriod?.id || '',
+      coursePeriodName: classEntity.coursePeriod?.name || '',
+      coursePeriodYear: classEntity.coursePeriod?.year || 0,
+      coursePeriodStartDate: classEntity.coursePeriod?.startDate || new Date(),
+      coursePeriodEndDate: classEntity.coursePeriod?.endDate || new Date(),
       students,
     };
     return result as unknown as GetClassByIdDtoOutput;
@@ -97,23 +114,45 @@ export class ClassService extends BaseService<Class> {
       );
     }
 
+    // Se está atualizando o período letivo, validar
     if (
-      classEntity.students.length > 0 &&
-      new Date(dto.startDate).getFullYear !==
-        new Date(classEntity.startDate).getFullYear
+      dto.coursePeriodId &&
+      dto.coursePeriodId !== classEntity.coursePeriod?.id
     ) {
-      throw new HttpException(
-        `Class with students cannot be updated`,
-        HttpStatus.BAD_REQUEST,
+      const coursePeriod = await this.coursePeriodRepository.findOneById(
+        dto.coursePeriodId,
       );
+      if (!coursePeriod) {
+        throw new HttpException(
+          'Course period not found or does not belong to this partner',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      if (!coursePeriod) {
+        throw new HttpException(
+          'Course period not found or does not belong to this partner',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Verificar se o período letivo tem turmas com estudantes
+      if (classEntity.students.length > 0) {
+        throw new HttpException(
+          `Class with students cannot change course period`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
     }
 
     Object.assign(classEntity, {
       name: dto.name ?? classEntity.name,
       description: dto.description ?? classEntity.description,
-      year: dto.year ?? classEntity.year,
-      startDate: dto.startDate ?? classEntity.startDate,
-      endDate: dto.endDate ?? classEntity.endDate,
+      coursePeriod: dto.coursePeriodId
+        ? await this.coursePeriodRepository.findOneBy({
+            id: dto.coursePeriodId,
+          })
+        : classEntity.coursePeriod,
     });
 
     await this.repository.update(classEntity);
@@ -154,9 +193,13 @@ export class ClassService extends BaseService<Class> {
         id: c.id,
         name: c.name,
         description: c.description,
-        year: c.year,
-        startDate: c.startDate,
-        endDate: c.endDate,
+        coursePeriod: {
+          id: c.coursePeriod?.id || '',
+          name: c.coursePeriod?.name || '',
+          year: c.coursePeriod?.year || 0,
+          startDate: c.coursePeriod?.startDate || new Date(),
+          endDate: c.coursePeriod?.endDate || new Date(),
+        },
         number_students: c.students.length,
       })),
       page: classes.page,
@@ -186,6 +229,9 @@ export class ClassService extends BaseService<Class> {
     });
     const result = {
       ...classEntity,
+      coursePeriodId: classEntity.coursePeriod?.id || '',
+      coursePeriodName: classEntity.coursePeriod?.name || '',
+      coursePeriodYear: classEntity.coursePeriod?.year || 0,
       students,
     };
     return result as unknown as GetClassByIdAttendanceDtoOutput;

@@ -7,8 +7,6 @@ export default function CreateClassDtoInputFaker(
   return {
     name: className || faker.company.name(),
     description: faker.lorem.sentence(),
-    year: faker.number.int({ min: 2000, max: new Date().getFullYear() }),
-    startDate: faker.date.recent(),
-    endDate: faker.date.future(),
+    coursePeriodId: faker.string.uuid(),
   };
 }

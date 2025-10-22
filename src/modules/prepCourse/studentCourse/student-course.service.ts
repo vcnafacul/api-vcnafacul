@@ -34,7 +34,7 @@ import { maskCpf } from 'src/utils/maskCpf';
 import { maskEmail } from 'src/utils/maskEmail';
 import { maskPhone } from 'src/utils/maskPhone';
 import { IsNull, Not } from 'typeorm';
-import { ClassService } from '../class/class.service';
+import { ClassRepository } from '../class/class.repository';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
 import { InscriptionCourseService } from '../InscriptionCourse/inscription-course.service';
@@ -81,7 +81,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     private readonly logStudentRepository: LogStudentRepository,
     private envService: EnvService,
     private readonly collaboratorRepository: CollaboratorRepository,
-    private readonly classService: ClassService,
+    private readonly classRepository: ClassRepository,
     private readonly discordWebhook: DiscordWebhook,
     private readonly roleService: RoleService,
     private readonly cache: CacheService,
@@ -792,9 +792,12 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     if (!student) {
       throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
-    const class_ = await this.classService.findOneBy({ id: classId });
+    const class_ = await this.classRepository.findOneById(classId);
     if (!class_) {
       throw new HttpException('Turma não encontrada', HttpStatus.NOT_FOUND);
+    }
+    if (class_.coursePeriod.endDate < new Date()) {
+      throw new HttpException('Turma já encerrada', HttpStatus.BAD_REQUEST);
     }
     student.class = class_;
     await this.repository.update(student);
@@ -802,7 +805,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     const log = new LogStudent();
     log.studentId = student.id;
     log.applicationStatus = StatusApplication.Enrolled;
-    log.description = `Atribuido a Turma: ${class_.name} (${class_.year})`;
+    log.description = `Atribuido a Turma: ${class_.name} (${class_.coursePeriod?.year || 'N/A'})`;
     await this.logStudentRepository.create(log);
   }
 
@@ -873,8 +876,8 @@ export class StudentCourseService extends BaseService<StudentCourse> {
               class: {
                 id: student.class?.id,
                 name: student.class?.name,
-                year: student.class?.year,
-                endDate: student.class?.endDate,
+                year: student.class?.coursePeriod?.year || 0,
+                endDate: student.class?.coursePeriod?.endDate,
               },
             }) as unknown as StudentsDtoOutput,
         ),
