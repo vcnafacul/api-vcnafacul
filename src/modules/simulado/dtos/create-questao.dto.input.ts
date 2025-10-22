@@ -44,6 +44,10 @@ export class CreateQuestaoDTOInput {
 
   @ApiProperty({ required: false })
   @IsOptional()
+  public pergunta?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
   public textoAlternativaA?: string;
 
   @ApiProperty({ required: false })
