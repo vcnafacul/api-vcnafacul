@@ -311,7 +311,10 @@ export class StudentCourseController {
     @UploadedFile() file: Express.Multer.File,
     @Req() req: Request,
   ) {
-    await this.service.updateProfilePhotoByStudent(file, req.body.studentId);
+    return await this.service.updateProfilePhotoByStudent(
+      file,
+      req.body.studentId,
+    );
   }
 
   @Get('summary')
