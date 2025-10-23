@@ -242,6 +242,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     await this.logStudentRepository.create(log);
 
     await this.repository.update(student);
+    return fileKey;
   }
 
   async declaredInterest(
