@@ -24,7 +24,11 @@ export class ProvaService {
     );
   }
 
-  public async createProva(prova: CreateProvaDTOInput, file: any, gabarito:any) {
+  public async createProva(
+    prova: CreateProvaDTOInput,
+    file: any,
+    gabarito: any,
+  ) {
     const fileName = await this.blobService.uploadFile(
       file,
       this.envService.get('BUCKET_SIMULADO'),
@@ -65,6 +69,13 @@ export class ProvaService {
     return this.cache.wrap<object>(
       'prova',
       async () => await this.axios.get<any>(`v1/prova/summary`),
+    );
+  }
+
+  public async getFile(id: string) {
+    return await this.blobService.getFile(
+      `${id}`,
+      this.envService.get('BUCKET_SIMULADO'),
     );
   }
 }

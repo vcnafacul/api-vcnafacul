@@ -91,4 +91,14 @@ export class ProvaController {
       files.gabarito[0],
     );
   }
+
+  @Get(':id/file')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'busca arquivo de prova',
+  })
+  public async getFile(@Param('id') id: string) {
+    return await this.provaService.getFile(id);
+  }
 }
