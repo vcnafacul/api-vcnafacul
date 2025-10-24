@@ -168,6 +168,12 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
         HttpStatus.BAD_REQUEST,
       );
     }
+    if (inscriptionCourse.students.length > 0) {
+      throw new HttpException(
+        'Não é possível cancelar o processo seletivo com estudantes inscritos',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     inscriptionCourse.actived = Status.Rejected;
     inscriptionCourse.deletedAt = new Date();
     await this.repository.update(inscriptionCourse);
