@@ -95,6 +95,10 @@ describe('InscriptionCourse', () => {
       .spyOn(formService, 'createFormFull')
       .mockImplementation(async () => 'hashKeyFile');
 
+    jest
+      .spyOn(formService, 'hasActiveForm')
+      .mockImplementation(async () => true);
+
     await app.init();
     await roleSeedService.seed();
     await roleUpdateAdminSeedService.seed();
