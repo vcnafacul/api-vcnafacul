@@ -27,6 +27,7 @@ import { HasEmailDtoInput } from './dto/has-email.dto.input';
 import { LoginDtoInput } from './dto/login.dto.input';
 import { ResetPasswordDtoInput } from './dto/reset-password.dto.input';
 import { SearchUsersDtoInput } from './dto/search-users.dto.input';
+import { SendBulkEmailDtoInput } from './dto/send-bulk-email.dto.input';
 import { UpdateUserRoleInput } from './dto/update-user-role.dto.input';
 import { UpdateUserDTOInput } from './dto/update.dto.input';
 import { UserWithRoleName } from './dto/userWithRoleName';
@@ -141,5 +142,18 @@ export class UserController {
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarPermissoesCursinho)
   async updateRole(@Body() dto: UpdateUserRoleInput) {
     return await this.userService.updateRole(dto.userId, dto.roleId);
+  }
+
+  @Post('send-bulk-email')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
+  async sendBulkEmail(@Body() dto: SendBulkEmailDtoInput) {
+    return await this.userService.sendBulkEmail(
+      dto.message,
+      dto.subject,
+      dto.sendToAll,
+      dto.userIds,
+    );
   }
 }

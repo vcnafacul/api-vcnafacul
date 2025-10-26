@@ -92,6 +92,14 @@ export class UserRepository extends BaseRepository<User> {
       .getMany();
   }
 
+  async findAllActive(): Promise<User[]> {
+    return await this.repository
+      .createQueryBuilder('user')
+      .where('user.deletedAt IS NULL')
+      .andWhere('user.emailConfirmSended IS NULL')
+      .getMany();
+  }
+
   async aggregateUsersByPeriod(
     groupBy: Period,
   ): Promise<AggregateUserPeriodDtoOutput[]> {
