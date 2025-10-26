@@ -277,4 +277,15 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .where('id IN (:...studentIds)', { studentIds })
       .execute();
   }
+
+  async getRegistrationMonitoring(userId: string) {
+    return await this.repository
+      .createQueryBuilder('entity')
+      .where('entity.userId = :userId', { userId })
+      .innerJoinAndSelect('entity.inscriptionCourse', 'inscriptionCourse')
+      .innerJoinAndSelect('entity.partnerPrepCourse', 'partnerPrepCourse')
+      .innerJoinAndSelect('partnerPrepCourse.geo', 'geo')
+      .leftJoinAndSelect('entity.logs', 'logs')
+      .getMany();
+  }
 }

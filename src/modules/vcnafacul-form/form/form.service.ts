@@ -27,4 +27,9 @@ export class FormService {
   public async createFormFull(inscriptionId: string) {
     return await this.axios.post(`v1/form/${inscriptionId}/create-form-full`);
   }
+
+  //@Get has-active-form
+  public async hasActiveForm(): Promise<boolean> {
+    return await this.axios.get(`v1/form/has-active`);
+  }
 }

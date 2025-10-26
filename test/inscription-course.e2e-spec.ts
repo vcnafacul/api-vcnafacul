@@ -104,6 +104,10 @@ describe('InscriptionCourse (e2e)', () => {
       .mockImplementation(async () => 'hashKeyFile');
 
     jest
+      .spyOn(formService, 'hasActiveForm')
+      .mockImplementation(async () => true);
+
+    jest
       .spyOn(formService, 'getFormFullByInscriptionId')
       .mockImplementation(async () => 'hashKeyFile');
 

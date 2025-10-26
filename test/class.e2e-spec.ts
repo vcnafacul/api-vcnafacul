@@ -104,6 +104,10 @@ describe('Class (e2e)', () => {
       .mockImplementation(async () => 'hashKeyFile');
 
     jest
+      .spyOn(formService, 'hasActiveForm')
+      .mockImplementation(async () => true);
+
+    jest
       .spyOn(submissionService, 'createSubmission')
       .mockImplementation(async () => 'hashKeyFile');
 
