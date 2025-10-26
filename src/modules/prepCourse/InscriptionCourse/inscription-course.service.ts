@@ -53,6 +53,14 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     const parnetPrepCourse =
       await this.partnerPrepCourseService.getByUserId(userId);
 
+    const hasActiveForm = await this.formService.hasActiveForm();
+    if (!hasActiveForm) {
+      throw new HttpException(
+        'Não existe um formulário ativo - Entre em contato com o suporte',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     dto.endDate = new Date(dto.endDate);
     dto.startDate = new Date(dto.startDate);
     dto.startDate.setHours(0, 0, 0, 0);
