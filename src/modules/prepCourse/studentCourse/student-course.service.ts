@@ -55,6 +55,7 @@ import {
   GetEnrolledDtoOutput,
   StudentsDtoOutput,
 } from './dtos/get-enrolled.dto.output';
+import { RegistrationMonitoringDtoOutput } from './dtos/registrion-monitoring.dto.output';
 import { ScheduleEnrolledDtoInput } from './dtos/schedule-enrolled.dto.input';
 import { VerifyDeclaredInterestDtoOutput } from './dtos/verify-declared-interest.dto.out';
 import { StatusApplication } from './enums/stastusApplication';
@@ -1205,5 +1206,21 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       totalStudents,
       studentEnrolled,
     };
+  }
+
+  async getRegistrationMonitoring(
+    userId: string,
+  ): Promise<RegistrationMonitoringDtoOutput[]> {
+    const students = await this.repository.getRegistrationMonitoring(userId);
+    return students.map((student) => {
+      return {
+        id: student.inscriptionCourse.id,
+        partnerCourseName: student.partnerPrepCourse.geo.name,
+        inscriptionName: student.inscriptionCourse.name,
+        status: student.applicationStatus,
+        logs: student.logs,
+        createdAt: student.createdAt,
+      };
+    });
   }
 }

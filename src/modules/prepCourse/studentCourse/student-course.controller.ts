@@ -321,4 +321,12 @@ export class StudentCourseController {
   async getSummary() {
     return await this.service.getSummary();
   }
+
+  @Get('registration-monitoring')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
+  async getRegistrationMonitoring(@Req() req: Request) {
+    return await this.service.getRegistrationMonitoring((req.user as User).id);
+  }
 }
