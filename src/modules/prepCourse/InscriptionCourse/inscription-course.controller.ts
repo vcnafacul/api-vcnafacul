@@ -21,6 +21,7 @@ import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { HasInscriptionActiveDtoOutput } from '../partnerPrepCourse/dtos/has-inscription-active.output.dto';
 import { CreateInscriptionCourseInput } from './dtos/create-inscription-course.dto.input';
+import { ExtendInscriptionCourseDtoInput } from './dtos/extend-inscription-course.dto.input';
 import { InscriptionCourseDtoOutput } from './dtos/get-all-inscription.dto.output';
 import { GetSubscribersDtoOutput } from './dtos/get-subscribers.dto.output';
 import { UpdateInscriptionCourseDTOInput } from './dtos/update-inscription-course.dto.input';
@@ -150,5 +151,16 @@ export class InscriptionCourseController {
     @Body() dto: { id: string; studentsId: string[] },
   ) {
     await this.service.updateOrderWaitingList(dto.id, dto.studentsId);
+  }
+
+  @Patch(':id/extend')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
+  async extendInscription(
+    @Param('id') id: string,
+    @Body() dto: ExtendInscriptionCourseDtoInput,
+  ): Promise<void> {
+    await this.service.extendInscription(id, dto);
   }
 }
