@@ -23,7 +23,7 @@ function Email({ message }: Props) {
             style={{ margin: '0 auto' }}
             src="https://avatars.githubusercontent.com/u/128550116?s=400&u=b6ec73808233749eb515c2a93f55fe25ed9631d4&v=4"
           />
-          <Text style={paragraph}>Prezado(a) estudante,</Text>
+          <Text style={paragraph}>Prezado(a) usuário(a),</Text>
           <Text style={{ ...paragraph, whiteSpace: 'pre-line' }}>
             {message}
           </Text>
