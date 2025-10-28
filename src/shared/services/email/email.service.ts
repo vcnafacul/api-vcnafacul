@@ -7,6 +7,7 @@ import * as path from 'path';
 import { Geolocation } from 'src/modules/geo/geo.entity';
 import { User } from 'src/modules/user/user.entity';
 import { EnvService } from 'src/shared/modules/env/env.service';
+import { sendBulkNotification } from './templates/bulk-notification';
 import { sendEmailConfirmEmail } from './templates/confirm-email';
 import { sendGeoEmail } from './templates/create-geo';
 import { sendEmailDeclaredInterest } from './templates/declared-interest';
@@ -232,6 +233,27 @@ export class EmailService {
     };
 
     await sendEmailDeclaredInterestBulk({
+      transporter: this.transporter,
+      options: mailOptions,
+    });
+  }
+
+  async sendBulkNotification(
+    bccList: string[],
+    subject: string,
+    message: string,
+  ) {
+    const mailOptions = {
+      from: this.envService.get('SMTP_USERNAME'),
+      to: this.envService.get('SMTP_USERNAME'), // destinatário "falso" para enviar via BCC
+      bcc: bccList,
+      subject: `Você na Facul - ${subject}`,
+      context: {
+        message,
+      },
+    };
+
+    await sendBulkNotification({
       transporter: this.transporter,
       options: mailOptions,
     });

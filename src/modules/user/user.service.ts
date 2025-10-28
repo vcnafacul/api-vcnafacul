@@ -384,4 +384,47 @@ export class UserService extends BaseService<User> {
       phone: user.phone,
     }));
   }
+
+  async sendBulkEmail(
+    message: string,
+    subject: string,
+    sendToAll?: boolean,
+    userIds?: string[],
+  ) {
+    let users: User[];
+
+    if (sendToAll) {
+      // Buscar todos os usuários ativos
+      users = await this.userRepository.findAllActive();
+      this.logger.log(`Sending bulk email to all users (${users.length})`);
+    } else {
+      if (!userIds || userIds.length === 0) {
+        throw new HttpException(
+          'É necessário fornecer uma lista de IDs de usuários ou ativar sendToAll',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      users = await Promise.all(
+        userIds.map(async (id) => {
+          const user = await this.userRepository.findOneBy({ id });
+          if (!user) {
+            throw new HttpException(
+              `Usuário com ID ${id} não encontrado`,
+              HttpStatus.NOT_FOUND,
+            );
+          }
+          return user;
+        }),
+      );
+    }
+
+    const emails = users.map((user) => user.email);
+
+    await this.emailService.sendBulkNotification(emails, subject, message);
+
+    this.logger.log(
+      `Bulk email sent to ${emails.length} users. Subject: ${subject}`,
+    );
+  }
 }
