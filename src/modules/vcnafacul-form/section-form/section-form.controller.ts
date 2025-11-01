@@ -73,4 +73,16 @@ export class SectionFormController {
   ) {
     await this.service.updateSectionForm(id, dto);
   }
+
+  @Patch(':id/reorder')
+  @ApiResponse({
+    status: 200,
+    description: 'atualiza ordem das questões da seção',
+  })
+  public async reorderQuestionsSectionForm(
+    @Param('id') id: string,
+    @Body() dto: any,
+  ) {
+    await this.service.reorderQuestionsSectionForm(id, dto);
+  }
 }

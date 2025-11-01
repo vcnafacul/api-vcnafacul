@@ -52,4 +52,8 @@ export class SectionFormService {
   public async updateSectionForm(id: string, dto: { name: string }) {
     return await this.axios.patch(`v1/section/${id}`, dto);
   }
+
+  public async reorderQuestionsSectionForm(id: string, dto: any) {
+    await this.axios.patch(`v1/section/${id}/reorder`, dto);
+  }
 }
