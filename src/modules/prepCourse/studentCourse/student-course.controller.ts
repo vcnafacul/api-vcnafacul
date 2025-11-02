@@ -62,7 +62,7 @@ export class StudentCourseController {
     return await this.service.createUser(userDto, inscriptionId);
   }
 
-  @Patch('confirm-enrolled/:id/class:classId')
+  @Patch('confirm-enrolled/:id/class/:classId')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
