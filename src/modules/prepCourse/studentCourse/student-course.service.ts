@@ -485,10 +485,14 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     );
   }
 
-  async confirmEnrolled(id: string) {
+  async confirmEnrolled(id: string, classId: string) {
     const student = await this.repository.findOneBy({ id });
     if (!student) {
       throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+    }
+    const class_ = await this.classRepository.findOneById(classId);
+    if (!class_) {
+      throw new HttpException('Turma não encontrada', HttpStatus.NOT_FOUND);
     }
     if (student.applicationStatus !== StatusApplication.DeclaredInterest) {
       throw new HttpException(
@@ -499,6 +503,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       student.applicationStatus = StatusApplication.Enrolled;
       student.cod_enrolled = await this.generateEnrolledCode();
       await this.repository.update(student);
+      await this.updateClass(id, classId);
 
       const log = new LogStudent();
       log.studentId = student.id;

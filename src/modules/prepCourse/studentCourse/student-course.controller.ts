@@ -62,12 +62,15 @@ export class StudentCourseController {
     return await this.service.createUser(userDto, inscriptionId);
   }
 
-  @Patch('confirm-enrolled/:id')
+  @Patch('confirm-enrolled/:id/class:classId')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
-  async confirmEnrolled(@Param('id') id: string): Promise<void> {
-    return await this.service.confirmEnrolled(id);
+  async confirmEnrolled(
+    @Param('id') id: string,
+    @Param('classId') classId: string,
+  ): Promise<void> {
+    return await this.service.confirmEnrolled(id, classId);
   }
 
   @Get(':id/declared-interest')
