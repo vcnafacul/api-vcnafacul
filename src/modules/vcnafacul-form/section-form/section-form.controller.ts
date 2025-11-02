@@ -85,4 +85,13 @@ export class SectionFormController {
   ) {
     await this.service.reorderQuestionsSectionForm(id, dto);
   }
+
+  @Post(':id/duplicate')
+  @ApiResponse({
+    status: 200,
+    description: 'duplica seção do formulário',
+  })
+  public async duplicateSection(@Param('id') id: string) {
+    await this.service.duplicateSection(id);
+  }
 }

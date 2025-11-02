@@ -56,4 +56,8 @@ export class SectionFormService {
   public async reorderQuestionsSectionForm(id: string, dto: any) {
     await this.axios.patch(`v1/section/${id}/reorder`, dto);
   }
+
+  public async duplicateSection(id: string) {
+    return await this.axios.post(`v1/section/${id}/duplicate`);
+  }
 }
