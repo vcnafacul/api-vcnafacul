@@ -3,6 +3,7 @@ import { LogStudent } from '../log-student/log-student.entity';
 
 export class RegistrationMonitoringDtoOutput {
   id: string;
+  studentId: string;
   partnerCourseName: string;
   inscriptionName: string;
   status: StatusApplication;
