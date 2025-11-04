@@ -51,6 +51,7 @@ export const envSchema = z.object({
   AWS_ENDPOINT: z.string().url().default('http://localhost:9000'),
   AWS_REGION: z.string().default('auto'),
   BUCKET_DOC: z.string().default('vcnafacul-docs'),
+  BUCKET_STUDENT_DOC: z.string().default('vcnafacul-docs'),
   BUCKET_PROFILE: z.string().default('vcnafacul-students-photo'),
   BUCKET_QUESTION: z.string().default('simulado-questoes'),
   BUCKET_SIMULADO: z.string().default('vcnafacul-simulado'),

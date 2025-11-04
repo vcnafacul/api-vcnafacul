@@ -38,6 +38,8 @@ import { GetEnrolleds } from './dtos/get-enrolleds';
 import { ScheduleEnrolledDtoInput } from './dtos/schedule-enrolled.dto.input';
 import { UpdateClassDTOInput } from './dtos/update-class.dto.input';
 import { VerifyDeclaredInterestDtoOutput } from './dtos/verify-declared-interest.dto.out';
+import { VerifyEnrollmentStatusDtoInput } from './dtos/verify-enrollment-status.dto.input';
+import { VerifyEnrollmentStatusDtoOutput } from './dtos/verify-enrollment-status.dto.output';
 import { StudentCourseService } from './student-course.service';
 
 @ApiTags('StudentCourse')
@@ -331,5 +333,46 @@ export class StudentCourseController {
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async getRegistrationMonitoring(@Req() req: Request) {
     return await this.service.getRegistrationMonitoring((req.user as User).id);
+  }
+
+  @Get('enrollment-certificate/:studentId')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: 'Declaração de matrícula gerada com sucesso',
+  })
+  async getEnrollmentCertificate(
+    @Param('studentId') studentId: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const pdfFile = await this.service.generateEnrollmentCertificate(
+      studentId,
+      (req.user as User).id,
+    );
+
+    res.setHeader('Content-Type', pdfFile.mimetype);
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename=' + pdfFile.originalname,
+    );
+    res.send(pdfFile.buffer);
+  }
+
+  @Post('verify-enrollment-status')
+  @HttpCode(200)
+  @ApiResponse({
+    status: 200,
+    description:
+      'Verificação pública do status de matrícula do estudante por CPF e código de matrícula',
+  })
+  async verifyEnrollmentStatus(
+    @Body() dto: VerifyEnrollmentStatusDtoInput,
+  ): Promise<VerifyEnrollmentStatusDtoOutput> {
+    return await this.service.verifyEnrollmentStatus(
+      dto.cpf,
+      dto.enrollmentCode,
+    );
   }
 }

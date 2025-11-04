@@ -288,4 +288,32 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .leftJoinAndSelect('entity.logs', 'logs')
       .getMany();
   }
+
+  async findOneForCertificate(id: string): Promise<StudentCourse> {
+    return await this.repository
+      .createQueryBuilder('entity')
+      .where('entity.id = :id', { id })
+      .innerJoinAndSelect('entity.user', 'user')
+      .innerJoinAndSelect('entity.partnerPrepCourse', 'partnerPrepCourse')
+      .innerJoinAndSelect('partnerPrepCourse.geo', 'geo')
+      .innerJoinAndSelect('entity.class', 'class')
+      .innerJoinAndSelect('class.coursePeriod', 'course_period')
+      .getOne();
+  }
+
+  async findOneByCpfAndEnrollmentCode(
+    cpf: string,
+    enrollmentCode: string,
+  ): Promise<StudentCourse> {
+    return await this.repository
+      .createQueryBuilder('entity')
+      .where('entity.cpf = :cpf', { cpf })
+      .andWhere('entity.cod_enrolled = :enrollmentCode', { enrollmentCode })
+      .innerJoinAndSelect('entity.user', 'user')
+      .innerJoinAndSelect('entity.partnerPrepCourse', 'partnerPrepCourse')
+      .innerJoinAndSelect('partnerPrepCourse.geo', 'geo')
+      .leftJoinAndSelect('entity.class', 'class')
+      .leftJoinAndSelect('class.coursePeriod', 'course_period')
+      .getOne();
+  }
 }
