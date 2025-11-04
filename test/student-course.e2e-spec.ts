@@ -254,6 +254,19 @@ describe('StudentCourse (e2e)', () => {
     return await classService.create(classDto, userId);
   }
 
+  async function confirmEnrollmentWithClass(
+    studentId: string,
+    representativeId: string,
+  ) {
+    // Cria a turma
+    const classEntity = await createClass(representativeId);
+
+    // Confirma a matrícula com o ID da turma
+    await studentCourseService.confirmEnrolled(studentId, classEntity.id);
+
+    return classEntity;
+  }
+
   it('should create a new StudentCourse', async () => {
     const { representative } = await createPartnerPrepCourse();
 
@@ -644,7 +657,8 @@ describe('StudentCourse (e2e)', () => {
   }, 30000);
 
   it('should confirm enrollment', async () => {
-    const { inscription, token } = await createPartnerPrepCourse();
+    const { inscription, token, representative } =
+      await createPartnerPrepCourse();
 
     const { id } = await createStudent(inscription.id);
 
@@ -652,8 +666,10 @@ describe('StudentCourse (e2e)', () => {
     student.applicationStatus = StatusApplication.DeclaredInterest;
     await studentCourseRepository.update(student);
 
+    const classEntity = await createClass(representative.id);
+
     await request(app.getHttpServer())
-      .patch(`/student-course/confirm-enrolled/${id}`)
+      .patch(`/student-course/confirm-enrolled/${id}/class/${classEntity.id}`)
       .set({
         Authorization: `Bearer ${token}`,
       })
@@ -2058,7 +2074,7 @@ describe('StudentCourse (e2e)', () => {
       const student = await studentCourseService.findOneBy({ id });
       student.applicationStatus = StatusApplication.DeclaredInterest;
       await studentCourseRepository.update(student);
-      await studentCourseService.confirmEnrolled(student.id);
+      await confirmEnrollmentWithClass(student.id, representative.id);
     }
 
     // 4. Faz chamada à rota sem filtro nem ordenação
@@ -2104,7 +2120,7 @@ describe('StudentCourse (e2e)', () => {
       const student = await studentCourseService.findOneBy({ id: studentId });
       student.applicationStatus = StatusApplication.DeclaredInterest;
       await studentCourseRepository.update(student);
-      await studentCourseService.confirmEnrolled(student.id);
+      await confirmEnrollmentWithClass(student.id, representative.id);
 
       const user1 = await userService.findOneBy({ id: student.userId });
       user1.birthday = new Date('2000-01-01');
@@ -2122,7 +2138,7 @@ describe('StudentCourse (e2e)', () => {
       const student2 = await studentCourseService.findOneBy({ id: studentId2 });
       student2.applicationStatus = StatusApplication.DeclaredInterest;
       await studentCourseRepository.update(student2);
-      await studentCourseService.confirmEnrolled(student2.id);
+      await confirmEnrollmentWithClass(student2.id, representative.id);
 
       const user2 = await userService.findOneBy({ id: student2.userId });
       user2.birthday = new Date('2000-01-01');
