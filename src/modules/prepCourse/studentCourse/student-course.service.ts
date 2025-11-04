@@ -1324,8 +1324,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
     // Obtém a URL do frontend para o QR Code
     // Se não estiver configurado, usa uma URL padrão
-    const frontendUrl =
-      process.env.FRONTEND_URL || 'https://www.vcnafacul.com.br';
+    const frontendUrl = this.envService.get('FRONT_URL');
 
     // Gera o PDF
     const pdfFile = await createEnrollmentCertificate(

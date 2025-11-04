@@ -14,4 +14,3 @@ export class VerifyEnrollmentStatusDtoOutput {
     endDate: Date;
   };
 }
-

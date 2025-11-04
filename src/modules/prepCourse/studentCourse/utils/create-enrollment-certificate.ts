@@ -104,7 +104,7 @@ export const createEnrollmentCertificate = async (
   };
 
   // URL que o QR Code vai apontar (pode ser para o frontend ou backend)
-  const verificationUrl = `${frontendUrl}/verificar-matricula?cpf=${encodeURIComponent(verificationData.cpf)}&codigo=${encodeURIComponent(verificationData.enrollmentCode)}`;
+  const verificationUrl = `${frontendUrl}/confirmacao-matricula?cpf=${encodeURIComponent(verificationData.cpf)}&codigo=${encodeURIComponent(verificationData.enrollmentCode)}`;
 
   // Gera o QR Code como data URL
   const qrCodeDataUrl = await QRCode.toDataURL(verificationUrl, {
@@ -128,6 +128,8 @@ export const createEnrollmentCertificate = async (
         { text: data.student.name, style: 'highlight' },
         { text: ', CPF nº ', style: 'body' },
         { text: cpfFormatted, style: 'highlight' },
+        { text: ', matrícula nº ', style: 'body' },
+        { text: data.enrollmentCode, style: 'highlight' },
         {
           text: ', é estudante regularmente matriculado(a) no ',
           style: 'body',
@@ -199,6 +201,13 @@ export const createEnrollmentCertificate = async (
               style: 'qrCodeText',
               alignment: 'center',
             },
+            {
+              text: `${frontendUrl}/confirmacao-matricula`,
+              style: 'qrCodeLink',
+              alignment: 'center',
+              link: `${frontendUrl}/confirmacao-matricula`,
+              margin: [0, 5, 0, 0],
+            },
           ],
         },
         {
@@ -247,6 +256,11 @@ export const createEnrollmentCertificate = async (
         fontSize: 9,
         color: '#555',
         italics: true,
+      },
+      qrCodeLink: {
+        fontSize: 8,
+        color: '#0066cc',
+        decoration: 'underline',
       },
     },
   };
