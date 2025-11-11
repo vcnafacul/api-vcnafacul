@@ -143,13 +143,15 @@ export class QuestaoService {
   }
 
   public async getImage(id: string) {
+    // ttl 1 ano
     return await this.cache.wrap<{ buffer: string; contentType: string }>(
       `questao:image:${id}`,
       async () =>
         await this.blobService.getFile(
-          `${id}`,
+          id,
           this.envService.get('BUCKET_QUESTION'),
         ),
+      60 * 60 * 24 * 1000 * 7,
     );
   }
 
