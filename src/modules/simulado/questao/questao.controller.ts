@@ -19,11 +19,9 @@ import { Request } from 'express';
 import { Permissions } from 'src/modules/role/role.entity';
 import { User } from 'src/modules/user/user.entity';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
-import { CreateQuestaoDTOInput } from '../dtos/create-questao.dto.input';
 import { QuestaoDTOInput } from '../dtos/questao.dto.input';
 import { UpdateImageAlternativaDTOInput } from '../dtos/update-image-alternativa.dto.input';
 import { UpdateStatusDTOInput } from '../dtos/update-questao-status.dto.input';
-import { UpdateDTOInput } from '../dtos/update-questao.dto.input';
 import { Status } from '../enum/status.enum';
 import { QuestaoService } from './questao.service';
 
@@ -203,7 +201,7 @@ export class QuestaoController {
   })
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.validarQuestao)
-  public async questoesUpdate(@Body() question: UpdateDTOInput) {
+  public async questoesUpdate(@Body() question: unknown) {
     return await this.questaoService.questoesUpdate(question);
   }
 
@@ -224,7 +222,7 @@ export class QuestaoController {
     Permissions.criarQuestao,
     Permissions.validarQuestao,
   ])
-  public async createQuestion(@Body() questao: CreateQuestaoDTOInput) {
+  public async createQuestion(@Body() questao: unknown) {
     return await this.questaoService.createQuestion(questao);
   }
 

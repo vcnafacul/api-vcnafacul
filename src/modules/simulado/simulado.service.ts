@@ -8,12 +8,10 @@ import {
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AnswerSimulado } from './dtos/answer-simulado.dto.input';
 import { AvailableSimuladoDTOoutput } from './dtos/available-simulado.dto.output';
-import { CreateQuestaoDTOInput } from './dtos/create-questao.dto.input';
 import { CreateSimuladoDTOInput } from './dtos/create-simulado.dto.input';
 import { ReportDTO } from './dtos/report.dto.input';
 import { SimuladoDTO } from './dtos/simulado.dto.output';
 import { TipoSimuladoDTO } from './dtos/tipo-simulado.dto.output';
-import { UpdateDTOInput } from './dtos/update-questao.dto.input';
 import { ReportEntity } from './enum/report.enum';
 import { Status } from './enum/status.enum';
 
@@ -88,11 +86,11 @@ export class SimuladoService {
     return await this.axios.patch(`v1/questao/${id}/${status}`);
   }
 
-  public async questoesUpdate(questao: UpdateDTOInput) {
+  public async questoesUpdate(questao: unknown) {
     return await this.axios.patch(`v1/questao`, questao);
   }
 
-  public async createQuestion(questao: CreateQuestaoDTOInput) {
+  public async createQuestion(questao: unknown) {
     return await this.axios.post(`v1/questao`, questao);
   }
 

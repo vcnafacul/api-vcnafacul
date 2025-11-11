@@ -10,13 +10,11 @@ import {
 } from 'src/shared/services/axios/http-service-axios.factory';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { CreateQuestaoMsSimuladoDTOInput } from '../dtos/create-questao-mssimulado.dto.input';
-import { CreateQuestaoDTOInput } from '../dtos/create-questao.dto.input';
 import {
   AuditLogMSDTO,
   HistoryQuestionDTOOutput,
 } from '../dtos/history-question.dto.output';
 import { QuestaoDTOInput } from '../dtos/questao.dto.input';
-import { UpdateDTOInput } from '../dtos/update-questao.dto.input';
 import { Status } from '../enum/status.enum';
 
 @Injectable()
@@ -67,11 +65,11 @@ export class QuestaoService {
     });
   }
 
-  public async questoesUpdate(questao: UpdateDTOInput) {
+  public async questoesUpdate(questao: unknown) {
     return await this.axios.patch(`v1/questao`, questao);
   }
 
-  public async createQuestion(questao: CreateQuestaoDTOInput) {
+  public async createQuestion(questao: unknown) {
     const questSend = questao as CreateQuestaoMsSimuladoDTOInput;
 
     return await this.axios.post(`v1/questao`, questSend);
