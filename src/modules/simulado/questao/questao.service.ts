@@ -84,7 +84,6 @@ export class QuestaoService {
     if (!file) {
       throw new Error('Nenhum arquivo fornecido');
     }
-    console.log(file);
     const fileKey = await this.blobService.uploadFile(
       file,
       this.envService.get('BUCKET_QUESTION'),

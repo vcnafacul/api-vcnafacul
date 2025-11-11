@@ -158,7 +158,6 @@ export class QuestaoController {
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    console.log(id);
     return await this.questaoService.uploadImage(id, file);
   }
 
@@ -238,7 +237,6 @@ export class QuestaoController {
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
   public async getImage(@Param('id') id: string) {
-    console.log(id);
     return await this.questaoService.getImage(id);
   }
 
