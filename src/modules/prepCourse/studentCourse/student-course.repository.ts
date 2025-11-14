@@ -286,6 +286,9 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .innerJoinAndSelect('entity.partnerPrepCourse', 'partnerPrepCourse')
       .innerJoinAndSelect('partnerPrepCourse.geo', 'geo')
       .leftJoinAndSelect('entity.logs', 'logs')
+      //fazer order by createdAt Asc para logs
+      .orderBy('logs.createdAt', 'ASC')
+      .addOrderBy('entity.createdAt', 'DESC')
       .getMany();
   }
 
