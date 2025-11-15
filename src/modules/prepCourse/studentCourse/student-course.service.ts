@@ -4,6 +4,7 @@ import {
   HttpStatus,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -16,6 +17,8 @@ import { CreateUserDtoInput } from 'src/modules/user/dto/create.dto.input';
 import { CreateFlow } from 'src/modules/user/enum/create-flow';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
+import { CreateSubmissionDtoInput } from 'src/modules/vcnafacul-form/submission/dto/create-submission.dto.input';
+import { SubmissionService } from 'src/modules/vcnafacul-form/submission/submission.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import {
   Filter,
@@ -32,7 +35,7 @@ import { maskCpf } from 'src/utils/maskCpf';
 import { maskEmail } from 'src/utils/maskEmail';
 import { maskPhone } from 'src/utils/maskPhone';
 import { IsNull, Not } from 'typeorm';
-import { ClassService } from '../class/class.service';
+import { ClassRepository } from '../class/class.repository';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
 import { InscriptionCourseService } from '../InscriptionCourse/inscription-course.service';
@@ -52,8 +55,13 @@ import {
   GetEnrolledDtoOutput,
   StudentsDtoOutput,
 } from './dtos/get-enrolled.dto.output';
+import { RegistrationMonitoringDtoOutput } from './dtos/registrion-monitoring.dto.output';
 import { ScheduleEnrolledDtoInput } from './dtos/schedule-enrolled.dto.input';
 import { VerifyDeclaredInterestDtoOutput } from './dtos/verify-declared-interest.dto.out';
+import {
+  EnrollmentPeriodStatus,
+  VerifyEnrollmentStatusDtoOutput,
+} from './dtos/verify-enrollment-status.dto.output';
 import { StatusApplication } from './enums/stastusApplication';
 import { LegalGuardian } from './legal-guardian/legal-guardian.entity';
 import { LegalGuardianRepository } from './legal-guardian/legal-guardian.repository';
@@ -61,10 +69,13 @@ import { LogStudent } from './log-student/log-student.entity';
 import { LogStudentRepository } from './log-student/log-student.repository';
 import { StudentCourse } from './student-course.entity';
 import { StudentCourseRepository } from './student-course.repository';
+import { EnrollmentCertificate } from './types/enrollment-certificate';
 import { SocioeconomicAnswer } from './types/student-course-full';
+import { createEnrollmentCertificate } from './utils/create-enrollment-certificate';
 
 @Injectable()
 export class StudentCourseService extends BaseService<StudentCourse> {
+  private readonly logger = new Logger(StudentCourseService.name);
   constructor(
     private readonly repository: StudentCourseRepository,
     private readonly documentRepository: DocumentStudentRepository,
@@ -79,10 +90,11 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     private readonly logStudentRepository: LogStudentRepository,
     private envService: EnvService,
     private readonly collaboratorRepository: CollaboratorRepository,
-    private readonly classService: ClassService,
+    private readonly classRepository: ClassRepository,
     private readonly discordWebhook: DiscordWebhook,
     private readonly roleService: RoleService,
     private readonly cache: CacheService,
+    private readonly submissionService: SubmissionService,
   ) {
     super(repository);
   }
@@ -131,6 +143,23 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       inscriptionCourse.partnerPrepCourse,
       inscriptionCourse,
     );
+
+    // Verifica se o usuário tem role 'aluno' e altera para 'estudante'
+    await this.updateUserRoleIfNeeded(user, studentCourse.id);
+
+    const submissionDto: CreateSubmissionDtoInput = {
+      inscriptionId: inscriptionCourse.id,
+      userId: user.id,
+      studentId: studentCourse.id,
+      name: user.useSocialName
+        ? user.socialName + ' ' + user.lastName
+        : user.firstName + ' ' + user.lastName,
+      email: user.email,
+      birthday: dto.birthday,
+      answers: dto.socioeconomic,
+    };
+
+    await this.submissionService.createSubmission(submissionDto);
 
     if (this.isMinor(user.birthday)) {
       await this.createLegalGuardian(dto.legalGuardian, studentCourse);
@@ -225,6 +254,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     await this.logStudentRepository.create(log);
 
     await this.repository.update(student);
+    return fileKey;
   }
 
   async declaredInterest(
@@ -255,7 +285,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       files.map(async (file) => {
         const fileKey = await this.blobService.uploadFile(
           file,
-          this.envService.get('BUCKET_DOC'),
+          this.envService.get('BUCKET_STUDENT_DOC'),
           exprires,
         );
         const document: DocumentStudent = new DocumentStudent();
@@ -289,7 +319,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   async getDocument(fileKey: string) {
     const file = await this.blobService.getFile(
       fileKey,
-      this.envService.get('BUCKET_DOC'),
+      this.envService.get('BUCKET_STUDENT_DOC'),
     );
     return file;
   }
@@ -461,10 +491,14 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     );
   }
 
-  async confirmEnrolled(id: string) {
+  async confirmEnrolled(id: string, classId: string) {
     const student = await this.repository.findOneBy({ id });
     if (!student) {
       throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+    }
+    const class_ = await this.classRepository.findOneById(classId);
+    if (!class_) {
+      throw new HttpException('Turma não encontrada', HttpStatus.NOT_FOUND);
     }
     if (student.applicationStatus !== StatusApplication.DeclaredInterest) {
       throw new HttpException(
@@ -475,6 +509,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       student.applicationStatus = StatusApplication.Enrolled;
       student.cod_enrolled = await this.generateEnrolledCode();
       await this.repository.update(student);
+      await this.updateClass(id, classId);
 
       const log = new LogStudent();
       log.studentId = student.id;
@@ -775,9 +810,12 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     if (!student) {
       throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
-    const class_ = await this.classService.findOneBy({ id: classId });
+    const class_ = await this.classRepository.findOneById(classId);
     if (!class_) {
       throw new HttpException('Turma não encontrada', HttpStatus.NOT_FOUND);
+    }
+    if (class_.coursePeriod.endDate < new Date()) {
+      throw new HttpException('Turma já encerrada', HttpStatus.BAD_REQUEST);
     }
     student.class = class_;
     await this.repository.update(student);
@@ -785,7 +823,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     const log = new LogStudent();
     log.studentId = student.id;
     log.applicationStatus = StatusApplication.Enrolled;
-    log.description = `Atribuido a Turma: ${class_.name} (${class_.year})`;
+    log.description = `Atribuido a Turma: ${class_.name} (${class_.coursePeriod?.year || 'N/A'})`;
     await this.logStudentRepository.create(log);
   }
 
@@ -856,8 +894,8 @@ export class StudentCourseService extends BaseService<StudentCourse> {
               class: {
                 id: student.class?.id,
                 name: student.class?.name,
-                year: student.class?.year,
-                endDate: student.class?.endDate,
+                year: student.class?.coursePeriod?.year || 0,
+                endDate: student.class?.coursePeriod?.endDate,
               },
             }) as unknown as StudentsDtoOutput,
         ),
@@ -927,6 +965,42 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     return `${year}${code.toString().padStart(4, '0')}`;
   }
 
+  private async updateUserRoleIfNeeded(user: any, studentId: string) {
+    try {
+      // Verifica se o usuário tem role 'aluno'
+      if (user.role?.name === 'aluno') {
+        // Busca a role 'estudante'
+        const estudanteRole = await this.roleService.findOneBy({
+          name: 'estudante',
+        });
+
+        if (estudanteRole) {
+          // Atualiza a role do usuário para 'estudante'
+          await this.userService.updateRole(user.id, estudanteRole.id);
+
+          // Log da mudança de role
+          const log = new LogStudent();
+          log.studentId = studentId;
+          log.applicationStatus = StatusApplication.UnderReview;
+          log.description = `Role alterada de 'aluno' para 'estudante' durante criação do cadastro`;
+          await this.logStudentRepository.create(log);
+
+          this.logger.log(
+            `Usuário ${user.id} teve role alterada de 'aluno' para 'estudante'`,
+          );
+        } else {
+          this.logger.warn('Role "estudante" não encontrada no sistema');
+        }
+      }
+    } catch (error) {
+      this.logger.error(
+        'Erro ao verificar/alterar role do usuário:',
+        error.message,
+      );
+      // Não re-throw aqui para não quebrar o processo de criação do estudante
+    }
+  }
+
   private ensureStudentNotAlreadySubscribe(
     inscriptionCourse: InscriptionCourse,
     userId: string,
@@ -976,7 +1050,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       whatsapp: dto.whatsapp,
       urgencyPhone: dto.urgencyPhone,
       partnerPrepCourse: partnerPrepCourse,
-      socioeconomic: dto.socioeconomic,
+      socioeconomic: JSON.stringify(dto.socioeconomic),
     });
 
     studentCourse.inscriptionCourse = inscriptionCourse;
@@ -1086,15 +1160,12 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       flattenedItem.legalGuardian?.family_relationship;
     delete flattenedItem.legalGuardian;
 
-    const socioeconomic: SocioeconomicAnswer[] = JSON.parse(
-      student.socioeconomic,
-    );
-    const questions = this.getUniqueQuestions(socioeconomic);
+    const questions = this.getUniqueQuestions(student.socioeconomic);
 
     // Preenche as respostas socioeconômicas
     questions.forEach((question) => {
       // Encontra a resposta para a pergunta atual
-      const socioItem = socioeconomic.find(
+      const socioItem = student.socioeconomic.find(
         (item) => item.question === question,
       );
 
@@ -1145,6 +1216,252 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     return {
       totalStudents,
       studentEnrolled,
+    };
+  }
+
+  async getRegistrationMonitoring(
+    userId: string,
+  ): Promise<RegistrationMonitoringDtoOutput[]> {
+    const students = await this.repository.getRegistrationMonitoring(userId);
+    return students.map((student) => {
+      return {
+        id: student.inscriptionCourse.id,
+        studentId: student.id,
+        partnerCourseName: student.partnerPrepCourse.geo.name,
+        inscriptionName: student.inscriptionCourse.name,
+        status: student.applicationStatus,
+        logs: student.logs,
+        createdAt: student.createdAt,
+      };
+    });
+  }
+
+  async generateEnrollmentCertificate(studentId: string, userId: string) {
+    const student = await this.repository.findOneForCertificate(studentId);
+
+    if (!student) {
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+    }
+
+    // Verifica se o estudante requisitante é o mesmo do certificado
+    if (student.userId !== userId) {
+      throw new HttpException(
+        'Você não tem permissão para acessar esta declaração',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    // Verifica se o estudante está matriculado
+    if (student.applicationStatus !== StatusApplication.Enrolled) {
+      throw new HttpException(
+        'Apenas estudantes matriculados podem solicitar a declaração',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Verifica se o estudante tem uma turma atribuída
+    if (!student.class || !student.class.coursePeriod) {
+      throw new HttpException(
+        'Estudante não possui turma atribuída',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Busca os logos do cursinho parceiro e do VcNaFacul
+    let logoPartner = '';
+    let logoVcNaFacul = '';
+
+    try {
+      if (student.partnerPrepCourse.logo) {
+        const logoFile = await this.getPartnerLogo(
+          student.partnerPrepCourse.logo,
+        );
+        logoPartner = logoFile.buffer;
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Erro ao buscar logo do cursinho parceiro: ${error.message}`,
+      );
+    }
+
+    try {
+      // Logo do VcNaFacul (fixo no bucket)
+      const vcnafaculLogoFile = await this.getVcNaFaculLogo();
+      logoVcNaFacul = vcnafaculLogoFile.buffer;
+    } catch (error) {
+      this.logger.warn(`Erro ao buscar logo do VcNaFacul: ${error.message}`);
+    }
+
+    // Prepara os dados para o certificado
+    const studentName = student.user.useSocialName
+      ? `${student.user.socialName} ${student.user.lastName}`
+      : `${student.user.firstName} ${student.user.lastName}`;
+
+    const enrollmentData: EnrollmentCertificate = {
+      logo: logoPartner,
+      logoVcNaFacul: logoVcNaFacul,
+      geo: {
+        name: student.partnerPrepCourse.geo.name,
+        email: student.partnerPrepCourse.geo.email,
+        cep: student.partnerPrepCourse.geo.cep,
+        state: student.partnerPrepCourse.geo.state,
+        city: student.partnerPrepCourse.geo.city,
+        neighborhood: student.partnerPrepCourse.geo.neighborhood,
+        street: student.partnerPrepCourse.geo.street,
+        number: student.partnerPrepCourse.geo.number,
+        complement: student.partnerPrepCourse.geo.complement || '',
+      },
+      student: {
+        name: studentName,
+        cpf: student.cpf,
+      },
+      enrollmentCode: student.cod_enrolled,
+      coursePeriod: {
+        startDate: student.class.coursePeriod.startDate,
+        endDate: student.class.coursePeriod.endDate,
+      },
+    };
+
+    // Obtém a URL do frontend para o QR Code
+    // Se não estiver configurado, usa uma URL padrão
+    const frontendUrl = this.envService.get('FRONT_URL');
+
+    // Gera o PDF
+    const pdfFile = await createEnrollmentCertificate(
+      enrollmentData,
+      frontendUrl,
+    );
+
+    return pdfFile;
+  }
+
+  private async getVcNaFaculLogo() {
+    const vcnafaculLogoFile = await this.cache.wrap<
+      | {
+          buffer: string;
+          contentType: string;
+        }
+      | any
+    >(
+      'vcnafacul:logo',
+      async () =>
+        await this.blobService.getFile(
+          'logo-vcnafacul.png',
+          this.envService.get('BUCKET_DOC'),
+        ),
+    );
+    return vcnafaculLogoFile;
+  }
+
+  private async getPartnerLogo(partnerId: string) {
+    const partnerLogoFile = await this.cache.wrap<
+      | {
+          buffer: string;
+          contentType: string;
+        }
+      | any
+    >(
+      `partner:logo:${partnerId}`,
+      async () =>
+        await this.blobService.getFile(
+          partnerId,
+          this.envService.get('BUCKET_PARTNERSHIP_DOC'),
+        ),
+    );
+    return partnerLogoFile;
+  }
+
+  async verifyEnrollmentStatus(
+    cpf: string,
+    enrollmentCode: string,
+  ): Promise<VerifyEnrollmentStatusDtoOutput> {
+    // Remove caracteres não numéricos do CPF e formata para o padrão do banco (xxx.xxx.xxx-xx)
+    const cleanCpf = cpf.replace(/\D/g, '');
+    const formattedCpf = cleanCpf.replace(
+      /(\d{3})(\d{3})(\d{3})(\d{2})/,
+      '$1.$2.$3-$4',
+    );
+
+    const student = await this.repository.findOneByCpfAndEnrollmentCode(
+      formattedCpf,
+      enrollmentCode,
+    );
+
+    if (!student) {
+      return {
+        isEnrolled: false,
+        message:
+          'Não foi encontrado estudante com o CPF e código de matrícula informados.',
+      };
+    }
+
+    // Verifica se o estudante está matriculado
+    if (student.applicationStatus !== StatusApplication.Enrolled) {
+      return {
+        isEnrolled: false,
+        message: 'O aluno não está matriculado no cursinho.',
+      };
+    }
+
+    // Verifica se o estudante tem uma turma atribuída
+    if (!student.class || !student.class.coursePeriod) {
+      return {
+        isEnrolled: false,
+        message:
+          'O estudante está matriculado, mas ainda não possui turma atribuída.',
+      };
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Zera as horas para comparar apenas a data
+
+    const startDate = new Date(student.class.coursePeriod.startDate);
+    startDate.setHours(0, 0, 0, 0);
+
+    const endDate = new Date(student.class.coursePeriod.endDate);
+    endDate.setHours(0, 0, 0, 0);
+
+    const courseName = student.partnerPrepCourse.geo.name;
+
+    // Formata as datas
+    const startDateFormatted = startDate.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+    const endDateFormatted = endDate.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+
+    let message: string;
+    let periodStatus: EnrollmentPeriodStatus;
+
+    // Verifica o status do período letivo
+    if (today < startDate) {
+      // Período ainda não começou
+      periodStatus = EnrollmentPeriodStatus.NOT_STARTED;
+      message = `O estudante iniciará no ${courseName} na data ${startDateFormatted}. Período letivo: ${startDateFormatted} a ${endDateFormatted}.`;
+    } else if (today >= startDate && today <= endDate) {
+      // Período em andamento
+      periodStatus = EnrollmentPeriodStatus.IN_PROGRESS;
+      message = `O estudante é aluno do ${courseName} no período em questão (${startDateFormatted} a ${endDateFormatted}).`;
+    } else {
+      // Período finalizado
+      periodStatus = EnrollmentPeriodStatus.FINISHED;
+      message = `O estudante não é mais aluno do ${courseName}, pois o período letivo já finalizou em ${endDateFormatted}.`;
+    }
+
+    return {
+      isEnrolled: true,
+      message,
+      periodStatus,
+      courseInfo: {
+        name: courseName,
+        startDate: student.class.coursePeriod.startDate,
+        endDate: student.class.coursePeriod.endDate,
+      },
     };
   }
 }

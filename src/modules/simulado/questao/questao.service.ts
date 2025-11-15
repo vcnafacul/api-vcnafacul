@@ -2,31 +2,41 @@ import { Inject, Injectable } from '@nestjs/common';
 import { AuditLogService } from 'src/modules/audit-log/audit-log.service';
 import { User } from 'src/modules/user/user.entity';
 import { UserService } from 'src/modules/user/user.service';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
-import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
+import {
+  HttpServiceAxios,
+  HttpServiceAxiosFactory,
+} from 'src/shared/services/axios/http-service-axios.factory';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { CreateQuestaoMsSimuladoDTOInput } from '../dtos/create-questao-mssimulado.dto.input';
-import { CreateQuestaoDTOInput } from '../dtos/create-questao.dto.input';
 import {
   AuditLogMSDTO,
   HistoryQuestionDTOOutput,
 } from '../dtos/history-question.dto.output';
 import { QuestaoDTOInput } from '../dtos/questao.dto.input';
-import { UpdateDTOInput } from '../dtos/update-questao.dto.input';
 import { Status } from '../enum/status.enum';
-import { CacheService } from 'src/shared/modules/cache/cache.service';
 
 @Injectable()
 export class QuestaoService {
+  private readonly axios: HttpServiceAxios;
+
   constructor(
     @Inject('BlobService') private readonly blobService: BlobService,
-    private readonly axios: HttpServiceAxios,
+    private readonly httpServiceFactory: HttpServiceAxiosFactory,
     private envService: EnvService,
     private readonly auditLod: AuditLogService,
     private readonly userService: UserService,
     private readonly cache: CacheService,
   ) {
-    this.axios.setBaseURL(this.envService.get('SIMULADO_URL'));
+    this.axios = this.httpServiceFactory.create(
+      this.envService.get('SIMULADO_URL'),
+    );
+  }
+
+  // getbyId
+  public async getById(id: string) {
+    return await this.axios.get(`v1/questao/${id}`);
   }
 
   public async getAllQuestoes(query: QuestaoDTOInput) {
@@ -55,51 +65,20 @@ export class QuestaoService {
     });
   }
 
-  public async questoesUpdate(questao: UpdateDTOInput) {
+  public async questoesUpdate(questao: unknown) {
     return await this.axios.patch(`v1/questao`, questao);
   }
 
-  public async createQuestion(
-    questao: CreateQuestaoDTOInput,
-    fileContents: Express.Multer.File[],
-    imageId?: Express.Multer.File,
-    altA?: Express.Multer.File,
-    altB?: Express.Multer.File,
-    altC?: Express.Multer.File,
-    altD?: Express.Multer.File,
-    altE?: Express.Multer.File,
-  ) {
+  public async createQuestion(questao: unknown) {
     const questSend = questao as CreateQuestaoMsSimuladoDTOInput;
-    if (fileContents.length > 0) {
-      const files: string[] = [];
-      for (const file of fileContents) {
-        const fileKey = await this.uploadImage(file);
-        files.push(fileKey);
-      }
-      questSend.files = files;
-    }
-    if (imageId) {
-      questSend.imageId = await this.uploadImage(imageId);
-    }
-    if (altA) {
-      questSend.altA = await this.uploadImage(altA);
-    }
-    if (altB) {
-      questSend.altB = await this.uploadImage(altB);
-    }
-    if (altC) {
-      questSend.altC = await this.uploadImage(altC);
-    }
-    if (altD) {
-      questSend.altD = await this.uploadImage(altD);
-    }
-    if (altE) {
-      questSend.altE = await this.uploadImage(altE);
-      return await this.axios.post(`v1/questao`, questSend);
-    }
+
+    return await this.axios.post(`v1/questao`, questSend);
   }
 
-  public async uploadImage(file: Express.Multer.File): Promise<string> {
+  public async uploadImage(
+    id: string,
+    file: Express.Multer.File,
+  ): Promise<string> {
     if (!file) {
       throw new Error('Nenhum arquivo fornecido');
     }
@@ -107,6 +86,12 @@ export class QuestaoService {
       file,
       this.envService.get('BUCKET_QUESTION'),
     );
+
+    // Atualiza o imageId no endpoint se o id for fornecido
+    await this.axios.patch(`v1/questao/${id}/image-id`, {
+      imageId: fileKey,
+    });
+
     return fileKey;
   }
 
@@ -156,9 +141,15 @@ export class QuestaoService {
   }
 
   public async getImage(id: string) {
-    return await this.blobService.getFile(
-      `${id}.png`,
-      this.envService.get('BUCKET_QUESTION'),
+    // ttl 1 ano
+    return await this.cache.wrap<{ buffer: string; contentType: string }>(
+      `questao:image:${id}`,
+      async () =>
+        await this.blobService.getFile(
+          id,
+          this.envService.get('BUCKET_QUESTION'),
+        ),
+      60 * 60 * 24 * 1000 * 7,
     );
   }
 
@@ -167,5 +158,76 @@ export class QuestaoService {
       'questao',
       async () => await this.axios.get<any>(`v1/questao/summary`),
     );
+  }
+
+  public async updateClassificacao(id: string, body: unknown) {
+    return await this.axios.patch<any>(`v1/questao/${id}/classification`, body);
+  }
+
+  public async updateContent(id: string, body: unknown) {
+    return await this.axios.patch<any>(`v1/questao/${id}/content`, body);
+  }
+
+  public async updateImageAlternativa(
+    id: string,
+    file: Express.Multer.File,
+    alternativa: string,
+  ) {
+    let imageAlternativa: string | null = null;
+
+    if (file) {
+      imageAlternativa = await this.blobService.uploadFile(
+        file,
+        this.envService.get('BUCKET_QUESTION'),
+      );
+    }
+
+    if (imageAlternativa) {
+      await this.axios.patch(`v1/questao/${id}/image-alternativa`, {
+        imageAlternativa,
+        alternativa,
+      });
+    }
+
+    return imageAlternativa;
+  }
+
+  public async getLogs(id: string) {
+    const logs = (await this.axios.get(`v1/questao/${id}/logs`)) as any[];
+    if (logs.length === 0) {
+      return [];
+    }
+
+    const users: User[] = [];
+
+    const logsWithUserInfo = await Promise.all(
+      logs.map(async (item) => {
+        let user = users.find((u) => u.id === item.user);
+        if (!user) {
+          user = await this.userService.findUserById(item.user);
+          if (!user) {
+            return {
+              ...item,
+              user: {
+                id: item.user,
+                name: 'Desconhecido',
+                email: 'Desconhecido',
+              },
+            };
+          }
+          users.push(user);
+        }
+        return {
+          ...item,
+          user: {
+            id: user.id,
+            name: user.firstName + ' ' + user.lastName,
+            email: user.email,
+          },
+        };
+      }),
+    );
+
+    return logsWithUserInfo;
   }
 }

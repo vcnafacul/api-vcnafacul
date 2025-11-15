@@ -8,6 +8,7 @@ import { RoleSeedService } from 'src/db/seeds/1-role.seed';
 import { RoleUpdateAdminSeedService } from 'src/db/seeds/2-role-update-admin.seed';
 import { GeoService } from 'src/modules/geo/geo.service';
 import { ClassService } from 'src/modules/prepCourse/class/class.service';
+import { CoursePeriodService } from 'src/modules/prepCourse/coursePeriod/course-period.service';
 import { InscriptionCourseService } from 'src/modules/prepCourse/InscriptionCourse/inscription-course.service';
 import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
 import { GetAllStudentDtoInput } from 'src/modules/prepCourse/studentCourse/dtos/get-all-student.dto.input';
@@ -19,11 +20,14 @@ import { StudentCourseService } from 'src/modules/prepCourse/studentCourse/stude
 import { RoleService } from 'src/modules/role/role.service';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
+import { FormService } from 'src/modules/vcnafacul-form/form/form.service';
+import { SubmissionService } from 'src/modules/vcnafacul-form/submission/submission.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import * as request from 'supertest';
 import CreateClassDtoInputFaker from './faker/create-class.dto.input.faker';
+import { CreateCoursePeriodDtoInputFaker } from './faker/create-course-period.dto.input.faker';
 import { CreateGeoDTOInputFaker } from './faker/create-geo.dto.input.faker';
 import { CreateInscriptionCourseDTOInputFaker } from './faker/create-inscription-course.dto.faker';
 import { createStudentCourseDTOInputFaker } from './faker/create-student-course.dto.input.faker';
@@ -53,6 +57,9 @@ describe('StudentCourse (e2e)', () => {
   let blobService: BlobService;
   let logStudentRepository: LogStudentRepository;
   let classService: ClassService;
+  let coursePeriodService: CoursePeriodService;
+  let formService: FormService;
+  let submissionService: SubmissionService;
 
   const discordWebhookMock = {
     sendMessage: jest.fn(),
@@ -93,7 +100,11 @@ describe('StudentCourse (e2e)', () => {
     logStudentRepository =
       moduleFixture.get<LogStudentRepository>(LogStudentRepository);
     classService = moduleFixture.get<ClassService>(ClassService);
+    coursePeriodService =
+      moduleFixture.get<CoursePeriodService>(CoursePeriodService);
 
+    formService = moduleFixture.get<FormService>(FormService);
+    submissionService = moduleFixture.get<SubmissionService>(SubmissionService);
     jest
       .spyOn(emailService, 'sendCreateUser')
       .mockImplementation(async () => {});
@@ -128,17 +139,24 @@ describe('StudentCourse (e2e)', () => {
         return Buffer.from('conteúdo fake de um arquivo');
       });
 
-    jest.mock('src/utils/convertDocxToPdfBuffer.ts', () => ({
-      convertDocxToPdfBuffer: jest
-        .fn()
-        .mockResolvedValue(Buffer.from('pdf-fake')),
-    }));
-
     jest
       .spyOn(studentCourseService['discordWebhook'], 'sendMessage')
       .mockImplementation(async () => {});
 
+    jest
+      .spyOn(formService, 'createFormFull')
+      .mockImplementation(async () => 'hashKeyFile');
+
+    jest
+      .spyOn(formService, 'hasActiveForm')
+      .mockImplementation(async () => true);
+
+    jest
+      .spyOn(submissionService, 'createSubmission')
+      .mockImplementation(async () => 'hashKeyFile');
+
     await app.init();
+
     await roleSeedService.seed();
     await roleUpdateAdminSeedService.seed();
   });
@@ -171,7 +189,17 @@ describe('StudentCourse (e2e)', () => {
       },
       representative.id,
     );
-    partnerPrepCourse.geo = geo;
+    partnerPrepCourse.geo = {
+      id: geo.id,
+      name: geo.name,
+      category: geo.category,
+      street: geo.street,
+      number: geo.number,
+      complement: geo.complement,
+      neighborhood: geo.neighborhood,
+      state: geo.state,
+      city: geo.city,
+    };
 
     const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker();
     const inscription = await inscriptionCourseService.create(
@@ -205,8 +233,38 @@ describe('StudentCourse (e2e)', () => {
   }
 
   async function createClass(userId: string, className?: string) {
+    // Primeiro, obter o partnerPrepCourse do usuário
+    const partnerPrepCourse =
+      await partnerPrepCourseService.getByUserId(userId);
+    if (!partnerPrepCourse) {
+      throw new Error('Partner prep course not found for user');
+    }
+
+    // Criar um período letivo
+    const coursePeriodDto = CreateCoursePeriodDtoInputFaker();
+    const coursePeriod = await coursePeriodService.create(
+      coursePeriodDto,
+      userId,
+    );
+
+    // Criar a turma com o período letivo
     const classDto = CreateClassDtoInputFaker(className);
+    classDto.coursePeriodId = coursePeriod.id;
+
     return await classService.create(classDto, userId);
+  }
+
+  async function confirmEnrollmentWithClass(
+    studentId: string,
+    representativeId: string,
+  ) {
+    // Cria a turma
+    const classEntity = await createClass(representativeId);
+
+    // Confirma a matrícula com o ID da turma
+    await studentCourseService.confirmEnrolled(studentId, classEntity.id);
+
+    return classEntity;
   }
 
   it('should create a new StudentCourse', async () => {
@@ -599,7 +657,8 @@ describe('StudentCourse (e2e)', () => {
   }, 30000);
 
   it('should confirm enrollment', async () => {
-    const { inscription, token } = await createPartnerPrepCourse();
+    const { inscription, token, representative } =
+      await createPartnerPrepCourse();
 
     const { id } = await createStudent(inscription.id);
 
@@ -607,8 +666,10 @@ describe('StudentCourse (e2e)', () => {
     student.applicationStatus = StatusApplication.DeclaredInterest;
     await studentCourseRepository.update(student);
 
+    const classEntity = await createClass(representative.id);
+
     await request(app.getHttpServer())
-      .patch(`/student-course/confirm-enrolled/${id}`)
+      .patch(`/student-course/confirm-enrolled/${id}/class/${classEntity.id}`)
       .set({
         Authorization: `Bearer ${token}`,
       })
@@ -2013,7 +2074,7 @@ describe('StudentCourse (e2e)', () => {
       const student = await studentCourseService.findOneBy({ id });
       student.applicationStatus = StatusApplication.DeclaredInterest;
       await studentCourseRepository.update(student);
-      await studentCourseService.confirmEnrolled(student.id);
+      await confirmEnrollmentWithClass(student.id, representative.id);
     }
 
     // 4. Faz chamada à rota sem filtro nem ordenação
@@ -2059,7 +2120,7 @@ describe('StudentCourse (e2e)', () => {
       const student = await studentCourseService.findOneBy({ id: studentId });
       student.applicationStatus = StatusApplication.DeclaredInterest;
       await studentCourseRepository.update(student);
-      await studentCourseService.confirmEnrolled(student.id);
+      await confirmEnrollmentWithClass(student.id, representative.id);
 
       const user1 = await userService.findOneBy({ id: student.userId });
       user1.birthday = new Date('2000-01-01');
@@ -2077,7 +2138,7 @@ describe('StudentCourse (e2e)', () => {
       const student2 = await studentCourseService.findOneBy({ id: studentId2 });
       student2.applicationStatus = StatusApplication.DeclaredInterest;
       await studentCourseRepository.update(student2);
-      await studentCourseService.confirmEnrolled(student2.id);
+      await confirmEnrollmentWithClass(student2.id, representative.id);
 
       const user2 = await userService.findOneBy({ id: student2.userId });
       user2.birthday = new Date('2000-01-01');

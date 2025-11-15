@@ -86,18 +86,41 @@ export class GeoRepository extends BaseRepository<Geolocation> {
     this.repository.save(geo);
   }
 
-  async getTotalEntity() {
+  async EntityByTypeAndStatus(type: number, status: Status) {
     return this.repository
       .createQueryBuilder('entity')
       .where('entity.deletedAt IS NULL')
+      .andWhere('entity.type = :type', { type })
+      .andWhere('entity.status = :status', { status })
       .getCount();
   }
 
-  async entityByStatus(status: Status) {
-    return this.repository
-      .createQueryBuilder('entity')
-      .where('entity.deletedAt IS NULL')
-      .andWhere('entity.status = :status', { status })
-      .getCount();
+  async EntityWithReport(type: number) {
+    return (
+      this.repository
+        .createQueryBuilder('entity')
+        .where('entity.deletedAt IS NULL')
+        .andWhere('entity.type = :type', { type })
+        // se tem algum dos reports true
+        .andWhere('entity.reportAddress = :reportAddress', {
+          reportAddress: true,
+        })
+        .orWhere('entity.reportContact = :reportContact', {
+          reportContact: true,
+        })
+        .orWhere('entity.reportOther = :reportOther', { reportOther: true })
+        .getCount()
+    );
+  }
+
+  async searchGeoByName(name: string): Promise<Geolocation[]> {
+    return await this.repository
+      .createQueryBuilder('geo')
+      .select(['geo.id', 'geo.name'])
+      .where('geo.name LIKE :name', {
+        name: `%${name}%`,
+      })
+      .limit(10)
+      .getMany();
   }
 }

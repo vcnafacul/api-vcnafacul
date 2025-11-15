@@ -28,6 +28,7 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .skip((page - 1) * limit)
       .take(limit)
       .leftJoinAndSelect('entity.class', 'class')
+      .leftJoinAndSelect('class.coursePeriod', 'course_period')
       .innerJoin('entity.user', 'users')
       .addSelect([
         'users.id',
@@ -46,6 +47,7 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
     let queryBuilderCount = this.repository
       .createQueryBuilder('entity')
       .leftJoinAndSelect('entity.class', 'class')
+      .leftJoinAndSelect('class.coursePeriod', 'course_period')
       .innerJoin('entity.user', 'users')
       .addSelect(['users.birthday'])
       .where({ ...where });
@@ -121,6 +123,7 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .where({ ...where })
       .leftJoinAndSelect('entity.inscriptionCourse', 'inscriptionCourse')
       .leftJoinAndSelect('entity.class', 'class')
+      .leftJoinAndSelect('class.coursePeriod', 'course_period')
       .getOne();
   }
 
@@ -210,7 +213,7 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
 
   async notConfirmedEnrolled() {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0); // Zera a hora para comparar só a data
 
     await this.repository
       .createQueryBuilder('entity')
@@ -219,7 +222,7 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
         applicationStatus: StatusApplication.MissedDeadline,
         updatedAt: new Date(),
       })
-      .where('limitEnrolledAt = :today', { today })
+      .where('limitEnrolledAt <= :today', { today })
       .andWhere('applicationStatus = :status', {
         status: StatusApplication.CalledForEnrollment,
       })
@@ -254,5 +257,66 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .where('entity.deletedAt IS NULL')
       .andWhere('entity.applicationStatus = :status', { status })
       .getCount();
+  }
+
+  async updateStudentStatus(
+    studentIds: string[],
+    status: StatusApplication,
+  ): Promise<void> {
+    if (!studentIds || studentIds.length === 0) {
+      return;
+    }
+
+    await this.repository
+      .createQueryBuilder('entity')
+      .update()
+      .set({
+        applicationStatus: status,
+        updatedAt: new Date(),
+      })
+      .where('id IN (:...studentIds)', { studentIds })
+      .execute();
+  }
+
+  async getRegistrationMonitoring(userId: string) {
+    return await this.repository
+      .createQueryBuilder('entity')
+      .where('entity.userId = :userId', { userId })
+      .innerJoinAndSelect('entity.inscriptionCourse', 'inscriptionCourse')
+      .innerJoinAndSelect('entity.partnerPrepCourse', 'partnerPrepCourse')
+      .innerJoinAndSelect('partnerPrepCourse.geo', 'geo')
+      .leftJoinAndSelect('entity.logs', 'logs')
+      //fazer order by createdAt Asc para logs
+      .orderBy('logs.createdAt', 'ASC')
+      .addOrderBy('entity.createdAt', 'DESC')
+      .getMany();
+  }
+
+  async findOneForCertificate(id: string): Promise<StudentCourse> {
+    return await this.repository
+      .createQueryBuilder('entity')
+      .where('entity.id = :id', { id })
+      .innerJoinAndSelect('entity.user', 'user')
+      .innerJoinAndSelect('entity.partnerPrepCourse', 'partnerPrepCourse')
+      .innerJoinAndSelect('partnerPrepCourse.geo', 'geo')
+      .innerJoinAndSelect('entity.class', 'class')
+      .innerJoinAndSelect('class.coursePeriod', 'course_period')
+      .getOne();
+  }
+
+  async findOneByCpfAndEnrollmentCode(
+    cpf: string,
+    enrollmentCode: string,
+  ): Promise<StudentCourse> {
+    return await this.repository
+      .createQueryBuilder('entity')
+      .where('entity.cpf = :cpf', { cpf })
+      .andWhere('entity.cod_enrolled = :enrollmentCode', { enrollmentCode })
+      .innerJoinAndSelect('entity.user', 'user')
+      .innerJoinAndSelect('entity.partnerPrepCourse', 'partnerPrepCourse')
+      .innerJoinAndSelect('partnerPrepCourse.geo', 'geo')
+      .leftJoinAndSelect('entity.class', 'class')
+      .leftJoinAndSelect('class.coursePeriod', 'course_period')
+      .getOne();
   }
 }

@@ -13,13 +13,14 @@ import { Status } from 'src/modules/simulado/enum/status.enum';
 import { User } from 'src/modules/user/user.entity';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
+import { FormService } from 'src/modules/vcnafacul-form/form/form.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { CreateGeoDTOInputFaker } from './faker/create-geo.dto.input.faker';
 import { CreateInscriptionCourseDTOInputFaker } from './faker/create-inscription-course.dto.faker';
 import { CreateUserDtoInputFaker } from './faker/create-user.dto.input.faker';
-import { createNestAppTest } from './utils/createNestAppTest';
 import createFakeDocxBase64 from './utils/createFakeDocxBase64';
+import { createNestAppTest } from './utils/createNestAppTest';
 
 // Mock the EmailService globally
 jest.mock('src/shared/services/email/email.service');
@@ -40,6 +41,7 @@ describe('InscriptionCourse', () => {
   let inscriptionService: InscriptionCourseService;
   let inscriptionRepository: InscriptionCourseRepository;
   let blobService: BlobService;
+  let formService: FormService;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -68,6 +70,7 @@ describe('InscriptionCourse', () => {
       InscriptionCourseRepository,
     );
     blobService = moduleFixture.get<BlobService>('BlobService');
+    formService = moduleFixture.get<FormService>(FormService);
 
     jest
       .spyOn(emailService, 'sendCreateUser')
@@ -88,11 +91,13 @@ describe('InscriptionCourse', () => {
         return Buffer.from('conteúdo fake de um arquivo');
       });
 
-    jest.mock('src/utils/convertDocxToPdfBuffer.ts', () => ({
-      convertDocxToPdfBuffer: jest
-        .fn()
-        .mockResolvedValue(Buffer.from('pdf-fake')),
-    }));
+    jest
+      .spyOn(formService, 'createFormFull')
+      .mockImplementation(async () => 'hashKeyFile');
+
+    jest
+      .spyOn(formService, 'hasActiveForm')
+      .mockImplementation(async () => true);
 
     await app.init();
     await roleSeedService.seed();
@@ -127,7 +132,17 @@ describe('InscriptionCourse', () => {
       },
       representative.id,
     );
-    partnerPrepCourse.geo = geo;
+    partnerPrepCourse.geo = {
+      id: geo.id,
+      name: geo.name,
+      category: geo.category,
+      street: geo.street,
+      number: geo.number,
+      complement: geo.complement,
+      neighborhood: geo.neighborhood,
+      state: geo.state,
+      city: geo.city,
+    };
     return {
       representative,
       partnerPrepCourse,

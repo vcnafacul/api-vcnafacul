@@ -1,4 +1,5 @@
-import { IsBoolean, IsString } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
+import { RoleExist } from '../validator/role-exist.validator';
 
 export class CreateRoleDtoInput {
   @IsString()
@@ -6,6 +7,11 @@ export class CreateRoleDtoInput {
 
   @IsBoolean()
   base: boolean;
+
+  @IsString()
+  @RoleExist({ message: 'role not exists' })
+  @IsOptional()
+  roleBase?: string;
 
   @IsBoolean()
   validarCursinho: boolean;

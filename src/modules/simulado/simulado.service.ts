@@ -1,28 +1,33 @@
 import { Injectable } from '@nestjs/common';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
-import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
+import {
+  HttpServiceAxios,
+  HttpServiceAxiosFactory,
+} from 'src/shared/services/axios/http-service-axios.factory';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AnswerSimulado } from './dtos/answer-simulado.dto.input';
 import { AvailableSimuladoDTOoutput } from './dtos/available-simulado.dto.output';
-import { CreateQuestaoDTOInput } from './dtos/create-questao.dto.input';
 import { CreateSimuladoDTOInput } from './dtos/create-simulado.dto.input';
 import { ReportDTO } from './dtos/report.dto.input';
 import { SimuladoDTO } from './dtos/simulado.dto.output';
 import { TipoSimuladoDTO } from './dtos/tipo-simulado.dto.output';
-import { UpdateDTOInput } from './dtos/update-questao.dto.input';
 import { ReportEntity } from './enum/report.enum';
 import { Status } from './enum/status.enum';
-import { CacheService } from 'src/shared/modules/cache/cache.service';
 
 @Injectable()
 export class SimuladoService {
+  private readonly axios: HttpServiceAxios;
+
   constructor(
-    private readonly axios: HttpServiceAxios,
+    private readonly httpServiceFactory: HttpServiceAxiosFactory,
     private readonly envService: EnvService,
     private readonly auditLod: AuditLogService,
     private readonly cache: CacheService,
   ) {
-    this.axios.setBaseURL(this.envService.get('SIMULADO_URL'));
+    this.axios = this.httpServiceFactory.create(
+      this.envService.get('SIMULADO_URL'),
+    );
   }
 
   async create(dto: CreateSimuladoDTOInput) {
@@ -81,11 +86,11 @@ export class SimuladoService {
     return await this.axios.patch(`v1/questao/${id}/${status}`);
   }
 
-  public async questoesUpdate(questao: UpdateDTOInput) {
+  public async questoesUpdate(questao: unknown) {
     return await this.axios.patch(`v1/questao`, questao);
   }
 
-  public async createQuestion(questao: CreateQuestaoDTOInput) {
+  public async createQuestion(questao: unknown) {
     return await this.axios.post(`v1/questao`, questao);
   }
 
@@ -104,8 +109,26 @@ export class SimuladoService {
 
   public async getSummary() {
     return this.cache.wrap<object>(
-      'simulado',
-      async () => await this.axios.get<any>(`v1/simulado/summary`),
+      'simulado:summary',
+      async () => await this.axios.get<object>(`v1/simulado/summary`),
+    );
+  }
+
+  public async getAggregateByPeriod() {
+    return this.cache.wrap<object>(
+      'simulado:aggregateByPeriod',
+      async () =>
+        await this.axios.get<object>(`v1/simulado/aggregate-by-Period`),
+    );
+  }
+
+  public async getAggregateByPeriodAndType() {
+    return this.cache.wrap<object>(
+      'simulado:aggregateByPeriodAndTipo',
+      async () =>
+        await this.axios.get<object>(
+          `v1/simulado/aggregate-by-Period-and-Type`,
+        ),
     );
   }
 }

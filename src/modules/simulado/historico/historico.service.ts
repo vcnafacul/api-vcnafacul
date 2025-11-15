@@ -1,17 +1,25 @@
 import { Injectable } from '@nestjs/common';
-import { HttpServiceAxios } from 'src/shared/services/axios/httpServiceAxios';
-import { GetHistoricoDTOInput } from '../dtos/get-historico.dto';
-import { EnvService } from 'src/shared/modules/env/env.service';
+import { Period } from 'src/modules/user/enum/period';
 import { CacheService } from 'src/shared/modules/cache/cache.service';
+import { EnvService } from 'src/shared/modules/env/env.service';
+import {
+  HttpServiceAxios,
+  HttpServiceAxiosFactory,
+} from 'src/shared/services/axios/http-service-axios.factory';
+import { GetHistoricoDTOInput } from '../dtos/get-historico.dto';
 
 @Injectable()
 export class HistoricoService {
+  private readonly axios: HttpServiceAxios;
+
   constructor(
-    private readonly axios: HttpServiceAxios,
+    private readonly httpServiceFactory: HttpServiceAxiosFactory,
     private readonly envService: EnvService,
     private readonly cache: CacheService,
   ) {
-    this.axios.setBaseURL(this.envService.get('SIMULADO_URL'));
+    this.axios = this.httpServiceFactory.create(
+      this.envService.get('SIMULADO_URL'),
+    );
   }
   async getAllByUser(query: GetHistoricoDTOInput, userId: string) {
     let baseUrl = 'v1/historico?';
@@ -36,6 +44,26 @@ export class HistoricoService {
     return this.cache.wrap<object>(
       'historico',
       async () => await this.axios.get<any>(`v1/historico/summary`),
+    );
+  }
+
+  public async getAggregateByPeriod(period: Period) {
+    return this.cache.wrap<object>(
+      'historico:aggregateByPeriod',
+      async () =>
+        await this.axios.get<object>(
+          `v1/historico/aggregate-by-Period?groupBy=${period}`,
+        ),
+    );
+  }
+
+  public async getAggregateByPeriodAndType(period: Period) {
+    return this.cache.wrap<object>(
+      'historico:aggregateByPeriodAndType',
+      async () =>
+        await this.axios.get<object>(
+          `v1/historico/aggregate-by-Period-and-Type?groupBy=${period}`,
+        ),
     );
   }
 }

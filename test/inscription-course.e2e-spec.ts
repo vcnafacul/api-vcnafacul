@@ -7,6 +7,7 @@ import { AppModule } from 'src/app.module';
 import { RoleSeedService } from 'src/db/seeds/1-role.seed';
 import { RoleUpdateAdminSeedService } from 'src/db/seeds/2-role-update-admin.seed';
 import { GeoService } from 'src/modules/geo/geo.service';
+import { InscriptionCourseRepository } from 'src/modules/prepCourse/InscriptionCourse/inscription-course.repository';
 import { InscriptionCourseService } from 'src/modules/prepCourse/InscriptionCourse/inscription-course.service';
 import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
 import { StatusApplication } from 'src/modules/prepCourse/studentCourse/enums/stastusApplication';
@@ -16,6 +17,8 @@ import { RoleService } from 'src/modules/role/role.service';
 import { Status } from 'src/modules/simulado/enum/status.enum';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
+import { FormService } from 'src/modules/vcnafacul-form/form/form.service';
+import { SubmissionService } from 'src/modules/vcnafacul-form/submission/submission.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import * as request from 'supertest';
@@ -42,9 +45,12 @@ describe('InscriptionCourse (e2e)', () => {
   let jwtService: JwtService;
   let roleService: RoleService;
   let inscriptionService: InscriptionCourseService;
+  let inscriptionRepository: InscriptionCourseRepository;
   let studentCourseService: StudentCourseService;
   let studentCourseRepository: StudentCourseRepository;
   let blobService: BlobService;
+  let formService: FormService;
+  let submissionService: SubmissionService;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -70,13 +76,17 @@ describe('InscriptionCourse (e2e)', () => {
     inscriptionService = moduleFixture.get<InscriptionCourseService>(
       InscriptionCourseService,
     );
+    inscriptionRepository = moduleFixture.get<InscriptionCourseRepository>(
+      InscriptionCourseRepository,
+    );
     studentCourseService =
       moduleFixture.get<StudentCourseService>(StudentCourseService);
     studentCourseRepository = moduleFixture.get<StudentCourseRepository>(
       StudentCourseRepository,
     );
     blobService = moduleFixture.get<BlobService>('BlobService');
-
+    formService = moduleFixture.get<FormService>(FormService);
+    submissionService = moduleFixture.get<SubmissionService>(SubmissionService);
     jest
       .spyOn(emailService, 'sendCreateUser')
       .mockImplementation(async () => {});
@@ -94,12 +104,21 @@ describe('InscriptionCourse (e2e)', () => {
         }
         return Buffer.from('conteúdo fake de um arquivo');
       });
+    jest
+      .spyOn(formService, 'createFormFull')
+      .mockImplementation(async () => 'hashKeyFile');
 
-    jest.mock('src/utils/convertDocxToPdfBuffer.ts', () => ({
-      convertDocxToPdfBuffer: jest
-        .fn()
-        .mockResolvedValue(Buffer.from('pdf-fake')),
-    }));
+    jest
+      .spyOn(formService, 'hasActiveForm')
+      .mockImplementation(async () => true);
+
+    jest
+      .spyOn(formService, 'getFormFullByInscriptionId')
+      .mockImplementation(async () => 'hashKeyFile');
+
+    jest
+      .spyOn(submissionService, 'createSubmission')
+      .mockImplementation(async () => 'hashKeyFile');
 
     await app.init();
     await roleSeedService.seed();
@@ -138,7 +157,17 @@ describe('InscriptionCourse (e2e)', () => {
       },
       representative.id,
     );
-    partnerPrepCourse.geo = geo;
+    partnerPrepCourse.geo = {
+      id: geo.id,
+      name: geo.name,
+      category: geo.category,
+      street: geo.street,
+      number: geo.number,
+      complement: geo.complement,
+      neighborhood: geo.neighborhood,
+      state: geo.state,
+      city: geo.city,
+    };
     return {
       representative,
       partnerPrepCourse,
@@ -428,7 +457,13 @@ describe('InscriptionCourse (e2e)', () => {
       { expiresIn: '2h' },
     );
 
+    // Criar inscrição com data no futuro para permitir alterações
     const inscription = CreateInscriptionCourseDTOInputFaker();
+    inscription.startDate = new Date();
+    inscription.startDate.setDate(inscription.startDate.getDate() + 5);
+    inscription.endDate = new Date(inscription.startDate);
+    inscription.endDate.setDate(inscription.endDate.getDate() + 30);
+
     const inscriptionCreated = await inscriptionService.create(
       inscription,
       representative.id,
@@ -461,7 +496,13 @@ describe('InscriptionCourse (e2e)', () => {
       { expiresIn: '2h' },
     );
 
+    // Criar inscrição com data no futuro
     const inscription = CreateInscriptionCourseDTOInputFaker();
+    inscription.startDate = new Date();
+    inscription.startDate.setDate(inscription.startDate.getDate() + 5);
+    inscription.endDate = new Date(inscription.startDate);
+    inscription.endDate.setDate(inscription.endDate.getDate() + 30);
+
     const inscriptionCreated = await inscriptionService.create(
       inscription,
       representative.id,
@@ -486,14 +527,20 @@ describe('InscriptionCourse (e2e)', () => {
       });
   });
 
-  it('should set actived status to Approved if startDate is before today', async () => {
+  it('should set actived status to Approved if startDate is before today (when editing future inscription)', async () => {
     const { representative } = await createPartnerPrepCourse();
     const token = await jwtService.signAsync(
       { user: { id: representative.id } },
       { expiresIn: '2h' },
     );
 
+    // Criar inscrição com data no futuro (ainda não começou)
     const inscription = CreateInscriptionCourseDTOInputFaker();
+    inscription.startDate = new Date();
+    inscription.startDate.setDate(inscription.startDate.getDate() + 5);
+    inscription.endDate = new Date(inscription.startDate);
+    inscription.endDate.setDate(inscription.endDate.getDate() + 30);
+
     const inscriptionCreated = await inscriptionService.create(
       inscription,
       representative.id,
@@ -517,21 +564,27 @@ describe('InscriptionCourse (e2e)', () => {
     expect(updated.actived).toBe(Status.Approved);
   });
 
-  it('should keep actived unchanged if startDate is in the future', async () => {
+  it('should keep actived unchanged if startDate is in the future (when editing future inscription)', async () => {
     const { representative } = await createPartnerPrepCourse();
     const token = await jwtService.signAsync(
       { user: { id: representative.id } },
       { expiresIn: '2h' },
     );
 
+    // Criar inscrição com data no futuro
     const inscription = CreateInscriptionCourseDTOInputFaker();
+    inscription.startDate = new Date();
+    inscription.startDate.setDate(inscription.startDate.getDate() + 5);
+    inscription.endDate = new Date(inscription.startDate);
+    inscription.endDate.setDate(inscription.endDate.getDate() + 30);
+
     const inscriptionCreated = await inscriptionService.create(
       inscription,
       representative.id,
     );
 
     const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + 2);
+    futureDate.setDate(futureDate.getDate() + 10);
 
     await request(app.getHttpServer())
       .patch(`/inscription-course`)
@@ -546,6 +599,146 @@ describe('InscriptionCourse (e2e)', () => {
       id: inscriptionCreated.id,
     });
     expect(updated.actived).toBe(Status.Pending);
+  });
+
+  it('should not allow changing start date of an inscription in progress', async () => {
+    const { representative } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync(
+      { user: { id: representative.id } },
+      { expiresIn: '2h' },
+    );
+
+    // Criar inscrição que já começou
+    const inscription = CreateInscriptionCourseDTOInputFaker();
+    inscription.startDate = new Date();
+    inscription.startDate.setDate(inscription.startDate.getDate() - 5);
+    inscription.endDate = new Date();
+    inscription.endDate.setDate(inscription.endDate.getDate() + 30);
+
+    const inscriptionCreated = await inscriptionService.create(
+      inscription,
+      representative.id,
+    );
+
+    const newStartDate = new Date();
+    newStartDate.setDate(newStartDate.getDate() - 10);
+
+    await request(app.getHttpServer())
+      .patch(`/inscription-course`)
+      .set({ Authorization: `Bearer ${token}` })
+      .send({
+        ...inscriptionCreated,
+        startDate: newStartDate,
+      })
+      .expect(400)
+      .expect((res) => {
+        expect(res.body).toHaveProperty('message');
+        expect(res.body.message).toBe(
+          'Não é possível alterar a data de início de um processo seletivo em andamento',
+        );
+      });
+  });
+
+  it('should not allow changing dates of a finished inscription', async () => {
+    const { representative } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync(
+      { user: { id: representative.id } },
+      { expiresIn: '2h' },
+    );
+
+    // Criar inscrição que já terminou
+    const inscription = CreateInscriptionCourseDTOInputFaker();
+    inscription.startDate = new Date();
+    inscription.startDate.setDate(inscription.startDate.getDate() - 30);
+
+    console.log('inscription.endDate', inscription.endDate);
+    const inscriptionCreatedDTO = await inscriptionService.create(
+      inscription,
+      representative.id,
+    );
+
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() - 1);
+
+    const inscriptionCreated = await inscriptionRepository.findOneBy({
+      id: inscriptionCreatedDTO.id,
+    });
+
+    Object.assign(inscriptionCreated, {
+      endDate: endDate,
+    });
+
+    await inscriptionRepository.update(inscriptionCreated);
+
+    const newEndDate = new Date();
+    newEndDate.setDate(newEndDate.getDate() - 1);
+
+    await request(app.getHttpServer())
+      .patch(`/inscription-course`)
+      .set({ Authorization: `Bearer ${token}` })
+      .send({
+        ...inscriptionCreated,
+        endDate: newEndDate,
+      })
+      .expect(400)
+      .expect((res) => {
+        expect(res.body).toHaveProperty('message');
+        expect(res.body.message).toBe(
+          'Data de término do curso não pode ser menor que a data atual',
+        );
+      });
+    newEndDate.setDate(newEndDate.getDate() + 30);
+
+    await request(app.getHttpServer())
+      .patch(`/inscription-course`)
+      .set({ Authorization: `Bearer ${token}` })
+      .send({
+        ...inscriptionCreated,
+        endDate: newEndDate,
+      })
+      .expect(400)
+      .expect((res) => {
+        expect(res.body).toHaveProperty('message');
+        expect(res.body.message).toBe(
+          'Não é possível alterar as datas de um processo seletivo já finalizado',
+        );
+      });
+  });
+
+  it('should allow updating only description when inscription is in progress', async () => {
+    const { representative } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync(
+      { user: { id: representative.id } },
+      { expiresIn: '2h' },
+    );
+
+    // Criar inscrição que já começou
+    const inscription = CreateInscriptionCourseDTOInputFaker();
+    inscription.startDate = new Date();
+    inscription.startDate.setDate(inscription.startDate.getDate() - 5);
+    inscription.endDate = new Date();
+    inscription.endDate.setDate(inscription.endDate.getDate() + 30);
+
+    const inscriptionCreated = await inscriptionService.create(
+      inscription,
+      representative.id,
+    );
+
+    const newDescription = 'Nova descrição';
+
+    await request(app.getHttpServer())
+      .patch(`/inscription-course`)
+      .set({ Authorization: `Bearer ${token}` })
+      .send({
+        ...inscriptionCreated,
+        description: newDescription,
+      })
+      .expect(200);
+
+    const updated = await inscriptionService.findOneBy({
+      id: inscriptionCreated.id,
+    });
+    expect(updated.description).toBe(newDescription);
   });
 
   it('get subscribers', async () => {
@@ -1017,5 +1210,179 @@ describe('InscriptionCourse (e2e)', () => {
     });
     expect(inscription.head).toBe(studentOutput2.id);
     expect(inscription.lenght).toBe(2);
+  });
+
+  it('should successfully extend an inscription course', async () => {
+    const { representative } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync(
+      { user: { id: representative.id } },
+      { expiresIn: '2h' },
+    );
+
+    // Criar inscrição ativa
+    const inscription = CreateInscriptionCourseDTOInputFaker();
+    inscription.startDate = new Date();
+    inscription.startDate.setDate(inscription.startDate.getDate() - 5);
+
+    const inscriptionCreated = await inscriptionService.create(
+      inscription,
+      representative.id,
+    );
+
+    const newEndDate = new Date();
+    newEndDate.setHours(0, 0, 0, 0);
+    newEndDate.setDate(newEndDate.getDate() + 60);
+
+    await request(app.getHttpServer())
+      .patch(`/inscription-course/${inscriptionCreated.id}/extend`)
+      .set({ Authorization: `Bearer ${token}` })
+      .send({
+        endDate: newEndDate,
+      })
+      .expect(200);
+
+    const updated = await inscriptionService.findOneBy({
+      id: inscriptionCreated.id,
+    });
+    newEndDate.setDate(newEndDate.getDate() + 1);
+    const updatedDate = new Date(updated.endDate);
+    updatedDate.setHours(0, 0, 0, 0);
+    expect(updatedDate.getTime()).toBe(newEndDate.getTime());
+  });
+
+  it('should not allow setting end date in the past', async () => {
+    const { representative } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync(
+      { user: { id: representative.id } },
+      { expiresIn: '2h' },
+    );
+
+    // Criar inscrição ativa
+    const inscription = CreateInscriptionCourseDTOInputFaker();
+    inscription.startDate = new Date();
+    inscription.startDate.setDate(inscription.startDate.getDate() - 5);
+    inscription.endDate = new Date();
+    inscription.endDate.setDate(inscription.endDate.getDate() + 10);
+
+    const inscriptionCreated = await inscriptionService.create(
+      inscription,
+      representative.id,
+    );
+
+    const pastDate = new Date();
+    pastDate.setDate(pastDate.getDate() - 10);
+
+    await request(app.getHttpServer())
+      .patch(`/inscription-course/${inscriptionCreated.id}/extend`)
+      .set({ Authorization: `Bearer ${token}` })
+      .send({
+        endDate: pastDate,
+      })
+      .expect(400)
+      .expect((res) => {
+        expect(res.body).toHaveProperty('message');
+        expect(res.body.message).toBe(
+          'Data de término não pode ser menor que a data atual',
+        );
+      });
+  });
+
+  it('should not allow setting end date before current end date', async () => {
+    const { representative } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync(
+      { user: { id: representative.id } },
+      { expiresIn: '2h' },
+    );
+
+    // Criar inscrição ativa
+    const inscription = CreateInscriptionCourseDTOInputFaker();
+    inscription.startDate = new Date();
+    inscription.startDate.setDate(inscription.startDate.getDate() - 5);
+    inscription.endDate = new Date();
+    inscription.endDate.setDate(inscription.endDate.getDate() + 30);
+
+    const inscriptionCreated = await inscriptionService.create(
+      inscription,
+      representative.id,
+    );
+
+    const earlierEndDate = new Date();
+    earlierEndDate.setDate(earlierEndDate.getDate() + 15);
+
+    await request(app.getHttpServer())
+      .patch(`/inscription-course/${inscriptionCreated.id}/extend`)
+      .set({ Authorization: `Bearer ${token}` })
+      .send({
+        endDate: earlierEndDate,
+      })
+      .expect(400)
+      .expect((res) => {
+        expect(res.body).toHaveProperty('message');
+        expect(res.body.message).toBe(
+          'A nova data de término deve ser posterior à data atual de término',
+        );
+      });
+  });
+
+  it('should return 404 when inscription does not exist', async () => {
+    const { representative } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync(
+      { user: { id: representative.id } },
+      { expiresIn: '2h' },
+    );
+
+    const newEndDate = new Date();
+    newEndDate.setDate(newEndDate.getDate() + 30);
+
+    await request(app.getHttpServer())
+      .patch(`/inscription-course/non-existent-id/extend`)
+      .set({ Authorization: `Bearer ${token}` })
+      .send({
+        endDate: newEndDate,
+      })
+      .expect(404);
+  });
+
+  it('should update status to Approved when extending an inscription that has already started', async () => {
+    const { representative } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync(
+      { user: { id: representative.id } },
+      { expiresIn: '2h' },
+    );
+
+    // Criar inscrição ativa (já começou)
+    const inscription = CreateInscriptionCourseDTOInputFaker();
+    inscription.startDate = new Date();
+    inscription.startDate.setDate(inscription.startDate.getDate() - 5);
+    inscription.endDate = new Date();
+    inscription.endDate.setDate(inscription.endDate.getDate() + 10);
+
+    const inscriptionCreated = await inscriptionService.create(
+      inscription,
+      representative.id,
+    );
+
+    // Verificar que o status é Approved (porque já começou)
+    const before = await inscriptionService.findOneBy({
+      id: inscriptionCreated.id,
+    });
+    expect(before.actived).toBe(Status.Approved);
+
+    const newEndDate = new Date();
+    newEndDate.setDate(newEndDate.getDate() + 30);
+
+    await request(app.getHttpServer())
+      .patch(`/inscription-course/${inscriptionCreated.id}/extend`)
+      .set({ Authorization: `Bearer ${token}` })
+      .send({
+        endDate: newEndDate,
+      })
+      .expect(200);
+
+    // Verificar que o status ainda é Approved
+    const after = await inscriptionService.findOneBy({
+      id: inscriptionCreated.id,
+    });
+    expect(after.actived).toBe(Status.Approved);
   });
 });

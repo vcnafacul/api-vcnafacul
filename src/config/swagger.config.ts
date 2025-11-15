@@ -1,4 +1,5 @@
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as basicAuth from 'express-basic-auth';
 
 const config = new DocumentBuilder()
   .setTitle('Você na Facul')
@@ -7,4 +8,13 @@ const config = new DocumentBuilder()
   .addBearerAuth()
   .build();
 
-export const document = (app: any) => SwaggerModule.createDocument(app, config);
+export const document = (app: any, password: string) => {
+  app.use(
+    ['/api', '/api/docs', '/api/docs-json'],
+    basicAuth({
+      users: { admin: password },
+      challenge: true,
+    }),
+  );
+  return SwaggerModule.createDocument(app, config);
+};

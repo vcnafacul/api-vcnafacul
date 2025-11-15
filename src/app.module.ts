@@ -21,11 +21,13 @@ import { AttendanceRecordModule } from './modules/prepCourse/attendance/attendan
 import { StudentAttendanceModule } from './modules/prepCourse/attendance/studentAttendance/student-attendance.module';
 import { ClassModule } from './modules/prepCourse/class/class.module';
 import { CollaboratorModule } from './modules/prepCourse/collaborator/collaborator.module';
+import { CoursePeriodModule } from './modules/prepCourse/coursePeriod/course-period.module';
 import { InscriptionCourseModule } from './modules/prepCourse/InscriptionCourse/inscription-course.module';
 import { PartnerPrepCourseModule } from './modules/prepCourse/partnerPrepCourse/partner-prep-course.module';
 import { StudentCourseModule } from './modules/prepCourse/studentCourse/student-course.module';
 import { RoleModule } from './modules/role/role.module';
 import { SimuladoModule } from './modules/simulado/simulado.module';
+import { VcnafaculFormModule } from './modules/vcnafacul-form/vcnafacul-form.module';
 import { CacheManagerModule } from './shared/modules/cache/cache.module';
 import { envSchema } from './shared/modules/env/env';
 import { EnvModule } from './shared/modules/env/env.module';
@@ -62,6 +64,7 @@ import { JwtStrategy } from './shared/strategy/jwt.strategy';
     GeoModule,
     PartnerPrepCourseModule,
     CollaboratorModule,
+    CoursePeriodModule,
     AuditLogModule,
     NewsModule,
     FrenteModule,
@@ -77,6 +80,7 @@ import { JwtStrategy } from './shared/strategy/jwt.strategy';
     StudentAttendanceModule,
     AbsenceJustificationModule,
     CacheManagerModule,
+    VcnafaculFormModule,
   ],
   controllers: [AppController],
   providers: [

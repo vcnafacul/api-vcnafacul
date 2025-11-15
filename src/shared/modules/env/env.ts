@@ -22,6 +22,7 @@ export const envSchema = z.object({
   //STACK URLS
   FRONT_URL: z.string().url().default('http://localhost:5173'),
   SIMULADO_URL: z.string().url().default('http://localhost:3000'),
+  FORMULARIO_URL: z.string().url().default('http://localhost:3334'),
   DISCORD_WEBHOOK_URL: z
     .string()
     .url()
@@ -50,12 +51,12 @@ export const envSchema = z.object({
   AWS_ENDPOINT: z.string().url().default('http://localhost:9000'),
   AWS_REGION: z.string().default('auto'),
   BUCKET_DOC: z.string().default('vcnafacul-docs'),
+  BUCKET_STUDENT_DOC: z.string().default('vcnafacul-docs'),
   BUCKET_PROFILE: z.string().default('vcnafacul-students-photo'),
   BUCKET_QUESTION: z.string().default('simulado-questoes'),
   BUCKET_SIMULADO: z.string().default('vcnafacul-simulado'),
   BUCKET_CONTENT: z.string().default('vcnafacul-content'),
   BUCKET_PARTNERSHIP_DOC: z.string().default('vcnafacul-partnership-doc'),
-  BUCKET_PARTNERSHIP_LOGO: z.string().default('vcnafacul-partnership-logo'),
   AWS_STORAGE_CLASS: z.enum(['STANDARD']).default('STANDARD'),
 
   //GRAFANA

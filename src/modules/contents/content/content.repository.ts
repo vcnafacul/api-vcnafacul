@@ -4,6 +4,7 @@ import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output'
 import { NodeRepository } from 'src/shared/modules/node/node.repository';
 import { EntityManager } from 'typeorm';
 import { Content } from './content.entity';
+import { ContentStatsByFrenteDtoOutput } from './dtos/content-stats-by-frente.dto.output';
 import { StatusContent } from './enum/status-content';
 import { GetAllContentInput } from './interface/get-all-content.input';
 
@@ -196,5 +197,43 @@ export class ContentRepository extends NodeRepository<Content> {
       .where('entity.deletedAt IS NULL')
       .andWhere('entity.status = :status', { status })
       .getCount();
+  }
+
+  async getStatsByFrente(): Promise<ContentStatsByFrenteDtoOutput[]> {
+    const query = this.repository
+      .createQueryBuilder('c')
+      .select([
+        'f.materia as materia',
+        'f.name as frente',
+        'SUM(CASE WHEN c.status = 0 THEN 1 ELSE 0 END) as pendentes',
+        'SUM(CASE WHEN c.status = 1 THEN 1 ELSE 0 END) as aprovados',
+        'SUM(CASE WHEN c.status = 2 THEN 1 ELSE 0 END) as reprovados',
+        'SUM(CASE WHEN c.status = 3 THEN 1 ELSE 0 END) as pendentes_upload',
+        'COUNT(*) as total',
+      ])
+      .innerJoin('c.subject', 's')
+      .innerJoin('s.frente', 'f')
+      .where('c.deletedAt IS NULL')
+      .groupBy('f.materia')
+      .addGroupBy('f.name')
+      .orderBy('f.materia', 'ASC')
+      .addOrderBy('f.name', 'ASC');
+
+    return query.getRawMany();
+  }
+
+  async getSnapshotContentStatus() {
+    return this.repository
+      .createQueryBuilder('c')
+      .select([
+        'CURRENT_DATE() as data',
+        'SUM(CASE WHEN c.status = 0 THEN 1 ELSE 0 END) as pendentes',
+        'SUM(CASE WHEN c.status = 1 THEN 1 ELSE 0 END) as aprovados',
+        'SUM(CASE WHEN c.status = 2 THEN 1 ELSE 0 END) as reprovados',
+        'SUM(CASE WHEN c.status = 3 THEN 1 ELSE 0 END) as pendentes_upload',
+        'COUNT(*) as total',
+      ])
+      .where('c.deletedAt IS NULL')
+      .getRawOne();
   }
 }

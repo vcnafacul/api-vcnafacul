@@ -5,17 +5,22 @@ import { AppModule } from 'src/app.module';
 import { GeoService } from 'src/modules/geo/geo.service';
 import { ClassRepository } from 'src/modules/prepCourse/class/class.repository';
 import { ClassDtoOutput } from 'src/modules/prepCourse/class/dtos/class.dto.output';
+import { CoursePeriodService } from 'src/modules/prepCourse/coursePeriod/course-period.service';
 import { InscriptionCourseService } from 'src/modules/prepCourse/InscriptionCourse/inscription-course.service';
 import { PartnerPrepCourseDtoInput } from 'src/modules/prepCourse/partnerPrepCourse/dtos/create-partner-prep-course.input.dto';
 import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
 import { StudentCourseService } from 'src/modules/prepCourse/studentCourse/student-course.service';
+import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
 import { Role } from 'src/modules/role/role.entity';
 import { RoleService } from 'src/modules/role/role.service';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
+import { FormService } from 'src/modules/vcnafacul-form/form/form.service';
+import { SubmissionService } from 'src/modules/vcnafacul-form/submission/submission.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import * as request from 'supertest';
+import { CreateCoursePeriodDtoInputFaker } from './faker/create-course-period.dto.input.faker';
 import { CreateGeoDTOInputFaker } from './faker/create-geo.dto.input.faker';
 import { CreateInscriptionCourseDTOInputFaker } from './faker/create-inscription-course.dto.faker';
 import { createStudentCourseDTOInputFaker } from './faker/create-student-course.dto.input.faker';
@@ -39,8 +44,11 @@ describe('Class (e2e)', () => {
   let classRepository: ClassRepository;
   let inscriptionCourseService: InscriptionCourseService;
   let studentCourseService: StudentCourseService;
+  let coursePeriodService: CoursePeriodService;
   let role: Role = null;
   let blobService: BlobService;
+  let formService: FormService;
+  let submissionService: SubmissionService;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -64,7 +72,11 @@ describe('Class (e2e)', () => {
     );
     studentCourseService =
       moduleFixture.get<StudentCourseService>(StudentCourseService);
+    coursePeriodService =
+      moduleFixture.get<CoursePeriodService>(CoursePeriodService);
 
+    formService = moduleFixture.get<FormService>(FormService);
+    submissionService = moduleFixture.get<SubmissionService>(SubmissionService);
     jest.spyOn(emailService, 'sendEmailGeo').mockImplementation(async () => {});
     blobService = moduleFixture.get<BlobService>('BlobService');
 
@@ -87,17 +99,23 @@ describe('Class (e2e)', () => {
         return Buffer.from('conteúdo fake de um arquivo');
       });
 
-    jest.mock('src/utils/convertDocxToPdfBuffer.ts', () => ({
-      convertDocxToPdfBuffer: jest
-        .fn()
-        .mockResolvedValue(Buffer.from('pdf-fake')),
-    }));
+    jest
+      .spyOn(formService, 'createFormFull')
+      .mockImplementation(async () => 'hashKeyFile');
+
+    jest
+      .spyOn(formService, 'hasActiveForm')
+      .mockImplementation(async () => true);
+
+    jest
+      .spyOn(submissionService, 'createSubmission')
+      .mockImplementation(async () => 'hashKeyFile');
 
     await app.init();
 
     role = await roleService.findOneBy({ name: 'custom_role_class' });
     if (!role) {
-      const newRole = new Role();
+      const newRole = new CreateRoleDtoInput();
       newRole.name = 'custom_role_class';
       newRole.gerenciarTurmas = true;
       role = await roleService.create(newRole);
@@ -127,16 +145,27 @@ describe('Class (e2e)', () => {
     return { user, partner };
   };
 
-  it('should be create a class', async () => {
+  const createClassWithPeriod = async (userId: string, className?: string) => {
+    // Criar um período letivo
+    const coursePeriodDto = CreateCoursePeriodDtoInputFaker();
+    const coursePeriod = await coursePeriodService.create(
+      coursePeriodDto,
+      userId,
+    );
+
+    // Criar a turma com o período letivo
     const classDto = {
-      name: 'test',
+      name: className || 'test',
       description: 'test',
-      year: 2022,
-      startDate: new Date(),
-      endDate: new Date(),
+      coursePeriodId: coursePeriod.id,
     };
 
+    return classDto;
+  };
+
+  it('should be create a class', async () => {
     const { user } = await createPartnerFaker();
+    const classDto = await createClassWithPeriod(user.id);
 
     const token = await jwtService.signAsync(
       { user: { id: user.id } },
@@ -160,15 +189,10 @@ describe('Class (e2e)', () => {
     );
 
     // Criando uma turma para testar a atualização
+    const classDto = await createClassWithPeriod(user.id, 'Initial Name');
     const createdClass = await request(app.getHttpServer())
       .post('/class')
-      .send({
-        name: 'Initial Name',
-        description: 'Initial Description',
-        year: 2022,
-        startDate: new Date(),
-        endDate: new Date(),
-      })
+      .send(classDto)
       .set({ Authorization: `Bearer ${token}` })
       .expect(201);
 
@@ -240,13 +264,7 @@ describe('Class (e2e)', () => {
     );
 
     // Criando a classe antes de testar a deleção
-    const classDto = {
-      name: 'test class',
-      description: 'test description',
-      year: 2022,
-      startDate: new Date(),
-      endDate: new Date(),
-    };
+    const classDto = await createClassWithPeriod(user.id, 'test class');
 
     const createdClass = await request(app.getHttpServer())
       .post('/class')
@@ -290,13 +308,7 @@ describe('Class (e2e)', () => {
     );
 
     // Criando a classe antes de testar a deleção
-    const classDto = {
-      name: 'test class',
-      description: 'test description',
-      year: 2022,
-      startDate: new Date(),
-      endDate: new Date(),
-    };
+    const classDto = await createClassWithPeriod(user.id, 'test class');
 
     const createdClass = await request(app.getHttpServer())
       .post('/class')

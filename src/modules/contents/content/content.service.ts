@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { AuditLogService } from 'src/modules/audit-log/audit-log.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
@@ -15,7 +16,10 @@ import { MateriasLabel } from '../frente/types/materiaLabel';
 import { SubjectRepository } from '../subject/subject.repository';
 import { Content } from './content.entity';
 import { ContentRepository } from './content.repository';
+import { ContentStatsByFrenteDtoOutput } from './dtos/content-stats-by-frente.dto.output';
 import { CreateContentDTOInput } from './dtos/create-content.dto.input';
+import { SnapshotContentStatus } from './entities/snapshot-content-status/snapshot-content-status.entity';
+import { SnapshotContentStatusRepository } from './entities/snapshot-content-status/snapshot-content-status.repository';
 import { StatusContent } from './enum/status-content';
 import { GetAllContentInput } from './interface/get-all-content.input';
 
@@ -27,6 +31,7 @@ export class ContentService extends BaseService<Content> {
     private readonly envService: EnvService,
     private readonly auditLog: AuditLogService,
     private readonly fileContentRepository: FileContentRepository,
+    private readonly snapshotContentStatusRepository: SnapshotContentStatusRepository,
     @Inject('BlobService') private readonly blobService: BlobService,
     private readonly cache: CacheService,
   ) {
@@ -202,6 +207,14 @@ export class ContentService extends BaseService<Content> {
     };
   }
 
+  async getStatsByFrente(): Promise<ContentStatsByFrenteDtoOutput[]> {
+    const stats = await this.cache.wrap<ContentStatsByFrenteDtoOutput[]>(
+      'content:stats-by-frente',
+      async () => await this.repository.getStatsByFrente(),
+    );
+    return stats;
+  }
+
   private async IsUnique(subjectId: string, title: string) {
     return this.repository.IsUnique(subjectId, title);
   }
@@ -215,5 +228,32 @@ export class ContentService extends BaseService<Content> {
         .label,
     );
     return `${materiaName}/${frenteName}/${subjectName}/${title}`;
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async saveSnapshotContentStatus() {
+    const snapshot = await this.repository.getSnapshotContentStatus();
+    const snapshotContentStatus = new SnapshotContentStatus();
+    snapshotContentStatus.snapshot_date = snapshot.data;
+    snapshotContentStatus.pendentes = snapshot.pendentes;
+    snapshotContentStatus.aprovados = snapshot.aprovados;
+    snapshotContentStatus.reprovados = snapshot.reprovados;
+    snapshotContentStatus.pendentes_upload = snapshot.pendentes_upload;
+    snapshotContentStatus.total = snapshot.total;
+    await this.snapshotContentStatusRepository.create(snapshotContentStatus);
+  }
+
+  async getSnapshotContentStatus() {
+    const result = await this.cache.wrap<SnapshotContentStatus[]>(
+      'content:snapshot-content-status',
+      async () => {
+        const snapshot = await this.snapshotContentStatusRepository.findAllBy({
+          page: 1,
+          limit: 9999,
+        });
+        return snapshot.data;
+      },
+    );
+    return result;
   }
 }

@@ -1,18 +1,25 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { AggregatePeriodDtoInput } from 'src/shared/dtos/aggregate-period.dto.input';
 import { GetAllDtoOutput } from 'src/shared/dtos/get-all.dto.output';
 import { BaseService } from 'src/shared/modules/base/base.service';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
 import { Role } from '../role/role.entity';
 import { RoleRepository } from '../role/role.repository';
+import { AggregateUserLastAcessDtoOutput } from './dto/aggregate-user-last-acess.dto.output';
+import { AggregateUserPeriodDtoOutput } from './dto/aggregate-user-period.dto.output';
+import { AggregateUsersByRoleDtoOutput } from './dto/aggregate-users-by-role.dto.output';
 import { CreateUserDtoInput } from './dto/create.dto.input';
 import { GetUserDtoInput } from './dto/get-user.dto.input';
 import { LoginTokenDTO } from './dto/login-token.dto.input';
 import { LoginDtoInput } from './dto/login.dto.input';
 import { ResetPasswordDtoInput } from './dto/reset-password.dto.input';
+import { SearchUsersDtoInput } from './dto/search-users.dto.input';
+import { SearchUsersDtoOutput } from './dto/search-users.dto.output';
 import { UpdateUserDTOInput } from './dto/update.dto.input';
 import { UserDtoOutput } from './dto/user.dto.output';
 import { UserWithRoleName } from './dto/userWithRoleName';
@@ -30,6 +37,7 @@ export class UserService extends BaseService<User> {
     private readonly collaboratorRepository: CollaboratorRepository,
     private readonly discordWebhook: DiscordWebhook,
     private readonly envService: EnvService,
+    private readonly cache: CacheService,
   ) {
     super(userRepository);
   }
@@ -126,8 +134,7 @@ export class UserService extends BaseService<User> {
       throw new HttpException('password invalid', HttpStatus.CONFLICT);
     }
     if (!userFullInfo.emailConfirmSended) {
-      userFullInfo.lastAccess = new Date();
-      await this._repository.update(userFullInfo);
+      await this.userRepository.updateLastAcess(userFullInfo);
       return this.getAccessToken(userFullInfo);
     }
 
@@ -291,6 +298,30 @@ export class UserService extends BaseService<User> {
     await this.userRepository.update(user);
   }
 
+  async aggregateUsersByPeriod({
+    groupBy,
+  }: AggregatePeriodDtoInput): Promise<AggregateUserPeriodDtoOutput[]> {
+    // return this.userRepository.aggregateUsersByPeriod(groupBy);
+    return await this.cache.wrap<AggregateUserPeriodDtoOutput[]>(
+      `aggregateUsersByPeriod:${groupBy}`,
+      async () => await this.userRepository.aggregateUsersByPeriod(groupBy),
+    );
+  }
+
+  async aggregateUsersByRole() {
+    return await this.cache.wrap<AggregateUsersByRoleDtoOutput[]>(
+      'aggregateUsersByRole',
+      async () => await this.userRepository.aggregateUsersByRole(),
+    );
+  }
+
+  async aggregateUsersByLastAcess({ groupBy }: AggregatePeriodDtoInput) {
+    return await this.cache.wrap<AggregateUserLastAcessDtoOutput[]>(
+      `aggregateUsersByLastAcess:${groupBy}`,
+      async () => await this.userRepository.aggregateUsersByLastAcess(groupBy),
+    );
+  }
+
   private convertDtoToDomain(userDto: CreateUserDtoInput): User {
     const newUser = new User();
     return Object.assign(newUser, userDto) as User;
@@ -300,7 +331,10 @@ export class UserService extends BaseService<User> {
     const roles = this.mapperRole(domain.role);
     const user = this.MapUsertoUserDTO(domain);
     return {
-      access_token: await this.jwtService.signAsync({ user, roles }),
+      access_token: await this.jwtService.signAsync(
+        { user, roles },
+        { expiresIn: '24h' },
+      ),
     };
   }
 
@@ -334,5 +368,63 @@ export class UserService extends BaseService<User> {
     const diff = new Date().getTime() - date.getTime();
     if (diff / 3600000 < 2) return true;
     return false;
+  }
+
+  async searchUsersByName({
+    name,
+  }: SearchUsersDtoInput): Promise<SearchUsersDtoOutput[]> {
+    const users = await this.userRepository.searchUsersByName(name);
+
+    return users.map((user) => ({
+      id: user.id,
+      name: user.useSocialName
+        ? `${user.socialName} ${user.lastName}`
+        : `${user.firstName} ${user.lastName}`,
+      email: user.email,
+      phone: user.phone,
+    }));
+  }
+
+  async sendBulkEmail(
+    message: string,
+    subject: string,
+    sendToAll?: boolean,
+    userIds?: string[],
+  ) {
+    let users: User[];
+
+    if (sendToAll) {
+      // Buscar todos os usuários ativos
+      users = await this.userRepository.findAllActive();
+      this.logger.log(`Sending bulk email to all users (${users.length})`);
+    } else {
+      if (!userIds || userIds.length === 0) {
+        throw new HttpException(
+          'É necessário fornecer uma lista de IDs de usuários ou ativar sendToAll',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      users = await Promise.all(
+        userIds.map(async (id) => {
+          const user = await this.userRepository.findOneBy({ id });
+          if (!user) {
+            throw new HttpException(
+              `Usuário com ID ${id} não encontrado`,
+              HttpStatus.NOT_FOUND,
+            );
+          }
+          return user;
+        }),
+      );
+    }
+
+    const emails = users.map((user) => user.email);
+
+    await this.emailService.sendBulkNotification(emails, subject, message);
+
+    this.logger.log(
+      `Bulk email sent to ${emails.length} users. Subject: ${subject}`,
+    );
   }
 }

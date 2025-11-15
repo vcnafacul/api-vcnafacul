@@ -2,6 +2,7 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Status } from 'src/modules/simulado/enum/status.enum';
 import { Gender } from 'src/modules/user/enum/gender';
+import { FormService } from 'src/modules/vcnafacul-form/form/form.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { CacheService } from 'src/shared/modules/cache/cache.service';
@@ -18,6 +19,7 @@ import { LogStudentRepository } from '../studentCourse/log-student/log-student.r
 import { StudentCourse } from '../studentCourse/student-course.entity';
 import { StudentCourseRepository } from '../studentCourse/student-course.repository';
 import { CreateInscriptionCourseInput } from './dtos/create-inscription-course.dto.input';
+import { ExtendInscriptionCourseDtoInput } from './dtos/extend-inscription-course.dto.input';
 import { InscriptionCourseDtoOutput } from './dtos/get-all-inscription.dto.output';
 import { GetSubscribersDtoOutput } from './dtos/get-subscribers.dto.output';
 import { UpdateInscriptionCourseDTOInput } from './dtos/update-inscription-course.dto.input';
@@ -34,6 +36,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     private readonly logStudentRepository: LogStudentRepository,
     private readonly discordWebhook: DiscordWebhook,
     private readonly cache: CacheService,
+    private readonly formService: FormService,
   ) {
     super(repository);
   }
@@ -50,6 +53,14 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     }
     const parnetPrepCourse =
       await this.partnerPrepCourseService.getByUserId(userId);
+
+    const hasActiveForm = await this.formService.hasActiveForm();
+    if (!hasActiveForm) {
+      throw new HttpException(
+        'Não existe um formulário ativo - Entre em contato com o suporte',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
 
     dto.endDate = new Date(dto.endDate);
     dto.startDate = new Date(dto.startDate);
@@ -68,6 +79,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     inscriptionCourse.description = dto.description || '';
     inscriptionCourse.partnerPrepCourse = parnetPrepCourse;
     const result = await this.repository.create(inscriptionCourse);
+    await this.formService.createFormFull(result.id);
     return {
       id: result.id,
       name: result.name,
@@ -140,15 +152,20 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
         : today > inscription.endDate
           ? Status.Rejected
           : Status.Approved;
+    const partnerPrepForm =
+      await this.formService.getFormFullByInscriptionId(id);
     return Object.assign(new HasInscriptionActiveDtoOutput(), {
       prepCourseName: inscription.partnerPrepCourse.geo.name,
+      prepCourseId: inscription.partnerPrepCourse.id,
       inscription: {
         name: inscription.name,
         description: inscription.description,
         startDate: inscription.startDate,
         endDate: inscription.endDate,
-        status,
+        status:
+          inscription.actived === Status.Rejected ? Status.Rejected : status,
       },
+      partnerPrepForm,
     });
   }
 
@@ -157,6 +174,12 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     if (!inscriptionCourse) {
       throw new HttpException(
         'Processo Seletivo não encontrado',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (inscriptionCourse.students.length > 0) {
+      throw new HttpException(
+        'Não é possível cancelar o processo seletivo com estudantes inscritos',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -169,15 +192,6 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     return this.repository.update(entity);
   }
   async updateFromDTO(dto: UpdateInscriptionCourseDTOInput) {
-    const now = new Date();
-
-    if (new Date(dto.endDate) < now) {
-      throw new HttpException(
-        'Data de término do curso não pode ser menor que a data atual',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
     const inscriptionCourse = await this.repository.findOneBy({ id: dto.id });
     if (!inscriptionCourse) {
       throw new HttpException(
@@ -186,12 +200,64 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
       );
     }
 
-    const startDate = new Date(dto.startDate);
-    const endDate = new Date(dto.endDate);
+    // Normalizar a data atual para meia-noite para comparação
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    // Normalizar as datas existentes no banco para meia-noite
+    const currentStartDate = new Date(inscriptionCourse.startDate);
+    currentStartDate.setHours(0, 0, 0, 0);
+    const currentEndDate = new Date(inscriptionCourse.endDate);
+    currentEndDate.setHours(0, 0, 0, 0);
+
+    // Normalizar as novas datas do DTO para meia-noite
+    const newStartDate = new Date(dto.startDate);
+    newStartDate.setHours(0, 0, 0, 0);
+    const newEndDate = new Date(dto.endDate);
+    newEndDate.setHours(0, 0, 0, 0);
+
+    // Verificar se a data de fim é válida
+    if (newEndDate < now) {
+      throw new HttpException(
+        'Data de término do curso não pode ser menor que a data atual',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Verificar o estado atual do processo seletivo
+    const hasStarted = currentStartDate <= now;
+    const hasEnded = currentEndDate < now;
+
+    // Aplicar regras de validação conforme o estado
+    if (hasEnded) {
+      // Processo já terminou - não pode alterar nenhuma data
+      if (
+        newStartDate.getTime() !== currentStartDate.getTime() ||
+        newEndDate.getTime() !== currentEndDate.getTime()
+      ) {
+        throw new HttpException(
+          'Não é possível alterar as datas de um processo seletivo já finalizado',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    } else if (hasStarted) {
+      // Processo já começou mas ainda não terminou - não pode alterar data de início
+      if (newStartDate.getTime() !== currentStartDate.getTime()) {
+        throw new HttpException(
+          'Não é possível alterar a data de início de um processo seletivo em andamento',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
+
+    // Preparar as datas finais (startDate com horário 00:00:00 e endDate com 23:59:59)
+    const startDate = new Date(newStartDate);
     startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(newEndDate);
     endDate.setHours(23, 59, 59, 999);
 
-    if (startDate < now) {
+    // Definir o status baseado na nova data de início
+    if (startDate <= now) {
       inscriptionCourse.actived = Status.Approved;
     } else {
       inscriptionCourse.actived = Status.Pending;
@@ -204,6 +270,65 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
       endDate,
       expectedOpening: dto.expectedOpening,
       requestDocuments: dto.requestDocuments,
+    });
+
+    await this.repository.update(inscriptionCourse);
+  }
+
+  async extendInscription(id: string, dto: ExtendInscriptionCourseDtoInput) {
+    const inscriptionCourse = await this.repository.findOneBy({ id });
+    if (!inscriptionCourse) {
+      throw new HttpException(
+        'Processo Seletivo não encontrado',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    // Normalizar a data atual para meia-noite para comparação
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    // Normalizar a data existente no banco para meia-noite
+    const currentEndDate = new Date(inscriptionCourse.endDate);
+    currentEndDate.setHours(0, 0, 0, 0);
+
+    // Normalizar a nova data do DTO para meia-noite
+    const newEndDate = new Date(dto.endDate);
+    newEndDate.setHours(0, 0, 0, 0);
+
+    // Verificar se a nova data de término é válida (deve ser no futuro)
+    if (newEndDate < now) {
+      throw new HttpException(
+        'Data de término não pode ser menor que a data atual',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Verificar se a nova data é posterior à data atual
+    if (newEndDate <= currentEndDate) {
+      throw new HttpException(
+        'A nova data de término deve ser posterior à data atual de término',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Preparar a data final (com horário 23:59:59)
+    const endDate = new Date(newEndDate);
+    endDate.setHours(23, 59, 59, 999);
+
+    // Normalizar a data de início para verificar status
+    const startDate = new Date(inscriptionCourse.startDate);
+    startDate.setHours(0, 0, 0, 0);
+
+    // Atualizar o status baseado na data de início
+    if (startDate <= now) {
+      inscriptionCourse.actived = Status.Approved;
+    } else {
+      inscriptionCourse.actived = Status.Pending;
+    }
+
+    Object.assign(inscriptionCourse, {
+      endDate,
     });
 
     await this.repository.update(inscriptionCourse);

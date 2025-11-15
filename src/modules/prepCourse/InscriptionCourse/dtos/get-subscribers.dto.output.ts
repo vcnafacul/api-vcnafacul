@@ -17,7 +17,7 @@ export class GetSubscribersDtoOutput {
   rg: string;
   uf: string;
   telefone_emergencia: string;
-  socioeconomic: string;
+  socioeconomic: object;
   whatsapp: string;
   nome: string;
   sobrenome: string;

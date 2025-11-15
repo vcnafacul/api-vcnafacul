@@ -61,7 +61,6 @@ export class PartnerPrepCourseRepository extends BaseRepository<PartnerPrepCours
         'representative',
       )
       .leftJoinAndSelect('partner_prep_course.members', 'members')
-      .select(['members.id'])
       .addSelect('COALESCE(COUNT(members.id), 0)', 'numberMembers')
       .leftJoin('partner_prep_course.students', 'student_course')
       .addSelect('COALESCE(COUNT(student_course.id), 0)', 'numberStudents')
@@ -83,12 +82,24 @@ export class PartnerPrepCourseRepository extends BaseRepository<PartnerPrepCours
           'geo.id',
           'geo.name',
           'geo.category',
+          'geo.street',
+          'geo.number',
+          'geo.complement',
+          'geo.neighborhood',
           'geo.city',
           'geo.state',
           'geo.phone',
         ])
         .innerJoin('partner_prep_course.representative', 'representative')
-        .addSelect(['representative.id', 'representative.name'])
+        .addSelect([
+          'representative.id',
+          'representative.firstName',
+          'representative.lastName',
+          'representative.socialName',
+          'representative.useSocialName',
+          'representative.email',
+          'representative.phone',
+        ])
         .orderBy('partner_prep_course.createdAt', 'DESC')
         .skip((page - 1) * limit)
         .take(limit)
@@ -109,5 +120,36 @@ export class PartnerPrepCourseRepository extends BaseRepository<PartnerPrepCours
       .createQueryBuilder('entity')
       .where('entity.deletedAt IS NULL')
       .getCount();
+  }
+
+  //criar um findOne que retorne o mesmo que o findAllBy, mas que retorne apenas um objeto
+  async findOneByIdRes(id: string): Promise<PartnerPrepCourse> {
+    return await this.repository
+      .createQueryBuilder('partner_prep_course')
+      .innerJoin('partner_prep_course.geo', 'geo')
+      .addSelect([
+        'geo.id',
+        'geo.name',
+        'geo.category',
+        'geo.street',
+        'geo.number',
+        'geo.complement',
+        'geo.neighborhood',
+        'geo.city',
+        'geo.state',
+        'geo.phone',
+      ])
+      .innerJoin('partner_prep_course.representative', 'representative')
+      .addSelect([
+        'representative.id',
+        'representative.firstName',
+        'representative.lastName',
+        'representative.socialName',
+        'representative.useSocialName',
+        'representative.email',
+        'representative.phone',
+      ])
+      .where({ id })
+      .getOne();
   }
 }

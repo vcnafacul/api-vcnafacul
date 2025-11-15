@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { OrConditional } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
@@ -11,8 +12,10 @@ import { CreateGeoDTOInput } from './dto/create-geo.dto.input';
 import { GeoStatusChangeDTOInput } from './dto/geo-status.dto.input';
 import { ListGeoDTOInput } from './dto/list-geo.dto.input';
 import { ReportMapHome } from './dto/report-map-home';
+import { SearchGeoDtoOutput } from './dto/search-geo.dto.output';
 import { UpdateGeoDTOInput } from './dto/update-geo.dto.input';
 import { StatusLogGeo } from './enum/status-log-geo';
+import { TypeGeo } from './enum/typeGeo';
 import { Geolocation } from './geo.entity';
 import { GeoRepository } from './geo.repository';
 import { LogGeo } from './log-geo/log-geo.entity';
@@ -118,8 +121,9 @@ export class GeoService extends BaseService<Geolocation> {
     geo.status = geoStatus.status;
     await this.geoRepository.update(geo);
 
-    const changes = `Status: ${statusLabels[oldStatus]} -> ${statusLabels[geoStatus.status]
-      }`;
+    const changes = `Status: ${statusLabels[oldStatus]} -> ${
+      statusLabels[geoStatus.status]
+    }`;
 
     const logGeo = new LogGeo();
     logGeo.geoId = geo.id;
@@ -177,27 +181,69 @@ export class GeoService extends BaseService<Geolocation> {
     return combinations;
   }
 
-  async getSummary() {
-    const geoTotal = await this.cache.wrap<number>('geo:total', async () =>
-      this.geoRepository.getTotalEntity(),
-    );
-    const geoPending = await this.cache.wrap<number>('geo:pending', async () =>
-      this.geoRepository.entityByStatus(Status.Pending),
-    );
-    const geoApproved = await this.cache.wrap<number>(
-      'geo:approved',
-      async () => this.geoRepository.entityByStatus(Status.Approved),
-    );
-    const geoRejected = await this.cache.wrap<number>(
-      'geo:rejected',
-      async () => this.geoRepository.entityByStatus(Status.Rejected),
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
+    timeZone: 'America/Sao_Paulo',
+  })
+  async getTotalEntityByTypeAndStatus() {
+    const result = await this.cache.wrap<object>(
+      'geo:totalByTypeAndStatus',
+      async () => {
+        const approvedUniversities =
+          await this.geoRepository.EntityByTypeAndStatus(
+            TypeGeo.COLLEGE,
+            Status.Approved,
+          );
+        const pendingUniversities =
+          await this.geoRepository.EntityByTypeAndStatus(
+            TypeGeo.COLLEGE,
+            Status.Pending,
+          );
+        const rejectedUniversities =
+          await this.geoRepository.EntityByTypeAndStatus(
+            TypeGeo.COLLEGE,
+            Status.Rejected,
+          );
+        const withReportUniversities =
+          await this.geoRepository.EntityWithReport(TypeGeo.COLLEGE);
+        const approvedCourses = await this.geoRepository.EntityByTypeAndStatus(
+          TypeGeo.PREP_COURSE,
+          Status.Approved,
+        );
+        const pendingCourses = await this.geoRepository.EntityByTypeAndStatus(
+          TypeGeo.PREP_COURSE,
+          Status.Pending,
+        );
+        const rejectedCourses = await this.geoRepository.EntityByTypeAndStatus(
+          TypeGeo.PREP_COURSE,
+          Status.Rejected,
+        );
+        const withReportCourses = await this.geoRepository.EntityWithReport(
+          TypeGeo.PREP_COURSE,
+        );
+        return {
+          approvedUniversities,
+          pendingUniversities,
+          rejectedUniversities,
+          withReportUniversities,
+          totalUniversities:
+            approvedUniversities + pendingUniversities + rejectedUniversities,
+          approvedCourses,
+          pendingCourses,
+          rejectedCourses,
+          withReportCourses,
+          totalCourses: approvedCourses + pendingCourses + rejectedCourses,
+        };
+      },
     );
 
-    return {
-      geoTotal,
-      geoPending,
-      geoApproved,
-      geoRejected,
-    };
+    return result;
+  }
+
+  async searchGeoByName(name: string): Promise<SearchGeoDtoOutput[]> {
+    const geo = await this.geoRepository.searchGeoByName(name);
+    return geo.map((geo) => ({
+      id: geo.id,
+      name: geo.name,
+    }));
   }
 }
