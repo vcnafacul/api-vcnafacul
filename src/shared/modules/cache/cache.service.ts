@@ -21,4 +21,8 @@ export class CacheService {
   async del(key: string) {
     await this.cacheManager.del(key);
   }
+
+  async set(key: string, value: any, ttl: number = 60 * 60 * 24 * 1000) {
+    await this.cacheManager.set(key, value, ttl);
+  }
 }

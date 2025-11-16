@@ -22,6 +22,7 @@ import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
 import { FormService } from 'src/modules/vcnafacul-form/form/form.service';
 import { SubmissionService } from 'src/modules/vcnafacul-form/submission/submission.service';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
@@ -60,6 +61,7 @@ describe('StudentCourse (e2e)', () => {
   let coursePeriodService: CoursePeriodService;
   let formService: FormService;
   let submissionService: SubmissionService;
+  let cacheService: CacheService;
 
   const discordWebhookMock = {
     sendMessage: jest.fn(),
@@ -102,7 +104,7 @@ describe('StudentCourse (e2e)', () => {
     classService = moduleFixture.get<ClassService>(ClassService);
     coursePeriodService =
       moduleFixture.get<CoursePeriodService>(CoursePeriodService);
-
+    cacheService = moduleFixture.get<CacheService>(CacheService);
     formService = moduleFixture.get<FormService>(FormService);
     submissionService = moduleFixture.get<SubmissionService>(SubmissionService);
     jest
@@ -154,6 +156,9 @@ describe('StudentCourse (e2e)', () => {
     jest
       .spyOn(submissionService, 'createSubmission')
       .mockImplementation(async () => 'hashKeyFile');
+
+    //mock buffer
+    jest.spyOn(cacheService, 'set').mockImplementation(async () => {});
 
     await app.init();
 
