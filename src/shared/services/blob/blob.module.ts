@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { EnvModule } from 'src/shared/modules/env/env.module';
+import { EnvService } from 'src/shared/modules/env/env.service';
 import { BlobService } from './blob-service';
 import { S3Service } from './s3-service';
-import { EnvService } from 'src/shared/modules/env/env.service';
 
 @Module({
-  imports: [],
+  imports: [EnvModule],
   controllers: [],
   providers: [
     {
@@ -17,7 +17,7 @@ import { EnvService } from 'src/shared/modules/env/env.service';
         }
         throw new Error('Invalid BLOB_PROVIDER');
       },
-      inject: [ConfigService],
+      inject: [EnvService],
     },
   ],
   exports: ['BlobService'],
