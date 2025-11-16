@@ -22,4 +22,8 @@ export class GetEnrolleds implements GetAllInput {
   @ApiProperty({ required: false })
   @IsOptional()
   sort?: Sort;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  inscriptionId?: string;
 }

@@ -46,6 +46,21 @@ export class InscriptionCourseRepository extends LinkedListRepository<
       .getOne();
   }
 
+  async findAllWithName(
+    partnerPrepCourseId: string,
+  ): Promise<InscriptionCourse[]> {
+    //andwehere there are students
+    return await this.repository
+      .createQueryBuilder('inscription_course')
+      .where(
+        'inscription_course.partner_prep_course_id = :partnerPrepCourseId',
+        { partnerPrepCourseId: partnerPrepCourseId },
+      )
+      .leftJoinAndSelect('inscription_course.students', 'students')
+      .addSelect(['students.id'])
+      .getMany();
+  }
+
   override async findAllBy({
     page,
     limit,

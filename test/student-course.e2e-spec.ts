@@ -2084,7 +2084,7 @@ describe('StudentCourse (e2e)', () => {
 
     // 4. Faz chamada à rota sem filtro nem ordenação
     const response = await request(app.getHttpServer())
-      .get('/student-course/enrolled')
+      .get('/student-course/enrolled?inscriptionId=' + inscription.id)
       .set({ Authorization: `Bearer ${token}` })
       .expect(200);
 
@@ -2161,6 +2161,7 @@ describe('StudentCourse (e2e)', () => {
       if (order) {
         url += `&sort[${sort}]=${order}`;
       }
+      url += `&inscriptionId=${inscription.id}`;
 
       const response = await request(app.getHttpServer())
         .get(url)

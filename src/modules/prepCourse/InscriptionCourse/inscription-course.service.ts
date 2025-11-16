@@ -21,6 +21,7 @@ import { StudentCourseRepository } from '../studentCourse/student-course.reposit
 import { CreateInscriptionCourseInput } from './dtos/create-inscription-course.dto.input';
 import { ExtendInscriptionCourseDtoInput } from './dtos/extend-inscription-course.dto.input';
 import { InscriptionCourseDtoOutput } from './dtos/get-all-inscription.dto.output';
+import { GetAllWithNameDtoOutput } from './dtos/get-all-with-name';
 import { GetSubscribersDtoOutput } from './dtos/get-subscribers.dto.output';
 import { UpdateInscriptionCourseDTOInput } from './dtos/update-inscription-course.dto.input';
 import { InscriptionCourse } from './inscription-course.entity';
@@ -131,6 +132,37 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
       limit: inscription.limit,
       totalItems: inscription.totalItems,
     };
+  }
+
+  async getAllWithName(userId: string): Promise<GetAllWithNameDtoOutput[]> {
+    const partner = await this.partnerPrepCourseService.getByUserId(userId);
+
+    const inscription = await this.repository.findAllWithName(partner.id);
+
+    return inscription
+      .filter(
+        (i) =>
+          i.students.length > 0 &&
+          (i.students.some(
+            (s) => s.applicationStatus === StatusApplication.Enrolled,
+          ) ||
+            i.students.some(
+              (s) =>
+                s.applicationStatus === StatusApplication.EnrollmentCancelled,
+            ) ||
+            i.students.some(
+              (s) => s.applicationStatus === StatusApplication.EnrollmentClosed,
+            )),
+      )
+      .map((i) => ({
+        id: i.id,
+        name: i.name,
+        startDate: i.startDate,
+        endDate: i.endDate,
+        createdAt: i.createdAt,
+      }))
+      .sort((a, b) => a.startDate.getTime() - b.startDate.getTime())
+      .reverse();
   }
 
   async getById(id: string): Promise<InscriptionCourse> {
