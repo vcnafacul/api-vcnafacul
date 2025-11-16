@@ -858,10 +858,12 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     userId,
     filter,
     sort,
+    inscriptionCourseId,
   }: GetAllInput & {
     userId: string;
     filter?: Filter;
     sort: Sort;
+    inscriptionCourseId?: string;
   }): Promise<GetEnrolledDtoOutput> {
     const partnerPrepCourse =
       await this.partnerPrepCourseService.getByUserId(userId);
@@ -873,9 +875,20 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       );
     }
 
+    const inscriptionCourse = await this.inscriptionCourseService.findOneBy({
+      id: inscriptionCourseId,
+    });
+    if (!inscriptionCourse) {
+      throw new HttpException(
+        'Processo Seletivo não encontrado',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
     const where = {
       partnerPrepCourse,
       cod_enrolled: Not(IsNull()),
+      inscriptionCourse,
     };
 
     const result = await this.repository.findAllBy({
