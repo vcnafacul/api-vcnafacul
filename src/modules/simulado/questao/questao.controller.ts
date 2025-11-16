@@ -238,6 +238,30 @@ export class QuestaoController {
     return await this.questaoService.getImage(id);
   }
 
+  @Get('health/s3-test')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'testa conexão com S3 e cache',
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
+  public async testS3Connection() {
+    return await this.questaoService.testS3Connection();
+  }
+
+  @Delete(':id/cache')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'limpa cache da imagem de uma questão específica',
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
+  public async clearImageCache(@Param('id') id: string) {
+    return await this.questaoService.clearImageCache(id);
+  }
+
   @Get(':id/logs')
   @ApiBearerAuth()
   @ApiResponse({
