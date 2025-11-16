@@ -247,7 +247,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     );
     await this.cache.set(
       `profile:photo:${fileKey}`,
-      { buffer: file.buffer, contentType: file.mimetype },
+      file,
       60 * 60 * 24 * 1000 * 7,
     );
     student.photo = fileKey;
