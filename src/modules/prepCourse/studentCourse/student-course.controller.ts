@@ -286,6 +286,7 @@ export class StudentCourseController {
       userId: (req.user as User).id,
       filter: query.filter,
       sort: query.sort,
+      inscriptionCourseId: query.inscriptionId,
     });
   }
 

@@ -23,6 +23,7 @@ import { HasInscriptionActiveDtoOutput } from '../partnerPrepCourse/dtos/has-ins
 import { CreateInscriptionCourseInput } from './dtos/create-inscription-course.dto.input';
 import { ExtendInscriptionCourseDtoInput } from './dtos/extend-inscription-course.dto.input';
 import { InscriptionCourseDtoOutput } from './dtos/get-all-inscription.dto.output';
+import { GetAllWithNameDtoOutput } from './dtos/get-all-with-name';
 import { GetSubscribersDtoOutput } from './dtos/get-subscribers.dto.output';
 import { UpdateInscriptionCourseDTOInput } from './dtos/update-inscription-course.dto.input';
 import { InscriptionCourse } from './inscription-course.entity';
@@ -57,6 +58,16 @@ export class InscriptionCourseController {
       dto.limit,
       (req.user as User).id,
     );
+  }
+
+  @Get('all-with-name')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
+  async getAllWithName(
+    @Req() req: Request,
+  ): Promise<GetAllWithNameDtoOutput[]> {
+    return await this.service.getAllWithName((req.user as User).id);
   }
 
   @Get('subscribers/:id')
