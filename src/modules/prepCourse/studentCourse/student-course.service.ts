@@ -245,6 +245,11 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       file,
       this.envService.get('BUCKET_PROFILE'),
     );
+    await this.cache.set(
+      `profile:photo:${fileKey}`,
+      file,
+      60 * 60 * 24 * 1000 * 7,
+    );
     student.photo = fileKey;
 
     const log = new LogStudent();
@@ -317,19 +322,39 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   }
 
   async getDocument(fileKey: string) {
-    const file = await this.blobService.getFile(
-      fileKey,
-      this.envService.get('BUCKET_STUDENT_DOC'),
+    //cache
+    const cachedFile = await this.cache.wrap<{
+      buffer: string;
+      contentType: string;
+    }>(
+      `document:${fileKey}`,
+      async () => {
+        return await this.blobService.getFile(
+          fileKey,
+          this.envService.get('BUCKET_STUDENT_DOC'),
+        );
+      },
+      60 * 60 * 24 * 1000 * 7,
     );
-    return file;
+    return cachedFile;
   }
 
   async getProfilePhoto(fileKey: string) {
-    const file = await this.blobService.getFile(
-      fileKey,
-      this.envService.get('BUCKET_PROFILE'),
+    //cache
+    const cachedFile = await this.cache.wrap<{
+      buffer: string;
+      contentType: string;
+    }>(
+      `profile:photo:${fileKey}`,
+      async () => {
+        return await this.blobService.getFile(
+          fileKey,
+          this.envService.get('BUCKET_PROFILE'),
+        );
+      },
+      60 * 60 * 24 * 1000 * 7,
     );
-    return file;
+    return cachedFile;
   }
 
   async getUserInfoToInscription(inscriptionId: string, userId: string) {
