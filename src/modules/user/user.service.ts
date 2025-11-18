@@ -148,7 +148,7 @@ export class UserService extends BaseService<User> {
     else {
       const token = await this.jwtService.signAsync(
         { user: { id: userFullInfo.id, flow: CreateFlow.DEFAULT } },
-        { expiresIn: '10s' },
+        { expiresIn: '15m' },
       );
       await this.emailService.sendCreateUser(userFullInfo, token);
       userFullInfo.password = undefined;
