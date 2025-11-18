@@ -5,6 +5,7 @@ import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { AuditLogModule } from '../audit-log/audit-log.module';
 import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
 import { RoleRepository } from '../role/role.repository';
+import { RefreshTokenService } from './services/refresh-token.service';
 import { UserController } from './user.controller';
 import { UserRepository } from './user.repository';
 import { UserService } from './user.service';
@@ -18,6 +19,7 @@ import { UserExistValidator } from './validator/user-exist.validator';
   providers: [
     UserService,
     UserRepository,
+    RefreshTokenService,
     EmailUniqueValidator,
     UserExistValidator,
     EmailExistValidator,
@@ -26,6 +28,6 @@ import { UserExistValidator } from './validator/user-exist.validator';
     RoleRepository,
     DiscordWebhook,
   ],
-  exports: [UserService, UserRepository],
+  exports: [UserService, UserRepository, RefreshTokenService],
 })
 export class UserModule {}

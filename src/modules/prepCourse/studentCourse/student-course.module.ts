@@ -2,6 +2,7 @@ import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { LogGeoRepository } from 'src/modules/geo/log-geo/log-geo.repository';
 import { RoleModule } from 'src/modules/role/role.module';
+import { RefreshTokenService } from 'src/modules/user/services/refresh-token.service';
 import { UserService } from 'src/modules/user/user.service';
 import { FormService } from 'src/modules/vcnafacul-form/form/form.service';
 import { VcnafaculFormModule } from 'src/modules/vcnafacul-form/vcnafacul-form.module';
@@ -50,6 +51,7 @@ import { StudentCourseService } from './student-course.service';
     DiscordWebhook,
     FormService,
     HttpServiceAxiosFactory,
+    RefreshTokenService,
   ],
   exports: [StudentCourseService, StudentCourseRepository, UserService],
 })

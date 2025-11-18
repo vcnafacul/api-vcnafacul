@@ -24,6 +24,7 @@ import { UpdateUserDTOInput } from './dto/update.dto.input';
 import { UserDtoOutput } from './dto/user.dto.output';
 import { UserWithRoleName } from './dto/userWithRoleName';
 import { CreateFlow } from './enum/create-flow';
+import { RefreshTokenService } from './services/refresh-token.service';
 import { User } from './user.entity';
 import { UserRepository } from './user.repository';
 
@@ -38,6 +39,7 @@ export class UserService extends BaseService<User> {
     private readonly discordWebhook: DiscordWebhook,
     private readonly envService: EnvService,
     private readonly cache: CacheService,
+    private readonly refreshTokenService: RefreshTokenService,
   ) {
     super(userRepository);
   }
@@ -146,7 +148,7 @@ export class UserService extends BaseService<User> {
     else {
       const token = await this.jwtService.signAsync(
         { user: { id: userFullInfo.id, flow: CreateFlow.DEFAULT } },
-        { expiresIn: '2h' },
+        { expiresIn: '15m' },
       );
       await this.emailService.sendCreateUser(userFullInfo, token);
       userFullInfo.password = undefined;
@@ -327,14 +329,22 @@ export class UserService extends BaseService<User> {
     return Object.assign(newUser, userDto) as User;
   }
 
-  private async getAccessToken(domain: User) {
+  private async getAccessToken(domain: User): Promise<LoginTokenDTO> {
     const roles = this.mapperRole(domain.role);
     const user = this.MapUsertoUserDTO(domain);
+
+    // Gera o access token (15 minutos)
+    const accessToken = await this.jwtService.signAsync({ user, roles });
+
+    // Gera o refresh token (7 dias)
+    const refreshToken = await this.refreshTokenService.generateRefreshToken(
+      domain.id,
+    );
+
     return {
-      access_token: await this.jwtService.signAsync(
-        { user, roles },
-        { expiresIn: '24h' },
-      ),
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expires_in: this.refreshTokenService.getAccessTokenExpiration(),
     };
   }
 
@@ -383,6 +393,68 @@ export class UserService extends BaseService<User> {
       email: user.email,
       phone: user.phone,
     }));
+  }
+
+  /**
+   * Renova o access token usando um refresh token válido
+   */
+  async refresh(refreshToken: string): Promise<LoginTokenDTO> {
+    // Valida o refresh token e obtém o userId
+    const userId =
+      await this.refreshTokenService.validateRefreshToken(refreshToken);
+
+    // Busca o usuário completo
+    const user = await this.userRepository.findOneBy({ id: userId });
+
+    if (!user || user.deletedAt != null) {
+      throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
+    }
+
+    // Atualiza lastAccess (usuário está ativo)
+    await this.userRepository.updateLastAcess(user);
+
+    // Rotaciona o refresh token (segurança: gera novo e revoga o antigo)
+    const newRefreshToken = await this.refreshTokenService.rotateRefreshToken(
+      refreshToken,
+      userId,
+    );
+
+    // Gera novo access token
+    const roles = this.mapperRole(user.role);
+    const userDto = this.MapUsertoUserDTO(user);
+    const accessToken = await this.jwtService.signAsync({
+      user: userDto,
+      roles,
+    });
+
+    this.logger.log(`Access token renovado para usuário: ${user.id}`);
+
+    return {
+      access_token: accessToken,
+      refresh_token: newRefreshToken,
+      expires_in: this.refreshTokenService.getAccessTokenExpiration(),
+    };
+  }
+
+  /**
+   * Faz logout revogando o refresh token
+   */
+  async logout(refreshToken: string): Promise<void> {
+    try {
+      await this.refreshTokenService.revokeRefreshToken(refreshToken);
+      this.logger.log('Logout realizado com sucesso');
+    } catch (error) {
+      // Mesmo que o token seja inválido, não lançamos erro no logout
+      this.logger.warn(`Erro ao revogar refresh token: ${error.message}`);
+    }
+  }
+
+  /**
+   * Faz logout de todos os dispositivos do usuário
+   */
+  async logoutAll(userId: string): Promise<void> {
+    await this.refreshTokenService.revokeAllUserTokens(userId);
+    this.logger.log(`Todos os tokens do usuário ${userId} foram revogados`);
   }
 
   async sendBulkEmail(
