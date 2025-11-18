@@ -25,6 +25,7 @@ import { ForgotPasswordDtoInput } from './dto/forgot-password.dto.input';
 import { GetUserDtoInput } from './dto/get-user.dto.input';
 import { HasEmailDtoInput } from './dto/has-email.dto.input';
 import { LoginDtoInput } from './dto/login.dto.input';
+import { RefreshTokenDtoInput } from './dto/refresh-token.dto.input';
 import { ResetPasswordDtoInput } from './dto/reset-password.dto.input';
 import { SearchUsersDtoInput } from './dto/search-users.dto.input';
 import { SendBulkEmailDtoInput } from './dto/send-bulk-email.dto.input';
@@ -47,6 +48,35 @@ export class UserController {
   @Post('login')
   async signIn(@Body() login: LoginDtoInput, @Res() res: Response) {
     return res.status(200).json(await this.userService.signIn(login));
+  }
+
+  @Post('refresh')
+  async refresh(
+    @Body() refreshTokenDto: RefreshTokenDtoInput,
+    @Res() res: Response,
+  ) {
+    return res
+      .status(200)
+      .json(await this.userService.refresh(refreshTokenDto.refresh_token));
+  }
+
+  @Post('logout')
+  async logout(
+    @Body() refreshTokenDto: RefreshTokenDtoInput,
+    @Res() res: Response,
+  ) {
+    await this.userService.logout(refreshTokenDto.refresh_token);
+    return res.status(200).json({ message: 'Logout realizado com sucesso' });
+  }
+
+  @Post('logout-all')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async logoutAll(@Req() req: Request, @Res() res: Response) {
+    await this.userService.logoutAll((req.user as User).id);
+    return res.status(200).json({
+      message: 'Logout de todos os dispositivos realizado com sucesso',
+    });
   }
 
   @Post('hasemail')

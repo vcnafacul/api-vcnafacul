@@ -7,6 +7,7 @@ import { FrenteRepository } from '../frente/frente.repository';
 import { SubjectController } from './subject.controller';
 import { SubjectRepository } from './subject.repository';
 import { SubjectService } from './subject.service';
+import { RefreshTokenService } from 'src/modules/user/services/refresh-token.service';
 
 @Module({
   controllers: [SubjectController],
@@ -17,6 +18,7 @@ import { SubjectService } from './subject.service';
     FrenteRepository,
     UserService,
     DiscordWebhook,
+    RefreshTokenService,
   ],
   exports: [SubjectService, SubjectRepository, UserService],
 })

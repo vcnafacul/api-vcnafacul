@@ -144,12 +144,15 @@ export class QuestaoService {
   public async getImage(id: string) {
     const cacheKey = `questao:image:${id}`;
     const bucketName = this.envService.get('BUCKET_QUESTION');
-    
+
     try {
       this.logger.log(`Buscando imagem: ${id} no bucket: ${bucketName}`);
-      
+
       // ttl 7 dias
-      const result = await this.cache.wrap<{ buffer: string; contentType: string }>(
+      const result = await this.cache.wrap<{
+        buffer: string;
+        contentType: string;
+      }>(
         cacheKey,
         async () => {
           this.logger.log(`Cache miss - buscando do S3: ${id}`);
@@ -157,8 +160,10 @@ export class QuestaoService {
         },
         60 * 60 * 24 * 1000 * 7,
       );
-      
-      this.logger.log(`Imagem encontrada: ${id}, contentType: ${result.contentType}`);
+
+      this.logger.log(
+        `Imagem encontrada: ${id}, contentType: ${result.contentType}`,
+      );
       return result;
     } catch (error) {
       this.logger.error(`Erro ao buscar imagem ${id}:`, error.stack);
@@ -263,27 +268,31 @@ export class QuestaoService {
   public async testS3Connection() {
     const bucketName = this.envService.get('BUCKET_QUESTION');
     const testImageId = 'test-connection';
-    
+
     try {
       this.logger.log('=== Iniciando teste de conexão S3 ===');
-      
+
       // 1. Testar variáveis de ambiente
       const envVars = {
         BUCKET_QUESTION: bucketName,
         AWS_ENDPOINT: this.envService.get('AWS_ENDPOINT'),
         AWS_REGION: this.envService.get('AWS_REGION'),
-        AWS_ACCESS_KEY_ID: this.envService.get('AWS_ACCESS_KEY_ID') ? '***definido***' : 'NÃO DEFINIDO',
-        AWS_SECRET_ACCESS_KEY: this.envService.get('AWS_SECRET_ACCESS_KEY') ? '***definido***' : 'NÃO DEFINIDO',
+        AWS_ACCESS_KEY_ID: this.envService.get('AWS_ACCESS_KEY_ID')
+          ? '***definido***'
+          : 'NÃO DEFINIDO',
+        AWS_SECRET_ACCESS_KEY: this.envService.get('AWS_SECRET_ACCESS_KEY')
+          ? '***definido***'
+          : 'NÃO DEFINIDO',
         CACHE_DRIVER: this.envService.get('CACHE_DRIVER'),
         NODE_ENV: this.envService.get('NODE_ENV'),
       };
-      
+
       this.logger.log('Variáveis de ambiente:', envVars);
 
       // 2. Testar conexão com S3 (tentando buscar uma imagem qualquer)
       let s3Status = 'OK';
       let s3Error = null;
-      
+
       try {
         // Tenta buscar uma imagem diretamente do S3 (sem cache)
         await this.blobService.getFile(testImageId, bucketName);
@@ -300,7 +309,7 @@ export class QuestaoService {
       // 3. Testar cache
       let cacheStatus = 'OK';
       let cacheError = null;
-      
+
       try {
         const testKey = 'test:connection:' + Date.now();
         await this.cache.wrap(testKey, async () => 'test-value', 1000);
@@ -312,7 +321,8 @@ export class QuestaoService {
       }
 
       return {
-        status: s3Status === 'OK' && cacheStatus === 'OK' ? 'HEALTHY' : 'UNHEALTHY',
+        status:
+          s3Status === 'OK' && cacheStatus === 'OK' ? 'HEALTHY' : 'UNHEALTHY',
         timestamp: new Date().toISOString(),
         environment: envVars,
         s3: {
