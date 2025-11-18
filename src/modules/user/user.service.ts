@@ -410,6 +410,9 @@ export class UserService extends BaseService<User> {
       throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
     }
 
+    // Atualiza lastAccess (usuário está ativo)
+    await this.userRepository.updateLastAcess(user);
+
     // Rotaciona o refresh token (segurança: gera novo e revoga o antigo)
     const newRefreshToken = await this.refreshTokenService.rotateRefreshToken(
       refreshToken,
