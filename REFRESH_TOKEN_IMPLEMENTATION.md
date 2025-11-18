@@ -1,5 +1,12 @@
 # 🔐 Implementação de Refresh Token
 
+## ⚠️ ATUALIZAÇÃO IMPORTANTE
+**Este documento está desatualizado.** O sistema agora utiliza **Cookies HttpOnly** para maior segurança.
+
+👉 **Consulte:** [REFRESH_TOKEN_COOKIES.md](./REFRESH_TOKEN_COOKIES.md)
+
+---
+
 ## 📋 Resumo
 
 Foi implementado um sistema completo de **refresh tokens** com as seguintes características:
@@ -7,6 +14,7 @@ Foi implementado um sistema completo de **refresh tokens** com as seguintes cara
 - ✅ **Access Token**: 15 minutos de validade
 - ✅ **Refresh Token**: 7 dias de validade
 - ✅ **Armazenamento**: Redis (via CacheService)
+- ✅ **Cookies HttpOnly**: Proteção contra XSS e CSRF
 - ✅ **Rotação de Tokens**: Gera novo refresh token a cada renovação (segurança)
 - ✅ **Revogação**: Logout individual e de todos os dispositivos
 - ✅ **Zero Breaking Changes**: Funciona imediatamente sem migrations
@@ -79,12 +87,16 @@ Content-Type: application/json
 
 **Resposta:**
 ```json
+HTTP/1.1 200 OK
+Set-Cookie: refresh_token=550e8400-e29b-41d4-a716-446655440000; HttpOnly; Secure; SameSite=Strict
+
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refresh_token": "550e8400-e29b-41d4-a716-446655440000",
   "expires_in": 900
 }
 ```
+
+⚠️ **IMPORTANTE**: O `refresh_token` agora é enviado via **cookie httpOnly** e não aparece mais no body da resposta.
 
 ### 2. **Renovar Access Token**
 
@@ -93,42 +105,44 @@ Quando o access token expirar (após 15 minutos), use o refresh token:
 **Requisição:**
 ```bash
 POST /user/refresh
-Content-Type: application/json
-
-{
-  "refresh_token": "550e8400-e29b-41d4-a716-446655440000"
-}
+Cookie: refresh_token=550e8400-e29b-41d4-a716-446655440000
 ```
 
 **Resposta:**
 ```json
+HTTP/1.1 200 OK
+Set-Cookie: refresh_token=660f9500-f39c-52e5-b827-557766551111; HttpOnly; Secure; SameSite=Strict
+
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refresh_token": "660f9500-f39c-52e5-b827-557766551111",
   "expires_in": 900
 }
 ```
 
-⚠️ **Importante**: O refresh token é **rotacionado** (o antigo é revogado e um novo é gerado).
+⚠️ **Importante**: 
+- O refresh token é enviado via **cookie** (não no body)
+- O refresh token é **rotacionado** (o antigo é revogado e um novo é gerado)
+- Retrocompatibilidade: ainda aceita `refresh_token` no body como fallback
 
 ### 3. **Logout**
 
 **Requisição:**
 ```bash
 POST /user/logout
-Content-Type: application/json
-
-{
-  "refresh_token": "550e8400-e29b-41d4-a716-446655440000"
-}
+Cookie: refresh_token=550e8400-e29b-41d4-a716-446655440000
 ```
 
 **Resposta:**
 ```json
+HTTP/1.1 200 OK
+Set-Cookie: refresh_token=; Max-Age=0
+
 {
   "message": "Logout realizado com sucesso"
 }
 ```
+
+⚠️ **IMPORTANTE**: O cookie é limpo automaticamente pelo servidor.
 
 ### 4. **Logout de Todos os Dispositivos**
 
@@ -152,12 +166,18 @@ Authorization: Bearer {access_token}
 ### Fluxo Recomendado
 
 ```typescript
-// 1. Armazenar tokens após login
+// 1. Armazenar apenas access_token (refresh_token está no cookie)
 localStorage.setItem('access_token', response.access_token);
-localStorage.setItem('refresh_token', response.refresh_token);
+// NÃO precisa armazenar refresh_token - está no cookie httpOnly!
 
-// 2. Interceptor para requisições
-axios.interceptors.request.use((config) => {
+// 2. Configurar axios com credentials (envia cookies)
+const api = axios.create({
+  baseURL: 'http://localhost:3333',
+  withCredentials: true,  // ✅ ESSENCIAL - envia cookies automaticamente
+});
+
+// 3. Interceptor para requisições
+api.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -165,8 +185,8 @@ axios.interceptors.request.use((config) => {
   return config;
 });
 
-// 3. Interceptor para renovar token automaticamente
-axios.interceptors.response.use(
+// 4. Interceptor para renovar token automaticamente
+api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
@@ -176,19 +196,16 @@ axios.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        // Tenta renovar o token
-        const refreshToken = localStorage.getItem('refresh_token');
-        const response = await axios.post('/user/refresh', {
-          refresh_token: refreshToken,
-        });
+        // Tenta renovar o token (refresh_token vai automaticamente no cookie)
+        const response = await api.post('/user/refresh');
 
-        // Atualiza os tokens
+        // Atualiza apenas o access_token
         localStorage.setItem('access_token', response.data.access_token);
-        localStorage.setItem('refresh_token', response.data.refresh_token);
+        // refresh_token é atualizado automaticamente no cookie!
 
         // Repete a requisição original
         originalRequest.headers.Authorization = `Bearer ${response.data.access_token}`;
-        return axios(originalRequest);
+        return api(originalRequest);
       } catch (refreshError) {
         // Refresh token expirado/inválido - redirecionar para login
         localStorage.clear();
@@ -207,10 +224,15 @@ axios.interceptors.response.use(
 ```typescript
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Mesma lógica, mas usando AsyncStorage ao invés de localStorage
+// Apenas access_token precisa ser armazenado
 await AsyncStorage.setItem('access_token', response.access_token);
-await AsyncStorage.setItem('refresh_token', response.refresh_token);
+
+// Para apps nativos, você pode:
+// 1. Usar WebView com cookies habilitados
+// 2. Usar o fallback (enviar refresh_token no body)
 ```
+
+⚠️ **Nota para Mobile**: Apps nativos podem precisar de tratamento especial. Consulte [REFRESH_TOKEN_COOKIES.md](./REFRESH_TOKEN_COOKIES.md) para detalhes.
 
 ---
 
