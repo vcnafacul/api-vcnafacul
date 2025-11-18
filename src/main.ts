@@ -2,6 +2,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule } from '@nestjs/swagger';
 import { useContainer } from 'class-validator';
+import * as cookieParser from 'cookie-parser';
 import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import { VcnafaculCors } from './config/cors';
@@ -28,6 +29,7 @@ async function bootstrap() {
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
   app.useGlobalFilters(new ControllerExceptionsFilter());
   app.useGlobalInterceptors(new LoggingInterceptor());
+  app.use(cookieParser()); // ✅ Habilita parsing de cookies
   app.use(json({ limit: '30mb' }));
   app.use(urlencoded({ limit: '30mb', extended: true }));
   SwaggerModule.setup(

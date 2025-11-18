@@ -47,25 +47,73 @@ export class UserController {
 
   @Post('login')
   async signIn(@Body() login: LoginDtoInput, @Res() res: Response) {
-    return res.status(200).json(await this.userService.signIn(login));
+    const tokens = await this.userService.signIn(login);
+
+    // Seta o refresh token no cookie httpOnly (seguro contra XSS)
+    res.cookie('refresh_token', tokens.refresh_token, {
+      httpOnly: true, // Protege contra XSS
+      secure: process.env.NODE_ENV === 'production', // HTTPS apenas em produção
+      sameSite: 'strict', // Protege contra CSRF
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 dias em ms
+    });
+
+    // Retorna apenas o access_token no body (refresh_token agora está no cookie)
+    return res.status(200).json({
+      access_token: tokens.access_token,
+      expires_in: tokens.expires_in,
+    });
   }
 
   @Post('refresh')
   async refresh(
+    @Req() req: Request,
     @Body() refreshTokenDto: RefreshTokenDtoInput,
     @Res() res: Response,
   ) {
-    return res
-      .status(200)
-      .json(await this.userService.refresh(refreshTokenDto.refresh_token));
+    // Prioriza o cookie, mas aceita body como fallback (compatibilidade temporária)
+    const refreshToken =
+      req.cookies['refresh_token'] || refreshTokenDto?.refresh_token;
+
+    if (!refreshToken) {
+      return res.status(401).json({
+        message: 'Refresh token não encontrado',
+        statusCode: 401,
+      });
+    }
+
+    const tokens = await this.userService.refresh(refreshToken);
+
+    // Seta o novo refresh token no cookie
+    res.cookie('refresh_token', tokens.refresh_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.status(200).json({
+      access_token: tokens.access_token,
+      expires_in: tokens.expires_in,
+    });
   }
 
   @Post('logout')
   async logout(
+    @Req() req: Request,
     @Body() refreshTokenDto: RefreshTokenDtoInput,
     @Res() res: Response,
   ) {
-    await this.userService.logout(refreshTokenDto.refresh_token);
+    // Prioriza o cookie, mas aceita body como fallback (compatibilidade temporária)
+    const refreshToken =
+      req.cookies['refresh_token'] || refreshTokenDto?.refresh_token;
+
+    if (refreshToken) {
+      await this.userService.logout(refreshToken);
+    }
+
+    // Limpa o cookie
+    res.clearCookie('refresh_token');
+
     return res.status(200).json({ message: 'Logout realizado com sucesso' });
   }
 
