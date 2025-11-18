@@ -51,7 +51,7 @@ import { JwtStrategy } from './shared/strategy/jwt.strategy';
     JwtModule.register({
       global: true,
       secret: process.env.APP_KEY,
-      signOptions: { expiresIn: '10s' },
+      signOptions: { expiresIn: '15m' },
     }),
     HttpModule.registerAsync({
       useFactory: async () => ({
