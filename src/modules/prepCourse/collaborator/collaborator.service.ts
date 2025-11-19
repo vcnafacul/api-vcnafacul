@@ -1,11 +1,17 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { RoleRepository } from 'src/modules/role/role.repository';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
-import { removeFileFTP } from 'src/utils/removeFileFtp';
-import { uploadFileFTP } from 'src/utils/uploadFileFtp';
+import { BlobService } from 'src/shared/services/blob/blob-service';
 import { Collaborator } from '../collaborator/collaborator.entity';
 import { PartnerPrepCourseService } from '../partnerPrepCourse/partner-prep-course.service';
 import { CollaboratorRepository } from './collaborator.repository';
@@ -15,12 +21,15 @@ import { CollaboratorDTOOutput } from './dtos/get-all-collaborator.dto.output';
 
 @Injectable()
 export class CollaboratorService extends BaseService<Collaborator> {
+  private readonly logger = new Logger(CollaboratorService.name);
   constructor(
     private readonly repository: CollaboratorRepository,
     private readonly partnerPrepCourseService: PartnerPrepCourseService,
     private envService: EnvService,
     private readonly roleRepository: RoleRepository,
     private readonly userRepository: UserRepository,
+    @Inject('BlobService') private readonly blobService: BlobService,
+    private readonly cache: CacheService,
   ) {
     super(repository);
   }
@@ -93,44 +102,46 @@ export class CollaboratorService extends BaseService<Collaborator> {
     const collaborator = await this.repository.findOneByUserId(userId);
     if (collaborator.photo) {
       try {
-        await removeFileFTP(
+        await this.blobService.deleteFile(
           collaborator.photo,
-          this.envService.get('FTP_HOST'),
-          this.envService.get('FTP_PROFILE'),
-          this.envService.get('FTP_PASSWORD'),
+          this.envService.get('BUCKET_DOC'),
         );
+        await this.cache.del(`collaborator:photo:${collaborator.photo}`);
       } catch (error) {
-        console.log(error);
+        this.logger.error(`Error to delete file ${collaborator.photo}`, error);
       }
     }
-    const fileName = await uploadFileFTP(
+    const fileName = await this.blobService.uploadFile(
       file,
-      this.envService.get('FTP_HOST'),
-      this.envService.get('FTP_PROFILE'),
-      this.envService.get('FTP_PASSWORD'),
+      this.envService.get('BUCKET_DOC'),
     );
     if (!fileName) {
       throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);
     }
     collaborator.photo = fileName;
     await this.repository.update(collaborator);
+    const buffer = await this.blobService.getFile(
+      fileName,
+      this.envService.get('BUCKET_DOC'),
+    );
+    await this.cache.set(
+      `collaborator:photo:${fileName}`,
+      buffer,
+      60 * 60 * 24 * 1000 * 7,
+    );
     return fileName;
   }
 
   async removeImage(userId: string): Promise<boolean> {
     const collaborator = await this.repository.findOneByUserId(userId);
-    const deleted = await removeFileFTP(
+    await this.blobService.deleteFile(
       collaborator.photo,
-      this.envService.get('FTP_HOST'),
-      this.envService.get('FTP_PROFILE'),
-      this.envService.get('FTP_PASSWORD'),
+      this.envService.get('BUCKET_DOC'),
     );
-    if (deleted) {
-      collaborator.photo = null;
-      await this.repository.update(collaborator);
-      return true;
-    }
-    return false;
+    await this.cache.del(`collaborator:photo:${collaborator.photo}`);
+    collaborator.photo = null;
+    await this.repository.update(collaborator);
+    return true;
   }
 
   async changeActive(id: string) {
@@ -153,5 +164,22 @@ export class CollaboratorService extends BaseService<Collaborator> {
     collaborator.description = description;
     await this.repository.update(collaborator);
     return collaborator;
+  }
+
+  async getPhoto(imageKey: string) {
+    const cachedFile = await this.cache.wrap<{
+      buffer: string;
+      contentType: string;
+    }>(
+      `collaborator:photo:${imageKey}`,
+      async () => {
+        return await this.blobService.getFile(
+          imageKey,
+          this.envService.get('BUCKET_DOC'),
+        );
+      },
+      60 * 60 * 24 * 1000 * 7,
+    );
+    return cachedFile;
   }
 }

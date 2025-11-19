@@ -77,4 +77,8 @@ export class CollaboratorController {
   ) {
     return await this.service.changeDescription(id, body.description);
   }
+  @Get(':imageKey/photo')
+  async getPhoto(@Param('imageKey') imageKey: string) {
+    return await this.service.getPhoto(imageKey);
+  }
 }
