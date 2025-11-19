@@ -136,7 +136,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       );
     }
 
-    const user = await this.updateUserInformation(dto);
+    let user = await this.updateUserInformation(dto);
 
     const studentCourse = await this.createStudentCourse(
       dto,
@@ -145,7 +145,9 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     );
 
     // Verifica se o usuário tem role 'aluno' e altera para 'estudante'
-    await this.updateUserRoleIfNeeded(user, studentCourse.id);
+    // agora a função retorna o usuário atualizado em memória para evitar
+    // que o posterior `userRepository.update(user)` sobrescreva a role
+    user = await this.updateUserRoleIfNeeded(user, studentCourse.id);
 
     const submissionDto: CreateSubmissionDtoInput = {
       inscriptionId: inscriptionCourse.id,
@@ -1003,7 +1005,10 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     return `${year}${code.toString().padStart(4, '0')}`;
   }
 
-  private async updateUserRoleIfNeeded(user: any, studentId: string) {
+  private async updateUserRoleIfNeeded(
+    user: any,
+    studentId: string,
+  ): Promise<any> {
     try {
       // Verifica se o usuário tem role 'aluno'
       if (user.role?.name === 'aluno') {
@@ -1013,8 +1018,11 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         });
 
         if (estudanteRole) {
-          // Atualiza a role do usuário para 'estudante'
+          // Atualiza a role do usuário para 'estudante' no serviço (DB)
           await this.userService.updateRole(user.id, estudanteRole.id);
+
+          // Atualiza o objeto user em memória para que o update posterior não sobrescreva a role
+          user.role = estudanteRole;
 
           // Log da mudança de role
           const log = new LogStudent();
@@ -1037,6 +1045,8 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       );
       // Não re-throw aqui para não quebrar o processo de criação do estudante
     }
+
+    return user;
   }
 
   private ensureStudentNotAlreadySubscribe(

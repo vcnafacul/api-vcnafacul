@@ -11,7 +11,11 @@ export function VcnafaculCors():
     return {
       origin: ['https://www.vcnafacul.com.br', 'https://vcnafacul.com.br'],
       methods: ['POST', 'GET', 'DELETE', 'PUT', 'PATCH'],
+      credentials: true, // ✅ Necessário para enviar/receber cookies
     };
   }
-  return true;
+  return {
+    origin: true,
+    credentials: true, // ✅ Necessário para enviar/receber cookies
+  };
 }
