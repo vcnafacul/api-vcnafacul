@@ -136,18 +136,13 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       );
     }
 
-    let user = await this.updateUserInformation(dto);
+    const user = await this.updateUserInformation(dto);
 
     const studentCourse = await this.createStudentCourse(
       dto,
       inscriptionCourse.partnerPrepCourse,
       inscriptionCourse,
     );
-
-    // Verifica se o usuário tem role 'aluno' e altera para 'estudante'
-    // agora a função retorna o usuário atualizado em memória para evitar
-    // que o posterior `userRepository.update(user)` sobrescreva a role
-    user = await this.updateUserRoleIfNeeded(user, studentCourse.id);
 
     const submissionDto: CreateSubmissionDtoInput = {
       inscriptionId: inscriptionCourse.id,
@@ -188,6 +183,11 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       representatives.map((rep) => rep.user.email),
       inscriptionCourse.partnerPrepCourse.geo.name,
     );
+
+    // Atualiza a role do usuário em background após 1 segundo
+    // para garantir que todos os dados foram persistidos
+    this.updateUserRoleInBackground(user.id, studentCourse.id);
+
     return { id: studentCourse.id } as CreateStudentCourseOutput;
   }
 
@@ -1005,48 +1005,45 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     return `${year}${code.toString().padStart(4, '0')}`;
   }
 
-  private async updateUserRoleIfNeeded(
-    user: any,
-    studentId: string,
-  ): Promise<any> {
-    try {
-      // Verifica se o usuário tem role 'aluno'
-      if (user.role?.name === 'aluno') {
-        // Busca a role 'estudante'
-        const estudanteRole = await this.roleService.findOneBy({
-          name: 'estudante',
-        });
+  /**
+   * Atualiza a role do usuário de 'aluno' para 'estudante' em background.
+   * Executa 1 segundo após a chamada para garantir que todos os dados
+   * foram persistidos no banco antes da atualização.
+   */
+  private updateUserRoleInBackground(userId: string, studentId: string): void {
+    setTimeout(async () => {
+      try {
+        const user = await this.userService.findUserById(userId);
 
-        if (estudanteRole) {
-          // Atualiza a role do usuário para 'estudante' no serviço (DB)
-          await this.userService.updateRole(user.id, estudanteRole.id);
+        // Verifica se o usuário tem role 'aluno'
+        if (user.role?.name === 'aluno') {
+          const estudanteRole = await this.roleService.findOneBy({
+            name: 'estudante',
+          });
 
-          // Atualiza o objeto user em memória para que o update posterior não sobrescreva a role
-          user.role = estudanteRole;
+          if (estudanteRole) {
+            await this.userService.updateRole(userId, estudanteRole.id);
 
-          // Log da mudança de role
-          const log = new LogStudent();
-          log.studentId = studentId;
-          log.applicationStatus = StatusApplication.UnderReview;
-          log.description = `Role alterada de 'aluno' para 'estudante' durante criação do cadastro`;
-          await this.logStudentRepository.create(log);
+            const log = new LogStudent();
+            log.studentId = studentId;
+            log.applicationStatus = StatusApplication.UnderReview;
+            log.description = `Role alterada de 'aluno' para 'estudante' durante criação do cadastro`;
+            await this.logStudentRepository.create(log);
 
-          this.logger.log(
-            `Usuário ${user.id} teve role alterada de 'aluno' para 'estudante'`,
-          );
-        } else {
-          this.logger.warn('Role "estudante" não encontrada no sistema');
+            this.logger.log(
+              `Usuário ${userId} teve role alterada de 'aluno' para 'estudante'`,
+            );
+          } else {
+            this.logger.warn('Role "estudante" não encontrada no sistema');
+          }
         }
+      } catch (error) {
+        this.logger.error(
+          'Erro ao verificar/alterar role do usuário em background:',
+          error.message,
+        );
       }
-    } catch (error) {
-      this.logger.error(
-        'Erro ao verificar/alterar role do usuário:',
-        error.message,
-      );
-      // Não re-throw aqui para não quebrar o processo de criação do estudante
-    }
-
-    return user;
+    }, 1000);
   }
 
   private ensureStudentNotAlreadySubscribe(
