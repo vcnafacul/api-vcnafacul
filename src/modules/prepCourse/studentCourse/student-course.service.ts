@@ -39,6 +39,8 @@ import { ClassRepository } from '../class/class.repository';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
 import { InscriptionCourseService } from '../InscriptionCourse/inscription-course.service';
+import { LogPartner } from '../partnerPrepCourse/log-partner/log-partner.entity';
+import { LogPartnerRepository } from '../partnerPrepCourse/log-partner/log-partner.repository';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
 import { PartnerPrepCourseService } from '../partnerPrepCourse/partner-prep-course.service';
 import { DocumentStudent } from './documents/document-students.entity';
@@ -88,6 +90,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly logStudentRepository: LogStudentRepository,
+    private readonly logPartnerRepository: LogPartnerRepository,
     private envService: EnvService,
     private readonly collaboratorRepository: CollaboratorRepository,
     private readonly classRepository: ClassRepository,
@@ -739,6 +742,12 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
       const chunkSize = 50;
 
+      // Mapear quantos estudantes convocados por cursinho parceiro
+      const partnerConvocationCount = new Map<
+        string,
+        { partnerId: string; count: number }
+      >();
+
       for (const [courseId, deadlineGroup] of grouped.entries()) {
         for (const [deadlineKey, courseStudents] of deadlineGroup.entries()) {
           const deadline = new Date(deadlineKey);
@@ -747,6 +756,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
             const bccList = chunk.map((s) => s.user.email);
             const courseName = chunk[0].partnerPrepCourse.geo.name;
+            const partnerId = chunk[0].partnerPrepCourse.id;
 
             try {
               await this.emailService.sendDeclaredInterestBulk(
@@ -765,6 +775,17 @@ export class StudentCourseService extends BaseService<StudentCourse> {
                   return this.logStudentRepository.create(log);
                 }),
               );
+
+              // Contabilizar convocações por cursinho
+              if (partnerConvocationCount.has(partnerId)) {
+                const current = partnerConvocationCount.get(partnerId)!;
+                current.count += chunk.length;
+              } else {
+                partnerConvocationCount.set(partnerId, {
+                  partnerId,
+                  count: chunk.length,
+                });
+              }
             } catch (error) {
               this.discordWebhook.sendMessage(
                 `Erro ao enviar email para inscrição ${courseId}, deadline ${deadlineKey}, chunk: ${bccList.join(
@@ -776,6 +797,14 @@ export class StudentCourseService extends BaseService<StudentCourse> {
             await new Promise((res) => setTimeout(res, 1000));
           }
         }
+      }
+
+      // Criar logs para cada cursinho parceiro com o total de convocações
+      for (const { partnerId, count } of partnerConvocationCount.values()) {
+        const logPartner = new LogPartner();
+        logPartner.partnerId = partnerId;
+        logPartner.description = `Convocação enviada para ${count} estudante${count > 1 ? 's' : ''}`;
+        await this.logPartnerRepository.create(logPartner);
       }
     } catch (error) {
       this.discordWebhook.sendMessage(
