@@ -12,6 +12,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import { THROTTLE_CONFIG } from 'src/shared/config/email.config';
 import { Request } from 'express';
 import { Permissions } from 'src/modules/role/role.entity';
 import { User } from 'src/modules/user/user.entity';
@@ -98,6 +100,12 @@ export class InscriptionCourseController {
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
+  @Throttle({
+    default: {
+      ttl: THROTTLE_CONFIG.WAITING_LIST.ttl,
+      limit: THROTTLE_CONFIG.WAITING_LIST.limit,
+    },
+  })
   async sendWaitingList(@Param('id') id: string): Promise<void> {
     await this.service.sendEmailWaitingList(id);
   }
