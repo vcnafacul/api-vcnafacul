@@ -319,4 +319,12 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .leftJoinAndSelect('class.coursePeriod', 'course_period')
       .getOne();
   }
+
+  async existsByUserId(userId: string): Promise<boolean> {
+    const count = await this.repository
+      .createQueryBuilder('entity')
+      .where('entity.user_id = :userId', { userId })
+      .getCount();
+    return count > 0;
+  }
 }

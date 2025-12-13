@@ -8,6 +8,7 @@ import { EnvService } from 'src/shared/modules/env/env.service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
+import { StudentCourseRepository } from '../prepCourse/studentCourse/student-course.repository';
 import { Role } from '../role/role.entity';
 import { RoleRepository } from '../role/role.repository';
 import { AggregateUserLastAcessDtoOutput } from './dto/aggregate-user-last-acess.dto.output';
@@ -36,6 +37,7 @@ export class UserService extends BaseService<User> {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly collaboratorRepository: CollaboratorRepository,
+    private readonly studentCourseRepository: StudentCourseRepository,
     private readonly discordWebhook: DiscordWebhook,
     private readonly envService: EnvService,
     private readonly cache: CacheService,
@@ -333,6 +335,14 @@ export class UserService extends BaseService<User> {
     const roles = this.mapperRole(domain.role);
     const user = this.MapUsertoUserDTO(domain);
 
+    // Verifica se o usuário possui studentCourse cadastrado
+    const hasStudentCourse = await this.studentCourseRepository.existsByUserId(
+      domain.id,
+    );
+    if (hasStudentCourse) {
+      roles.push('visualizarMinhasInscricoes');
+    }
+
     // Gera o access token (15 minutos)
     const accessToken = await this.jwtService.signAsync({ user, roles });
 
@@ -422,6 +432,14 @@ export class UserService extends BaseService<User> {
     // Gera novo access token
     const roles = this.mapperRole(user.role);
     const userDto = this.MapUsertoUserDTO(user);
+
+    // Verifica se o usuário possui studentCourse cadastrado
+    const hasStudentCourse =
+      await this.studentCourseRepository.existsByUserId(userId);
+    if (hasStudentCourse && !roles.includes('visualizarMinhasInscricoes')) {
+      roles.push('visualizarMinhasInscricoes');
+    }
+
     const accessToken = await this.jwtService.signAsync({
       user: userDto,
       roles,
