@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuditLogModule } from 'src/modules/audit-log/audit-log.module';
 import { CollaboratorRepository } from 'src/modules/prepCourse/collaborator/collaborator.repository';
+import { StudentCourseRepository } from 'src/modules/prepCourse/studentCourse/student-course.repository';
 import { RoleRepository } from 'src/modules/role/role.repository';
 import { UserModule } from 'src/modules/user/user.module';
 import { UserRepository } from 'src/modules/user/user.repository';
@@ -31,6 +32,7 @@ import { SnapshotContentStatusRepository } from './entities/snapshot-content-sta
     DiscordWebhook,
     FileContentRepository,
     SnapshotContentStatusRepository,
+    StudentCourseRepository,
   ],
   exports: [
     ContentService,
