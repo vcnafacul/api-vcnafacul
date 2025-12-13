@@ -8,9 +8,11 @@ import { AppModule } from 'src/app.module';
 import { RoleSeedService } from 'src/db/seeds/1-role.seed';
 import { RoleUpdateAdminSeedService } from 'src/db/seeds/2-role-update-admin.seed';
 import { GeoService } from 'src/modules/geo/geo.service';
+import { LogGeoRepository } from 'src/modules/geo/log-geo/log-geo.repository';
 import { ClassService } from 'src/modules/prepCourse/class/class.service';
 import { CoursePeriodService } from 'src/modules/prepCourse/coursePeriod/course-period.service';
 import { InscriptionCourseService } from 'src/modules/prepCourse/InscriptionCourse/inscription-course.service';
+import { LogPartnerRepository } from 'src/modules/prepCourse/partnerPrepCourse/log-partner/log-partner.repository';
 import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
 import { GetAllStudentDtoInput } from 'src/modules/prepCourse/studentCourse/dtos/get-all-student.dto.input';
 import { StatusApplication } from 'src/modules/prepCourse/studentCourse/enums/stastusApplication';
@@ -63,6 +65,8 @@ describe('StudentCourse (e2e)', () => {
   let formService: FormService;
   let submissionService: SubmissionService;
   let cacheService: CacheService;
+  let logPartnerRepository: LogPartnerRepository;
+  let logGeoRepository: LogGeoRepository;
 
   const discordWebhookMock = {
     sendMessage: jest.fn(),
@@ -110,6 +114,19 @@ describe('StudentCourse (e2e)', () => {
     cacheService = moduleFixture.get<CacheService>(CacheService);
     formService = moduleFixture.get<FormService>(FormService);
     submissionService = moduleFixture.get<SubmissionService>(SubmissionService);
+
+    logPartnerRepository =
+      moduleFixture.get<LogPartnerRepository>(LogPartnerRepository);
+    logGeoRepository = moduleFixture.get<LogGeoRepository>(LogGeoRepository);
+
+    jest
+      .spyOn(logPartnerRepository, 'create')
+      .mockImplementation(async () => ({}) as any);
+
+    jest
+      .spyOn(logGeoRepository, 'create')
+      .mockImplementation(async () => ({}) as any);
+
     jest
       .spyOn(emailService, 'sendCreateUser')
       .mockImplementation(async () => {});

@@ -8,6 +8,7 @@ import { Collaborator } from '../collaborator/collaborator.entity';
 import { CoursePeriod } from '../coursePeriod/course-period.entity';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
 import { StudentCourse } from '../studentCourse/student-course.entity';
+import { LogPartner } from './log-partner/log-partner.entity';
 
 //Cursinho Parceiro
 @Entity('partner_prep_course')
@@ -61,4 +62,7 @@ export class PartnerPrepCourse extends BaseEntity {
 
   @OneToMany(() => Role, (role) => role.partnerPrepCourse)
   public roles: Role[];
+
+  @OneToMany(() => LogPartner, (logPartner) => logPartner.partner)
+  public logs: LogPartner[];
 }

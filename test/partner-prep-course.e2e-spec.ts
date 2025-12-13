@@ -6,9 +6,12 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 import { AppModule } from 'src/app.module';
 import { RoleSeedService } from 'src/db/seeds/1-role.seed';
 import { RoleUpdateAdminSeedService } from 'src/db/seeds/2-role-update-admin.seed';
+import { GeoRepository } from 'src/modules/geo/geo.repository';
 import { GeoService } from 'src/modules/geo/geo.service';
+import { LogGeoRepository } from 'src/modules/geo/log-geo/log-geo.repository';
 import { InscriptionCourseService } from 'src/modules/prepCourse/InscriptionCourse/inscription-course.service';
 import { PartnerPrepCourseDtoInput } from 'src/modules/prepCourse/partnerPrepCourse/dtos/create-partner-prep-course.input.dto';
+import { LogPartnerRepository } from 'src/modules/prepCourse/partnerPrepCourse/log-partner/log-partner.repository';
 import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
 import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
 import { Role } from 'src/modules/role/role.entity';
@@ -46,6 +49,9 @@ describe('PartnerPrepCourse (e2e)', () => {
   let blobService: BlobService;
   let formService: FormService;
   let submissionService: SubmissionService;
+  let logPartnerRepository: LogPartnerRepository;
+  let logGeoRepository: LogGeoRepository;
+  let geoRepository: GeoRepository;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -80,6 +86,25 @@ describe('PartnerPrepCourse (e2e)', () => {
     blobService = moduleFixture.get<BlobService>('BlobService');
     formService = moduleFixture.get<FormService>(FormService);
     submissionService = moduleFixture.get<SubmissionService>(SubmissionService);
+
+    logPartnerRepository =
+      moduleFixture.get<LogPartnerRepository>(LogPartnerRepository);
+    logGeoRepository = moduleFixture.get<LogGeoRepository>(LogGeoRepository);
+    geoRepository = moduleFixture.get<GeoRepository>(GeoRepository);
+
+    // Mock do geoService.create para evitar operações de email e log
+    jest.spyOn(geoService, 'create').mockImplementation(async (dto) => {
+      return await geoRepository.create(geoService['convertDtoToDomain'](dto));
+    });
+
+    jest
+      .spyOn(logPartnerRepository, 'create')
+      .mockImplementation(async () => ({}) as any);
+
+    jest
+      .spyOn(logGeoRepository, 'create')
+      .mockImplementation(async () => ({}) as any);
+
     jest
       .spyOn(emailService, 'sendCreateUser')
       .mockImplementation(async () => {});
@@ -87,6 +112,8 @@ describe('PartnerPrepCourse (e2e)', () => {
     jest
       .spyOn(emailService, 'sendInviteMember')
       .mockImplementation(async () => {});
+
+    jest.spyOn(emailService, 'sendEmailGeo').mockImplementation(async () => {});
 
     jest
       .spyOn(blobService, 'uploadFile')
@@ -122,7 +149,7 @@ describe('PartnerPrepCourse (e2e)', () => {
 
   afterAll(async () => {
     await app.close();
-  });
+  }, 30000);
 
   async function createUserRepresentative() {
     const userRepresentativeDto = CreateUserDtoInputFaker();

@@ -40,6 +40,8 @@ import { ClassRepository } from '../class/class.repository';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
 import { InscriptionCourseService } from '../InscriptionCourse/inscription-course.service';
+import { LogPartner } from '../partnerPrepCourse/log-partner/log-partner.entity';
+import { LogPartnerRepository } from '../partnerPrepCourse/log-partner/log-partner.repository';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
 import { PartnerPrepCourseService } from '../partnerPrepCourse/partner-prep-course.service';
 import { DocumentStudent } from './documents/document-students.entity';
@@ -89,6 +91,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly logStudentRepository: LogStudentRepository,
+    private readonly logPartnerRepository: LogPartnerRepository,
     private envService: EnvService,
     private readonly collaboratorRepository: CollaboratorRepository,
     private readonly classRepository: ClassRepository,
@@ -184,10 +187,6 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       representatives.map((rep) => rep.user.email),
       inscriptionCourse.partnerPrepCourse.geo.name,
     );
-
-    // Atualiza a role do usuário em background após 1 segundo
-    // para garantir que todos os dados foram persistidos
-    this.updateUserRoleInBackground(user.id, studentCourse.id);
 
     return { id: studentCourse.id } as CreateStudentCourseOutput;
   }
@@ -740,6 +739,12 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
       const chunkSize = EMAIL_CONFIG.MAX_BCC_PER_EMAIL;
 
+      // Mapear quantos estudantes convocados por cursinho parceiro
+      const partnerConvocationCount = new Map<
+        string,
+        { partnerId: string; count: number }
+      >();
+
       for (const [courseId, deadlineGroup] of grouped.entries()) {
         for (const [deadlineKey, courseStudents] of deadlineGroup.entries()) {
           const deadline = new Date(deadlineKey);
@@ -748,6 +753,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
             const bccList = chunk.map((s) => s.user.email);
             const courseName = chunk[0].partnerPrepCourse.geo.name;
+            const partnerId = chunk[0].partnerPrepCourse.id;
 
             try {
               await this.emailService.sendDeclaredInterestBulk(
@@ -767,6 +773,16 @@ export class StudentCourseService extends BaseService<StudentCourse> {
                 }),
               );
 
+              // Contabilizar convocações por cursinho
+              if (partnerConvocationCount.has(partnerId)) {
+                const current = partnerConvocationCount.get(partnerId)!;
+                current.count += chunk.length;
+              } else {
+                partnerConvocationCount.set(partnerId, {
+                  partnerId,
+                  count: chunk.length,
+                });
+              }
               this.logger.log(
                 `Email de convocação enviado para ${bccList.length} estudantes do curso ${courseName}`,
               );
@@ -784,6 +800,14 @@ export class StudentCourseService extends BaseService<StudentCourse> {
             );
           }
         }
+      }
+
+      // Criar logs para cada cursinho parceiro com o total de convocações
+      for (const { partnerId, count } of partnerConvocationCount.values()) {
+        const logPartner = new LogPartner();
+        logPartner.partnerId = partnerId;
+        logPartner.description = `Convocação enviada para ${count} estudante${count > 1 ? 's' : ''}`;
+        await this.logPartnerRepository.create(logPartner);
       }
     } catch (error) {
       this.discordWebhook.sendMessage(
@@ -1011,47 +1035,6 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
     const code = parseInt(lastCode.slice(4)) + 1;
     return `${year}${code.toString().padStart(4, '0')}`;
-  }
-
-  /**
-   * Atualiza a role do usuário de 'aluno' para 'estudante' em background.
-   * Executa 1 segundo após a chamada para garantir que todos os dados
-   * foram persistidos no banco antes da atualização.
-   */
-  private updateUserRoleInBackground(userId: string, studentId: string): void {
-    setTimeout(async () => {
-      try {
-        const user = await this.userService.findUserById(userId);
-
-        // Verifica se o usuário tem role 'aluno'
-        if (user.role?.name === 'aluno') {
-          const estudanteRole = await this.roleService.findOneBy({
-            name: 'estudante',
-          });
-
-          if (estudanteRole) {
-            await this.userService.updateRole(userId, estudanteRole.id);
-
-            const log = new LogStudent();
-            log.studentId = studentId;
-            log.applicationStatus = StatusApplication.UnderReview;
-            log.description = `Role alterada de 'aluno' para 'estudante' durante criação do cadastro`;
-            await this.logStudentRepository.create(log);
-
-            this.logger.log(
-              `Usuário ${userId} teve role alterada de 'aluno' para 'estudante'`,
-            );
-          } else {
-            this.logger.warn('Role "estudante" não encontrada no sistema');
-          }
-        }
-      } catch (error) {
-        this.logger.error(
-          'Erro ao verificar/alterar role do usuário em background:',
-          error.message,
-        );
-      }
-    }, 1000);
   }
 
   private ensureStudentNotAlreadySubscribe(

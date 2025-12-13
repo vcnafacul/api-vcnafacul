@@ -3,7 +3,6 @@ import { RoleRepository } from 'src/modules/role/role.repository';
 import { RoleSeedService } from './1-role.seed';
 import { RoleUpdateAdminSeedService } from './2-role-update-admin.seed';
 import { RoleManagerPartnerSeedService } from './3-role-manager-partner';
-import { RoleEstudanteSeedService } from './4-role-estudante.seed';
 
 @Module({
   providers: [
@@ -11,7 +10,6 @@ import { RoleEstudanteSeedService } from './4-role-estudante.seed';
     RoleRepository,
     RoleUpdateAdminSeedService,
     RoleManagerPartnerSeedService,
-    RoleEstudanteSeedService,
   ],
 })
 export class SeederModule implements OnModuleInit {
@@ -21,7 +19,6 @@ export class SeederModule implements OnModuleInit {
     private readonly roleSeedService: RoleSeedService,
     private readonly roleUpdateAdminSeedService: RoleUpdateAdminSeedService,
     private readonly roleManagerPartnerSeedService: RoleManagerPartnerSeedService,
-    private readonly roleEstudanteSeedService: RoleEstudanteSeedService,
   ) {}
 
   async onModuleInit() {
@@ -32,7 +29,6 @@ export class SeederModule implements OnModuleInit {
       await this.roleSeedService.seed();
       await this.roleUpdateAdminSeedService.seed();
       await this.roleManagerPartnerSeedService.seed();
-      await this.roleEstudanteSeedService.seed();
 
       this.logger.log('Todos os seeds executados com sucesso!');
     } catch (error) {

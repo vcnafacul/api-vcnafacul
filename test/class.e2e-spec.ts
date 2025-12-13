@@ -4,11 +4,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { AppModule } from 'src/app.module';
 import { GeoService } from 'src/modules/geo/geo.service';
+import { LogGeoRepository } from 'src/modules/geo/log-geo/log-geo.repository';
 import { ClassRepository } from 'src/modules/prepCourse/class/class.repository';
 import { ClassDtoOutput } from 'src/modules/prepCourse/class/dtos/class.dto.output';
 import { CoursePeriodService } from 'src/modules/prepCourse/coursePeriod/course-period.service';
 import { InscriptionCourseService } from 'src/modules/prepCourse/InscriptionCourse/inscription-course.service';
 import { PartnerPrepCourseDtoInput } from 'src/modules/prepCourse/partnerPrepCourse/dtos/create-partner-prep-course.input.dto';
+import { LogPartnerRepository } from 'src/modules/prepCourse/partnerPrepCourse/log-partner/log-partner.repository';
 import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
 import { StudentCourseService } from 'src/modules/prepCourse/studentCourse/student-course.service';
 import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
@@ -50,6 +52,8 @@ describe('Class (e2e)', () => {
   let blobService: BlobService;
   let formService: FormService;
   let submissionService: SubmissionService;
+  let logPartnerRepository: LogPartnerRepository;
+  let logGeoRepository: LogGeoRepository;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -83,6 +87,17 @@ describe('Class (e2e)', () => {
     submissionService = moduleFixture.get<SubmissionService>(SubmissionService);
     jest.spyOn(emailService, 'sendEmailGeo').mockImplementation(async () => {});
     blobService = moduleFixture.get<BlobService>('BlobService');
+    logPartnerRepository =
+      moduleFixture.get<LogPartnerRepository>(LogPartnerRepository);
+    logGeoRepository = moduleFixture.get<LogGeoRepository>(LogGeoRepository);
+
+    jest
+      .spyOn(logPartnerRepository, 'create')
+      .mockImplementation(async () => ({}) as any);
+
+    jest
+      .spyOn(logGeoRepository, 'create')
+      .mockImplementation(async () => ({}) as any);
 
     jest
       .spyOn(emailService, 'sendCreateUser')
