@@ -12,6 +12,8 @@
   "testRegex": "spec.ts$",
   "maxWorkers": 1,
   "runInBand": true,
+  "forceExit": true,
+  "testTimeout": 60000,
   "globals": {
     "NODE_ENV": "test"
   },

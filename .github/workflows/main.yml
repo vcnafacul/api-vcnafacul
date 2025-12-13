@@ -33,10 +33,21 @@ jobs:
         run: yarn build
       - name: Install Dotenv-cli
         run: npm install -g dotenv-cli
+      - name: Wait for MySQL to be ready
+        run: |
+          for i in {1..30}; do
+            if mysqladmin ping -h 127.0.0.1 -P 3307 -u root -p123456 --silent 2>/dev/null; then
+              echo "MySQL is ready!"
+              break
+            fi
+            echo "Waiting for MySQL... ($i/30)"
+            sleep 2
+          done
       - name: Run Migrations
         run: dotenv -e ./test/.env.test -- yarn typeorm migration:run
       - name: Run tests
-        run: dotenv -e ./test/.env.test -- yarn test
+        run: dotenv -e ./test/.env.test -- yarn test --forceExit --detectOpenHandles
+        timeout-minutes: 15
 
   BUILD_AND_PUSH:
     needs: CI
@@ -98,4 +109,3 @@ jobs:
           script: |
             chmod +x ~/subir_api.sh
             ~/subir_api.sh
-
