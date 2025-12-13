@@ -14,6 +14,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import { THROTTLE_CONFIG } from 'src/shared/config/email.config';
 import { Request, Response } from 'express';
 import { AggregatePeriodDtoInput } from 'src/shared/dtos/aggregate-period.dto.input';
 import { GetAllDtoOutput } from 'src/shared/dtos/get-all.dto.output';
@@ -41,6 +43,12 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Post()
+  @Throttle({
+    default: {
+      ttl: THROTTLE_CONFIG.CREATE_USER.ttl,
+      limit: THROTTLE_CONFIG.CREATE_USER.limit,
+    },
+  })
   async createUser(@Body() userDto: CreateUserDtoInput) {
     return await this.userService.create(userDto);
   }
@@ -157,6 +165,12 @@ export class UserController {
   }
 
   @Post('forgot')
+  @Throttle({
+    default: {
+      ttl: THROTTLE_CONFIG.FORGOT_PASSWORD.ttl,
+      limit: THROTTLE_CONFIG.FORGOT_PASSWORD.limit,
+    },
+  })
   async forgot(@Body() forgotPassword: ForgotPasswordDtoInput) {
     return await this.userService.forgotPassword(forgotPassword.email);
   }
@@ -226,6 +240,12 @@ export class UserController {
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
+  @Throttle({
+    default: {
+      ttl: THROTTLE_CONFIG.BULK_EMAIL.ttl,
+      limit: THROTTLE_CONFIG.BULK_EMAIL.limit,
+    },
+  })
   async sendBulkEmail(@Body() dto: SendBulkEmailDtoInput) {
     return await this.userService.sendBulkEmail(
       dto.message,
