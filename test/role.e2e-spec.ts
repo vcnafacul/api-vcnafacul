@@ -1,6 +1,7 @@
 import { faker } from '@faker-js/faker/locale/af_ZA';
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { AppModule } from 'src/app.module';
 import { RoleSeedService } from 'src/db/seeds/1-role.seed';
 import { RoleUpdateAdminSeedService } from 'src/db/seeds/2-role-update-admin.seed';
@@ -28,6 +29,8 @@ describe('Role e2e', () => {
       .useValue({
         canActivate: jest.fn(() => true),
       })
+      .overrideGuard(ThrottlerGuard)
+      .useValue({ canActivate: () => true })
       .compile();
 
     app = createNestAppTest(moduleFixture);

@@ -29,6 +29,7 @@ import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output'
 import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
+import { EMAIL_CONFIG } from 'src/shared/config/email.config';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { maskCpf } from 'src/utils/maskCpf';
@@ -737,7 +738,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         courseGroup.get(deadlineKey)!.push(student);
       }
 
-      const chunkSize = 50;
+      const chunkSize = EMAIL_CONFIG.MAX_BCC_PER_EMAIL;
 
       for (const [courseId, deadlineGroup] of grouped.entries()) {
         for (const [deadlineKey, courseStudents] of deadlineGroup.entries()) {
@@ -765,6 +766,10 @@ export class StudentCourseService extends BaseService<StudentCourse> {
                   return this.logStudentRepository.create(log);
                 }),
               );
+
+              this.logger.log(
+                `Email de convocação enviado para ${bccList.length} estudantes do curso ${courseName}`,
+              );
             } catch (error) {
               this.discordWebhook.sendMessage(
                 `Erro ao enviar email para inscrição ${courseId}, deadline ${deadlineKey}, chunk: ${bccList.join(
@@ -773,7 +778,10 @@ export class StudentCourseService extends BaseService<StudentCourse> {
               );
             }
 
-            await new Promise((res) => setTimeout(res, 1000));
+            // Delay maior entre chunks para evitar rate limiting
+            await new Promise((res) =>
+              setTimeout(res, EMAIL_CONFIG.DELAY_BETWEEN_CHUNKS_MS),
+            );
           }
         }
       }

@@ -10,6 +10,12 @@
   "rootDir": "./../../",
   "testEnvironment": "node",
   "testRegex": "spec.ts$",
+  "maxWorkers": 1,
+  "runInBand": true,
+  "globals": {
+    "NODE_ENV": "test"
+  },
+  "setupFiles": ["<rootDir>/test/config/jest-setup.ts"],
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest",
     "^.+\\.(ts|tsx|js|jsx)$": "babel-jest"

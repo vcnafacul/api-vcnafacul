@@ -1,6 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { AppModule } from 'src/app.module';
 import { GeoService } from 'src/modules/geo/geo.service';
 import { ClassRepository } from 'src/modules/prepCourse/class/class.repository';
@@ -54,7 +55,10 @@ describe('Class (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
       providers: [EmailService],
-    }).compile();
+    })
+      .overrideGuard(ThrottlerGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     app = createNestAppTest(moduleFixture);
     userService = moduleFixture.get<UserService>(UserService);

@@ -21,6 +21,8 @@ import {
   FileInterceptor,
 } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import { THROTTLE_CONFIG } from 'src/shared/config/email.config';
 import { Request, Response } from 'express';
 import { Permissions } from 'src/modules/role/role.entity';
 import { CreateUserDtoInput } from 'src/modules/user/dto/create.dto.input';
@@ -57,6 +59,12 @@ export class StudentCourseController {
   }
 
   @Post('user/:inscriptionId')
+  @Throttle({
+    default: {
+      ttl: THROTTLE_CONFIG.CREATE_USER.ttl,
+      limit: THROTTLE_CONFIG.CREATE_USER.limit,
+    },
+  })
   async createUser(
     @Body() userDto: CreateUserDtoInput,
     @Param('inscriptionId') inscriptionId: string,
@@ -79,6 +87,12 @@ export class StudentCourseController {
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
+  @Throttle({
+    default: {
+      ttl: THROTTLE_CONFIG.WAITING_LIST.ttl,
+      limit: THROTTLE_CONFIG.WAITING_LIST.limit,
+    },
+  })
   async sendEmailDeclaredInterestById(@Param('id') id: string): Promise<void> {
     await this.service.sendEmailDeclaredInterestById(id);
   }
