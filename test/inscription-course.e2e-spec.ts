@@ -7,8 +7,10 @@ import { AppModule } from 'src/app.module';
 import { RoleSeedService } from 'src/db/seeds/1-role.seed';
 import { RoleUpdateAdminSeedService } from 'src/db/seeds/2-role-update-admin.seed';
 import { GeoService } from 'src/modules/geo/geo.service';
+import { LogGeoRepository } from 'src/modules/geo/log-geo/log-geo.repository';
 import { InscriptionCourseRepository } from 'src/modules/prepCourse/InscriptionCourse/inscription-course.repository';
 import { InscriptionCourseService } from 'src/modules/prepCourse/InscriptionCourse/inscription-course.service';
+import { LogPartnerRepository } from 'src/modules/prepCourse/partnerPrepCourse/log-partner/log-partner.repository';
 import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
 import { StatusApplication } from 'src/modules/prepCourse/studentCourse/enums/stastusApplication';
 import { StudentCourseRepository } from 'src/modules/prepCourse/studentCourse/student-course.repository';
@@ -51,6 +53,8 @@ describe('InscriptionCourse (e2e)', () => {
   let blobService: BlobService;
   let formService: FormService;
   let submissionService: SubmissionService;
+  let logPartnerRepository: LogPartnerRepository;
+  let logGeoRepository: LogGeoRepository;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -87,6 +91,19 @@ describe('InscriptionCourse (e2e)', () => {
     blobService = moduleFixture.get<BlobService>('BlobService');
     formService = moduleFixture.get<FormService>(FormService);
     submissionService = moduleFixture.get<SubmissionService>(SubmissionService);
+
+    logPartnerRepository =
+      moduleFixture.get<LogPartnerRepository>(LogPartnerRepository);
+    logGeoRepository = moduleFixture.get<LogGeoRepository>(LogGeoRepository);
+
+    jest
+      .spyOn(logPartnerRepository, 'create')
+      .mockImplementation(async () => ({}) as any);
+
+    jest
+      .spyOn(logGeoRepository, 'create')
+      .mockImplementation(async () => ({}) as any);
+
     jest
       .spyOn(emailService, 'sendCreateUser')
       .mockImplementation(async () => {});
@@ -127,7 +144,7 @@ describe('InscriptionCourse (e2e)', () => {
 
   afterAll(async () => {
     await app.close();
-  });
+  }, 30000);
 
   it('test to pass', () => {
     assert(true);
@@ -651,7 +668,6 @@ describe('InscriptionCourse (e2e)', () => {
     inscription.startDate = new Date();
     inscription.startDate.setDate(inscription.startDate.getDate() - 30);
 
-    console.log('inscription.endDate', inscription.endDate);
     const inscriptionCreatedDTO = await inscriptionService.create(
       inscription,
       representative.id,

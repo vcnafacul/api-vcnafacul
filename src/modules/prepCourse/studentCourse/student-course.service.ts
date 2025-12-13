@@ -187,10 +187,6 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       inscriptionCourse.partnerPrepCourse.geo.name,
     );
 
-    // Atualiza a role do usuário em background após 1 segundo
-    // para garantir que todos os dados foram persistidos
-    this.updateUserRoleInBackground(user.id, studentCourse.id);
-
     return { id: studentCourse.id } as CreateStudentCourseOutput;
   }
 
@@ -1032,47 +1028,6 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
     const code = parseInt(lastCode.slice(4)) + 1;
     return `${year}${code.toString().padStart(4, '0')}`;
-  }
-
-  /**
-   * Atualiza a role do usuário de 'aluno' para 'estudante' em background.
-   * Executa 1 segundo após a chamada para garantir que todos os dados
-   * foram persistidos no banco antes da atualização.
-   */
-  private updateUserRoleInBackground(userId: string, studentId: string): void {
-    setTimeout(async () => {
-      try {
-        const user = await this.userService.findUserById(userId);
-
-        // Verifica se o usuário tem role 'aluno'
-        if (user.role?.name === 'aluno') {
-          const estudanteRole = await this.roleService.findOneBy({
-            name: 'estudante',
-          });
-
-          if (estudanteRole) {
-            await this.userService.updateRole(userId, estudanteRole.id);
-
-            const log = new LogStudent();
-            log.studentId = studentId;
-            log.applicationStatus = StatusApplication.UnderReview;
-            log.description = `Role alterada de 'aluno' para 'estudante' durante criação do cadastro`;
-            await this.logStudentRepository.create(log);
-
-            this.logger.log(
-              `Usuário ${userId} teve role alterada de 'aluno' para 'estudante'`,
-            );
-          } else {
-            this.logger.warn('Role "estudante" não encontrada no sistema');
-          }
-        }
-      } catch (error) {
-        this.logger.error(
-          'Erro ao verificar/alterar role do usuário em background:',
-          error.message,
-        );
-      }
-    }, 1000);
   }
 
   private ensureStudentNotAlreadySubscribe(

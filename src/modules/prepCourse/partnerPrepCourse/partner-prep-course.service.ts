@@ -149,7 +149,7 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
           const logPartner = new LogPartner();
           logPartner.partnerId = partnerPrepCourse.id;
           logPartner.description = `Cursinho parceiro criado por ${user.firstName} ${user.lastName}`;
-          await this.logPartnerRepository.create(logPartner);
+          // await this.logPartnerRepository.create(logPartner);
         }
       });
     } catch (error) {
