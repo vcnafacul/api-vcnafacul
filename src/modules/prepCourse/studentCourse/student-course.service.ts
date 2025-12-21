@@ -13,6 +13,8 @@ import * as dayjs from 'dayjs';
 import { Permissions } from 'src/modules/role/role.entity';
 import { RoleService } from 'src/modules/role/role.service';
 import { Status } from 'src/modules/simulado/enum/status.enum';
+import { Gender } from 'src/modules/user/enum/gender';
+import { GetSubscribersDtoOutput } from '../InscriptionCourse/dtos/get-subscribers.dto.output';
 import { CreateUserDtoInput } from 'src/modules/user/dto/create.dto.input';
 import { CreateFlow } from 'src/modules/user/enum/create-flow';
 import { UserRepository } from 'src/modules/user/user.repository';
@@ -32,9 +34,11 @@ import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EMAIL_CONFIG } from 'src/shared/config/email.config';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
+import { adjustDate } from 'src/utils/adjustDate';
 import { maskCpf } from 'src/utils/maskCpf';
 import { maskEmail } from 'src/utils/maskEmail';
 import { maskPhone } from 'src/utils/maskPhone';
+import { maskRg } from 'src/utils/maskRg';
 import { IsNull, Not } from 'typeorm';
 import { ClassRepository } from '../class/class.repository';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
@@ -1405,6 +1409,69 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         ),
     );
     return partnerLogoFile;
+  }
+
+  async getStudentDetails(studentId: string): Promise<GetSubscribersDtoOutput> {
+    const student = await this.repository.findOneWithFullDetails(studentId);
+    if (!student) {
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+    }
+
+    return Object.assign(new GetSubscribersDtoOutput(), {
+      id: student.id,
+      cadastrado_em: student.createdAt,
+      isento: student.isFree ? 'Sim' : 'Não',
+      convocar: student.selectEnrolled ? 'Sim' : 'Não',
+      data_convocacao: student.selectEnrolledAt,
+      data_limite_convocacao: student.limitEnrolledAt
+        ? adjustDate(student.limitEnrolledAt, -1)
+        : null,
+      lista_de_espera: student.waitingList ? 'Sim' : 'Não',
+      status: student.applicationStatus,
+      email: student.user.email,
+      cpf: student.cpf,
+      rg: student.rg,
+      uf: student.uf,
+      telefone_emergencia: student.urgencyPhone,
+      socioeconomic: student.socioeconomic,
+      whatsapp: student.whatsapp,
+      nome: student.user.firstName,
+      sobrenome: student.user.lastName,
+      nome_social: student.user.socialName,
+      usar_nome_social: student.user.useSocialName,
+      data_nascimento: student.user.birthday,
+      genero:
+        student.user.gender === Gender.Male
+          ? 'Masculino'
+          : student.user.gender === Gender.Female
+            ? 'Feminino'
+            : 'Outro',
+      telefone: student.user.phone,
+      bairro: student.user.neighborhood,
+      rua: student.user.street,
+      numero: student.user.number,
+      complemento: student.user.complement,
+      CEP: student.user.postalCode,
+      cidade: student.user.city,
+      estado: student.user.state,
+      nome_guardiao_legal: student.legalGuardian?.fullName || '',
+      telefone_guardiao_legal: student.legalGuardian?.phone || '',
+      rg_guardiao_legal: maskRg(student.legalGuardian?.rg) || '',
+      uf_guardiao_legal: student.legalGuardian?.uf || '',
+      cpf_guardiao_legal: maskCpf(student.legalGuardian?.cpf) || '',
+      parentesco_guardiao_legal:
+        student.legalGuardian?.family_relationship || '',
+      logs: student.logs,
+      documents: student.documents.map((d) => ({
+        createdAt: d.createdAt,
+        name: d.name,
+        key: d.key,
+        expiredAt: d.exprires,
+      })),
+      photo: student.photo,
+      areas_de_interesse: student.areaInterest,
+      cursos_selecionados: student.selectedCourses,
+    });
   }
 
   async verifyEnrollmentStatus(
