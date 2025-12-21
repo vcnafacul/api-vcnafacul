@@ -1269,6 +1269,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         studentId: student.id,
         partnerCourseName: student.partnerPrepCourse.geo.name,
         inscriptionName: student.inscriptionCourse.name,
+        inscriptionId: student.inscriptionCourse.id,
         status: student.applicationStatus,
         logs: student.logs,
         createdAt: student.createdAt,
@@ -1461,13 +1462,6 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       cpf_guardiao_legal: maskCpf(student.legalGuardian?.cpf) || '',
       parentesco_guardiao_legal:
         student.legalGuardian?.family_relationship || '',
-      logs: student.logs,
-      documents: student.documents.map((d) => ({
-        createdAt: d.createdAt,
-        name: d.name,
-        key: d.key,
-        expiredAt: d.exprires,
-      })),
       photo: student.photo,
       areas_de_interesse: student.areaInterest,
       cursos_selecionados: student.selectedCourses,
