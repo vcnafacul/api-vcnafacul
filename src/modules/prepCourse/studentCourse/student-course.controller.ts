@@ -43,6 +43,7 @@ import { VerifyDeclaredInterestDtoOutput } from './dtos/verify-declared-interest
 import { VerifyEnrollmentStatusDtoInput } from './dtos/verify-enrollment-status.dto.input';
 import { VerifyEnrollmentStatusDtoOutput } from './dtos/verify-enrollment-status.dto.output';
 import { StudentCourseService } from './student-course.service';
+import { GetSubscribersDtoOutput } from '../InscriptionCourse/dtos/get-subscribers.dto.output';
 
 @ApiTags('StudentCourse')
 @Controller('student-course')
@@ -388,5 +389,19 @@ export class StudentCourseController {
       dto.cpf,
       dto.enrollmentCode,
     );
+  }
+
+  @Get(':id/details')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
+  @ApiResponse({
+    status: 200,
+    description: 'Retorna detalhes completos de um estudante',
+  })
+  async getStudentDetails(
+    @Param('id') id: string,
+  ): Promise<GetSubscribersDtoOutput> {
+    return await this.service.getStudentDetails(id);
   }
 }
