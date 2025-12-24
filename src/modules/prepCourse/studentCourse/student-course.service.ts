@@ -531,6 +531,12 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     if (!class_) {
       throw new HttpException('Turma não encontrada', HttpStatus.NOT_FOUND);
     }
+    if (class_.coursePeriod?.endDate && class_.coursePeriod.endDate < new Date()) {
+      throw new HttpException(
+        'Essa turma já encerrou as atividades letivas',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     if (student.applicationStatus !== StatusApplication.DeclaredInterest) {
       throw new HttpException(
         'Não é possível confirmar estudantes matriculados que não declarou interesse',
