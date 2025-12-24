@@ -392,9 +392,7 @@ export class StudentCourseController {
   }
 
   @Get(':id/details')
-  @ApiBearerAuth()
-  @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
+  @UseGuards(JwtAuthGuard)
   @ApiResponse({
     status: 200,
     description: 'Retorna detalhes completos de um estudante',
