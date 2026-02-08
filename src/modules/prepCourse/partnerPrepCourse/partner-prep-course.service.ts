@@ -224,6 +224,27 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     return `data:image/webp;base64,${thumbnail.toString('base64')}`;
   }
 
+  async getLogo(id: string) {
+    const partnerPrepCourse = await this.repository.findOneBy({ id });
+    if (!partnerPrepCourse) {
+      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
+    }
+    // cache - logo único por dia para o mesmo id
+    const cachedLogo = await this.cache.wrap<{
+      buffer: string;
+      contentType: string;
+    }>(
+      `partner:logo:${id}`,
+      async () =>
+        await this.blobService.getFile(
+          partnerPrepCourse.logo,
+          this.envService.get('BUCKET_PARTNERSHIP_DOC'),
+        ),
+      60 * 60 * 24 * 1000, // 1 dia em milissegundos
+    );
+    return cachedLogo;
+  }
+
   async updateAgreement(id: string, file: Express.Multer.File) {
     const partnerPrepCourse = await this.repository.findOneBy({ id });
     if (!partnerPrepCourse) {
