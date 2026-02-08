@@ -13,14 +13,14 @@ import * as dayjs from 'dayjs';
 import { Permissions } from 'src/modules/role/role.entity';
 import { RoleService } from 'src/modules/role/role.service';
 import { Status } from 'src/modules/simulado/enum/status.enum';
-import { Gender } from 'src/modules/user/enum/gender';
-import { GetSubscribersDtoOutput } from '../InscriptionCourse/dtos/get-subscribers.dto.output';
 import { CreateUserDtoInput } from 'src/modules/user/dto/create.dto.input';
 import { CreateFlow } from 'src/modules/user/enum/create-flow';
+import { Gender } from 'src/modules/user/enum/gender';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
 import { CreateSubmissionDtoInput } from 'src/modules/vcnafacul-form/submission/dto/create-submission.dto.input';
 import { SubmissionService } from 'src/modules/vcnafacul-form/submission/submission.service';
+import { EMAIL_CONFIG } from 'src/shared/config/email.config';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import {
   Filter,
@@ -31,7 +31,6 @@ import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output'
 import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
-import { EMAIL_CONFIG } from 'src/shared/config/email.config';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { adjustDate } from 'src/utils/adjustDate';
@@ -42,6 +41,7 @@ import { maskRg } from 'src/utils/maskRg';
 import { IsNull, Not } from 'typeorm';
 import { ClassRepository } from '../class/class.repository';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
+import { GetSubscribersDtoOutput } from '../InscriptionCourse/dtos/get-subscribers.dto.output';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
 import { InscriptionCourseService } from '../InscriptionCourse/inscription-course.service';
 import { LogPartner } from '../partnerPrepCourse/log-partner/log-partner.entity';
@@ -531,7 +531,10 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     if (!class_) {
       throw new HttpException('Turma não encontrada', HttpStatus.NOT_FOUND);
     }
-    if (class_.coursePeriod?.endDate && class_.coursePeriod.endDate < new Date()) {
+    if (
+      class_.coursePeriod?.endDate &&
+      class_.coursePeriod.endDate < new Date()
+    ) {
       throw new HttpException(
         'Essa turma já encerrou as atividades letivas',
         HttpStatus.BAD_REQUEST,

@@ -160,6 +160,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
         startDate: i.startDate,
         endDate: i.endDate,
         createdAt: i.createdAt,
+        partnerId: partner.id,
       }))
       .sort((a, b) => a.startDate.getTime() - b.startDate.getTime())
       .reverse();
