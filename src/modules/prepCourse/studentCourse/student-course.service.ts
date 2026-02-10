@@ -1239,14 +1239,9 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     emailRepresentant: string[],
     nome_cursinho: string,
   ) {
-    const emailList = [
-      student.email,
-      ...emailRepresentant,
-      'cleyton.biffe@vcnafacul.com.br',
-    ];
     const studentFull = this.flattenData(student);
     await this.emailService.sendConfirmationStudentRegister(
-      emailList,
+      student.email,
       studentFull,
       nome_cursinho,
     );
