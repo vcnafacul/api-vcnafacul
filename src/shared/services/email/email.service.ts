@@ -145,7 +145,7 @@ export class EmailService {
   }
 
   async sendConfirmationStudentRegister(
-    listEmail: string[],
+    studentEmail: string,
     student: object,
     nomeCursinho: string,
   ) {
@@ -154,8 +154,7 @@ export class EmailService {
       : `Cursinho ${nomeCursinho}`;
     const mailOptions = {
       from: this.envService.get('SMTP_USERNAME'),
-      to: listEmail[0],
-      bcc: listEmail.slice(1),
+      to: studentEmail,
       subject: 'Confirmação de Incrição Cursinho - Você na Facul',
       template: 'confirmation-student-register',
       context: {
