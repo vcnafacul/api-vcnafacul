@@ -78,4 +78,12 @@ export class ProvaService {
       this.envService.get('BUCKET_SIMULADO'),
     );
   }
+
+  public async startSync() {
+    return await this.axios.post('v1/prova/sync', {});
+  }
+
+  public async getSyncReport() {
+    return await this.axios.get('v1/prova/sync/report');
+  }
 }
