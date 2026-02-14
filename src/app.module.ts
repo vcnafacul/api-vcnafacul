@@ -1,9 +1,11 @@
 import { HttpModule } from '@nestjs/axios';
-import { Module } from '@nestjs/common';
+import { Module, Provider } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { DatabaseHealthCheckService } from './config/db-health-check.service';
@@ -28,6 +30,7 @@ import { StudentCourseModule } from './modules/prepCourse/studentCourse/student-
 import { RoleModule } from './modules/role/role.module';
 import { SimuladoModule } from './modules/simulado/simulado.module';
 import { VcnafaculFormModule } from './modules/vcnafacul-form/vcnafacul-form.module';
+import { THROTTLE_CONFIG } from './shared/config/email.config';
 import { CacheManagerModule } from './shared/modules/cache/cache.module';
 import { envSchema } from './shared/modules/env/env';
 import { EnvModule } from './shared/modules/env/env.module';
@@ -35,12 +38,35 @@ import { BlobModule } from './shared/services/blob/blob.module';
 import { DiscordWebhook } from './shared/services/webhooks/discord';
 import { JwtStrategy } from './shared/strategy/jwt.strategy';
 
+/**
+ * Desabilita ThrottlerGuard em ambiente de teste para evitar erros 429
+ * Em produção, o ThrottlerGuard é ativado para proteger contra abuso
+ */
+const isTestEnv = process.env.NODE_ENV === 'test';
+
+const throttlerProvider: Provider = isTestEnv
+  ? {
+      provide: APP_GUARD,
+      useValue: { canActivate: () => true },
+    }
+  : {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    };
+
 @Module({
   imports: [
     ConfigModule.forRoot({
       validate: (env) => envSchema.parse(env),
       isGlobal: true,
     }),
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: THROTTLE_CONFIG.DEFAULT.ttl,
+        limit: THROTTLE_CONFIG.DEFAULT.limit,
+      },
+    ]),
     EnvModule,
     TypeOrmModule.forRootAsync({
       imports: [EnvModule],
@@ -88,6 +114,7 @@ import { JwtStrategy } from './shared/strategy/jwt.strategy';
     DiscordWebhook,
     LokiLoggerService,
     DatabaseHealthCheckService,
+    throttlerProvider,
   ],
   exports: [DiscordWebhook],
 })

@@ -6,6 +6,7 @@ import { UserModule } from 'src/modules/user/user.module';
 import { EnvModule } from 'src/shared/modules/env/env.module';
 import { BlobModule } from 'src/shared/services/blob/blob.module';
 import { EmailService } from 'src/shared/services/email/email.service';
+import { LogPartnerRepository } from '../partnerPrepCourse/log-partner/log-partner.repository';
 import { PartnerPrepCourseRepository } from '../partnerPrepCourse/partner-prep-course.repository';
 import { PartnerPrepCourseService } from '../partnerPrepCourse/partner-prep-course.service';
 import { CollaboratorController } from './collaborator.controller';
@@ -22,6 +23,7 @@ import { CollaboratorService } from './collaborator.service';
     PartnerPrepCourseRepository,
     EmailService,
     LogGeoRepository,
+    LogPartnerRepository,
     RoleService,
     RoleRepository,
   ],

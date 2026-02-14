@@ -21,6 +21,8 @@ import {
   FileInterceptor,
 } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import { THROTTLE_CONFIG } from 'src/shared/config/email.config';
 import { Request, Response } from 'express';
 import { Permissions } from 'src/modules/role/role.entity';
 import { CreateUserDtoInput } from 'src/modules/user/dto/create.dto.input';
@@ -41,6 +43,7 @@ import { VerifyDeclaredInterestDtoOutput } from './dtos/verify-declared-interest
 import { VerifyEnrollmentStatusDtoInput } from './dtos/verify-enrollment-status.dto.input';
 import { VerifyEnrollmentStatusDtoOutput } from './dtos/verify-enrollment-status.dto.output';
 import { StudentCourseService } from './student-course.service';
+import { GetSubscribersDtoOutput } from '../InscriptionCourse/dtos/get-subscribers.dto.output';
 
 @ApiTags('StudentCourse')
 @Controller('student-course')
@@ -57,6 +60,12 @@ export class StudentCourseController {
   }
 
   @Post('user/:inscriptionId')
+  @Throttle({
+    default: {
+      ttl: THROTTLE_CONFIG.CREATE_USER.ttl,
+      limit: THROTTLE_CONFIG.CREATE_USER.limit,
+    },
+  })
   async createUser(
     @Body() userDto: CreateUserDtoInput,
     @Param('inscriptionId') inscriptionId: string,
@@ -79,6 +88,12 @@ export class StudentCourseController {
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
+  @Throttle({
+    default: {
+      ttl: THROTTLE_CONFIG.WAITING_LIST.ttl,
+      limit: THROTTLE_CONFIG.WAITING_LIST.limit,
+    },
+  })
   async sendEmailDeclaredInterestById(@Param('id') id: string): Promise<void> {
     await this.service.sendEmailDeclaredInterestById(id);
   }
@@ -330,8 +345,7 @@ export class StudentCourseController {
 
   @Get('registration-monitoring')
   @ApiBearerAuth()
-  @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
+  @UseGuards(JwtAuthGuard)
   async getRegistrationMonitoring(@Req() req: Request) {
     return await this.service.getRegistrationMonitoring((req.user as User).id);
   }
@@ -375,5 +389,17 @@ export class StudentCourseController {
       dto.cpf,
       dto.enrollmentCode,
     );
+  }
+
+  @Get(':id/details')
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: 'Retorna detalhes completos de um estudante',
+  })
+  async getStudentDetails(
+    @Param('id') id: string,
+  ): Promise<GetSubscribersDtoOutput> {
+    return await this.service.getStudentDetails(id);
   }
 }

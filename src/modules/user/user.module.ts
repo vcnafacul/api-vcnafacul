@@ -4,6 +4,7 @@ import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { AuditLogModule } from '../audit-log/audit-log.module';
 import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
+import { StudentCourseRepository } from '../prepCourse/studentCourse/student-course.repository';
 import { RoleRepository } from '../role/role.repository';
 import { RefreshTokenService } from './services/refresh-token.service';
 import { UserController } from './user.controller';
@@ -26,6 +27,7 @@ import { UserExistValidator } from './validator/user-exist.validator';
     EmailService,
     CollaboratorRepository,
     RoleRepository,
+    StudentCourseRepository,
     DiscordWebhook,
   ],
   exports: [UserService, UserRepository, RefreshTokenService],

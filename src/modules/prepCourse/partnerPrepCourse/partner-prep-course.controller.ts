@@ -172,6 +172,19 @@ export class PartnerPrepCourseController {
     return await this.service.updateLogo(id, file);
   }
 
+  @Get('logo/:id')
+  async getLogo(@Param('id') id: string, @Res() res: Response) {
+    const { buffer, contentType } = await this.service.getLogo(id);
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `inline; filename="${id}"`);
+
+    return res.status(HttpStatus.OK).json({
+      buffer: buffer,
+      contentType,
+    });
+  }
+
   @Post('agreement/:id')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
@@ -205,14 +218,9 @@ export class PartnerPrepCourseController {
   @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
   async getAgreement(@Param('id') id: string, @Res() res: Response) {
     const { buffer, contentType } = await this.service.getAgreement(id);
-    res.set({
-      'Content-Type': contentType,
-      'Content-Disposition': `inline; filename="${id}"`,
-    });
-    return res.status(HttpStatus.OK).json({
-      buffer: buffer,
-      contentType,
-    });
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `inline; filename="${id}"`);
+    return res.send(Buffer.from(buffer, 'base64'));
   }
 
   @Get(':id')

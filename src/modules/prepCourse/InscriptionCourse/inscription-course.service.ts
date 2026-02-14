@@ -160,6 +160,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
         startDate: i.startDate,
         endDate: i.endDate,
         createdAt: i.createdAt,
+        partnerId: partner.id,
       }))
       .sort((a, b) => a.startDate.getTime() - b.startDate.getTime())
       .reverse();
@@ -438,7 +439,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     return subscribers;
   }
 
-  @Cron(CronExpression.EVERY_6_HOURS, {
+  @Cron(CronExpression.EVERY_3_HOURS, {
     timeZone: 'America/Sao_Paulo',
   })
   async updateInfosInscription() {

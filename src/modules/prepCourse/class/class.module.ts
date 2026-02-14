@@ -10,6 +10,7 @@ import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
 import { CoursePeriodRepository } from '../coursePeriod/course-period.repository';
 import { PartnerPrepCourseModule } from '../partnerPrepCourse/partner-prep-course.module';
+import { StudentCourseRepository } from '../studentCourse/student-course.repository';
 import { ClassController } from './class.controller';
 import { ClassRepository } from './class.repository';
 import { ClassService } from './class.service';
@@ -27,6 +28,7 @@ import { ClassService } from './class.service';
     CollaboratorRepository,
     CoursePeriodRepository,
     DiscordWebhook,
+    StudentCourseRepository,
   ],
   exports: [ClassRepository, ClassService, UserService, UserRepository],
 })

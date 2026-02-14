@@ -28,6 +28,8 @@ import { CollaboratorRepository } from '../collaborator/collaborator.repository'
 import { PartnerPrepCourseDtoInput } from './dtos/create-partner-prep-course.input.dto';
 import { PrepCourseDtoOutput } from './dtos/get-all-prep-course.dto.outoput';
 import { GetOnePrepCourseByIdDtoOutput } from './dtos/get-one-prep-course-by-id.dto.output';
+import { LogPartner } from './log-partner/log-partner.entity';
+import { LogPartnerRepository } from './log-partner/log-partner.repository';
 import { PartnerPrepCourse } from './partner-prep-course.entity';
 import { PartnerPrepCourseRepository } from './partner-prep-course.repository';
 import { createTermOfUse } from './utils/create-term-of-use';
@@ -41,6 +43,7 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     private readonly jwtService: JwtService,
     private readonly collaboratorRepository: CollaboratorRepository,
     private readonly logGeoRepository: LogGeoRepository,
+    private readonly logPartnerRepository: LogPartnerRepository,
     private readonly roleService: RoleService,
     @Inject('BlobService') private readonly blobService: BlobService,
     @InjectDataSource()
@@ -142,6 +145,11 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
           logGeo.geo = partnerPrepCourse.geo;
           logGeo.user = user;
           await this.logGeoRepository.create(logGeo);
+
+          const logPartner = new LogPartner();
+          logPartner.partnerId = partnerPrepCourse.id;
+          logPartner.description = `Cursinho parceiro criado por ${user.firstName} ${user.lastName}`;
+          // await this.logPartnerRepository.create(logPartner);
         }
       });
     } catch (error) {
@@ -207,7 +215,34 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     const thumbnail = await createThumbnail(file.buffer);
     partnerPrepCourse.thumbnail = thumbnail;
     await this.repository.update(partnerPrepCourse);
+
+    const logPartner = new LogPartner();
+    logPartner.partnerId = id;
+    logPartner.description = 'Logo do cursinho atualizado';
+    await this.logPartnerRepository.create(logPartner);
+
     return `data:image/webp;base64,${thumbnail.toString('base64')}`;
+  }
+
+  async getLogo(id: string) {
+    const partnerPrepCourse = await this.repository.findOneBy({ id });
+    if (!partnerPrepCourse) {
+      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
+    }
+    // cache - logo único por dia para o mesmo id
+    const cachedLogo = await this.cache.wrap<{
+      buffer: string;
+      contentType: string;
+    }>(
+      `partner:logo:${id}`,
+      async () =>
+        await this.blobService.getFile(
+          partnerPrepCourse.logo,
+          this.envService.get('BUCKET_PARTNERSHIP_DOC'),
+        ),
+      60 * 60 * 24 * 1000, // 1 dia em milissegundos
+    );
+    return cachedLogo;
   }
 
   async updateAgreement(id: string, file: Express.Multer.File) {
@@ -221,6 +256,12 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     );
     partnerPrepCourse.partnershipAgreement = agreementKey;
     await this.repository.update(partnerPrepCourse);
+
+    const logPartner = new LogPartner();
+    logPartner.partnerId = id;
+    logPartner.description = 'Termo de parceria atualizado';
+    await this.logPartnerRepository.create(logPartner);
+
     return agreementKey;
   }
 
@@ -361,6 +402,11 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
         timestamp: new Date().toISOString(),
       }),
     );
+
+    const logPartner = new LogPartner();
+    logPartner.partnerId = prepCourse.id;
+    logPartner.description = `Convite enviado para ${user.firstName} ${user.lastName} (${email})`;
+    await this.logPartnerRepository.create(logPartner);
   }
 
   async inviteMemberAccept(userId: string, partnerId: string) {
@@ -430,6 +476,11 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
           timestamp: new Date().toISOString(),
         }),
       );
+
+      const logPartner = new LogPartner();
+      logPartner.partnerId = partnerId;
+      logPartner.description = `${user.firstName} ${user.lastName} (${user.email}) aceitou convite e entrou como membro`;
+      await this.logPartnerRepository.create(logPartner);
     });
   }
 
@@ -465,7 +516,14 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     if (!partnerPrepCourse) {
       throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
     }
-    return await this.roleService.create(dto, partnerPrepCourse);
+    const role = await this.roleService.create(dto, partnerPrepCourse);
+
+    const logPartner = new LogPartner();
+    logPartner.partnerId = partnerPrepCourse.id;
+    logPartner.description = `Cargo "${dto.name}" criado`;
+    await this.logPartnerRepository.create(logPartner);
+
+    return role;
   }
 
   async getRoles(userId: string): Promise<Role[]> {
@@ -498,7 +556,14 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
         HttpStatus.BAD_REQUEST,
       );
     }
-    return await this.roleService.update(dto);
+    const updatedRole = await this.roleService.update(dto);
+
+    const logPartner = new LogPartner();
+    logPartner.partnerId = partnerPrepCourse.id;
+    logPartner.description = `Cargo "${role.name}" atualizado`;
+    await this.logPartnerRepository.create(logPartner);
+
+    return updatedRole;
   }
 
   async getSummary() {
@@ -590,6 +655,11 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
           timestamp: new Date().toISOString(),
         }),
       );
+
+      const logPartner = new LogPartner();
+      logPartner.partnerId = id;
+      logPartner.description = `Representante alterado para ${user.firstName} ${user.lastName} (${user.email})`;
+      await this.logPartnerRepository.create(logPartner);
     } catch (error) {
       this.logger.error(
         JSON.stringify({

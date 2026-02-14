@@ -1,10 +1,13 @@
 import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { AppModule } from 'src/app.module';
 import { GeoService } from 'src/modules/geo/geo.service';
+import { LogGeoRepository } from 'src/modules/geo/log-geo/log-geo.repository';
 import { CoursePeriodRepository } from 'src/modules/prepCourse/coursePeriod/course-period.repository';
 import { PartnerPrepCourseDtoInput } from 'src/modules/prepCourse/partnerPrepCourse/dtos/create-partner-prep-course.input.dto';
+import { LogPartnerRepository } from 'src/modules/prepCourse/partnerPrepCourse/log-partner/log-partner.repository';
 import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
 import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
 import { Role } from 'src/modules/role/role.entity';
@@ -33,12 +36,17 @@ describe('CoursePeriod (e2e)', () => {
   let coursePeriodRepository: CoursePeriodRepository;
   let geoService: GeoService;
   let role: Role = null;
+  let logPartnerRepository: LogPartnerRepository;
+  let logGeoRepository: LogGeoRepository;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
       providers: [EmailService],
-    }).compile();
+    })
+      .overrideGuard(ThrottlerGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     app = createNestAppTest(moduleFixture);
     userService = moduleFixture.get<UserService>(UserService);
@@ -53,6 +61,17 @@ describe('CoursePeriod (e2e)', () => {
       CoursePeriodRepository,
     );
     geoService = moduleFixture.get<GeoService>(GeoService);
+    logPartnerRepository =
+      moduleFixture.get<LogPartnerRepository>(LogPartnerRepository);
+    logGeoRepository = moduleFixture.get<LogGeoRepository>(LogGeoRepository);
+
+    jest
+      .spyOn(logPartnerRepository, 'create')
+      .mockImplementation(async () => ({}) as any);
+
+    jest
+      .spyOn(logGeoRepository, 'create')
+      .mockImplementation(async () => ({}) as any);
 
     jest
       .spyOn(emailService, 'sendCreateUser')

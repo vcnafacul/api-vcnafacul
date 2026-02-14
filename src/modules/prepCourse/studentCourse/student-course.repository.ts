@@ -319,4 +319,25 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .leftJoinAndSelect('class.coursePeriod', 'course_period')
       .getOne();
   }
+
+  async existsByUserId(userId: string): Promise<boolean> {
+    const count = await this.repository
+      .createQueryBuilder('entity')
+      .where('entity.user_id = :userId', { userId })
+      .getCount();
+    return count > 0;
+  }
+
+  async findOneWithFullDetails(id: string): Promise<StudentCourse> {
+    return await this.repository
+      .createQueryBuilder('entity')
+      .where('entity.id = :id', { id })
+      .leftJoinAndSelect('entity.user', 'user')
+      .leftJoinAndSelect('entity.legalGuardian', 'legalGuardian')
+      .leftJoinAndSelect('entity.logs', 'logs')
+      .leftJoinAndSelect('entity.documents', 'documents')
+      .orderBy('logs.created_at', 'DESC')
+      .addOrderBy('documents.created_at', 'DESC')
+      .getOne();
+  }
 }

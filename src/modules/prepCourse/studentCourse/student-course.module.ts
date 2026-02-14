@@ -15,6 +15,7 @@ import { ClassModule } from '../class/class.module';
 import { CollaboratorModule } from '../collaborator/collaborator.module';
 import { InscriptionCourseRepository } from '../InscriptionCourse/inscription-course.repository';
 import { InscriptionCourseService } from '../InscriptionCourse/inscription-course.service';
+import { LogPartnerRepository } from '../partnerPrepCourse/log-partner/log-partner.repository';
 import { PartnerPrepCourseRepository } from '../partnerPrepCourse/partner-prep-course.repository';
 import { PartnerPrepCourseService } from '../partnerPrepCourse/partner-prep-course.service';
 import { DocumentStudentRepository } from './documents/document-students.repository';
@@ -47,6 +48,7 @@ import { StudentCourseService } from './student-course.service';
     EmailService,
     LogStudentRepository,
     LogGeoRepository,
+    LogPartnerRepository,
     UserService,
     DiscordWebhook,
     FormService,

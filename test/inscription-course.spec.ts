@@ -1,12 +1,14 @@
 import { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { AppModule } from 'src/app.module';
 import { RoleSeedService } from 'src/db/seeds/1-role.seed';
 import { RoleUpdateAdminSeedService } from 'src/db/seeds/2-role-update-admin.seed';
 import { GeoService } from 'src/modules/geo/geo.service';
 import { InscriptionCourseRepository } from 'src/modules/prepCourse/InscriptionCourse/inscription-course.repository';
 import { InscriptionCourseService } from 'src/modules/prepCourse/InscriptionCourse/inscription-course.service';
+import { LogPartnerRepository } from 'src/modules/prepCourse/partnerPrepCourse/log-partner/log-partner.repository';
 import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
 import { RoleService } from 'src/modules/role/role.service';
 import { Status } from 'src/modules/simulado/enum/status.enum';
@@ -42,12 +44,16 @@ describe('InscriptionCourse', () => {
   let inscriptionRepository: InscriptionCourseRepository;
   let blobService: BlobService;
   let formService: FormService;
+  let logPartnerRepository: LogPartnerRepository;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
       providers: [EmailService, ConfigService],
-    }).compile();
+    })
+      .overrideGuard(ThrottlerGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     app = createNestAppTest(moduleFixture);
     userService = moduleFixture.get<UserService>(UserService);
@@ -71,6 +77,13 @@ describe('InscriptionCourse', () => {
     );
     blobService = moduleFixture.get<BlobService>('BlobService');
     formService = moduleFixture.get<FormService>(FormService);
+    logPartnerRepository =
+      moduleFixture.get<LogPartnerRepository>(LogPartnerRepository);
+
+    // return void
+    jest
+      .spyOn(logPartnerRepository, 'create')
+      .mockImplementation(async () => void 0);
 
     jest
       .spyOn(emailService, 'sendCreateUser')

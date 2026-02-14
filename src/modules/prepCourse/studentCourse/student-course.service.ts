@@ -15,10 +15,12 @@ import { RoleService } from 'src/modules/role/role.service';
 import { Status } from 'src/modules/simulado/enum/status.enum';
 import { CreateUserDtoInput } from 'src/modules/user/dto/create.dto.input';
 import { CreateFlow } from 'src/modules/user/enum/create-flow';
+import { Gender } from 'src/modules/user/enum/gender';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
 import { CreateSubmissionDtoInput } from 'src/modules/vcnafacul-form/submission/dto/create-submission.dto.input';
 import { SubmissionService } from 'src/modules/vcnafacul-form/submission/submission.service';
+import { EMAIL_CONFIG } from 'src/shared/config/email.config';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import {
   Filter,
@@ -31,14 +33,19 @@ import { EnvService } from 'src/shared/modules/env/env.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
+import { adjustDate } from 'src/utils/adjustDate';
 import { maskCpf } from 'src/utils/maskCpf';
 import { maskEmail } from 'src/utils/maskEmail';
 import { maskPhone } from 'src/utils/maskPhone';
+import { maskRg } from 'src/utils/maskRg';
 import { IsNull, Not } from 'typeorm';
 import { ClassRepository } from '../class/class.repository';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
+import { GetSubscribersDtoOutput } from '../InscriptionCourse/dtos/get-subscribers.dto.output';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
 import { InscriptionCourseService } from '../InscriptionCourse/inscription-course.service';
+import { LogPartner } from '../partnerPrepCourse/log-partner/log-partner.entity';
+import { LogPartnerRepository } from '../partnerPrepCourse/log-partner/log-partner.repository';
 import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.entity';
 import { PartnerPrepCourseService } from '../partnerPrepCourse/partner-prep-course.service';
 import { DocumentStudent } from './documents/document-students.entity';
@@ -88,6 +95,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly logStudentRepository: LogStudentRepository,
+    private readonly logPartnerRepository: LogPartnerRepository,
     private envService: EnvService,
     private readonly collaboratorRepository: CollaboratorRepository,
     private readonly classRepository: ClassRepository,
@@ -136,18 +144,13 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       );
     }
 
-    let user = await this.updateUserInformation(dto);
+    const user = await this.updateUserInformation(dto);
 
     const studentCourse = await this.createStudentCourse(
       dto,
       inscriptionCourse.partnerPrepCourse,
       inscriptionCourse,
     );
-
-    // Verifica se o usuário tem role 'aluno' e altera para 'estudante'
-    // agora a função retorna o usuário atualizado em memória para evitar
-    // que o posterior `userRepository.update(user)` sobrescreva a role
-    user = await this.updateUserRoleIfNeeded(user, studentCourse.id);
 
     const submissionDto: CreateSubmissionDtoInput = {
       inscriptionId: inscriptionCourse.id,
@@ -188,6 +191,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       representatives.map((rep) => rep.user.email),
       inscriptionCourse.partnerPrepCourse.geo.name,
     );
+
     return { id: studentCourse.id } as CreateStudentCourseOutput;
   }
 
@@ -527,6 +531,15 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     if (!class_) {
       throw new HttpException('Turma não encontrada', HttpStatus.NOT_FOUND);
     }
+    if (
+      class_.coursePeriod?.endDate &&
+      class_.coursePeriod.endDate < new Date()
+    ) {
+      throw new HttpException(
+        'Essa turma já encerrou as atividades letivas',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     if (student.applicationStatus !== StatusApplication.DeclaredInterest) {
       throw new HttpException(
         'Não é possível confirmar estudantes matriculados que não declarou interesse',
@@ -737,7 +750,13 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         courseGroup.get(deadlineKey)!.push(student);
       }
 
-      const chunkSize = 50;
+      const chunkSize = EMAIL_CONFIG.MAX_BCC_PER_EMAIL;
+
+      // Mapear quantos estudantes convocados por cursinho parceiro
+      const partnerConvocationCount = new Map<
+        string,
+        { partnerId: string; count: number }
+      >();
 
       for (const [courseId, deadlineGroup] of grouped.entries()) {
         for (const [deadlineKey, courseStudents] of deadlineGroup.entries()) {
@@ -747,6 +766,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
             const bccList = chunk.map((s) => s.user.email);
             const courseName = chunk[0].partnerPrepCourse.geo.name;
+            const partnerId = chunk[0].partnerPrepCourse.id;
 
             try {
               await this.emailService.sendDeclaredInterestBulk(
@@ -765,6 +785,20 @@ export class StudentCourseService extends BaseService<StudentCourse> {
                   return this.logStudentRepository.create(log);
                 }),
               );
+
+              // Contabilizar convocações por cursinho
+              if (partnerConvocationCount.has(partnerId)) {
+                const current = partnerConvocationCount.get(partnerId)!;
+                current.count += chunk.length;
+              } else {
+                partnerConvocationCount.set(partnerId, {
+                  partnerId,
+                  count: chunk.length,
+                });
+              }
+              this.logger.log(
+                `Email de convocação enviado para ${bccList.length} estudantes do curso ${courseName}`,
+              );
             } catch (error) {
               this.discordWebhook.sendMessage(
                 `Erro ao enviar email para inscrição ${courseId}, deadline ${deadlineKey}, chunk: ${bccList.join(
@@ -773,9 +807,20 @@ export class StudentCourseService extends BaseService<StudentCourse> {
               );
             }
 
-            await new Promise((res) => setTimeout(res, 1000));
+            // Delay maior entre chunks para evitar rate limiting
+            await new Promise((res) =>
+              setTimeout(res, EMAIL_CONFIG.DELAY_BETWEEN_CHUNKS_MS),
+            );
           }
         }
+      }
+
+      // Criar logs para cada cursinho parceiro com o total de convocações
+      for (const { partnerId, count } of partnerConvocationCount.values()) {
+        const logPartner = new LogPartner();
+        logPartner.partnerId = partnerId;
+        logPartner.description = `Convocação enviada para ${count} estudante${count > 1 ? 's' : ''}`;
+        await this.logPartnerRepository.create(logPartner);
       }
     } catch (error) {
       this.discordWebhook.sendMessage(
@@ -1005,50 +1050,6 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     return `${year}${code.toString().padStart(4, '0')}`;
   }
 
-  private async updateUserRoleIfNeeded(
-    user: any,
-    studentId: string,
-  ): Promise<any> {
-    try {
-      // Verifica se o usuário tem role 'aluno'
-      if (user.role?.name === 'aluno') {
-        // Busca a role 'estudante'
-        const estudanteRole = await this.roleService.findOneBy({
-          name: 'estudante',
-        });
-
-        if (estudanteRole) {
-          // Atualiza a role do usuário para 'estudante' no serviço (DB)
-          await this.userService.updateRole(user.id, estudanteRole.id);
-
-          // Atualiza o objeto user em memória para que o update posterior não sobrescreva a role
-          user.role = estudanteRole;
-
-          // Log da mudança de role
-          const log = new LogStudent();
-          log.studentId = studentId;
-          log.applicationStatus = StatusApplication.UnderReview;
-          log.description = `Role alterada de 'aluno' para 'estudante' durante criação do cadastro`;
-          await this.logStudentRepository.create(log);
-
-          this.logger.log(
-            `Usuário ${user.id} teve role alterada de 'aluno' para 'estudante'`,
-          );
-        } else {
-          this.logger.warn('Role "estudante" não encontrada no sistema');
-        }
-      }
-    } catch (error) {
-      this.logger.error(
-        'Erro ao verificar/alterar role do usuário:',
-        error.message,
-      );
-      // Não re-throw aqui para não quebrar o processo de criação do estudante
-    }
-
-    return user;
-  }
-
   private ensureStudentNotAlreadySubscribe(
     inscriptionCourse: InscriptionCourse,
     userId: string,
@@ -1238,14 +1239,9 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     emailRepresentant: string[],
     nome_cursinho: string,
   ) {
-    const emailList = [
-      student.email,
-      ...emailRepresentant,
-      'cleyton.biffe@vcnafacul.com.br',
-    ];
     const studentFull = this.flattenData(student);
     await this.emailService.sendConfirmationStudentRegister(
-      emailList,
+      student.email,
       studentFull,
       nome_cursinho,
     );
@@ -1277,6 +1273,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         studentId: student.id,
         partnerCourseName: student.partnerPrepCourse.geo.name,
         inscriptionName: student.inscriptionCourse.name,
+        inscriptionId: student.inscriptionCourse.id,
         status: student.applicationStatus,
         logs: student.logs,
         createdAt: student.createdAt,
@@ -1417,6 +1414,62 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         ),
     );
     return partnerLogoFile;
+  }
+
+  async getStudentDetails(studentId: string): Promise<GetSubscribersDtoOutput> {
+    const student = await this.repository.findOneWithFullDetails(studentId);
+    if (!student) {
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+    }
+
+    return Object.assign(new GetSubscribersDtoOutput(), {
+      id: student.id,
+      cadastrado_em: student.createdAt,
+      isento: student.isFree ? 'Sim' : 'Não',
+      convocar: student.selectEnrolled ? 'Sim' : 'Não',
+      data_convocacao: student.selectEnrolledAt,
+      data_limite_convocacao: student.limitEnrolledAt
+        ? adjustDate(student.limitEnrolledAt, -1)
+        : null,
+      lista_de_espera: student.waitingList ? 'Sim' : 'Não',
+      status: student.applicationStatus,
+      email: student.user.email,
+      cpf: student.cpf,
+      rg: student.rg,
+      uf: student.uf,
+      telefone_emergencia: student.urgencyPhone,
+      socioeconomic: student.socioeconomic,
+      whatsapp: student.whatsapp,
+      nome: student.user.firstName,
+      sobrenome: student.user.lastName,
+      nome_social: student.user.socialName,
+      usar_nome_social: student.user.useSocialName,
+      data_nascimento: student.user.birthday,
+      genero:
+        student.user.gender === Gender.Male
+          ? 'Masculino'
+          : student.user.gender === Gender.Female
+            ? 'Feminino'
+            : 'Outro',
+      telefone: student.user.phone,
+      bairro: student.user.neighborhood,
+      rua: student.user.street,
+      numero: student.user.number,
+      complemento: student.user.complement,
+      CEP: student.user.postalCode,
+      cidade: student.user.city,
+      estado: student.user.state,
+      nome_guardiao_legal: student.legalGuardian?.fullName || '',
+      telefone_guardiao_legal: student.legalGuardian?.phone || '',
+      rg_guardiao_legal: maskRg(student.legalGuardian?.rg) || '',
+      uf_guardiao_legal: student.legalGuardian?.uf || '',
+      cpf_guardiao_legal: maskCpf(student.legalGuardian?.cpf) || '',
+      parentesco_guardiao_legal:
+        student.legalGuardian?.family_relationship || '',
+      photo: student.photo,
+      areas_de_interesse: student.areaInterest,
+      cursos_selecionados: student.selectedCourses,
+    });
   }
 
   async verifyEnrollmentStatus(
