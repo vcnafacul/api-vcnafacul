@@ -172,26 +172,21 @@ export class ContentProxyService {
   }
 
   async getStatsByFrente() {
-    return this.cache.wrap<object>(
-      'content:stats-by-frente',
-      async () => {
-        const stats = await this.axios.get<any[]>(
-          'v1/content/stats-by-frente',
-        );
-        if (!Array.isArray(stats)) return stats;
-        const result = [];
-        for (const item of stats) {
-          const materiaId = item.materia?.toString();
-          const enumValue =
-            await this.frenteProxyService.objectIdToEnum(materiaId);
-          result.push({
-            ...item,
-            materia: enumValue ?? item.materia,
-          });
-        }
-        return result;
-      },
-    );
+    return this.cache.wrap<object>('content:stats-by-frente', async () => {
+      const stats = await this.axios.get<any[]>('v1/content/stats-by-frente');
+      if (!Array.isArray(stats)) return stats;
+      const result = [];
+      for (const item of stats) {
+        const materiaId = item.materia?.toString();
+        const enumValue =
+          await this.frenteProxyService.objectIdToEnum(materiaId);
+        result.push({
+          ...item,
+          materia: enumValue ?? item.materia,
+        });
+      }
+      return result;
+    });
   }
 
   async getSnapshotContentStatus() {
