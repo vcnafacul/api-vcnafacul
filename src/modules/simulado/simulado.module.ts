@@ -1,11 +1,16 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
+import { CacheManagerModule } from 'src/shared/modules/cache/cache.module';
 import { EnvModule } from 'src/shared/modules/env/env.module';
 import { HttpServiceAxiosFactory } from 'src/shared/services/axios/http-service-axios.factory';
 import { BlobModule } from 'src/shared/services/blob/blob.module';
 import { AuditLogRepository } from '../audit-log/audit-log.repository';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { UserModule } from '../user/user.module';
+import { ContentProxyController } from './content/content.controller';
+import { ContentProxyService } from './content/content.service';
+import { FrenteProxyController } from './frente/frente.controller';
+import { FrenteProxyService } from './frente/frente.service';
 import { HistoricoController } from './historico/historico.controller';
 import { HistoricoService } from './historico/historico.service';
 import { ProvaController } from './prova/prova.controller';
@@ -14,14 +19,19 @@ import { QuestaoController } from './questao/questao.controller';
 import { QuestaoService } from './questao/questao.service';
 import { SimuladoController } from './simulado.controller';
 import { SimuladoService } from './simulado.service';
+import { SubjectProxyController } from './subject/subject.controller';
+import { SubjectProxyService } from './subject/subject.service';
 
 @Module({
-  imports: [BlobModule, HttpModule, UserModule, EnvModule],
+  imports: [BlobModule, HttpModule, UserModule, EnvModule, CacheManagerModule],
   controllers: [
     SimuladoController,
     ProvaController,
     QuestaoController,
     HistoricoController,
+    FrenteProxyController,
+    SubjectProxyController,
+    ContentProxyController,
   ],
   providers: [
     SimuladoService,
@@ -31,6 +41,9 @@ import { SimuladoService } from './simulado.service';
     QuestaoService,
     HistoricoService,
     HttpServiceAxiosFactory,
+    FrenteProxyService,
+    SubjectProxyService,
+    ContentProxyService,
   ],
 })
 export class SimuladoModule {}
