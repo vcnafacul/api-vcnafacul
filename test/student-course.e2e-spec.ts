@@ -2174,7 +2174,9 @@ describe('StudentCourse (e2e)', () => {
         expiresIn: '2h',
       });
 
-      let url = `/student-course/enrolled?filter[field]=${field}&filter[value]=${value}`;
+      const filterValue =
+        value instanceof Date ? value.toISOString().slice(0, 10) : value;
+      let url = `/student-course/enrolled?filter[field]=${field}&filter[value]=${encodeURIComponent(filterValue)}`;
       if (operator) {
         url += `&filter[operator]=${operator}`;
       }
