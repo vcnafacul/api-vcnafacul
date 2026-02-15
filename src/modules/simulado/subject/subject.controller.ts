@@ -59,11 +59,12 @@ export class SubjectProxyController {
     return await this.subjectService.getByFrente(frente);
   }
 
-  @Patch(':id')
+  @Patch()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
-  async update(@Param('id') id: string, @Body() dto: any) {
-    return await this.subjectService.update(id, dto);
+  async updateFromBody(@Body() dto: any) {
+    const { id, ...rest } = dto;
+    return await this.subjectService.update(id, rest);
   }
 
   @Delete(':id')

@@ -126,7 +126,10 @@ export class ContentProxyController {
   @ApiOperation({
     summary: 'Obter estatísticas de conteúdos agrupadas por frente',
   })
-  @ApiResponse({ status: 200, description: 'Estatísticas retornadas com sucesso' })
+  @ApiResponse({
+    status: 200,
+    description: 'Estatísticas retornadas com sucesso',
+  })
   async getStatsByFrente() {
     return await this.contentService.getStatsByFrente();
   }
@@ -135,7 +138,10 @@ export class ContentProxyController {
   @ApiOperation({
     summary: 'Obter snapshot de estatísticas de conteúdos',
   })
-  @ApiResponse({ status: 200, description: 'Estatísticas retornadas com sucesso' })
+  @ApiResponse({
+    status: 200,
+    description: 'Estatísticas retornadas com sucesso',
+  })
   async getSnapshotContentStatus() {
     return await this.contentService.getSnapshotContentStatus();
   }

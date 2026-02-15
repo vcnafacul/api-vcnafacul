@@ -7,6 +7,7 @@ import {
 } from 'src/shared/services/axios/http-service-axios.factory';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { cleanString } from 'src/utils/cleanString';
+import { FrenteProxyService } from '../frente/frente.service';
 
 @Injectable()
 export class ContentProxyService {
@@ -17,6 +18,7 @@ export class ContentProxyService {
     private readonly envService: EnvService,
     @Inject('BlobService') private readonly blobService: BlobService,
     private readonly cache: CacheService,
+    private readonly frenteProxyService: FrenteProxyService,
   ) {
     this.axios = this.httpServiceFactory.create(
       this.envService.get('SIMULADO_URL'),
@@ -24,8 +26,10 @@ export class ContentProxyService {
   }
 
   async create(body: any, userId: string) {
+    const { subjectId, ...rest } = body;
     return await this.axios.post('v1/content', {
-      ...body,
+      ...rest,
+      subject: subjectId,
       userId,
     });
   }
@@ -34,7 +38,14 @@ export class ContentProxyService {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(query)) {
       if (value !== undefined && value !== null) {
-        params.append(key, String(value));
+        if (key === 'materia') {
+          const materiaId = await this.frenteProxyService.enumToObjectId(value);
+          if (materiaId) {
+            params.append('materia', materiaId);
+          }
+        } else {
+          params.append(key, String(value));
+        }
       }
     }
     return await this.axios.get(`v1/content?${params.toString()}`);
@@ -69,11 +80,7 @@ export class ContentProxyService {
     });
   }
 
-  async uploadFile(
-    id: string,
-    userId: string,
-    file: Express.Multer.File,
-  ) {
+  async uploadFile(id: string, userId: string, file: Express.Multer.File) {
     if (!file) {
       throw new HttpException('file not found', HttpStatus.BAD_REQUEST);
     }
@@ -109,7 +116,9 @@ export class ContentProxyService {
     const title = cleanString(content.title);
     const subjectName = cleanString(content.subject?.name || '');
     const frenteName = cleanString(content.subject?.frente?.nome || '');
-    const materiaName = cleanString(content.subject?.frente?.materia?.nome || '');
+    const materiaName = cleanString(
+      content.subject?.frente?.materia?.nome || '',
+    );
     return `${materiaName}/${frenteName}/${subjectName}/${title}`;
   }
 
@@ -145,7 +154,14 @@ export class ContentProxyService {
   }
 
   async changeOrder(body: any) {
-    return await this.axios.patch('v1/content/order', body);
+    const { node1, node2 } = body;
+    if (node1 && node2) {
+      return await this.axios.patch('v1/content/swap-order', {
+        id1: node1,
+        id2: node2,
+      });
+    }
+    return await this.axios.patch('v1/content/swap-order', body);
   }
 
   async getSummary() {
@@ -158,7 +174,23 @@ export class ContentProxyService {
   async getStatsByFrente() {
     return this.cache.wrap<object>(
       'content:stats-by-frente',
-      async () => await this.axios.get<any>('v1/content/stats-by-frente'),
+      async () => {
+        const stats = await this.axios.get<any[]>(
+          'v1/content/stats-by-frente',
+        );
+        if (!Array.isArray(stats)) return stats;
+        const result = [];
+        for (const item of stats) {
+          const materiaId = item.materia?.toString();
+          const enumValue =
+            await this.frenteProxyService.objectIdToEnum(materiaId);
+          result.push({
+            ...item,
+            materia: enumValue ?? item.materia,
+          });
+        }
+        return result;
+      },
     );
   }
 

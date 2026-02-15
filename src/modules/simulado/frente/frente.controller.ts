@@ -50,11 +50,12 @@ export class FrenteProxyController {
     return await this.frenteService.getAll(query.page, query.limit);
   }
 
-  @Patch(':id')
+  @Patch()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
-  async update(@Param('id') id: string, @Body() dto: any) {
-    return await this.frenteService.update(id, dto);
+  async updateFromBody(@Body() dto: any) {
+    const { id, ...rest } = dto;
+    return await this.frenteService.update(id, rest);
   }
 
   @Delete(':id')

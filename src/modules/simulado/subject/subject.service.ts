@@ -45,6 +45,13 @@ export class SubjectProxyService {
   }
 
   async changeOrder(body: any) {
+    const { node1, node2 } = body;
+    if (node1 && node2) {
+      return await this.axios.patch('v1/subject/swap-order', {
+        id1: node1,
+        id2: node2,
+      });
+    }
     return await this.axios.patch('v1/subject/order', body);
   }
 
