@@ -8,7 +8,6 @@ import {
   OneToOne,
 } from 'typeorm';
 import { BaseEntity } from '../../shared/modules/base/entity.base';
-import { Content } from '../contents/content/content.entity';
 import { Collaborator } from '../prepCourse/collaborator/collaborator.entity';
 import { StudentCourse } from '../prepCourse/studentCourse/student-course.entity';
 import { Role } from '../role/role.entity';
@@ -81,9 +80,6 @@ export class User extends BaseEntity {
 
   @ManyToOne(() => Role, (role) => role.users)
   role: Role;
-
-  @OneToMany(() => Content, (content) => content.user)
-  content: Content[];
 
   @OneToMany(
     () => StudentCourse,

@@ -33,6 +33,7 @@
     "!src/**/db/**/*.ts",
     "!src/**/config/**/*.ts",
     "!src/modules/simulado/**/*.ts",
+"!src/modules/simulado/**/*.js",
     "!src/modules/vcnafacul-form/**/*.ts"
   ],
   "coverageDirectory": "./coverage",
