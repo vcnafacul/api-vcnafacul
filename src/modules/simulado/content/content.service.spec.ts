@@ -6,7 +6,6 @@ describe('ContentProxyService', () => {
   let mockAxios: { get: jest.Mock; post: jest.Mock; patch: jest.Mock; delete: jest.Mock };
   let mockBlobService: { uploadFile: jest.Mock; getFile: jest.Mock; deleteFile: jest.Mock };
   let mockCache: { wrap: jest.Mock };
-  let mockFrenteProxy: { enumToObjectId: jest.Mock; objectIdToEnum: jest.Mock };
 
   beforeEach(() => {
     mockAxios = {
@@ -23,10 +22,6 @@ describe('ContentProxyService', () => {
     mockCache = {
       wrap: jest.fn((key, fn) => fn()),
     };
-    mockFrenteProxy = {
-      enumToObjectId: jest.fn(),
-      objectIdToEnum: jest.fn(),
-    };
 
     const mockFactory = { create: jest.fn().mockReturnValue(mockAxios) };
     const mockEnv = {
@@ -42,7 +37,6 @@ describe('ContentProxyService', () => {
       mockEnv as any,
       mockBlobService as any,
       mockCache as any,
-      mockFrenteProxy as any,
     );
   });
 
@@ -75,26 +69,13 @@ describe('ContentProxyService', () => {
   });
 
   describe('getAll', () => {
-    it('should convert materia enum to ObjectId in query', async () => {
-      mockFrenteProxy.enumToObjectId.mockResolvedValue('materia-obj-id');
+    it('should forward materia ObjectId directly in query', async () => {
       mockAxios.get.mockResolvedValue({ data: [] });
 
-      await service.getAll({ page: '1', limit: '10', materia: '3' });
+      await service.getAll({ page: '1', limit: '10', materia: 'materia-obj-id' });
 
-      expect(mockFrenteProxy.enumToObjectId).toHaveBeenCalledWith('3');
       expect(mockAxios.get).toHaveBeenCalledWith(
         expect.stringContaining('materia=materia-obj-id'),
-      );
-    });
-
-    it('should skip materia param if enum not found', async () => {
-      mockFrenteProxy.enumToObjectId.mockResolvedValue(null);
-      mockAxios.get.mockResolvedValue({ data: [] });
-
-      await service.getAll({ page: '1', limit: '10', materia: '99' });
-
-      expect(mockAxios.get).toHaveBeenCalledWith(
-        expect.not.stringContaining('materia'),
       );
     });
 
@@ -242,34 +223,16 @@ describe('ContentProxyService', () => {
   });
 
   describe('getStatsByFrente', () => {
-    it('should convert materia ObjectId to enum in response', async () => {
-      mockAxios.get.mockResolvedValue([
+    it('should forward stats from ms-simulado as-is', async () => {
+      const stats = [
         { materia: 'id-bio', total: 10, approved: 5 },
         { materia: 'id-mat', total: 8, approved: 3 },
-      ]);
-      mockFrenteProxy.objectIdToEnum
-        .mockResolvedValueOnce(3)
-        .mockResolvedValueOnce(6);
+      ];
+      mockAxios.get.mockResolvedValue(stats);
 
       const result = await service.getStatsByFrente();
 
-      expect(result).toEqual([
-        { materia: 3, total: 10, approved: 5 },
-        { materia: 6, total: 8, approved: 3 },
-      ]);
-    });
-
-    it('should keep original materia if enum not found', async () => {
-      mockAxios.get.mockResolvedValue([
-        { materia: 'unknown-id', total: 5 },
-      ]);
-      mockFrenteProxy.objectIdToEnum.mockResolvedValue(null);
-
-      const result = await service.getStatsByFrente();
-
-      expect(result).toEqual([
-        { materia: 'unknown-id', total: 5 },
-      ]);
+      expect(result).toEqual(stats);
     });
 
     it('should use cache', async () => {

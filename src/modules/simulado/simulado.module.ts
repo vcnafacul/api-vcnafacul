@@ -11,6 +11,8 @@ import { ContentProxyController } from './content/content.controller';
 import { ContentProxyService } from './content/content.service';
 import { FrenteProxyController } from './frente/frente.controller';
 import { FrenteProxyService } from './frente/frente.service';
+import { MateriaProxyController } from './materia/materia.controller';
+import { MateriaProxyService } from './materia/materia.service';
 import { HistoricoController } from './historico/historico.controller';
 import { HistoricoService } from './historico/historico.service';
 import { ProvaController } from './prova/prova.controller';
@@ -29,6 +31,7 @@ import { SubjectProxyService } from './subject/subject.service';
     ProvaController,
     QuestaoController,
     HistoricoController,
+    MateriaProxyController,
     FrenteProxyController,
     SubjectProxyController,
     ContentProxyController,
@@ -41,6 +44,7 @@ import { SubjectProxyService } from './subject/subject.service';
     QuestaoService,
     HistoricoService,
     HttpServiceAxiosFactory,
+    MateriaProxyService,
     FrenteProxyService,
     SubjectProxyService,
     ContentProxyService,

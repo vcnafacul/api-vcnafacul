@@ -2,7 +2,7 @@ import { FrenteProxyService } from './frente.service';
 
 describe('FrenteProxyService', () => {
   let service: FrenteProxyService;
-  let mockAxios: { get: jest.Mock; post: jest.Mock; patch: jest.Mock; delete: jest.Mock };
+  let mockAxios: { get: jest.Mock; post: jest.Mock; patch: jest.Mock };
   let mockCache: { wrap: jest.Mock };
 
   beforeEach(() => {
@@ -10,7 +10,6 @@ describe('FrenteProxyService', () => {
       get: jest.fn(),
       post: jest.fn(),
       patch: jest.fn(),
-      delete: jest.fn(),
     };
     mockCache = {
       wrap: jest.fn((key, fn) => fn()),
@@ -26,106 +25,23 @@ describe('FrenteProxyService', () => {
     );
   });
 
-  describe('materia enum <-> ObjectId mapping', () => {
-    const fakeMaterias = [
-      { _id: 'id-portugues', nome: 'Língua Portuguesa' },
-      { _id: 'id-biologia', nome: 'Biologia' },
-      { _id: 'id-matematica', nome: 'Matemática' },
-    ];
-
-    beforeEach(() => {
-      mockAxios.get.mockResolvedValue(fakeMaterias);
-    });
-
-    it('should map enum index to ObjectId', async () => {
-      const result = await service.enumToObjectId(0);
-      expect(result).toBe('id-portugues');
-    });
-
-    it('should map enum index 3 (Biologia) to ObjectId', async () => {
-      const result = await service.enumToObjectId(3);
-      expect(result).toBe('id-biologia');
-    });
-
-    it('should map enum index 6 (Matemática) to ObjectId', async () => {
-      const result = await service.enumToObjectId(6);
-      expect(result).toBe('id-matematica');
-    });
-
-    it('should return null for unknown enum index', async () => {
-      const result = await service.enumToObjectId(99);
-      expect(result).toBeNull();
-    });
-
-    it('should map ObjectId back to enum', async () => {
-      const result = await service.objectIdToEnum('id-biologia');
-      expect(result).toBe(3);
-    });
-
-    it('should return null for unknown ObjectId', async () => {
-      const result = await service.objectIdToEnum('id-desconhecido');
-      expect(result).toBeNull();
-    });
-
-    it('should accept string enum values', async () => {
-      const result = await service.enumToObjectId('3');
-      expect(result).toBe('id-biologia');
-    });
-
-    it('should load mapping only once', async () => {
-      await service.enumToObjectId(0);
-      await service.enumToObjectId(3);
-      await service.objectIdToEnum('id-biologia');
-      expect(mockAxios.get).toHaveBeenCalledTimes(1);
-    });
-
-    it('should handle response with data wrapper', async () => {
-      mockAxios.get.mockResolvedValue({ data: fakeMaterias });
-      // Reset cache
-      service = new (FrenteProxyService as any)(
-        { create: jest.fn().mockReturnValue(mockAxios) },
-        { get: jest.fn().mockReturnValue('http://localhost:3001') },
-        mockCache,
-      );
-      const result = await service.enumToObjectId(0);
-      expect(result).toBe('id-portugues');
-    });
-
-    it('should handle case-insensitive matching', async () => {
-      mockAxios.get.mockResolvedValue([
-        { _id: 'id-bio', nome: 'BIOLOGIA' },
-      ]);
-      service = new (FrenteProxyService as any)(
-        { create: jest.fn().mockReturnValue(mockAxios) },
-        { get: jest.fn().mockReturnValue('http://localhost:3001') },
-        mockCache,
-      );
-      const result = await service.enumToObjectId(3);
-      expect(result).toBe('id-bio');
-    });
-  });
-
   describe('create', () => {
-    it('should translate name to nome and convert materia enum', async () => {
-      mockAxios.get.mockResolvedValue([
-        { _id: 'id-bio', nome: 'Biologia' },
-      ]);
+    it('should translate name to nome and forward materia ObjectId', async () => {
       mockAxios.post.mockResolvedValue({ _id: 'new-frente' });
 
-      await service.create({ name: 'Genética', materia: 3, extra: 'value' });
+      await service.create({ name: 'Genética', materia: 'materia-obj-id', extra: 'value' });
 
       expect(mockAxios.post).toHaveBeenCalledWith('v1/frente', {
         nome: 'Genética',
-        materia: 'id-bio',
+        materia: 'materia-obj-id',
         extra: 'value',
       });
     });
 
-    it('should omit materia if enum not found', async () => {
-      mockAxios.get.mockResolvedValue([]);
+    it('should omit materia if not provided', async () => {
       mockAxios.post.mockResolvedValue({ _id: 'new-frente' });
 
-      await service.create({ name: 'Test', materia: 99 });
+      await service.create({ name: 'Test' });
 
       expect(mockAxios.post).toHaveBeenCalledWith('v1/frente', {
         nome: 'Test',
@@ -157,42 +73,28 @@ describe('FrenteProxyService', () => {
   });
 
   describe('getByMateria', () => {
-    it('should convert enum and call ms-simulado', async () => {
-      mockAxios.get.mockResolvedValueOnce([
-        { _id: 'id-bio', nome: 'Biologia' },
-      ]);
-      mockAxios.get.mockResolvedValueOnce([{ _id: 'frente-1' }]);
+    it('should forward materia ObjectId directly to ms-simulado', async () => {
+      mockAxios.get.mockResolvedValue([{ _id: 'frente-1' }]);
 
-      const result = await service.getByMateria('3');
+      const result = await service.getByMateria('materia-obj-id');
 
-      expect(mockAxios.get).toHaveBeenCalledWith('v1/frente/materia/id-bio');
+      expect(mockAxios.get).toHaveBeenCalledWith('v1/frente/materia/materia-obj-id');
       expect(result).toEqual([{ _id: 'frente-1' }]);
-    });
-
-    it('should return empty array if materia not found', async () => {
-      mockAxios.get.mockResolvedValue([]);
-
-      const result = await service.getByMateria('99');
-
-      expect(result).toEqual([]);
     });
   });
 
   describe('getByMateriaContentApproved', () => {
-    it('should use cache and convert materia enum', async () => {
-      mockAxios.get.mockResolvedValueOnce([
-        { _id: 'id-bio', nome: 'Biologia' },
-      ]);
-      mockAxios.get.mockResolvedValueOnce([{ nome: 'Frente 1', subjects: [] }]);
+    it('should use cache and forward materia ObjectId directly', async () => {
+      mockAxios.get.mockResolvedValue([{ nome: 'Frente 1', subjects: [] }]);
 
-      await service.getByMateriaContentApproved('3');
+      await service.getByMateriaContentApproved('materia-obj-id');
 
       expect(mockCache.wrap).toHaveBeenCalledWith(
-        'frente:materiawithcontent:3',
+        'frente:materiawithcontent:materia-obj-id',
         expect.any(Function),
       );
       expect(mockAxios.get).toHaveBeenCalledWith(
-        'v1/frente/materiawithcontent/id-bio',
+        'v1/frente/materiawithcontent/materia-obj-id',
       );
     });
   });
@@ -212,14 +114,6 @@ describe('FrenteProxyService', () => {
       await service.getById('abc');
 
       expect(mockAxios.get).toHaveBeenCalledWith('v1/frente/abc');
-    });
-
-    it('delete should call correct URL', async () => {
-      mockAxios.delete.mockResolvedValue({});
-
-      await service.delete('abc');
-
-      expect(mockAxios.delete).toHaveBeenCalledWith('v1/frente/abc');
     });
   });
 });

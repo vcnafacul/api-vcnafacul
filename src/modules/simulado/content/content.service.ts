@@ -7,7 +7,6 @@ import {
 } from 'src/shared/services/axios/http-service-axios.factory';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { cleanString } from 'src/utils/cleanString';
-import { FrenteProxyService } from '../frente/frente.service';
 
 @Injectable()
 export class ContentProxyService {
@@ -18,7 +17,6 @@ export class ContentProxyService {
     private readonly envService: EnvService,
     @Inject('BlobService') private readonly blobService: BlobService,
     private readonly cache: CacheService,
-    private readonly frenteProxyService: FrenteProxyService,
   ) {
     this.axios = this.httpServiceFactory.create(
       this.envService.get('SIMULADO_URL'),
@@ -38,14 +36,7 @@ export class ContentProxyService {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(query)) {
       if (value !== undefined && value !== null) {
-        if (key === 'materia') {
-          const materiaId = await this.frenteProxyService.enumToObjectId(value);
-          if (materiaId) {
-            params.append('materia', materiaId);
-          }
-        } else {
-          params.append(key, String(value));
-        }
+        params.append(key, String(value));
       }
     }
     return await this.axios.get(`v1/content?${params.toString()}`);
@@ -68,16 +59,38 @@ export class ContentProxyService {
   }
 
   async changeStatus(id: string, status: number, userId: string) {
-    return await this.axios.patch(`v1/content/${id}/status`, {
+    const result = await this.axios.patch(`v1/content/${id}/status`, {
       status,
       userId,
     });
+    await this.invalidateContentCaches(id);
+    return result;
+  }
+
+  private async invalidateContentCaches(contentId: string) {
+    try {
+      const content = await this.axios.get<any>(
+        `v1/content/${contentId}/populated`,
+      );
+      const materiaId =
+        content?.subject?.frente?.materia?._id ||
+        content?.subject?.frente?.materia;
+      if (materiaId) {
+        await this.cache.del(`frente:materiawithcontent:${materiaId}`);
+      }
+    } catch {
+      // ignore cache invalidation errors
+    }
+    await this.cache.del('content:summary');
+    await this.cache.del('content:stats-by-frente');
   }
 
   async reset(id: string, userId: string) {
-    return await this.axios.patch(`v1/content/${id}/reset`, {
+    const result = await this.axios.patch(`v1/content/${id}/reset`, {
       userId,
     });
+    await this.invalidateContentCaches(id);
+    return result;
   }
 
   async uploadFile(id: string, userId: string, file: Express.Multer.File) {
@@ -172,21 +185,10 @@ export class ContentProxyService {
   }
 
   async getStatsByFrente() {
-    return this.cache.wrap<object>('content:stats-by-frente', async () => {
-      const stats = await this.axios.get<any[]>('v1/content/stats-by-frente');
-      if (!Array.isArray(stats)) return stats;
-      const result = [];
-      for (const item of stats) {
-        const materiaId = item.materia?.toString();
-        const enumValue =
-          await this.frenteProxyService.objectIdToEnum(materiaId);
-        result.push({
-          ...item,
-          materia: enumValue ?? item.materia,
-        });
-      }
-      return result;
-    });
+    return this.cache.wrap<object>(
+      'content:stats-by-frente',
+      async () => await this.axios.get<any>('v1/content/stats-by-frente'),
+    );
   }
 
   async getSnapshotContentStatus() {
