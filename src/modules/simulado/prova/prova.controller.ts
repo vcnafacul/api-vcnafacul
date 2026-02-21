@@ -5,9 +5,11 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   SetMetadata,
   UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
@@ -131,5 +133,34 @@ export class ProvaController {
   })
   public async getFile(@Param('id') id: string) {
     return await this.provaService.getFile(id);
+  }
+
+  @Patch(':id/files')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'Atualiza arquivos da prova',
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.cadastrarProvas)
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'file', maxCount: 1 },
+      { name: 'gabarito', maxCount: 1 },
+    ]),
+  )
+  public async updateProvaFiles(
+    @Param('id') id: string,
+    @UploadedFiles()
+    files: {
+      file?: Express.Multer.File[];
+      gabarito?: Express.Multer.File[];
+    },
+  ) {
+    return await this.provaService.updateProvaFiles(
+      id,
+      files?.file?.[0],
+      files?.gabarito?.[0],
+    );
   }
 }

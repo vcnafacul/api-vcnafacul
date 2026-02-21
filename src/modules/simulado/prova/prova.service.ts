@@ -86,4 +86,86 @@ export class ProvaService {
   public async getSyncReport() {
     return await this.axios.get('v1/prova/sync/report');
   }
+
+  public async updateProvaFiles(
+    provaId: string,
+    file?: Express.Multer.File,
+    gabarito?: Express.Multer.File,
+  ) {
+    const bucket = 'BUCKET_SIMULADO';
+
+    if (!file && !gabarito) {
+      throw new HttpException(
+        'Nenhum arquivo enviado para atualização',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const current = (await this.axios.get(`v1/prova/${provaId}`)) as {
+      filename: string;
+      gabarito: string;
+    };
+
+    let newFileName: string | undefined;
+    let newGabaritoName: string | undefined;
+
+    if (file) {
+      newFileName = await this.blobService.uploadFile(
+        file,
+        this.envService.get(bucket),
+      );
+    }
+
+    if (gabarito) {
+      newGabaritoName = await this.blobService.uploadFile(
+        gabarito,
+        this.envService.get(bucket),
+      );
+    }
+
+    const payload: any = {};
+    if (newFileName) payload.filename = newFileName;
+    if (newGabaritoName) payload.gabarito = newGabaritoName;
+
+    try {
+      const updated = await this.axios.patch(
+        `v1/prova/${provaId}/files`,
+        payload,
+      );
+
+      try {
+        if (newFileName && current.filename) {
+          await this.blobService.deleteFile(
+            current.filename,
+            this.envService.get(bucket),
+          );
+        }
+
+        if (newGabaritoName && current.gabarito) {
+          await this.blobService.deleteFile(
+            current.gabarito,
+            this.envService.get(bucket),
+          );
+        }
+      } catch (err) {
+        throw new HttpException(
+          'Erro ao deletar arquivos antigos',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+      return updated;
+    } catch (err) {
+      if (newFileName) {
+        await this.blobService.deleteFile(newFileName, bucket);
+      }
+      if (newGabaritoName) {
+        await this.blobService.deleteFile(newGabaritoName, bucket);
+      }
+
+      throw new HttpException(
+        'Erro ao atualizar arquivos',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }
