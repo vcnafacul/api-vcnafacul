@@ -3,9 +3,18 @@ import { ContentProxyService } from './content.service';
 
 describe('ContentProxyService', () => {
   let service: ContentProxyService;
-  let mockAxios: { get: jest.Mock; post: jest.Mock; patch: jest.Mock; delete: jest.Mock };
-  let mockBlobService: { uploadFile: jest.Mock; getFile: jest.Mock; deleteFile: jest.Mock };
-  let mockCache: { wrap: jest.Mock };
+  let mockAxios: {
+    get: jest.Mock;
+    post: jest.Mock;
+    patch: jest.Mock;
+    delete: jest.Mock;
+  };
+  let mockBlobService: {
+    uploadFile: jest.Mock;
+    getFile: jest.Mock;
+    deleteFile: jest.Mock;
+  };
+  let mockCache: { wrap: jest.Mock; del: jest.Mock };
 
   beforeEach(() => {
     mockAxios = {
@@ -21,6 +30,7 @@ describe('ContentProxyService', () => {
     };
     mockCache = {
       wrap: jest.fn((key, fn) => fn()),
+      del: jest.fn(),
     };
 
     const mockFactory = { create: jest.fn().mockReturnValue(mockAxios) };
@@ -72,7 +82,11 @@ describe('ContentProxyService', () => {
     it('should forward materia ObjectId directly in query', async () => {
       mockAxios.get.mockResolvedValue({ data: [] });
 
-      await service.getAll({ page: '1', limit: '10', materia: 'materia-obj-id' });
+      await service.getAll({
+        page: '1',
+        limit: '10',
+        materia: 'materia-obj-id',
+      });
 
       expect(mockAxios.get).toHaveBeenCalledWith(
         expect.stringContaining('materia=materia-obj-id'),
@@ -93,7 +107,12 @@ describe('ContentProxyService', () => {
     it('should skip null/undefined values', async () => {
       mockAxios.get.mockResolvedValue({ data: [] });
 
-      await service.getAll({ page: '1', limit: '10', status: undefined, frente: null });
+      await service.getAll({
+        page: '1',
+        limit: '10',
+        status: undefined,
+        frente: null,
+      });
 
       const url = mockAxios.get.mock.calls[0][0];
       expect(url).not.toContain('status');
@@ -165,7 +184,10 @@ describe('ContentProxyService', () => {
       mockBlobService.uploadFile.mockResolvedValue('file-key');
       mockAxios.post.mockResolvedValue({});
 
-      const file = { originalname: 'doc.pdf', buffer: Buffer.from('') } as Express.Multer.File;
+      const file = {
+        originalname: 'doc.pdf',
+        buffer: Buffer.from(''),
+      } as Express.Multer.File;
 
       await service.uploadFile('id', 'user', file);
 
@@ -189,9 +211,9 @@ describe('ContentProxyService', () => {
       mockAxios.get.mockResolvedValue(null);
       const file = { originalname: 'doc.pdf' } as Express.Multer.File;
 
-      await expect(
-        service.uploadFile('id', 'user', file),
-      ).rejects.toThrow(HttpException);
+      await expect(service.uploadFile('id', 'user', file)).rejects.toThrow(
+        HttpException,
+      );
     });
 
     it('should throw if upload fails', async () => {
@@ -199,9 +221,9 @@ describe('ContentProxyService', () => {
       mockBlobService.uploadFile.mockResolvedValue(null);
       const file = { originalname: 'doc.pdf' } as Express.Multer.File;
 
-      await expect(
-        service.uploadFile('id', 'user', file),
-      ).rejects.toThrow(HttpException);
+      await expect(service.uploadFile('id', 'user', file)).rejects.toThrow(
+        HttpException,
+      );
     });
 
     it('should create file-content after successful upload', async () => {
@@ -259,8 +281,14 @@ describe('ContentProxyService', () => {
       await service.delete('content-id');
 
       expect(mockBlobService.deleteFile).toHaveBeenCalledTimes(2);
-      expect(mockBlobService.deleteFile).toHaveBeenCalledWith('key-1', 'test-bucket');
-      expect(mockBlobService.deleteFile).toHaveBeenCalledWith('key-2', 'test-bucket');
+      expect(mockBlobService.deleteFile).toHaveBeenCalledWith(
+        'key-1',
+        'test-bucket',
+      );
+      expect(mockBlobService.deleteFile).toHaveBeenCalledWith(
+        'key-2',
+        'test-bucket',
+      );
       expect(mockAxios.delete).toHaveBeenCalledWith('v1/file-content/fc-1');
       expect(mockAxios.delete).toHaveBeenCalledWith('v1/file-content/fc-2');
       expect(mockAxios.delete).toHaveBeenCalledWith('v1/content/content-id');
@@ -287,24 +315,39 @@ describe('ContentProxyService', () => {
     it('getDemands should pass page and limit', async () => {
       mockAxios.get.mockResolvedValue({});
       await service.getDemands(2, 15);
-      expect(mockAxios.get).toHaveBeenCalledWith('v1/content/demand?page=2&limit=15');
+      expect(mockAxios.get).toHaveBeenCalledWith(
+        'v1/content/demand?page=2&limit=15',
+      );
     });
 
-    it('changeStatus should patch with status and userId', async () => {
+    it('changeStatus should patch with status and userId and invalidate caches', async () => {
       mockAxios.patch.mockResolvedValue({});
+      mockAxios.get.mockResolvedValue({
+        subject: { frente: { materia: { _id: 'mat-1' } } },
+      });
       await service.changeStatus('id-1', 2, 'user-1');
       expect(mockAxios.patch).toHaveBeenCalledWith('v1/content/id-1/status', {
         status: 2,
         userId: 'user-1',
       });
+      expect(mockCache.del).toHaveBeenCalledWith('content:summary');
+      expect(mockCache.del).toHaveBeenCalledWith('content:stats-by-frente');
+      expect(mockCache.del).toHaveBeenCalledWith(
+        'frente:materiawithcontent:mat-1',
+      );
     });
 
-    it('reset should patch with userId', async () => {
+    it('reset should patch with userId and invalidate caches', async () => {
       mockAxios.patch.mockResolvedValue({});
+      mockAxios.get.mockResolvedValue({
+        subject: { frente: { materia: { _id: 'mat-1' } } },
+      });
       await service.reset('id-1', 'user-1');
       expect(mockAxios.patch).toHaveBeenCalledWith('v1/content/id-1/reset', {
         userId: 'user-1',
       });
+      expect(mockCache.del).toHaveBeenCalledWith('content:summary');
+      expect(mockCache.del).toHaveBeenCalledWith('content:stats-by-frente');
     });
 
     it('getFile should fetch file-content then get blob', async () => {
@@ -314,7 +357,10 @@ describe('ContentProxyService', () => {
       await service.getFile('fc-id');
 
       expect(mockAxios.get).toHaveBeenCalledWith('v1/file-content/fc-id');
-      expect(mockBlobService.getFile).toHaveBeenCalledWith('my-key', 'test-bucket');
+      expect(mockBlobService.getFile).toHaveBeenCalledWith(
+        'my-key',
+        'test-bucket',
+      );
     });
 
     it('getFile should throw if file-content not found', async () => {
@@ -326,7 +372,10 @@ describe('ContentProxyService', () => {
     it('getSummary should use cache', async () => {
       mockAxios.get.mockResolvedValue({ total: 100 });
       await service.getSummary();
-      expect(mockCache.wrap).toHaveBeenCalledWith('content:summary', expect.any(Function));
+      expect(mockCache.wrap).toHaveBeenCalledWith(
+        'content:summary',
+        expect.any(Function),
+      );
     });
 
     it('getSnapshotContentStatus should use cache', async () => {

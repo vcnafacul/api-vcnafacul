@@ -84,18 +84,15 @@ describe('FrenteProxyService', () => {
   });
 
   describe('getByMateriaContentApproved', () => {
-    it('should use cache and forward materia ObjectId directly', async () => {
+    it('should forward materia ObjectId directly to ms-simulado', async () => {
       mockAxios.get.mockResolvedValue([{ nome: 'Frente 1', subjects: [] }]);
 
-      await service.getByMateriaContentApproved('materia-obj-id');
+      const result = await service.getByMateriaContentApproved('materia-obj-id');
 
-      expect(mockCache.wrap).toHaveBeenCalledWith(
-        'frente:materiawithcontent:materia-obj-id',
-        expect.any(Function),
-      );
       expect(mockAxios.get).toHaveBeenCalledWith(
         'v1/frente/materiawithcontent/materia-obj-id',
       );
+      expect(result).toEqual([{ nome: 'Frente 1', subjects: [] }]);
     });
   });
 
