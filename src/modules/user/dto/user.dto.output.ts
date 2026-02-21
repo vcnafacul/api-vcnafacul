@@ -5,6 +5,7 @@ import {
   IsNotEmpty,
   IsString,
 } from 'class-validator';
+import { AfinidadeDto } from 'src/modules/prepCourse/collaborator/dtos/collaborator-frentes.dto.output';
 import { Gender } from '../enum/gender';
 
 export class UserDtoOutput {
@@ -67,4 +68,7 @@ export class UserDtoOutput {
 
   @IsBoolean()
   useSocialName: boolean = false;
+
+  collaboratorFrentes?: string[] = undefined;
+  afinidades?: AfinidadeDto[] = undefined;
 }
