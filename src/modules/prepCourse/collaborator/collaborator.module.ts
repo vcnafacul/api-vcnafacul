@@ -11,11 +11,13 @@ import { PartnerPrepCourseRepository } from '../partnerPrepCourse/partner-prep-c
 import { PartnerPrepCourseService } from '../partnerPrepCourse/partner-prep-course.service';
 import { CollaboratorController } from './collaborator.controller';
 import { CollaboratorRepository } from './collaborator.repository';
+import { SimuladoModule } from 'src/modules/simulado/simulado.module';
+import { CollaboratorFrenteRepository } from './collaborator-frente.repository';
 import { CollaboratorService } from './collaborator.service';
 
 @Module({
   controllers: [CollaboratorController],
-  imports: [UserModule, BlobModule, EnvModule],
+  imports: [UserModule, BlobModule, EnvModule, SimuladoModule],
   providers: [
     CollaboratorRepository,
     CollaboratorService,
@@ -26,6 +28,7 @@ import { CollaboratorService } from './collaborator.service';
     LogPartnerRepository,
     RoleService,
     RoleRepository,
+    CollaboratorFrenteRepository,
   ],
   exports: [CollaboratorRepository, CollaboratorService],
 })
