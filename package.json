@@ -83,6 +83,7 @@
     "zod": "^3.24.4"
   },
   "devDependencies": {
+    "@babel/plugin-proposal-decorators": "^7.29.0",
     "@babel/preset-env": "^7.26.0",
     "@babel/preset-react": "^7.25.9",
     "@babel/preset-typescript": "^7.26.0",

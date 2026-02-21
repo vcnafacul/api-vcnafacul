@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Param,
   Patch,
@@ -58,10 +57,4 @@ export class FrenteProxyController {
     return await this.frenteService.update(id, rest);
   }
 
-  @Delete(':id')
-  @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
-  async delete(@Param('id') id: string) {
-    return await this.frenteService.delete(id);
-  }
 }
