@@ -14,6 +14,8 @@ import { Permissions } from 'src/modules/role/role.entity';
 import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
+import { CreateFrenteProxyDtoInput } from './dtos/create-frente-proxy.dto.input';
+import { UpdateFrenteProxyDtoInput } from './dtos/update-frente-proxy.dto.input';
 import { FrenteProxyService } from './frente.service';
 
 @ApiTags('Frente')
@@ -24,7 +26,7 @@ export class FrenteProxyController {
   @Post()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
-  async create(@Body() dto: any) {
+  async create(@Body() dto: CreateFrenteProxyDtoInput) {
     return await this.frenteService.create(dto);
   }
 
@@ -52,7 +54,7 @@ export class FrenteProxyController {
   @Patch()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
-  async updateFromBody(@Body() dto: any) {
+  async updateFromBody(@Body() dto: UpdateFrenteProxyDtoInput) {
     const { id, ...rest } = dto;
     return await this.frenteService.update(id, rest);
   }
