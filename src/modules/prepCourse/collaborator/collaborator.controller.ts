@@ -84,6 +84,18 @@ export class CollaboratorController {
     return await this.service.getPhoto(imageKey);
   }
 
+  @Put('me/frentes')
+  @UseGuards(JwtAuthGuard)
+  async updateMyFrentes(
+    @Body() dto: UpdateCollaboratorFrentesDtoInput,
+    @Req() req: Request,
+  ): Promise<void> {
+    const collaborator = await this.service.findCollaboratorByUserId(
+      (req.user as User).id,
+    );
+    return this.service.updateFrentes(collaborator.id, dto.frenteIds);
+  }
+
   @Put(':id/frentes')
   @UseGuards(JwtAuthGuard)
   async updateFrentes(

@@ -194,6 +194,14 @@ export class CollaboratorService extends BaseService<Collaborator> {
     return cachedFile;
   }
 
+  async findCollaboratorByUserId(userId: string): Promise<Collaborator> {
+    const collaborator = await this.repository.findOneByUserId(userId);
+    if (!collaborator) {
+      throw new HttpException('Collaborator not found', HttpStatus.NOT_FOUND);
+    }
+    return collaborator;
+  }
+
   async updateFrentes(
     collaboratorId: string,
     frenteIds: string[],
