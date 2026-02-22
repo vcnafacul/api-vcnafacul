@@ -22,36 +22,29 @@ import {
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { Permissions } from 'src/modules/role/role.entity';
+import { User } from 'src/modules/user/user.entity';
 import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
-import { ChangeOrderDTOInput } from 'src/shared/modules/node/dtos/change-order.dto.input';
-import { User } from '../../user/user.entity';
-import { ContentService } from './content.service';
-import { ContentStatsByFrenteDtoOutput } from './dtos/content-stats-by-frente.dto.output';
-import { CreateContentDTOInput } from './dtos/create-content.dto.input';
-import { GetAllContentDtoInput } from './dtos/get-all-content.dto.input';
-import { UpdateStatusDTOInput } from './dtos/update-status.dto.input';
-import { StatusContent } from './enum/status-content';
-import { SnapshotContentStatus } from './entities/snapshot-content-status/snapshot-content-status.entity';
+import { ContentProxyService } from './content.service';
 
 @ApiTags('Content')
 @Controller('content')
-export class ContentController {
-  constructor(private readonly contentService: ContentService) {}
+export class ContentProxyController {
+  constructor(private readonly contentService: ContentProxyService) {}
 
   @Post()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.validarDemanda)
-  async create(@Body() dto: CreateContentDTOInput, @Req() req: Request) {
-    return await this.contentService.create(dto, req.user as User);
+  async create(@Body() dto: any, @Req() req: Request) {
+    return await this.contentService.create(dto, (req.user as User).id);
   }
 
   @Get()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.visualizarDemanda)
-  async getAll(@Query() query: GetAllContentDtoInput) {
-    return await this.contentService.findAllBy(query);
+  async getAll(@Query() query: any) {
+    return await this.contentService.getAll(query);
   }
 
   @Get('order')
@@ -59,33 +52,33 @@ export class ContentController {
   @UseGuards(JwtAuthGuard)
   async getAllOrder(
     @Query('subjectId') subjectId: string,
-    @Query('status') status?: StatusContent,
+    @Query('status') status?: number,
   ) {
-    return await this.contentService.getAllOrder(subjectId, status);
+    return await this.contentService.getBySubject(subjectId, status);
   }
 
   @Get('demand')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.visualizarDemanda)
   async getAllDemand(@Query() query: GetAllDtoInput) {
-    return await this.contentService.getAllDemand(query);
+    return await this.contentService.getDemands(query.page, query.limit);
   }
 
   @Patch('order')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
-  async changeOrder(@Body() dto?: ChangeOrderDTOInput) {
-    await this.contentService.changeOrder(dto);
+  async changeOrder(@Body() dto: any) {
+    return await this.contentService.changeOrder(dto);
   }
 
   @Patch('status')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.validarDemanda)
-  async changeStatus(@Body() dto: UpdateStatusDTOInput, @Req() req: Request) {
+  async changeStatus(@Body() dto: any, @Req() req: Request) {
     return await this.contentService.changeStatus(
       dto.id,
       dto.status,
-      req.user as User,
+      (req.user as User).id,
     );
   }
 
@@ -93,7 +86,7 @@ export class ContentController {
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
   async reset(@Param('id') id: string, @Req() req: Request) {
-    return await this.contentService.reset(id, req.user as User);
+    return await this.contentService.reset(id, (req.user as User).id);
   }
 
   @Post('upload/:id')
@@ -105,7 +98,11 @@ export class ContentController {
     @UploadedFile() file: Express.Multer.File,
     @Req() req: Request,
   ) {
-    return await this.contentService.uploadFile(id, req.user as User, file);
+    return await this.contentService.uploadFile(
+      id,
+      (req.user as User).id,
+      file,
+    );
   }
 
   @Delete(':id')
@@ -128,29 +125,31 @@ export class ContentController {
   @Get('stats-by-frente')
   @ApiOperation({
     summary: 'Obter estatísticas de conteúdos agrupadas por frente',
-    description:
-      'Retorna estatísticas de conteúdos (pendentes, aprovados, reprovados, pendentes de upload e total) agrupadas por matéria e frente',
   })
   @ApiResponse({
     status: 200,
     description: 'Estatísticas retornadas com sucesso',
-    type: [ContentStatsByFrenteDtoOutput],
   })
-  async getStatsByFrente(): Promise<ContentStatsByFrenteDtoOutput[]> {
+  async getStatsByFrente() {
     return await this.contentService.getStatsByFrente();
   }
 
   @Get('snapshot-content-status')
   @ApiOperation({
     summary: 'Obter snapshot de estatísticas de conteúdos',
-    description: 'Retorna snapshot de estatísticas de conteúdos',
   })
   @ApiResponse({
     status: 200,
     description: 'Estatísticas retornadas com sucesso',
-    type: [ContentStatsByFrenteDtoOutput],
   })
-  async getSnapshotContentStatus(): Promise<SnapshotContentStatus[]> {
+  async getSnapshotContentStatus() {
     return await this.contentService.getSnapshotContentStatus();
+  }
+
+  @Get(':id')
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarDemanda)
+  async getById(@Param('id') id: string) {
+    return await this.contentService.getById(id);
   }
 }

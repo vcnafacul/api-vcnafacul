@@ -2,10 +2,14 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
+  Patch,
   Post,
   SetMetadata,
   UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
@@ -54,6 +58,35 @@ export class ProvaController {
     return await this.provaService.getSummary();
   }
 
+  @Post('sync')
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiResponse({
+    status: 202,
+    description: 'Inicia sincronizacao em background',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Sincronizacao ja em andamento',
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.cadastrarProvas)
+  public async startSync() {
+    return await this.provaService.startSync();
+  }
+
+  @Get('sync/report')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'Retorna o relatorio da ultima sincronizacao',
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarProvas)
+  public async getSyncReport() {
+    return await this.provaService.getSyncReport();
+  }
+
   @Get(':id')
   @ApiBearerAuth()
   @ApiResponse({
@@ -100,5 +133,34 @@ export class ProvaController {
   })
   public async getFile(@Param('id') id: string) {
     return await this.provaService.getFile(id);
+  }
+
+  @Patch(':id/files')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'Atualiza arquivos da prova',
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.cadastrarProvas)
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'file', maxCount: 1 },
+      { name: 'gabarito', maxCount: 1 },
+    ]),
+  )
+  public async updateProvaFiles(
+    @Param('id') id: string,
+    @UploadedFiles()
+    files: {
+      file?: Express.Multer.File[];
+      gabarito?: Express.Multer.File[];
+    },
+  ) {
+    return await this.provaService.updateProvaFiles(
+      id,
+      files?.file?.[0],
+      files?.gabarito?.[0],
+    );
   }
 }
