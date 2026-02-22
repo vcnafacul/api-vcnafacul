@@ -45,8 +45,7 @@ export class FrenteProxyController {
   }
 
   @Get()
-  @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarDemanda)
+  @UseGuards(JwtAuthGuard)
   async getAll(@Query() query: GetAllDtoInput) {
     return await this.frenteService.getAll(query.page, query.limit);
   }
@@ -58,5 +57,4 @@ export class FrenteProxyController {
     const { id, ...rest } = dto;
     return await this.frenteService.update(id, rest);
   }
-
 }

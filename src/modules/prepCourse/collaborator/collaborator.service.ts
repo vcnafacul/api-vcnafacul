@@ -222,17 +222,23 @@ export class CollaboratorService extends BaseService<Collaborator> {
       await this.collaboratorFrenteRepository.findByCollaboratorId(
         collaboratorId,
       );
-    const frenteIds = records.map((r) => r.frenteId);
+    const frenteIdsUnicos = [...new Set(records.map((r) => r.frenteId))];
 
     const frenteResults = await Promise.all(
-      frenteIds.map((id) =>
+      frenteIdsUnicos.map((id) =>
         this.frenteProxyService.getById(id).catch(() => null),
       ),
     );
     const validFrentes = frenteResults.filter(Boolean) as any[];
 
+    const frentesPorId = new Map<string, (typeof validFrentes)[number]>();
+    for (const f of validFrentes) {
+      const id = String(f._id);
+      if (!frentesPorId.has(id)) frentesPorId.set(id, f);
+    }
+
     const uniqueMateriaIds = [
-      ...new Set(validFrentes.map((f) => String(f.materia))),
+      ...new Set([...frentesPorId.values()].map((f) => String(f.materia))),
     ];
     const materiaResults = await Promise.all(
       uniqueMateriaIds.map((id) =>
@@ -240,18 +246,20 @@ export class CollaboratorService extends BaseService<Collaborator> {
       ),
     );
     const validMaterias = materiaResults.filter(Boolean) as any[];
-    const materiaMap = new Map(
-      validMaterias.map((m) => [String(m._id), m]),
-    );
+    const materiaPorId = new Map<string, (typeof validMaterias)[number]>();
+    for (const m of validMaterias) {
+      const id = String(m._id);
+      if (!materiaPorId.has(id)) materiaPorId.set(id, m);
+    }
 
     return {
       collaboratorId,
-      frentes: validFrentes.map((f) => ({
+      frentes: [...frentesPorId.values()].map((f) => ({
         id: String(f._id),
         nome: f.nome,
-        materia: f.materia,
+        materia: String(f.materia),
       })),
-      materias: [...materiaMap.values()].map((m) => ({
+      materias: [...materiaPorId.values()].map((m) => ({
         id: String(m._id),
         nome: m.nome,
       })),
@@ -300,7 +308,7 @@ export class CollaboratorService extends BaseService<Collaborator> {
       return {
         frenteId: String(frente._id),
         frenteNome: frente.nome,
-        materiaPId: materiaId,
+        materiaId,
         materiaNome: materia?.nome ?? '',
         adicionadoEm: record.createdAt,
       };

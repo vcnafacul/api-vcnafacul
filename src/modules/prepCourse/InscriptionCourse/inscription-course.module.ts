@@ -1,10 +1,11 @@
 import { HttpModule } from '@nestjs/axios';
-import { Module, OnModuleInit } from '@nestjs/common';
+import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { FormService } from 'src/modules/vcnafacul-form/form/form.service';
 import { EnvModule } from 'src/shared/modules/env/env.module';
 import { HttpServiceAxiosFactory } from 'src/shared/services/axios/http-service-axios.factory';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
+import { UserModule } from 'src/modules/user/user.module';
 import { PartnerPrepCourseModule } from '../partnerPrepCourse/partner-prep-course.module';
 import { LogStudentRepository } from '../studentCourse/log-student/log-student.repository';
 import { StudentCourseModule } from '../studentCourse/student-course.module';
@@ -16,8 +17,9 @@ import { InscriptionCourseExistValidator } from './validator/inscription-course-
 @Module({
   controllers: [InscriptionCourseController],
   imports: [
+    UserModule,
     PartnerPrepCourseModule,
-    StudentCourseModule,
+    forwardRef(() => StudentCourseModule),
     EnvModule,
     HttpModule,
   ],

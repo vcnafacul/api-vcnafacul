@@ -11,10 +11,10 @@ import { CollaboratorFrenteRepository } from '../prepCourse/collaborator/collabo
 import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
 import { AfinidadeDto } from '../prepCourse/collaborator/dtos/collaborator-frentes.dto.output';
 import { StudentCourseRepository } from '../prepCourse/studentCourse/student-course.repository';
-import { FrenteProxyService } from '../simulado/frente/frente.service';
-import { MateriaProxyService } from '../simulado/materia/materia.service';
 import { Role } from '../role/role.entity';
 import { RoleRepository } from '../role/role.repository';
+import { FrenteProxyService } from '../simulado/frente/frente.service';
+import { MateriaProxyService } from '../simulado/materia/materia.service';
 import { AggregateUserLastAcessDtoOutput } from './dto/aggregate-user-last-acess.dto.output';
 import { AggregateUserPeriodDtoOutput } from './dto/aggregate-user-period.dto.output';
 import { AggregateUsersByRoleDtoOutput } from './dto/aggregate-users-by-role.dto.output';
@@ -284,9 +284,7 @@ export class UserService extends BaseService<User> {
       ),
     );
     const validMaterias = materiaResults.filter(Boolean) as any[];
-    const materiaMap = new Map(
-      validMaterias.map((m) => [String(m._id), m]),
-    );
+    const materiaMap = new Map(validMaterias.map((m) => [String(m._id), m]));
 
     return valid.map(({ frente, record }) => {
       const materiaId = String(frente.materia);
@@ -294,7 +292,7 @@ export class UserService extends BaseService<User> {
       return {
         frenteId: String(frente._id),
         frenteNome: frente.nome,
-        materiaPId: materiaId,
+        materiaId,
         materiaNome: materia?.nome ?? '',
         adicionadoEm: record.createdAt,
       };

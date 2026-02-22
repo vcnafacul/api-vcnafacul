@@ -1,5 +1,5 @@
 import { Column, Entity, Index } from 'typeorm';
-import { BaseEntity } from 'src/shared/modules/base/entity.base';
+import { BaseEntity } from '../../../shared/modules/base/entity.base';
 
 @Entity('collaborator_frentes')
 @Index(['collaboratorId', 'frenteId'], { unique: true })

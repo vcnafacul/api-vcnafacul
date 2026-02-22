@@ -4,8 +4,6 @@ import { EnvModule } from 'src/shared/modules/env/env.module';
 import { HttpServiceAxiosFactory } from 'src/shared/services/axios/http-service-axios.factory';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { AuditLogModule } from '../audit-log/audit-log.module';
-import { AuditLogRepository } from '../audit-log/audit-log.repository';
-import { AuditLogService } from '../audit-log/audit-log.service';
 import { RoleModule } from '../role/role.module';
 import { UserModule } from '../user/user.module';
 import { GeoController } from './geo.controller';
@@ -21,11 +19,10 @@ import { GeoExistValidator } from './validator/geo-exist.validator';
     GeoService,
     GeoRepository,
     EmailService,
-    AuditLogService,
-    AuditLogRepository,
     GeoExistValidator,
     LogGeoRepository,
     HttpServiceAxiosFactory,
   ],
+  exports: [GeoService, GeoRepository, LogGeoRepository],
 })
 export class GeoModule {}

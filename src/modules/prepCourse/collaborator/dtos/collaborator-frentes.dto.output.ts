@@ -1,7 +1,8 @@
 export class FrenteItemDto {
   id: string;
   nome: string;
-  materia: number;
+  /** Id da matéria (preenchido pela resposta do ms-simulado na consulta de frentes). */
+  materia: string;
 }
 
 export class MateriaItemDto {
@@ -18,7 +19,8 @@ export class CollaboratorFrentesDtoOutput {
 export class AfinidadeDto {
   frenteId: string;
   frenteNome: string;
-  materiaPId: string;
+  /** Id da matéria (vindo da frente no ms-simulado); uso principal: key em listas no frontend. */
+  materiaId: string;
   materiaNome: string;
   adicionadoEm: Date;
 }
