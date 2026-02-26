@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable, Logger } from '@nestjs/common';
+import { HttpException, Injectable, Logger } from '@nestjs/common';
 import axios, { AxiosError, AxiosInstance } from 'axios';
 
 @Injectable()
@@ -44,7 +44,7 @@ export class HttpServiceAxios {
       stack: axiosError?.stack,
     });
 
-    throw errorData;
+    throw new HttpException(errorData, axiosError?.response?.status ?? 500);
   }
 
   private async requestWrapper<T>(request: Promise<T>): Promise<T> {

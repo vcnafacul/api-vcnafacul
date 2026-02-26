@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Patch,
+  Put,
   Query,
   Req,
   SetMetadata,
@@ -21,6 +22,7 @@ import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { CollaboratorService } from './collaborator.service';
+import { UpdateCollaboratorFrentesDtoInput } from './dtos/update-collaborator-frentes.dto.input';
 
 @ApiTags('Collaborator')
 @Controller('collaborator')
@@ -80,5 +82,32 @@ export class CollaboratorController {
   @Get(':imageKey/photo')
   async getPhoto(@Param('imageKey') imageKey: string) {
     return await this.service.getPhoto(imageKey);
+  }
+
+  @Put('me/frentes')
+  @UseGuards(JwtAuthGuard)
+  async updateMyFrentes(
+    @Body() dto: UpdateCollaboratorFrentesDtoInput,
+    @Req() req: Request,
+  ): Promise<void> {
+    const collaborator = await this.service.findCollaboratorByUserId(
+      (req.user as User).id,
+    );
+    return this.service.updateFrentes(collaborator.id, dto.frenteIds);
+  }
+
+  @Put(':id/frentes')
+  @UseGuards(JwtAuthGuard)
+  async updateFrentes(
+    @Param('id') id: string,
+    @Body() dto: UpdateCollaboratorFrentesDtoInput,
+  ): Promise<void> {
+    return this.service.updateFrentes(id, dto.frenteIds);
+  }
+
+  @Get(':id/frentes')
+  @UseGuards(JwtAuthGuard)
+  async getFrentes(@Param('id') id: string): Promise<any> {
+    return this.service.getEnrichedFrentes(id);
   }
 }

@@ -16,9 +16,9 @@ echo "Criando as tabelas..."
 dotenv -e ./test/.env.test -- yarn migration:show
 dotenv -e ./test/.env.test -- yarn migration:run
 
-# Executar os testes
+# Executar os testes com cobertura
 echo "Executando os testes..."
-dotenv -e ./test/.env.test -- yarn test:local
+dotenv -e ./test/.env.test -- yarn test:cov "$@"
 
 # Remover o container MySQL após os testes
 echo "Removendo o container MySQL..."

@@ -50,16 +50,23 @@ describe('Class (e2e)', () => {
   let coursePeriodService: CoursePeriodService;
   let role: Role = null;
   let blobService: BlobService;
-  let formService: FormService;
   let submissionService: SubmissionService;
   let logPartnerRepository: LogPartnerRepository;
   let logGeoRepository: LogGeoRepository;
+
+  const formServiceMock = {
+    hasActiveForm: jest.fn().mockResolvedValue(true),
+    createFormFull: jest.fn().mockResolvedValue('hashKeyFile'),
+    getFormFullByInscriptionId: jest.fn().mockResolvedValue('hashKeyFile'),
+  };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
       providers: [EmailService],
     })
+      .overrideProvider(FormService)
+      .useValue(formServiceMock)
       .overrideGuard(ThrottlerGuard)
       .useValue({ canActivate: () => true })
       .compile();
@@ -83,7 +90,6 @@ describe('Class (e2e)', () => {
     coursePeriodService =
       moduleFixture.get<CoursePeriodService>(CoursePeriodService);
 
-    formService = moduleFixture.get<FormService>(FormService);
     submissionService = moduleFixture.get<SubmissionService>(SubmissionService);
     jest.spyOn(emailService, 'sendEmailGeo').mockImplementation(async () => {});
     blobService = moduleFixture.get<BlobService>('BlobService');
@@ -119,14 +125,6 @@ describe('Class (e2e)', () => {
       });
 
     jest
-      .spyOn(formService, 'createFormFull')
-      .mockImplementation(async () => 'hashKeyFile');
-
-    jest
-      .spyOn(formService, 'hasActiveForm')
-      .mockImplementation(async () => true);
-
-    jest
       .spyOn(submissionService, 'createSubmission')
       .mockImplementation(async () => 'hashKeyFile');
 
@@ -142,7 +140,7 @@ describe('Class (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) await app.close();
   });
 
   const createPartnerFaker = async () => {
