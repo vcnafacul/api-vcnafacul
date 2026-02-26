@@ -52,16 +52,23 @@ describe('InscriptionCourse (e2e)', () => {
   let studentCourseService: StudentCourseService;
   let studentCourseRepository: StudentCourseRepository;
   let blobService: BlobService;
-  let formService: FormService;
   let submissionService: SubmissionService;
   let logPartnerRepository: LogPartnerRepository;
   let logGeoRepository: LogGeoRepository;
+
+  const formServiceMock = {
+    hasActiveForm: jest.fn().mockResolvedValue(true),
+    createFormFull: jest.fn().mockResolvedValue('hashKeyFile'),
+    getFormFullByInscriptionId: jest.fn().mockResolvedValue('hashKeyFile'),
+  };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
       providers: [EmailService, ConfigService],
     })
+      .overrideProvider(FormService)
+      .useValue(formServiceMock)
       .overrideGuard(ThrottlerGuard)
       .useValue({ canActivate: () => true })
       .compile();
@@ -93,7 +100,6 @@ describe('InscriptionCourse (e2e)', () => {
       StudentCourseRepository,
     );
     blobService = moduleFixture.get<BlobService>('BlobService');
-    formService = moduleFixture.get<FormService>(FormService);
     submissionService = moduleFixture.get<SubmissionService>(SubmissionService);
 
     logPartnerRepository =
@@ -126,18 +132,6 @@ describe('InscriptionCourse (e2e)', () => {
         return Buffer.from('conteúdo fake de um arquivo');
       });
     jest
-      .spyOn(formService, 'createFormFull')
-      .mockImplementation(async () => 'hashKeyFile');
-
-    jest
-      .spyOn(formService, 'hasActiveForm')
-      .mockImplementation(async () => true);
-
-    jest
-      .spyOn(formService, 'getFormFullByInscriptionId')
-      .mockImplementation(async () => 'hashKeyFile');
-
-    jest
       .spyOn(submissionService, 'createSubmission')
       .mockImplementation(async () => 'hashKeyFile');
 
@@ -147,7 +141,7 @@ describe('InscriptionCourse (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) await app.close();
   }, 30000);
 
   it('test to pass', () => {

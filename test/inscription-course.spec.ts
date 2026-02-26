@@ -43,14 +43,21 @@ describe('InscriptionCourse', () => {
   let inscriptionService: InscriptionCourseService;
   let inscriptionRepository: InscriptionCourseRepository;
   let blobService: BlobService;
-  let formService: FormService;
   let logPartnerRepository: LogPartnerRepository;
+
+  const formServiceMock = {
+    hasActiveForm: jest.fn().mockResolvedValue(true),
+    createFormFull: jest.fn().mockResolvedValue('hashKeyFile'),
+    getFormFullByInscriptionId: jest.fn().mockResolvedValue('hashKeyFile'),
+  };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
       providers: [EmailService, ConfigService],
     })
+      .overrideProvider(FormService)
+      .useValue(formServiceMock)
       .overrideGuard(ThrottlerGuard)
       .useValue({ canActivate: () => true })
       .compile();
@@ -76,7 +83,6 @@ describe('InscriptionCourse', () => {
       InscriptionCourseRepository,
     );
     blobService = moduleFixture.get<BlobService>('BlobService');
-    formService = moduleFixture.get<FormService>(FormService);
     logPartnerRepository =
       moduleFixture.get<LogPartnerRepository>(LogPartnerRepository);
 
@@ -104,21 +110,13 @@ describe('InscriptionCourse', () => {
         return Buffer.from('conteúdo fake de um arquivo');
       });
 
-    jest
-      .spyOn(formService, 'createFormFull')
-      .mockImplementation(async () => 'hashKeyFile');
-
-    jest
-      .spyOn(formService, 'hasActiveForm')
-      .mockImplementation(async () => true);
-
     await app.init();
     await roleSeedService.seed();
     await roleUpdateAdminSeedService.seed();
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) await app.close();
   });
 
   async function createUserRepresentative() {

@@ -62,7 +62,6 @@ describe('StudentCourse (e2e)', () => {
   let logStudentRepository: LogStudentRepository;
   let classService: ClassService;
   let coursePeriodService: CoursePeriodService;
-  let formService: FormService;
   let submissionService: SubmissionService;
   let cacheService: CacheService;
   let logPartnerRepository: LogPartnerRepository;
@@ -72,6 +71,12 @@ describe('StudentCourse (e2e)', () => {
     sendMessage: jest.fn(),
   };
 
+  const formServiceMock = {
+    hasActiveForm: jest.fn().mockResolvedValue(true),
+    createFormFull: jest.fn().mockResolvedValue('hashKeyFile'),
+    getFormFullByInscriptionId: jest.fn().mockResolvedValue('hashKeyFile'),
+  };
+
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -79,6 +84,8 @@ describe('StudentCourse (e2e)', () => {
     })
       .overrideProvider(DiscordWebhook)
       .useValue(discordWebhookMock)
+      .overrideProvider(FormService)
+      .useValue(formServiceMock)
       .overrideGuard(ThrottlerGuard)
       .useValue({ canActivate: () => true })
       .compile();
@@ -112,7 +119,6 @@ describe('StudentCourse (e2e)', () => {
     coursePeriodService =
       moduleFixture.get<CoursePeriodService>(CoursePeriodService);
     cacheService = moduleFixture.get<CacheService>(CacheService);
-    formService = moduleFixture.get<FormService>(FormService);
     submissionService = moduleFixture.get<SubmissionService>(SubmissionService);
 
     logPartnerRepository =
@@ -166,14 +172,6 @@ describe('StudentCourse (e2e)', () => {
       .mockImplementation(async () => {});
 
     jest
-      .spyOn(formService, 'createFormFull')
-      .mockImplementation(async () => 'hashKeyFile');
-
-    jest
-      .spyOn(formService, 'hasActiveForm')
-      .mockImplementation(async () => true);
-
-    jest
       .spyOn(submissionService, 'createSubmission')
       .mockImplementation(async () => 'hashKeyFile');
 
@@ -187,7 +185,7 @@ describe('StudentCourse (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) await app.close();
   });
 
   async function createUserRepresentative() {
