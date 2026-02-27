@@ -2194,4 +2194,429 @@ describe('StudentCourse (e2e)', () => {
       expect(response.body.students.data.length).toBe(expected);
     },
   );
+
+  // ========================
+  // Testes de declaração por etapa
+  // ========================
+
+  async function createCalledStudent(inscriptionId: string) {
+    const { id: studentId } = await createStudent(inscriptionId);
+    const student = await studentCourseService.findOneBy({ id: studentId });
+    student.applicationStatus = StatusApplication.CalledForEnrollment;
+    student.limitEnrolledAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7);
+    student.selectEnrolledAt = new Date();
+    await studentCourseRepository.update(student);
+
+    const token = await jwtService.signAsync(
+      { user: { id: student.userId } },
+      { expiresIn: '2h' },
+    );
+
+    return { student, token, studentId };
+  }
+
+  it('declaração por etapa - submitDocuments com requestDocuments=true', async () => {
+    const { representative } = await createPartnerPrepCourse();
+
+    const inscriptionDto = CreateInscriptionCourseDTOInputFaker();
+    inscriptionDto.requestDocuments = true;
+    const inscription = await inscriptionCourseService.create(
+      inscriptionDto,
+      representative.id,
+    );
+
+    const { student, token } = await createCalledStudent(inscription.id);
+
+    const fakeFileBuffer = Buffer.from('conteúdo fake de um arquivo pdf');
+
+    await request(app.getHttpServer())
+      .patch('/student-course/declaration-documents')
+      .set({ Authorization: `Bearer ${token}` })
+      .field('studentId', student.id)
+      .attach('files', fakeFileBuffer, 'doc.pdf')
+      .expect(200);
+
+    const updated = await studentCourseService.findOneBy({ id: student.id });
+    expect(updated.documentsDone).toBe(true);
+  }, 30000);
+
+  it('declaração por etapa - submitDocuments impede reenvio', async () => {
+    const { representative } = await createPartnerPrepCourse();
+
+    const inscriptionDto = CreateInscriptionCourseDTOInputFaker();
+    inscriptionDto.requestDocuments = true;
+    const inscription = await inscriptionCourseService.create(
+      inscriptionDto,
+      representative.id,
+    );
+
+    const { student, token } = await createCalledStudent(inscription.id);
+    student.documentsDone = true;
+    await studentCourseRepository.update(student);
+
+    const fakeFileBuffer = Buffer.from('conteúdo fake');
+
+    await request(app.getHttpServer())
+      .patch('/student-course/declaration-documents')
+      .set({ Authorization: `Bearer ${token}` })
+      .field('studentId', student.id)
+      .attach('files', fakeFileBuffer, 'doc.pdf')
+      .expect(400)
+      .expect((res) => {
+        expect(res.body.message).toBe('Documentos já foram enviados');
+      });
+  }, 30000);
+
+  it('declaração por etapa - submitDocuments rejeita se requestDocuments=false', async () => {
+    const { representative } = await createPartnerPrepCourse();
+
+    const inscriptionDto = CreateInscriptionCourseDTOInputFaker();
+    inscriptionDto.requestDocuments = false;
+    const inscription = await inscriptionCourseService.create(
+      inscriptionDto,
+      representative.id,
+    );
+
+    const { student, token } = await createCalledStudent(inscription.id);
+
+    const fakeFileBuffer = Buffer.from('conteúdo fake');
+
+    await request(app.getHttpServer())
+      .patch('/student-course/declaration-documents')
+      .set({ Authorization: `Bearer ${token}` })
+      .field('studentId', student.id)
+      .attach('files', fakeFileBuffer, 'doc.pdf')
+      .expect(400)
+      .expect((res) => {
+        expect(res.body.message).toBe(
+          'Este processo seletivo não exige documentos',
+        );
+      });
+  }, 30000);
+
+  it('declaração por etapa - submitPhoto', async () => {
+    const { representative } = await createPartnerPrepCourse();
+
+    const inscription = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      representative.id,
+    );
+
+    const { student, token } = await createCalledStudent(inscription.id);
+
+    const fakePhotoBuffer = Buffer.from('imagem fake');
+
+    await request(app.getHttpServer())
+      .patch('/student-course/declaration-photo')
+      .set({ Authorization: `Bearer ${token}` })
+      .field('studentId', student.id)
+      .attach('photo', fakePhotoBuffer, 'photo.jpg')
+      .expect(200);
+
+    const updated = await studentCourseService.findOneBy({ id: student.id });
+    expect(updated.photoDone).toBe(true);
+    expect(updated.photo).toBe('hashKeyFile');
+  }, 30000);
+
+  it('declaração por etapa - submitPhoto impede reenvio', async () => {
+    const { representative } = await createPartnerPrepCourse();
+
+    const inscription = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      representative.id,
+    );
+
+    const { student, token } = await createCalledStudent(inscription.id);
+    student.photoDone = true;
+    await studentCourseRepository.update(student);
+
+    const fakePhotoBuffer = Buffer.from('imagem fake');
+
+    await request(app.getHttpServer())
+      .patch('/student-course/declaration-photo')
+      .set({ Authorization: `Bearer ${token}` })
+      .field('studentId', student.id)
+      .attach('photo', fakePhotoBuffer, 'photo.jpg')
+      .expect(400)
+      .expect((res) => {
+        expect(res.body.message).toBe('Foto já foi enviada');
+      });
+  }, 30000);
+
+  it('declaração por etapa - submitPhoto exige documentos antes se requestDocuments=true', async () => {
+    const { representative } = await createPartnerPrepCourse();
+
+    const inscriptionDto = CreateInscriptionCourseDTOInputFaker();
+    inscriptionDto.requestDocuments = true;
+    const inscription = await inscriptionCourseService.create(
+      inscriptionDto,
+      representative.id,
+    );
+
+    const { student, token } = await createCalledStudent(inscription.id);
+
+    const fakePhotoBuffer = Buffer.from('imagem fake');
+
+    await request(app.getHttpServer())
+      .patch('/student-course/declaration-photo')
+      .set({ Authorization: `Bearer ${token}` })
+      .field('studentId', student.id)
+      .attach('photo', fakePhotoBuffer, 'photo.jpg')
+      .expect(400)
+      .expect((res) => {
+        expect(res.body.message).toBe(
+          'É necessário enviar os documentos antes da foto',
+        );
+      });
+  }, 30000);
+
+  it('declaração por etapa - submitSurvey', async () => {
+    const { representative } = await createPartnerPrepCourse();
+
+    const inscription = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      representative.id,
+    );
+
+    const { student, token } = await createCalledStudent(inscription.id);
+    student.photoDone = true;
+    await studentCourseRepository.update(student);
+
+    await request(app.getHttpServer())
+      .patch('/student-course/declaration-survey')
+      .set({ Authorization: `Bearer ${token}` })
+      .send({
+        studentId: student.id,
+        areaInterest: ['Matematica', 'Fisica'],
+        selectedCourses: ['Engenharia', 'Medicina'],
+      })
+      .expect(200);
+
+    const updated = await studentCourseService.findOneBy({ id: student.id });
+    expect(updated.surveyDone).toBe(true);
+    expect(JSON.parse(updated.areaInterest)).toEqual([
+      'Matematica',
+      'Fisica',
+    ]);
+  }, 30000);
+
+  it('declaração por etapa - submitSurvey exige foto antes', async () => {
+    const { representative } = await createPartnerPrepCourse();
+
+    const inscription = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      representative.id,
+    );
+
+    const { student, token } = await createCalledStudent(inscription.id);
+
+    await request(app.getHttpServer())
+      .patch('/student-course/declaration-survey')
+      .set({ Authorization: `Bearer ${token}` })
+      .send({
+        studentId: student.id,
+        areaInterest: ['Matematica'],
+        selectedCourses: ['Engenharia'],
+      })
+      .expect(400)
+      .expect((res) => {
+        expect(res.body.message).toBe(
+          'É necessário enviar a foto antes da pesquisa',
+        );
+      });
+  }, 30000);
+
+  it('declaração por etapa - confirmDeclaration completa', async () => {
+    const { representative } = await createPartnerPrepCourse();
+
+    const inscription = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      representative.id,
+    );
+
+    const { student, token } = await createCalledStudent(inscription.id);
+    student.photoDone = true;
+    student.surveyDone = true;
+    await studentCourseRepository.update(student);
+
+    await request(app.getHttpServer())
+      .patch('/student-course/declaration-confirm')
+      .set({ Authorization: `Bearer ${token}` })
+      .send({ studentId: student.id })
+      .expect(200);
+
+    const updated = await studentCourseService.findOneBy({ id: student.id });
+    expect(updated.applicationStatus).toBe(StatusApplication.DeclaredInterest);
+  }, 30000);
+
+  it('declaração por etapa - confirmDeclaration falha sem etapas completas', async () => {
+    const { representative } = await createPartnerPrepCourse();
+
+    const inscription = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      representative.id,
+    );
+
+    const { student, token } = await createCalledStudent(inscription.id);
+
+    await request(app.getHttpServer())
+      .patch('/student-course/declaration-confirm')
+      .set({ Authorization: `Bearer ${token}` })
+      .send({ studentId: student.id })
+      .expect(400)
+      .expect((res) => {
+        expect(res.body.message).toBe(
+          'É necessário completar todas as etapas antes de confirmar',
+        );
+      });
+  }, 30000);
+
+  it('declaração por etapa - confirmDeclaration falha sem documentos quando exigidos', async () => {
+    const { representative } = await createPartnerPrepCourse();
+
+    const inscriptionDto = CreateInscriptionCourseDTOInputFaker();
+    inscriptionDto.requestDocuments = true;
+    const inscription = await inscriptionCourseService.create(
+      inscriptionDto,
+      representative.id,
+    );
+
+    const { student, token } = await createCalledStudent(inscription.id);
+    student.photoDone = true;
+    student.surveyDone = true;
+    await studentCourseRepository.update(student);
+
+    await request(app.getHttpServer())
+      .patch('/student-course/declaration-confirm')
+      .set({ Authorization: `Bearer ${token}` })
+      .send({ studentId: student.id })
+      .expect(400)
+      .expect((res) => {
+        expect(res.body.message).toBe(
+          'É necessário enviar os documentos antes de confirmar',
+        );
+      });
+  }, 30000);
+
+  it('declaração por etapa - verifyDeclaredInterest retorna campos de progresso', async () => {
+    const { representative } = await createPartnerPrepCourse();
+
+    const inscription = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      representative.id,
+    );
+
+    const { student, token } = await createCalledStudent(inscription.id);
+    student.documentsDone = true;
+    student.photoDone = true;
+    await studentCourseRepository.update(student);
+
+    await request(app.getHttpServer())
+      .get(`/student-course/declared-interest/${inscription.id}`)
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200)
+      .expect((res) => {
+        expect(res.body).toHaveProperty('documentsDone', true);
+        expect(res.body).toHaveProperty('photoDone', true);
+        expect(res.body).toHaveProperty('surveyDone', false);
+      });
+  }, 30000);
+
+  it('declaração por etapa - fluxo completo sem documentos', async () => {
+    const { representative } = await createPartnerPrepCourse();
+
+    const inscription = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      representative.id,
+    );
+
+    const { student, token } = await createCalledStudent(inscription.id);
+
+    // Etapa 1: foto
+    const fakePhotoBuffer = Buffer.from('imagem fake');
+    await request(app.getHttpServer())
+      .patch('/student-course/declaration-photo')
+      .set({ Authorization: `Bearer ${token}` })
+      .field('studentId', student.id)
+      .attach('photo', fakePhotoBuffer, 'photo.jpg')
+      .expect(200);
+
+    // Etapa 2: pesquisa
+    await request(app.getHttpServer())
+      .patch('/student-course/declaration-survey')
+      .set({ Authorization: `Bearer ${token}` })
+      .send({
+        studentId: student.id,
+        areaInterest: ['Historia'],
+        selectedCourses: ['Direito'],
+      })
+      .expect(200);
+
+    // Etapa 3: confirmação
+    await request(app.getHttpServer())
+      .patch('/student-course/declaration-confirm')
+      .set({ Authorization: `Bearer ${token}` })
+      .send({ studentId: student.id })
+      .expect(200);
+
+    const updated = await studentCourseService.findOneBy({ id: student.id });
+    expect(updated.applicationStatus).toBe(StatusApplication.DeclaredInterest);
+    expect(updated.photoDone).toBe(true);
+    expect(updated.surveyDone).toBe(true);
+  }, 60000);
+
+  it('declaração por etapa - fluxo completo com documentos', async () => {
+    const { representative } = await createPartnerPrepCourse();
+
+    const inscriptionDto = CreateInscriptionCourseDTOInputFaker();
+    inscriptionDto.requestDocuments = true;
+    const inscription = await inscriptionCourseService.create(
+      inscriptionDto,
+      representative.id,
+    );
+
+    const { student, token } = await createCalledStudent(inscription.id);
+
+    // Etapa 1: documentos
+    const fakeFileBuffer = Buffer.from('conteúdo fake de um arquivo pdf');
+    await request(app.getHttpServer())
+      .patch('/student-course/declaration-documents')
+      .set({ Authorization: `Bearer ${token}` })
+      .field('studentId', student.id)
+      .attach('files', fakeFileBuffer, 'doc.pdf')
+      .expect(200);
+
+    // Etapa 2: foto
+    const fakePhotoBuffer = Buffer.from('imagem fake');
+    await request(app.getHttpServer())
+      .patch('/student-course/declaration-photo')
+      .set({ Authorization: `Bearer ${token}` })
+      .field('studentId', student.id)
+      .attach('photo', fakePhotoBuffer, 'photo.jpg')
+      .expect(200);
+
+    // Etapa 3: pesquisa
+    await request(app.getHttpServer())
+      .patch('/student-course/declaration-survey')
+      .set({ Authorization: `Bearer ${token}` })
+      .send({
+        studentId: student.id,
+        areaInterest: ['Matematica', 'Fisica'],
+        selectedCourses: ['Engenharia'],
+      })
+      .expect(200);
+
+    // Etapa 4: confirmação
+    await request(app.getHttpServer())
+      .patch('/student-course/declaration-confirm')
+      .set({ Authorization: `Bearer ${token}` })
+      .send({ studentId: student.id })
+      .expect(200);
+
+    const updated = await studentCourseService.findOneBy({ id: student.id });
+    expect(updated.applicationStatus).toBe(StatusApplication.DeclaredInterest);
+    expect(updated.documentsDone).toBe(true);
+    expect(updated.photoDone).toBe(true);
+    expect(updated.surveyDone).toBe(true);
+  }, 60000);
 });
