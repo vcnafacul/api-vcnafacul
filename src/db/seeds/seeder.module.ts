@@ -3,6 +3,7 @@ import { RoleRepository } from 'src/modules/role/role.repository';
 import { RoleSeedService } from './1-role.seed';
 import { RoleUpdateAdminSeedService } from './2-role-update-admin.seed';
 import { RoleManagerPartnerSeedService } from './3-role-manager-partner';
+import { DeclarationProgressBackfillSeedService } from './4-declaration-progress-backfill.seed';
 
 @Module({
   providers: [
@@ -10,6 +11,7 @@ import { RoleManagerPartnerSeedService } from './3-role-manager-partner';
     RoleRepository,
     RoleUpdateAdminSeedService,
     RoleManagerPartnerSeedService,
+    DeclarationProgressBackfillSeedService,
   ],
 })
 export class SeederModule implements OnModuleInit {
@@ -19,6 +21,7 @@ export class SeederModule implements OnModuleInit {
     private readonly roleSeedService: RoleSeedService,
     private readonly roleUpdateAdminSeedService: RoleUpdateAdminSeedService,
     private readonly roleManagerPartnerSeedService: RoleManagerPartnerSeedService,
+    private readonly declarationProgressBackfillSeedService: DeclarationProgressBackfillSeedService,
   ) {}
 
   async onModuleInit() {
@@ -29,6 +32,7 @@ export class SeederModule implements OnModuleInit {
       await this.roleSeedService.seed();
       await this.roleUpdateAdminSeedService.seed();
       await this.roleManagerPartnerSeedService.seed();
+      await this.declarationProgressBackfillSeedService.seed();
 
       this.logger.log('Todos os seeds executados com sucesso!');
     } catch (error) {

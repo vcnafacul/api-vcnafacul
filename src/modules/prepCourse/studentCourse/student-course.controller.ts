@@ -19,6 +19,7 @@ import {
 import {
   FileFieldsInterceptor,
   FileInterceptor,
+  FilesInterceptor,
 } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -42,6 +43,8 @@ import { UpdateClassDTOInput } from './dtos/update-class.dto.input';
 import { VerifyDeclaredInterestDtoOutput } from './dtos/verify-declared-interest.dto.out';
 import { VerifyEnrollmentStatusDtoInput } from './dtos/verify-enrollment-status.dto.input';
 import { VerifyEnrollmentStatusDtoOutput } from './dtos/verify-enrollment-status.dto.output';
+import { ConfirmDeclarationDtoInput } from './dtos/confirm-declaration.dto.input';
+import { SubmitSurveyDtoInput } from './dtos/submit-survey.dto.input';
 import { StudentCourseService } from './student-course.service';
 import { GetSubscribersDtoOutput } from '../InscriptionCourse/dtos/get-subscribers.dto.output';
 
@@ -389,6 +392,62 @@ export class StudentCourseController {
       dto.cpf,
       dto.enrollmentCode,
     );
+  }
+
+  @Patch('declaration-documents')
+  @ApiResponse({
+    status: 200,
+    description: 'Upload de documentos para declaração de interesse',
+  })
+  @UseInterceptors(FilesInterceptor('files', 10))
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async submitDocuments(
+    @UploadedFiles() files: Express.Multer.File[],
+    @Req() req: Request,
+  ) {
+    await this.service.submitDocuments(files || [], req.body.studentId);
+  }
+
+  @Patch('declaration-photo')
+  @ApiResponse({
+    status: 200,
+    description: 'Upload de foto carteirinha para declaração de interesse',
+  })
+  @UseInterceptors(FileInterceptor('photo'))
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async submitPhoto(
+    @UploadedFile() photo: Express.Multer.File,
+    @Req() req: Request,
+  ) {
+    await this.service.submitPhoto(photo, req.body.studentId);
+  }
+
+  @Patch('declaration-survey')
+  @ApiResponse({
+    status: 200,
+    description: 'Envio de pesquisa para declaração de interesse',
+  })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async submitSurvey(@Body() dto: SubmitSurveyDtoInput) {
+    await this.service.submitSurvey(
+      dto.areaInterest,
+      dto.selectedCourses,
+      dto.studentId,
+    );
+  }
+
+  @Patch('declaration-confirm')
+  @ApiResponse({
+    status: 200,
+    description: 'Confirmação final da declaração de interesse',
+  })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async confirmDeclaration(@Body() dto: ConfirmDeclarationDtoInput) {
+    await this.service.confirmDeclaration(dto.studentId);
   }
 
   @Get(':id/details')
