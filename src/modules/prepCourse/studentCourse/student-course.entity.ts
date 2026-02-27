@@ -106,6 +106,15 @@ export class StudentCourse extends NodeEntity {
   @Column({ nullable: true })
   public photo: string;
 
+  @Column({ name: 'documents_done', default: false })
+  documentsDone: boolean;
+
+  @Column({ name: 'photo_done', default: false })
+  photoDone: boolean;
+
+  @Column({ name: 'survey_done', default: false })
+  surveyDone: boolean;
+
   @ManyToOne(() => Class, (classes) => classes.students)
   public class?: Class;
 

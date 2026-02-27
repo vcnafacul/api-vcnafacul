@@ -18,4 +18,13 @@ export class VerifyDeclaredInterestDtoOutput {
 
   @ApiProperty()
   requestDocuments: boolean;
+
+  @ApiProperty()
+  documentsDone: boolean;
+
+  @ApiProperty()
+  photoDone: boolean;
+
+  @ApiProperty()
+  surveyDone: boolean;
 }
