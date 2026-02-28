@@ -12,4 +12,8 @@ export class DocumentStudentRepository extends BaseRepository<DocumentStudent> {
   ) {
     super(_entityManager.getRepository(DocumentStudent));
   }
+
+  async deleteByStudentCourseId(studentCourseId: string): Promise<void> {
+    await this.repository.delete({ studentCourse: studentCourseId });
+  }
 }

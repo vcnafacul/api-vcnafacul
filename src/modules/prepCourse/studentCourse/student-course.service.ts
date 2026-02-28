@@ -575,6 +575,13 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     student.isFree = true;
     student.selectEnrolledAt = null;
     student.limitEnrolledAt = null;
+    student.documentsDone = false;
+    student.photoDone = false;
+    student.surveyDone = false;
+    student.photo = null;
+
+    await this.documentRepository.deleteByStudentCourseId(student.id);
+
     if (student.waitingList) {
       const inscription = await this.inscriptionCourseService.findOneBy({
         id: student.inscriptionCourse.id,
@@ -584,9 +591,9 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         student,
         inscription,
       ); // remove student from waiting list already update the student and the inscription
-    } else {
-      await this.repository.update(student);
     }
+
+    await this.repository.update(student);
 
     const log = new LogStudent();
     log.studentId = student.id;
