@@ -14,7 +14,15 @@ import { EnvService } from 'src/shared/modules/env/env.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { Collaborator } from '../collaborator/collaborator.entity';
 import { PartnerPrepCourseService } from '../partnerPrepCourse/partner-prep-course.service';
+import { FrenteProxyService } from 'src/modules/simulado/frente/frente.service';
+import { MateriaProxyService } from 'src/modules/simulado/materia/materia.service';
+import { CollaboratorFrente } from './collaborator-frente.entity';
+import { CollaboratorFrenteRepository } from './collaborator-frente.repository';
 import { CollaboratorRepository } from './collaborator.repository';
+import {
+  CollaboratorFrentesDtoOutput,
+  AfinidadeDto,
+} from './dtos/collaborator-frentes.dto.output';
 import { CollaboratorVolunteerDtoOutput } from './dtos/collaborator-volunteer.dto.output';
 import { GetAllCollaboratorDtoInput } from './dtos/get-all-collaborator.dto.input';
 import { CollaboratorDTOOutput } from './dtos/get-all-collaborator.dto.output';
@@ -30,6 +38,9 @@ export class CollaboratorService extends BaseService<Collaborator> {
     private readonly userRepository: UserRepository,
     @Inject('BlobService') private readonly blobService: BlobService,
     private readonly cache: CacheService,
+    private readonly collaboratorFrenteRepository: CollaboratorFrenteRepository,
+    private readonly frenteProxyService: FrenteProxyService,
+    private readonly materiaProxyService: MateriaProxyService,
   ) {
     super(repository);
   }
@@ -181,5 +192,126 @@ export class CollaboratorService extends BaseService<Collaborator> {
       60 * 60 * 24 * 1000 * 7,
     );
     return cachedFile;
+  }
+
+  async findCollaboratorByUserId(userId: string): Promise<Collaborator> {
+    const collaborator = await this.repository.findOneByUserId(userId);
+    if (!collaborator) {
+      throw new HttpException('Collaborator not found', HttpStatus.NOT_FOUND);
+    }
+    return collaborator;
+  }
+
+  async updateFrentes(
+    collaboratorId: string,
+    frenteIds: string[],
+  ): Promise<void> {
+    await this.collaboratorFrenteRepository.deleteByCollaboratorId(
+      collaboratorId,
+    );
+    const entities = frenteIds.map((frenteId) =>
+      Object.assign(new CollaboratorFrente(), { collaboratorId, frenteId }),
+    );
+    await this.collaboratorFrenteRepository.createMany(entities);
+  }
+
+  async getEnrichedFrentes(
+    collaboratorId: string,
+  ): Promise<CollaboratorFrentesDtoOutput> {
+    const records =
+      await this.collaboratorFrenteRepository.findByCollaboratorId(
+        collaboratorId,
+      );
+    const frenteIdsUnicos = [...new Set(records.map((r) => r.frenteId))];
+
+    const frenteResults = await Promise.all(
+      frenteIdsUnicos.map((id) =>
+        this.frenteProxyService.getById(id).catch(() => null),
+      ),
+    );
+    const validFrentes = frenteResults.filter(Boolean) as any[];
+
+    const frentesPorId = new Map<string, (typeof validFrentes)[number]>();
+    for (const f of validFrentes) {
+      const id = String(f._id);
+      if (!frentesPorId.has(id)) frentesPorId.set(id, f);
+    }
+
+    const uniqueMateriaIds = [
+      ...new Set([...frentesPorId.values()].map((f) => String(f.materia))),
+    ];
+    const materiaResults = await Promise.all(
+      uniqueMateriaIds.map((id) =>
+        this.materiaProxyService.getById(id).catch(() => null),
+      ),
+    );
+    const validMaterias = materiaResults.filter(Boolean) as any[];
+    const materiaPorId = new Map<string, (typeof validMaterias)[number]>();
+    for (const m of validMaterias) {
+      const id = String(m._id);
+      if (!materiaPorId.has(id)) materiaPorId.set(id, m);
+    }
+
+    return {
+      collaboratorId,
+      frentes: [...frentesPorId.values()].map((f) => ({
+        id: String(f._id),
+        nome: f.nome,
+        materia: String(f.materia),
+      })),
+      materias: [...materiaPorId.values()].map((m) => ({
+        id: String(m._id),
+        nome: m.nome,
+      })),
+    };
+  }
+
+  async getAfinidades(collaboratorId: string): Promise<AfinidadeDto[]> {
+    const records =
+      await this.collaboratorFrenteRepository.findByCollaboratorId(
+        collaboratorId,
+      );
+    const frenteIds = records.map((r) => r.frenteId);
+
+    const frenteResults = await Promise.all(
+      frenteIds.map(async (id) => {
+        try {
+          const frente = await this.frenteProxyService.getById(id);
+          const record = records.find((r) => r.frenteId === id);
+          return { frente, record };
+        } catch {
+          return null;
+        }
+      }),
+    );
+    const valid = frenteResults.filter(Boolean) as {
+      frente: any;
+      record: CollaboratorFrente;
+    }[];
+
+    const uniqueMateriaIds = [
+      ...new Set(valid.map((v) => String(v.frente.materia))),
+    ];
+    const materiaResults = await Promise.all(
+      uniqueMateriaIds.map((id) =>
+        this.materiaProxyService.getById(id).catch(() => null),
+      ),
+    );
+    const validMaterias = materiaResults.filter(Boolean) as any[];
+    const materiaMap = new Map(
+      validMaterias.map((m) => [String(m._id), m]),
+    );
+
+    return valid.map(({ frente, record }) => {
+      const materiaId = String(frente.materia);
+      const materia = materiaMap.get(materiaId);
+      return {
+        frenteId: String(frente._id),
+        frenteNome: frente.nome,
+        materiaId,
+        materiaNome: materia?.nome ?? '',
+        adicionadoEm: record.createdAt,
+      };
+    });
   }
 }

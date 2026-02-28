@@ -47,17 +47,24 @@ describe('PartnerPrepCourse (e2e)', () => {
   let partnerPrepCourseService: PartnerPrepCourseService;
   let inscriptionCourseService: InscriptionCourseService;
   let blobService: BlobService;
-  let formService: FormService;
   let submissionService: SubmissionService;
   let logPartnerRepository: LogPartnerRepository;
   let logGeoRepository: LogGeoRepository;
   let geoRepository: GeoRepository;
+
+  const formServiceMock = {
+    hasActiveForm: jest.fn().mockResolvedValue(true),
+    createFormFull: jest.fn().mockResolvedValue('hashKeyFile'),
+    getFormFullByInscriptionId: jest.fn().mockResolvedValue('hashKeyFile'),
+  };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
       providers: [EmailService, ConfigService],
     })
+      .overrideProvider(FormService)
+      .useValue(formServiceMock)
       .overrideGuard(JwtAuthGuard) // Aqui estamos substituindo o guard por um mock
       .useValue({
         canActivate: jest.fn(() => true),
@@ -84,7 +91,6 @@ describe('PartnerPrepCourse (e2e)', () => {
       InscriptionCourseService,
     );
     blobService = moduleFixture.get<BlobService>('BlobService');
-    formService = moduleFixture.get<FormService>(FormService);
     submissionService = moduleFixture.get<SubmissionService>(SubmissionService);
 
     logPartnerRepository =
@@ -131,14 +137,6 @@ describe('PartnerPrepCourse (e2e)', () => {
       });
 
     jest
-      .spyOn(formService, 'createFormFull')
-      .mockImplementation(async () => 'hashKeyFile');
-
-    jest
-      .spyOn(formService, 'hasActiveForm')
-      .mockImplementation(async () => true);
-
-    jest
       .spyOn(submissionService, 'createSubmission')
       .mockImplementation(async () => 'hashKeyFile');
 
@@ -148,7 +146,7 @@ describe('PartnerPrepCourse (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) await app.close();
   }, 30000);
 
   async function createUserRepresentative() {

@@ -7,10 +7,14 @@ import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
+import { CollaboratorFrenteRepository } from '../prepCourse/collaborator/collaborator-frente.repository';
 import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
+import { AfinidadeDto } from '../prepCourse/collaborator/dtos/collaborator-frentes.dto.output';
 import { StudentCourseRepository } from '../prepCourse/studentCourse/student-course.repository';
 import { Role } from '../role/role.entity';
 import { RoleRepository } from '../role/role.repository';
+import { FrenteProxyService } from '../simulado/frente/frente.service';
+import { MateriaProxyService } from '../simulado/materia/materia.service';
 import { AggregateUserLastAcessDtoOutput } from './dto/aggregate-user-last-acess.dto.output';
 import { AggregateUserPeriodDtoOutput } from './dto/aggregate-user-period.dto.output';
 import { AggregateUsersByRoleDtoOutput } from './dto/aggregate-users-by-role.dto.output';
@@ -37,6 +41,9 @@ export class UserService extends BaseService<User> {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly collaboratorRepository: CollaboratorRepository,
+    private readonly collaboratorFrenteRepository: CollaboratorFrenteRepository,
+    private readonly frenteProxyService: FrenteProxyService,
+    private readonly materiaProxyService: MateriaProxyService,
     private readonly studentCourseRepository: StudentCourseRepository,
     private readonly discordWebhook: DiscordWebhook,
     private readonly envService: EnvService,
@@ -235,8 +242,61 @@ export class UserService extends BaseService<User> {
       userDto.collaborator = true;
       userDto.collaboratorPhoto = collaborator.photo;
       userDto.collaboratorDescription = collaborator.description;
+      // Enriched frente data — assembled server-side (single pass optimization)
+      const afinidades = await this.buildAfinidades(collaborator.id);
+      userDto.collaboratorFrentes = afinidades.map((a) => a.frenteId);
+      userDto.afinidades = afinidades;
     }
     return userDto;
+  }
+
+  private async buildAfinidades(
+    collaboratorId: string,
+  ): Promise<AfinidadeDto[]> {
+    const records =
+      await this.collaboratorFrenteRepository.findByCollaboratorId(
+        collaboratorId,
+      );
+    const frenteIds = records.map((r) => r.frenteId);
+
+    const frenteResults = await Promise.all(
+      frenteIds.map(async (id) => {
+        try {
+          const frente = await this.frenteProxyService.getById(id);
+          const record = records.find((r) => r.frenteId === id);
+          return { frente, record };
+        } catch {
+          return null;
+        }
+      }),
+    );
+    const valid = frenteResults.filter(Boolean) as {
+      frente: any;
+      record: (typeof records)[number];
+    }[];
+
+    const uniqueMateriaIds = [
+      ...new Set(valid.map((v) => String(v.frente.materia))),
+    ];
+    const materiaResults = await Promise.all(
+      uniqueMateriaIds.map((id) =>
+        this.materiaProxyService.getById(id).catch(() => null),
+      ),
+    );
+    const validMaterias = materiaResults.filter(Boolean) as any[];
+    const materiaMap = new Map(validMaterias.map((m) => [String(m._id), m]));
+
+    return valid.map(({ frente, record }) => {
+      const materiaId = String(frente.materia);
+      const materia = materiaMap.get(materiaId);
+      return {
+        frenteId: String(frente._id),
+        frenteNome: frente.nome,
+        materiaId,
+        materiaNome: materia?.nome ?? '',
+        adicionadoEm: record.createdAt,
+      };
+    });
   }
 
   async checkUserPermission(id: string, roleName: string): Promise<boolean> {

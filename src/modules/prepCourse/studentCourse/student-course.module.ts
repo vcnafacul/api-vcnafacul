@@ -1,10 +1,8 @@
 import { HttpModule } from '@nestjs/axios';
-import { Module } from '@nestjs/common';
-import { LogGeoRepository } from 'src/modules/geo/log-geo/log-geo.repository';
+import { Module, forwardRef } from '@nestjs/common';
+import { GeoModule } from 'src/modules/geo/geo.module';
 import { RoleModule } from 'src/modules/role/role.module';
-import { RefreshTokenService } from 'src/modules/user/services/refresh-token.service';
-import { UserService } from 'src/modules/user/user.service';
-import { FormService } from 'src/modules/vcnafacul-form/form/form.service';
+import { UserModule } from 'src/modules/user/user.module';
 import { VcnafaculFormModule } from 'src/modules/vcnafacul-form/vcnafacul-form.module';
 import { EnvModule } from 'src/shared/modules/env/env.module';
 import { HttpServiceAxiosFactory } from 'src/shared/services/axios/http-service-axios.factory';
@@ -13,11 +11,8 @@ import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { ClassModule } from '../class/class.module';
 import { CollaboratorModule } from '../collaborator/collaborator.module';
-import { InscriptionCourseRepository } from '../InscriptionCourse/inscription-course.repository';
-import { InscriptionCourseService } from '../InscriptionCourse/inscription-course.service';
-import { LogPartnerRepository } from '../partnerPrepCourse/log-partner/log-partner.repository';
-import { PartnerPrepCourseRepository } from '../partnerPrepCourse/partner-prep-course.repository';
-import { PartnerPrepCourseService } from '../partnerPrepCourse/partner-prep-course.service';
+import { InscriptionCourseModule } from '../InscriptionCourse/inscription-course.module';
+import { PartnerPrepCourseModule } from '../partnerPrepCourse/partner-prep-course.module';
 import { DocumentStudentRepository } from './documents/document-students.repository';
 import { LegalGuardianRepository } from './legal-guardian/legal-guardian.repository';
 import { LogStudentRepository } from './log-student/log-student.repository';
@@ -29,9 +24,13 @@ import { StudentCourseService } from './student-course.service';
   controllers: [StudentCourseController],
   imports: [
     BlobModule,
+    GeoModule,
     RoleModule,
+    UserModule,
     CollaboratorModule,
     ClassModule,
+    PartnerPrepCourseModule,
+    forwardRef(() => InscriptionCourseModule),
     EnvModule,
     VcnafaculFormModule,
     HttpModule,
@@ -40,21 +39,12 @@ import { StudentCourseService } from './student-course.service';
     StudentCourseService,
     StudentCourseRepository,
     DocumentStudentRepository,
-    InscriptionCourseRepository,
-    InscriptionCourseService,
-    PartnerPrepCourseService,
-    PartnerPrepCourseRepository,
     LegalGuardianRepository,
     EmailService,
     LogStudentRepository,
-    LogGeoRepository,
-    LogPartnerRepository,
-    UserService,
     DiscordWebhook,
-    FormService,
     HttpServiceAxiosFactory,
-    RefreshTokenService,
   ],
-  exports: [StudentCourseService, StudentCourseRepository, UserService],
+  exports: [StudentCourseService, StudentCourseRepository],
 })
 export class StudentCourseModule {}

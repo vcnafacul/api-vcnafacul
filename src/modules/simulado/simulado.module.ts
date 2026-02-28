@@ -4,8 +4,7 @@ import { CacheManagerModule } from 'src/shared/modules/cache/cache.module';
 import { EnvModule } from 'src/shared/modules/env/env.module';
 import { HttpServiceAxiosFactory } from 'src/shared/services/axios/http-service-axios.factory';
 import { BlobModule } from 'src/shared/services/blob/blob.module';
-import { AuditLogRepository } from '../audit-log/audit-log.repository';
-import { AuditLogService } from '../audit-log/audit-log.service';
+import { AuditLogModule } from '../audit-log/audit-log.module';
 import { UserModule } from '../user/user.module';
 import { ContentProxyController } from './content/content.controller';
 import { ContentProxyService } from './content/content.service';
@@ -25,7 +24,14 @@ import { SubjectProxyController } from './subject/subject.controller';
 import { SubjectProxyService } from './subject/subject.service';
 
 @Module({
-  imports: [BlobModule, HttpModule, UserModule, EnvModule, CacheManagerModule],
+  imports: [
+    BlobModule,
+    HttpModule,
+    UserModule,
+    EnvModule,
+    CacheManagerModule,
+    AuditLogModule,
+  ],
   controllers: [
     SimuladoController,
     ProvaController,
@@ -38,8 +44,6 @@ import { SubjectProxyService } from './subject/subject.service';
   ],
   providers: [
     SimuladoService,
-    AuditLogService,
-    AuditLogRepository,
     ProvaService,
     QuestaoService,
     HistoricoService,
@@ -49,5 +53,6 @@ import { SubjectProxyService } from './subject/subject.service';
     SubjectProxyService,
     ContentProxyService,
   ],
+  exports: [FrenteProxyService, MateriaProxyService],
 })
 export class SimuladoModule {}

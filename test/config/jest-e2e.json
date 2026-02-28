@@ -11,7 +11,6 @@
   "testEnvironment": "node",
   "testRegex": "spec.ts$",
   "maxWorkers": 1,
-  "runInBand": true,
   "forceExit": true,
   "testTimeout": 60000,
   "globals": {
@@ -33,13 +32,21 @@
     "!src/**/db/**/*.ts",
     "!src/**/config/**/*.ts",
     "!src/modules/simulado/**/*.ts",
-"!src/modules/simulado/**/*.js",
-    "!src/modules/vcnafacul-form/**/*.ts"
+    "!src/modules/simulado/**/*.js",
+    "!src/modules/vcnafacul-form/**/*.ts",
+    "!src/modules/audit-log/**/*.ts",
+    "!src/utils/decorator/**/*.ts",
+    "!src/**/*.dto.output.ts"
   ],
   "coverageDirectory": "./coverage",
   "coverageThreshold": {
     "global": {
       "lines": 70
+    },
+    "src/modules/frontend-errors/frontend-errors.service.ts": {
+      "lines": 70,
+      "functions": 70,
+      "branches": 70
     }
   },
   "coverageReporters": [

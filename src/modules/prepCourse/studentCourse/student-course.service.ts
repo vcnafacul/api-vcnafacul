@@ -575,6 +575,13 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     student.isFree = true;
     student.selectEnrolledAt = null;
     student.limitEnrolledAt = null;
+    student.documentsDone = false;
+    student.photoDone = false;
+    student.surveyDone = false;
+    student.photo = null;
+
+    await this.documentRepository.deleteByStudentCourseId(student.id);
+
     if (student.waitingList) {
       const inscription = await this.inscriptionCourseService.findOneBy({
         id: student.inscriptionCourse.id,
@@ -584,9 +591,9 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         student,
         inscription,
       ); // remove student from waiting list already update the student and the inscription
-    } else {
-      await this.repository.update(student);
     }
+
+    await this.repository.update(student);
 
     const log = new LogStudent();
     log.studentId = student.id;
@@ -652,7 +659,183 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       expired: student.limitEnrolledAt < today,
       studentId: student.id,
       isFree: student.isFree,
+      documentsDone: student.documentsDone,
+      photoDone: student.photoDone,
+      surveyDone: student.surveyDone,
     };
+  }
+
+  async submitDocuments(files: Array<Express.Multer.File>, studentId: string) {
+    const student = await this.repository.findOneBy({ id: studentId });
+    if (!student) {
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+    }
+    if (student.applicationStatus !== StatusApplication.CalledForEnrollment) {
+      throw new HttpException(
+        'Apenas estudantes convocados podem enviar documentos',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (student.documentsDone) {
+      throw new HttpException(
+        'Documentos já foram enviados',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const inscription = await this.inscriptionCourseService.findOneBy({
+      id: student.inscriptionCourse.id,
+    });
+    if (!inscription || !inscription.requestDocuments) {
+      throw new HttpException(
+        'Este processo seletivo não exige documentos',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const exprires = new Date(Date.now() + 1000 * 60 * 60 * 24 * 90);
+    await Promise.all(
+      files.map(async (file) => {
+        const fileKey = await this.blobService.uploadFile(
+          file,
+          this.envService.get('BUCKET_STUDENT_DOC'),
+          exprires,
+        );
+        const document = new DocumentStudent();
+        document.key = fileKey;
+        document.exprires = exprires;
+        document.name = file.originalname;
+        document.studentCourse = student.id;
+        await this.documentRepository.create(document);
+      }),
+    );
+
+    student.documentsDone = true;
+    await this.repository.update(student);
+
+    const log = new LogStudent();
+    log.studentId = student.id;
+    log.applicationStatus = StatusApplication.CalledForEnrollment;
+    log.description = 'Enviou documentos';
+    await this.logStudentRepository.create(log);
+  }
+
+  async submitPhoto(photo: Express.Multer.File, studentId: string) {
+    const student = await this.repository.findOneBy({ id: studentId });
+    if (!student) {
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+    }
+    if (student.applicationStatus !== StatusApplication.CalledForEnrollment) {
+      throw new HttpException(
+        'Apenas estudantes convocados podem enviar foto',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (student.photoDone) {
+      throw new HttpException('Foto já foi enviada', HttpStatus.BAD_REQUEST);
+    }
+    const inscription = await this.inscriptionCourseService.findOneBy({
+      id: student.inscriptionCourse.id,
+    });
+    if (inscription?.requestDocuments && !student.documentsDone) {
+      throw new HttpException(
+        'É necessário enviar os documentos antes da foto',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const fileKey = await this.blobService.uploadFile(
+      photo,
+      this.envService.get('BUCKET_PROFILE'),
+    );
+    student.photo = fileKey;
+    student.photoDone = true;
+    await this.repository.update(student);
+
+    const log = new LogStudent();
+    log.studentId = student.id;
+    log.applicationStatus = StatusApplication.CalledForEnrollment;
+    log.description = 'Enviou foto carteirinha';
+    await this.logStudentRepository.create(log);
+  }
+
+  async submitSurvey(
+    areaInterest: string[],
+    selectedCourses: string[],
+    studentId: string,
+  ) {
+    const student = await this.repository.findOneBy({ id: studentId });
+    if (!student) {
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+    }
+    if (student.applicationStatus !== StatusApplication.CalledForEnrollment) {
+      throw new HttpException(
+        'Apenas estudantes convocados podem responder pesquisa',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (student.surveyDone) {
+      throw new HttpException(
+        'Pesquisa já foi respondida',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (!student.photoDone) {
+      throw new HttpException(
+        'É necessário enviar a foto antes da pesquisa',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    student.areaInterest = JSON.stringify(areaInterest);
+    student.selectedCourses = JSON.stringify(selectedCourses);
+    student.surveyDone = true;
+    await this.repository.update(student);
+
+    const log = new LogStudent();
+    log.studentId = student.id;
+    log.applicationStatus = StatusApplication.CalledForEnrollment;
+    log.description = 'Respondeu pesquisa';
+    await this.logStudentRepository.create(log);
+  }
+
+  async confirmDeclaration(studentId: string) {
+    const student = await this.repository.findOneBy({ id: studentId });
+    if (!student) {
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+    }
+    if (student.applicationStatus !== StatusApplication.CalledForEnrollment) {
+      throw new HttpException(
+        'Apenas estudantes convocados podem confirmar declaração',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const inscription = await this.inscriptionCourseService.findOneBy({
+      id: student.inscriptionCourse.id,
+    });
+    const requiresDocs = inscription?.requestDocuments ?? false;
+
+    if (!student.photoDone || !student.surveyDone) {
+      throw new HttpException(
+        'É necessário completar todas as etapas antes de confirmar',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (requiresDocs && !student.documentsDone) {
+      throw new HttpException(
+        'É necessário enviar os documentos antes de confirmar',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    student.applicationStatus = StatusApplication.DeclaredInterest;
+    await this.repository.update(student);
+
+    const log = new LogStudent();
+    log.studentId = student.id;
+    log.applicationStatus = StatusApplication.DeclaredInterest;
+    log.description = 'Declarou interesse';
+    await this.logStudentRepository.create(log);
   }
 
   async sendEmailDeclaredInterestById(id: string) {

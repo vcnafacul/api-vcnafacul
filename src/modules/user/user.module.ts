@@ -1,9 +1,14 @@
+import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { EnvModule } from 'src/shared/modules/env/env.module';
+import { HttpServiceAxiosFactory } from 'src/shared/services/axios/http-service-axios.factory';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { AuditLogModule } from '../audit-log/audit-log.module';
+import { CollaboratorFrenteRepository } from '../prepCourse/collaborator/collaborator-frente.repository';
 import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
+import { FrenteProxyService } from '../simulado/frente/frente.service';
+import { MateriaProxyService } from '../simulado/materia/materia.service';
 import { StudentCourseRepository } from '../prepCourse/studentCourse/student-course.repository';
 import { RoleRepository } from '../role/role.repository';
 import { RefreshTokenService } from './services/refresh-token.service';
@@ -16,7 +21,7 @@ import { UserExistValidator } from './validator/user-exist.validator';
 
 @Module({
   controllers: [UserController],
-  imports: [AuditLogModule, EnvModule],
+  imports: [AuditLogModule, EnvModule, HttpModule],
   providers: [
     UserService,
     UserRepository,
@@ -26,6 +31,10 @@ import { UserExistValidator } from './validator/user-exist.validator';
     EmailExistValidator,
     EmailService,
     CollaboratorRepository,
+    CollaboratorFrenteRepository,
+    FrenteProxyService,
+    MateriaProxyService,
+    HttpServiceAxiosFactory,
     RoleRepository,
     StudentCourseRepository,
     DiscordWebhook,

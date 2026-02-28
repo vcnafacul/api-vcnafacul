@@ -20,7 +20,7 @@ export class DiscordWebhook {
     const message = `${process.env.NODE_ENV} - ${content}`;
 
     try {
-      await axios.post(this.webhookUrl, { message });
+      await axios.post(this.webhookUrl, { content: message });
     } catch (error) {
       console.log('Erro ao enviar mensagem para o Discord:', error);
     }

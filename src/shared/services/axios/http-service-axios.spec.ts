@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { HttpException, Logger } from '@nestjs/common';
 import { HttpServiceAxios, HttpServiceAxiosFactory } from './http-service-axios.factory';
 
 const mockAxiosInstance = {
@@ -55,21 +55,24 @@ describe('HttpServiceAxios', () => {
 
     it('should handle error with response data', async () => {
       mockAxiosInstance.get.mockRejectedValue({
-        response: { data: { message: 'Not Found', status: 404 } },
+        response: { data: { message: 'Not Found', status: 404 }, status: 404 },
       });
 
-      await expect(service.get('v1/missing')).rejects.toEqual({
-        message: 'Not Found',
-        status: 404,
+      await expect(service.get('v1/missing')).rejects.toThrow(HttpException);
+      await expect(service.get('v1/missing')).rejects.toMatchObject({
+        response: { message: 'Not Found', status: 404 },
       });
     });
 
     it('should throw fallback error when no response data', async () => {
       mockAxiosInstance.get.mockRejectedValue({ code: 'ECONNREFUSED' });
 
-      await expect(service.get('v1/items')).rejects.toEqual({
-        message: 'Erro desconhecido ou serviço indisponível.',
-        status: 'ECONNREFUSED',
+      await expect(service.get('v1/items')).rejects.toThrow(HttpException);
+      await expect(service.get('v1/items')).rejects.toMatchObject({
+        response: {
+          message: 'Erro desconhecido ou serviço indisponível.',
+          status: 'ECONNREFUSED',
+        },
       });
     });
   });
