@@ -42,6 +42,11 @@
   "coverageThreshold": {
     "global": {
       "lines": 70
+    },
+    "src/modules/frontend-errors/frontend-errors.service.ts": {
+      "lines": 70,
+      "functions": 70,
+      "branches": 70
     }
   },
   "coverageReporters": [
