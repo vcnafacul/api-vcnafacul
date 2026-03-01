@@ -5,6 +5,7 @@ import { EnvModule } from 'src/shared/modules/env/env.module';
 import { HttpServiceAxiosFactory } from 'src/shared/services/axios/http-service-axios.factory';
 import { BlobModule } from 'src/shared/services/blob/blob.module';
 import { AuditLogModule } from '../audit-log/audit-log.module';
+import { CollaboratorFrenteRepository } from '../prepCourse/collaborator/collaborator-frente.repository';
 import { UserModule } from '../user/user.module';
 import { ContentProxyController } from './content/content.controller';
 import { ContentProxyService } from './content/content.service';
@@ -52,6 +53,7 @@ import { SubjectProxyService } from './subject/subject.service';
     FrenteProxyService,
     SubjectProxyService,
     ContentProxyService,
+    CollaboratorFrenteRepository,
   ],
   exports: [FrenteProxyService, MateriaProxyService],
 })
