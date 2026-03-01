@@ -23,6 +23,10 @@ export class CollaboratorFrenteRepository extends BaseRepository<CollaboratorFre
     await this.repository.delete({ collaboratorId });
   }
 
+  async deleteByFrenteId(frenteId: string): Promise<void> {
+    await this.repository.delete({ frenteId });
+  }
+
   async createMany(
     entities: CollaboratorFrente[],
   ): Promise<CollaboratorFrente[]> {

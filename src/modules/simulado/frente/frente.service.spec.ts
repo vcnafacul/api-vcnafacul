@@ -2,17 +2,22 @@ import { FrenteProxyService } from './frente.service';
 
 describe('FrenteProxyService', () => {
   let service: FrenteProxyService;
-  let mockAxios: { get: jest.Mock; post: jest.Mock; patch: jest.Mock };
+  let mockAxios: { get: jest.Mock; post: jest.Mock; patch: jest.Mock; delete: jest.Mock };
   let mockCache: { wrap: jest.Mock };
+  let mockCollaboratorFrenteRepo: { deleteByFrenteId: jest.Mock };
 
   beforeEach(() => {
     mockAxios = {
       get: jest.fn(),
       post: jest.fn(),
       patch: jest.fn(),
+      delete: jest.fn(),
     };
     mockCache = {
       wrap: jest.fn((key, fn) => fn()),
+    };
+    mockCollaboratorFrenteRepo = {
+      deleteByFrenteId: jest.fn(),
     };
 
     const mockFactory = { create: jest.fn().mockReturnValue(mockAxios) };
@@ -22,6 +27,7 @@ describe('FrenteProxyService', () => {
       mockFactory as any,
       mockEnv as any,
       mockCache as any,
+      mockCollaboratorFrenteRepo as any,
     );
   });
 
@@ -93,6 +99,18 @@ describe('FrenteProxyService', () => {
         'v1/frente/materiawithcontent/materia-obj-id',
       );
       expect(result).toEqual([{ nome: 'Frente 1', subjects: [] }]);
+    });
+  });
+
+  describe('delete', () => {
+    it('should proxy delete and clean up collaborator_frentes', async () => {
+      mockAxios.delete.mockResolvedValue({});
+      mockCollaboratorFrenteRepo.deleteByFrenteId.mockResolvedValue(undefined);
+
+      await service.delete('frente-id');
+
+      expect(mockAxios.delete).toHaveBeenCalledWith('v1/frente/frente-id');
+      expect(mockCollaboratorFrenteRepo.deleteByFrenteId).toHaveBeenCalledWith('frente-id');
     });
   });
 
