@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { LokiLoggerService } from '../../logger/loki-logger';
 import { DiscordWebhook } from '../../shared/services/webhooks/discord';
+import { UserRepository } from '../user/user.repository';
 import {
   FrontendErrorBodyDto,
   SanitizedFrontendErrorDto,
@@ -11,12 +12,14 @@ const MAX_ERROR_DETAIL_LENGTH = 1000;
 const MAX_ORIGIN_LENGTH = 200;
 const MAX_PAGE_LENGTH = 500;
 const MAX_URL_LENGTH = 1000;
+const MAX_DISCORD_LENGTH = 2000;
 
 @Injectable()
 export class FrontendErrorsService {
   constructor(
     private readonly logger: LokiLoggerService,
     private readonly discord: DiscordWebhook,
+    private readonly userRepo: UserRepository,
   ) {}
 
   /**
@@ -92,12 +95,24 @@ export class FrontendErrorsService {
     });
 
     if (sanitized.severity === 'severe') {
-      const discordText = this.formatForDiscord(logPayload);
+      let userEmail: string | undefined;
+      if (userId) {
+        try {
+          const user = await this.userRepo.findOneBy({ id: userId });
+          userEmail = user?.email;
+        } catch {
+          // fallback: show UUID instead
+        }
+      }
+      const discordText = this.formatForDiscord(logPayload, userEmail);
       await this.discord.sendMessage(discordText);
     }
   }
 
-  private formatForDiscord(payload: SanitizedFrontendErrorDto & { userId?: string }): string {
+  private formatForDiscord(
+    payload: SanitizedFrontendErrorDto & { userId?: string },
+    userEmail?: string,
+  ): string {
     const parts: string[] = [
       '[Frontend Error]',
       `Type: ${payload.errorType ?? '—'}`,
@@ -108,8 +123,18 @@ export class FrontendErrorsService {
     if (payload.request) {
       parts.push(`Request: ${payload.request.method ?? '?'} ${payload.request.url ?? '—'}`);
     }
-    if (payload.userId) parts.push(`UserId: ${payload.userId}`);
+    if (userEmail) {
+      parts.push(`User: ${userEmail}`);
+    } else if (payload.userId) {
+      parts.push(`UserId: ${payload.userId}`);
+    }
     if (payload.metadata?.release) parts.push(`Release: ${payload.metadata.release}`);
-    return parts.join('\n');
+    if (payload.errorDetail) parts.push(`Stack: ${payload.errorDetail}`);
+
+    const message = parts.join('\n');
+    if (message.length > MAX_DISCORD_LENGTH) {
+      return message.slice(0, MAX_DISCORD_LENGTH - 3) + '...';
+    }
+    return message;
   }
 }

@@ -1,19 +1,23 @@
 import { FrontendErrorsService } from './frontend-errors.service';
 import { LokiLoggerService } from '../../logger/loki-logger';
 import { DiscordWebhook } from '../../shared/services/webhooks/discord';
+import { UserRepository } from '../user/user.repository';
 import { FrontendErrorBodyDto } from './dto/frontend-error.dto';
 
 describe('FrontendErrorsService', () => {
   let service: FrontendErrorsService;
   let logger: jest.Mocked<Pick<LokiLoggerService, 'error'>>;
   let discord: jest.Mocked<Pick<DiscordWebhook, 'sendMessage'>>;
+  let userRepo: jest.Mocked<Pick<UserRepository, 'findOneBy'>>;
 
   beforeEach(() => {
     logger = { error: jest.fn() };
     discord = { sendMessage: jest.fn().mockResolvedValue(undefined) };
+    userRepo = { findOneBy: jest.fn().mockResolvedValue(null) };
     service = new FrontendErrorsService(
       logger as unknown as LokiLoggerService,
       discord as unknown as DiscordWebhook,
+      userRepo as unknown as UserRepository,
     );
   });
 
@@ -160,6 +164,68 @@ describe('FrontendErrorsService', () => {
           userId: 'from-sanitized',
         }),
       );
+    });
+
+    it('mostra email do usuário no Discord quando encontrado no banco', async () => {
+      userRepo.findOneBy.mockResolvedValue({ email: 'user@example.com' } as any);
+      const sanitized = service.sanitize({
+        errorType: 'FETCH_ERROR',
+        message: 'Failed to fetch',
+      });
+      await service.capture(sanitized, 'user-uuid');
+      const discordText = discord.sendMessage.mock.calls[0][0];
+      expect(discordText).toContain('User: user@example.com');
+      expect(discordText).not.toContain('UserId:');
+    });
+
+    it('mostra UserId como fallback quando usuário não é encontrado', async () => {
+      userRepo.findOneBy.mockResolvedValue(null);
+      const sanitized = service.sanitize({
+        errorType: 'FETCH_ERROR',
+        message: 'Failed to fetch',
+      });
+      await service.capture(sanitized, 'user-uuid');
+      const discordText = discord.sendMessage.mock.calls[0][0];
+      expect(discordText).toContain('UserId: user-uuid');
+      expect(discordText).not.toContain('User:');
+    });
+
+    it('mostra UserId como fallback quando busca no banco falha', async () => {
+      userRepo.findOneBy.mockRejectedValue(new Error('DB error'));
+      const sanitized = service.sanitize({
+        errorType: 'FETCH_ERROR',
+        message: 'Failed to fetch',
+      });
+      await service.capture(sanitized, 'user-uuid');
+      const discordText = discord.sendMessage.mock.calls[0][0];
+      expect(discordText).toContain('UserId: user-uuid');
+    });
+
+    it('inclui errorDetail (stack trace) na mensagem do Discord', async () => {
+      const sanitized = service.sanitize({
+        errorType: 'FETCH_ERROR',
+        message: 'Failed to fetch',
+        errorDetail: 'TypeError: Failed to fetch\n    at fetchWrapper (fetchWrapper.ts:143)',
+      });
+      await service.capture(sanitized);
+      const discordText = discord.sendMessage.mock.calls[0][0];
+      expect(discordText).toContain('Stack: TypeError: Failed to fetch');
+      expect(discordText).toContain('at fetchWrapper');
+    });
+
+    it('trunca mensagem do Discord para caber no limite de 2000 chars', async () => {
+      const sanitized = service.sanitize({
+        errorType: 'FETCH_ERROR',
+        message: 'x'.repeat(500),
+        page: 'y'.repeat(500),
+        origin: 'z'.repeat(200),
+        errorDetail: 'e'.repeat(1000),
+        request: { method: 'POST', url: 'u'.repeat(500) },
+      });
+      await service.capture(sanitized);
+      const discordText = discord.sendMessage.mock.calls[0][0];
+      expect(discordText.length).toBeLessThanOrEqual(2000);
+      expect(discordText.endsWith('...')).toBe(true);
     });
   });
 });
