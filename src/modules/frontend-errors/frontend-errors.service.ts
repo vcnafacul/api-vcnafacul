@@ -52,11 +52,11 @@ function parseUserAgentForDisplay(ua: string | undefined): {
   if (s.includes('windows nt 10')) os = 'Windows 10/11';
   else if (s.includes('windows nt 6')) os = 'Windows 7/8';
   else if (s.includes('windows')) os = 'Windows';
-  else if (s.includes('mac os x') || s.includes('macintosh')) os = 'macOS';
   else if (s.includes('android')) {
     const v = ua.match(/android ([\d.]+)/i)?.[1] ?? '';
     os = v ? `Android ${majorVersion(v)}` : 'Android';
   } else if (s.includes('iphone') || s.includes('ipad')) os = 'iOS';
+  else if (s.includes('mac os x') || s.includes('macintosh')) os = 'macOS';
   else if (s.includes('linux')) os = 'Linux';
 
   const device =
