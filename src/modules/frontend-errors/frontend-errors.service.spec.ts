@@ -1,8 +1,8 @@
-import { FrontendErrorsService } from './frontend-errors.service';
 import { LokiLoggerService } from '../../logger/loki-logger';
 import { DiscordWebhook } from '../../shared/services/webhooks/discord';
 import { UserRepository } from '../user/user.repository';
 import { FrontendErrorBodyDto } from './dto/frontend-error.dto';
+import { FrontendErrorsService } from './frontend-errors.service';
 
 describe('FrontendErrorsService', () => {
   let service: FrontendErrorsService;
@@ -41,7 +41,10 @@ describe('FrontendErrorsService', () => {
       expect(result.message).toBe('Failed to fetch');
       expect(result.page).toBe('/courses/123');
       expect(result.origin).toBe('fetchWrapper');
-      expect(result.request).toEqual({ method: 'GET', url: '/api/courses/123' });
+      expect(result.request).toEqual({
+        method: 'GET',
+        url: '/api/courses/123',
+      });
       expect(result.metadata).toEqual({
         userAgent: 'Mozilla/5.0',
         online: true,
@@ -90,23 +93,33 @@ describe('FrontendErrorsService', () => {
     });
 
     it('marca severity severe para FETCH_ERROR', () => {
-      expect(service.sanitize({ errorType: 'FETCH_ERROR', message: 'x' }).severity).toBe('severe');
+      expect(
+        service.sanitize({ errorType: 'FETCH_ERROR', message: 'x' }).severity,
+      ).toBe('severe');
     });
 
     it('marca severity severe quando message contém "failed to fetch"', () => {
-      expect(service.sanitize({ message: 'Failed to fetch' }).severity).toBe('severe');
+      expect(service.sanitize({ message: 'Failed to fetch' }).severity).toBe(
+        'severe',
+      );
     });
 
     it('marca severity severe quando message contém "network"', () => {
-      expect(service.sanitize({ message: 'Network error' }).severity).toBe('severe');
+      expect(service.sanitize({ message: 'Network error' }).severity).toBe(
+        'severe',
+      );
     });
 
     it('marca severity severe quando message contém "load failed"', () => {
-      expect(service.sanitize({ message: 'Load failed' }).severity).toBe('severe');
+      expect(service.sanitize({ message: 'Load failed' }).severity).toBe(
+        'severe',
+      );
     });
 
     it('marca severity normal para mensagem genérica', () => {
-      expect(service.sanitize({ message: 'Something went wrong' }).severity).toBe('normal');
+      expect(
+        service.sanitize({ message: 'Something went wrong' }).severity,
+      ).toBe('normal');
     });
   });
 
@@ -167,7 +180,9 @@ describe('FrontendErrorsService', () => {
     });
 
     it('mostra email do usuário no Discord quando encontrado no banco', async () => {
-      userRepo.findOneBy.mockResolvedValue({ email: 'user@example.com' } as any);
+      userRepo.findOneBy.mockResolvedValue({
+        email: 'user@example.com',
+      } as any);
       const sanitized = service.sanitize({
         errorType: 'FETCH_ERROR',
         message: 'Failed to fetch',
@@ -205,12 +220,119 @@ describe('FrontendErrorsService', () => {
       const sanitized = service.sanitize({
         errorType: 'FETCH_ERROR',
         message: 'Failed to fetch',
-        errorDetail: 'TypeError: Failed to fetch\n    at fetchWrapper (fetchWrapper.ts:143)',
+        errorDetail:
+          'TypeError: Failed to fetch\n    at fetchWrapper (fetchWrapper.ts:143)',
       });
       await service.capture(sanitized);
       const discordText = discord.sendMessage.mock.calls[0][0];
       expect(discordText).toContain('Stack: TypeError: Failed to fetch');
       expect(discordText).toContain('at fetchWrapper');
+    });
+
+    it('inclui Browser, OS, Device e User-Agent na mensagem do Discord', async () => {
+      const sanitized = service.sanitize({
+        errorType: 'FETCH_ERROR',
+        message: 'Failed to fetch',
+        metadata: {
+          userAgent:
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
+      });
+      await service.capture(sanitized);
+      const discordText = discord.sendMessage.mock.calls[0][0];
+      expect(discordText).toContain('Browser: Chrome 120');
+      expect(discordText).toContain('OS: Windows 10/11');
+      expect(discordText).toContain('Device: desktop');
+      expect(discordText).toContain('User-Agent:');
+    });
+
+    it('parseia Edge e exibe no Discord', async () => {
+      const sanitized = service.sanitize({
+        errorType: 'FETCH_ERROR',
+        message: 'Failed to fetch',
+        metadata: {
+          userAgent:
+            'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Edg/120.0.0.0',
+        },
+      });
+      await service.capture(sanitized);
+      const discordText = discord.sendMessage.mock.calls[0][0];
+      expect(discordText).toContain('Browser: Edge 120');
+      expect(discordText).toContain('Device: desktop');
+    });
+
+    it('parseia Firefox e exibe no Discord', async () => {
+      const sanitized = service.sanitize({
+        errorType: 'FETCH_ERROR',
+        message: 'Failed to fetch',
+        metadata: {
+          userAgent:
+            'Mozilla/5.0 (Windows NT 10.0; rv:121.0) Gecko/20100101 Firefox/121.0',
+        },
+      });
+      await service.capture(sanitized);
+      const discordText = discord.sendMessage.mock.calls[0][0];
+      expect(discordText).toContain('Browser: Firefox 121');
+      expect(discordText).toContain('OS: Windows 10/11');
+    });
+
+    it('parseia Safari e macOS e exibe no Discord', async () => {
+      const sanitized = service.sanitize({
+        errorType: 'FETCH_ERROR',
+        message: 'Failed to fetch',
+        metadata: {
+          userAgent:
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+        },
+      });
+      await service.capture(sanitized);
+      const discordText = discord.sendMessage.mock.calls[0][0];
+      expect(discordText).toContain('Browser: Safari 17');
+      expect(discordText).toContain('OS: macOS');
+      expect(discordText).toContain('Device: desktop');
+    });
+
+    it('parseia Android mobile e exibe no Discord', async () => {
+      const sanitized = service.sanitize({
+        errorType: 'FETCH_ERROR',
+        message: 'Failed to fetch',
+        metadata: {
+          userAgent:
+            'Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+        },
+      });
+      await service.capture(sanitized);
+      const discordText = discord.sendMessage.mock.calls[0][0];
+      expect(discordText).toContain('Browser: Chrome 120');
+      expect(discordText).toContain('OS: Android 14');
+      expect(discordText).toContain('Device: mobile');
+    });
+
+    it('parseia iOS e exibe no Discord', async () => {
+      const sanitized = service.sanitize({
+        errorType: 'FETCH_ERROR',
+        message: 'Failed to fetch',
+        metadata: {
+          userAgent:
+            'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+        },
+      });
+      await service.capture(sanitized);
+      const discordText = discord.sendMessage.mock.calls[0][0];
+      expect(discordText).toContain('OS: iOS');
+      expect(discordText).toContain('Device: mobile');
+    });
+
+    it('exibe travessão quando metadata ou userAgent ausente', async () => {
+      const sanitized = service.sanitize({
+        errorType: 'FETCH_ERROR',
+        message: 'Failed to fetch',
+      });
+      await service.capture(sanitized);
+      const discordText = discord.sendMessage.mock.calls[0][0];
+      expect(discordText).toContain('Browser: —');
+      expect(discordText).toContain('OS: —');
+      expect(discordText).toContain('Device: —');
     });
 
     it('trunca mensagem do Discord para caber no limite de 2000 chars', async () => {
