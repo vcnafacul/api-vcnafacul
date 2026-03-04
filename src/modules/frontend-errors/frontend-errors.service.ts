@@ -121,14 +121,17 @@ export class FrontendErrorsService {
       `Origin: ${payload.origin ?? '—'}`,
     ];
     if (payload.request) {
-      parts.push(`Request: ${payload.request.method ?? '?'} ${payload.request.url ?? '—'}`);
+      parts.push(
+        `Request: ${payload.request.method ?? '?'} ${payload.request.url ?? '—'}`,
+      );
     }
     if (userEmail) {
       parts.push(`User: ${userEmail}`);
     } else if (payload.userId) {
       parts.push(`UserId: ${payload.userId}`);
     }
-    if (payload.metadata?.release) parts.push(`Release: ${payload.metadata.release}`);
+    if (payload.metadata?.release)
+      parts.push(`Release: ${payload.metadata.release}`);
     if (payload.errorDetail) parts.push(`Stack: ${payload.errorDetail}`);
 
     const message = parts.join('\n');
