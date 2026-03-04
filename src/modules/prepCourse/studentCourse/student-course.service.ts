@@ -38,6 +38,7 @@ import { maskCpf } from 'src/utils/maskCpf';
 import { maskEmail } from 'src/utils/maskEmail';
 import { maskPhone } from 'src/utils/maskPhone';
 import { maskRg } from 'src/utils/maskRg';
+import { parseUserAgentForDisplay } from 'src/shared/utils/parse-user-agent';
 import { IsNull, Not } from 'typeorm';
 import { ClassRepository } from '../class/class.repository';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
@@ -274,6 +275,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     areaInterest: string[],
     selectedCourses: string[],
     studentId: string,
+    declarationContext?: { userAgent?: string; ip?: string },
   ) {
     const student = await this.repository.findOneBy({ id: studentId });
     if (!student) {
@@ -322,9 +324,30 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     log.studentId = student.id;
     log.applicationStatus = StatusApplication.DeclaredInterest;
     log.description = 'Declarou interesse';
+    this.fillDeclarationContext(log, declarationContext);
     await this.logStudentRepository.create(log);
 
     await this.repository.update(student);
+  }
+
+  private fillDeclarationContext(
+    log: LogStudent,
+    context?: { userAgent?: string; ip?: string },
+  ): void {
+    if (!context) return;
+    if (context.userAgent) {
+      log.userAgent =
+        context.userAgent.length > 500
+          ? context.userAgent.slice(0, 500)
+          : context.userAgent;
+      const parsed = parseUserAgentForDisplay(context.userAgent);
+      log.browser = parsed.browser.slice(0, 100);
+      log.os = parsed.os.slice(0, 100);
+      log.device = parsed.device.slice(0, 50);
+    }
+    if (context.ip) {
+      log.ip = context.ip.length > 45 ? context.ip.slice(0, 45) : context.ip;
+    }
   }
 
   async getDocument(fileKey: string) {
@@ -798,7 +821,10 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     await this.logStudentRepository.create(log);
   }
 
-  async confirmDeclaration(studentId: string) {
+  async confirmDeclaration(
+    studentId: string,
+    declarationContext?: { userAgent?: string; ip?: string },
+  ) {
     const student = await this.repository.findOneBy({ id: studentId });
     if (!student) {
       throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
@@ -835,6 +861,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     log.studentId = student.id;
     log.applicationStatus = StatusApplication.DeclaredInterest;
     log.description = 'Declarou interesse';
+    this.fillDeclarationContext(log, declarationContext);
     await this.logStudentRepository.create(log);
   }
 

@@ -14,6 +14,21 @@ export class LogStudent extends BaseEntity {
   @Column({ type: 'text', nullable: true })
   description: string;
 
+  @Column({ name: 'user_agent', type: 'text', nullable: true })
+  userAgent: string | null;
+
+  @Column({ length: 100, nullable: true })
+  browser: string | null;
+
+  @Column({ length: 100, nullable: true })
+  os: string | null;
+
+  @Column({ length: 50, nullable: true })
+  device: string | null;
+
+  @Column({ length: 45, nullable: true })
+  ip: string | null;
+
   @ManyToOne(() => StudentCourse, (studentCourse) => studentCourse.logs, {
     eager: false,
   })
