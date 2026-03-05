@@ -68,6 +68,9 @@ export const envSchema = z.object({
   CACHE_DRIVER: z.string().default('inMemory'),
   REDIS_PORT: z.coerce.number().default(6379),
   REDIS_HOST: z.string().default('localhost'),
+
+  // Google Places API
+  GOOGLE_MAPS_API_KEY: z.string(),
 });
 
 export type Env = z.infer<typeof envSchema>;
