@@ -7,6 +7,7 @@ import {
   Post,
   Query,
   Req,
+  Res,
   SetMetadata,
   UploadedFile,
   UseGuards,
@@ -14,7 +15,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express/multer';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { Permissions } from '../role/role.entity';
 import { User } from '../user/user.entity';
@@ -26,6 +27,24 @@ import { NewsService } from './news.service';
 @Controller('news')
 export class NewsController {
   constructor(private readonly newService: NewsService) {}
+
+  @Get('file/:fileKey')
+  @ApiResponse({
+    status: 200,
+    description: 'Arquivo da novidade (cache 7 dias)',
+  })
+  async getFile(
+    @Param('fileKey') fileKey: string,
+    @Res({ passthrough: false }) res: Response,
+  ) {
+    const key = decodeURIComponent(fileKey);
+    const { buffer, contentType } = await this.newService.getFile(key);
+    res.set({
+      'Content-Type': contentType,
+      'Cache-Control': this.newService.getCacheControlHeader(),
+    });
+    return res.send(Buffer.from(buffer, 'base64'));
+  }
 
   @Post()
   @ApiBearerAuth()

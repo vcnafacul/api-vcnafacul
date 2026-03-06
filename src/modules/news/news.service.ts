@@ -1,14 +1,17 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
-import { uploadFileFTP } from 'src/utils/uploadFileFtp';
+import { BlobService } from 'src/shared/services/blob/blob-service';
 import { Status } from '../simulado/enum/status.enum';
 import { CreateNewsDtoInput } from './dtos/create-news.dto.input';
 import { GetAllNewsDtoInput } from './dtos/get-all-news';
 import { News } from './news.entity';
 import { NewsRepository } from './news.repository';
+
+const CACHE_MAX_AGE_DAYS = 7;
+const CACHE_MAX_AGE_SECONDS = CACHE_MAX_AGE_DAYS * 24 * 60 * 60;
 
 @Injectable()
 export class NewsService extends BaseService<News> {
@@ -16,6 +19,7 @@ export class NewsService extends BaseService<News> {
     private readonly repository: NewsRepository,
     private envService: EnvService,
     private readonly cache: CacheService,
+    @Inject('BlobService') private readonly blobService: BlobService,
   ) {
     super(repository);
   }
@@ -25,22 +29,46 @@ export class NewsService extends BaseService<News> {
     file: Express.Multer.File,
     userId: string,
   ) {
-    const fileName = await uploadFileFTP(
+    const fileKey = await this.blobService.uploadFile(
       file,
-      this.envService.get('FTP_HOST'),
-      this.envService.get('FTP_USER'),
-      this.envService.get('FTP_PASSWORD'),
+      this.envService.get('BUCKET_NEWS'),
     );
-    if (!fileName) {
+    if (!fileKey) {
       throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);
     }
     const news = new News();
     news.session = request.session;
     news.title = request.title;
-    news.fileName = fileName;
+    news.fileName = fileKey;
     news.updatedBy = userId;
 
     return await this.repository.create(news);
+  }
+
+  async getFile(fileKey: string): Promise<{ buffer: string; contentType: string }> {
+    return await this.blobService.getFile(
+      fileKey,
+      this.envService.get('BUCKET_NEWS'),
+    );
+  }
+
+  getCacheControlHeader(): string {
+    return `public, max-age=${CACHE_MAX_AGE_SECONDS}`;
+  }
+
+  override async delete(id: string): Promise<void> {
+    const news = await this.repository.findOneBy({ id });
+    if (news?.fileName) {
+      try {
+        await this.blobService.deleteFile(
+          news.fileName,
+          this.envService.get('BUCKET_NEWS'),
+        );
+      } catch {
+        // ignora falha ao remover do S3; registro é removido mesmo assim
+      }
+    }
+    await this.repository.delete(id);
   }
 
   async findActived() {
