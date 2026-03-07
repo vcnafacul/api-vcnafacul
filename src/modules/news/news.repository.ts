@@ -21,29 +21,27 @@ export class NewsRepository extends BaseRepository<News> {
     }
   }
 
-  /** Novidades ativas e não expiradas (expire_at null ou >= hoje). */
-  async findActivedNotExpired() {
-    const qb = this.repository
+  /** Novidades ativas e não expiradas (expire_at null ou >= todayStr). todayStr = YYYY-MM-DD no fuso do servidor. */
+  async findActivedNotExpired(todayStr: string) {
+    return this.repository
       .createQueryBuilder('entity')
       .where('entity.deletedAt IS NULL')
       .andWhere('entity.actived = :actived', { actived: true })
       .andWhere('(entity.expire_at IS NULL OR entity.expire_at >= :today)', {
-        today: new Date().toISOString().slice(0, 10),
+        today: todayStr,
       })
-      .orderBy('entity.createdAt', 'DESC');
-    return qb.getMany();
+      .orderBy('entity.createdAt', 'DESC')
+      .getMany();
   }
 
-  /** Novidades ativas com expire_at < before (para o cron). */
-  async findExpiredBefore(before: Date): Promise<News[]> {
+  /** Novidades ativas com expire_at < beforeStr (para o cron). beforeStr = YYYY-MM-DD no fuso do servidor. */
+  async findExpiredBefore(beforeStr: string): Promise<News[]> {
     return this.repository
       .createQueryBuilder('entity')
       .where('entity.deletedAt IS NULL')
       .andWhere('entity.actived = :actived', { actived: true })
       .andWhere('entity.expire_at IS NOT NULL')
-      .andWhere('entity.expire_at < :before', {
-        before: before.toISOString().slice(0, 10),
-      })
+      .andWhere('entity.expire_at < :before', { before: beforeStr })
       .getMany();
   }
 

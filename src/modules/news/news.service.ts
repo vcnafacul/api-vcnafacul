@@ -15,30 +15,37 @@ import { NewsRepository } from './news.repository';
 const CACHE_MAX_AGE_DAYS = 7;
 const CACHE_MAX_AGE_SECONDS = CACHE_MAX_AGE_DAYS * 24 * 60 * 60;
 
-function startOfTodayUTC(): Date {
-  const now = new Date();
-  return new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-  );
+/** Hoje à meia-noite no fuso do servidor (para validação). */
+function startOfTodayLocal(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
 }
 
+/** Hoje no fuso do servidor no formato YYYY-MM-DD (para comparação em SQL). */
+function todayLocalDateString(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Parseia "YYYY-MM-DD" como meia-noite no fuso local do servidor.
+ * Assim, ao persistir em coluna DATE, o dia salvo no banco corresponde ao dia selecionado no front.
+ */
 function parseExpireAt(value: string | undefined): Date | null {
-  if (!value) return null;
-  const d = new Date(value);
-  return isNaN(d.getTime()) ? null : d;
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const [y, m, d] = value.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return isNaN(date.getTime()) ? null : date;
 }
 
 function validateExpireAtNotInPast(expireAt: Date | null): void {
   if (expireAt === null) return;
-  const today = startOfTodayUTC();
-  const expDay = new Date(
-    Date.UTC(
-      expireAt.getUTCFullYear(),
-      expireAt.getUTCMonth(),
-      expireAt.getUTCDate(),
-    ),
-  );
-  if (expDay < today) {
+  const today = startOfTodayLocal();
+  if (expireAt < today) {
     throw new HttpException(
       'A data de expiração não pode ser anterior a hoje',
       HttpStatus.BAD_REQUEST,
@@ -133,14 +140,15 @@ export class NewsService extends BaseService<News> {
     limit: number;
     totalItems: number;
   }> {
-    const data = await this.repository.findActivedNotExpired();
+    const todayStr = todayLocalDateString();
+    const data = await this.repository.findActivedNotExpired(todayStr);
     return { data, page: 1, limit: 0, totalItems: data.length };
   }
 
   /** Chamado pelo cron à meia-noite: remove (soft delete + S3) novidades com expire_at < hoje. */
   async deleteExpired(): Promise<number> {
-    const today = startOfTodayUTC();
-    const expired = await this.repository.findExpiredBefore(today);
+    const todayStr = todayLocalDateString();
+    const expired = await this.repository.findExpiredBefore(todayStr);
     for (const n of expired) {
       await this.delete(n.id);
     }
