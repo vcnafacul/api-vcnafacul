@@ -1,14 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsDateString, IsOptional, IsString } from 'class-validator';
 
-export class CreateNewsDtoInput {
+export class UpdateNewsDtoInput {
+  @IsOptional()
   @IsString()
-  @ApiProperty()
-  session: string;
+  @ApiProperty({ required: false })
+  session?: string;
 
+  @IsOptional()
   @IsString()
-  @ApiProperty()
-  title: string;
+  @ApiProperty({ required: false })
+  title?: string;
 
   @IsOptional()
   @IsDateString()

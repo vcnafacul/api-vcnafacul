@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -21,6 +22,7 @@ import { Permissions } from '../role/role.entity';
 import { User } from '../user/user.entity';
 import { CreateNewsDtoInput } from './dtos/create-news.dto.input';
 import { GetAllNewsDtoInput } from './dtos/get-all-news';
+import { UpdateNewsDtoInput } from './dtos/update-news.dto.input';
 import { NewsService } from './news.service';
 
 @ApiTags('News')
@@ -67,6 +69,22 @@ export class NewsController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     return await this.newService.create(body, file, (req.user as User).id);
+  }
+
+  @Patch(':id')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'atualizar novidade (session, title, expire_at)',
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.uploadNews)
+  async update(
+    @Param('id') id: string,
+    @Body() body: UpdateNewsDtoInput,
+    @Req() req: Request,
+  ) {
+    return await this.newService.update(id, body, (req.user as User).id);
   }
 
   @Get('all')
