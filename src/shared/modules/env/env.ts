@@ -56,6 +56,7 @@ export const envSchema = z.object({
   BUCKET_QUESTION: z.string().default('simulado-questoes'),
   BUCKET_SIMULADO: z.string().default('vcnafacul-simulado'),
   BUCKET_CONTENT: z.string().default('vcnafacul-content'),
+  BUCKET_NEWS: z.string().default('vcnafacul-news'),
   BUCKET_PARTNERSHIP_DOC: z.string().default('vcnafacul-partnership-doc'),
   AWS_STORAGE_CLASS: z.enum(['STANDARD']).default('STANDARD'),
 
