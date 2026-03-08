@@ -16,4 +16,7 @@ export class InscriptionInfoFormDtoOutput {
 
   @ApiProperty()
   status: Status;
+
+  @ApiProperty()
+  expectedOpening: number;
 }
