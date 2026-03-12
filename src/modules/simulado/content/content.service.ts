@@ -166,15 +166,10 @@ export class ContentProxyService {
     return await this.axios.delete(`v1/content/${id}`);
   }
 
-  async changeOrder(body: any) {
-    const { node1, node2 } = body;
-    if (node1 && node2) {
-      return await this.axios.patch('v1/content/swap-order', {
-        id1: node1,
-        id2: node2,
-      });
-    }
-    return await this.axios.patch('v1/content/swap-order', body);
+  async changeOrder(body: { orderedIds: string[] }) {
+    return await this.axios.patch('v1/content/reorder', {
+      orderedIds: body.orderedIds,
+    });
   }
 
   async getSummary() {
