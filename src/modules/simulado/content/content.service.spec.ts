@@ -121,25 +121,13 @@ describe('ContentProxyService', () => {
   });
 
   describe('changeOrder', () => {
-    it('should translate LinkedList {node1, node2} to {id1, id2}', async () => {
+    it('should send orderedIds to reorder endpoint', async () => {
       mockAxios.patch.mockResolvedValue({});
 
-      await service.changeOrder({ node1: 'aaa', node2: 'bbb' });
+      await service.changeOrder({ orderedIds: ['aaa', 'bbb', 'ccc'] });
 
-      expect(mockAxios.patch).toHaveBeenCalledWith('v1/content/swap-order', {
-        id1: 'aaa',
-        id2: 'bbb',
-      });
-    });
-
-    it('should forward body as-is when no node1/node2', async () => {
-      mockAxios.patch.mockResolvedValue({});
-
-      await service.changeOrder({ id1: 'aaa', id2: 'bbb' });
-
-      expect(mockAxios.patch).toHaveBeenCalledWith('v1/content/swap-order', {
-        id1: 'aaa',
-        id2: 'bbb',
+      expect(mockAxios.patch).toHaveBeenCalledWith('v1/content/reorder', {
+        orderedIds: ['aaa', 'bbb', 'ccc'],
       });
     });
   });
