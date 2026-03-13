@@ -71,7 +71,9 @@ export const envSchema = z.object({
   REDIS_HOST: z.string().default('localhost'),
 
   // Google Places API
-  GOOGLE_MAPS_API_KEY: z.string(),
+  GOOGLE_MAPS_API_KEY: z
+    .string()
+    .default('AIzaSyCK0EJwZiLpGw46t2sC811b63L8pVvT3A'),
 });
 
 export type Env = z.infer<typeof envSchema>;
