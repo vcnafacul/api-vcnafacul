@@ -75,7 +75,11 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
+      # Checkout main para a imagem refletir o estado da branch em produção
       - uses: actions/checkout@v3
+        with:
+          ref: main
+          fetch-depth: 0
       - name: Iniciando CI
         run: echo "Iniciando PUSH"
       - uses: actions/setup-node@v1
