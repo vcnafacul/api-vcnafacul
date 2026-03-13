@@ -123,6 +123,16 @@ export class PartnerPrepCourseRepository extends BaseRepository<PartnerPrepCours
   }
 
   //criar um findOne que retorne o mesmo que o findAllBy, mas que retorne apenas um objeto
+  async findAllLogos(): Promise<PartnerPrepCourse[]> {
+    return await this.repository
+      .createQueryBuilder('partner_prep_course')
+      .select(['partner_prep_course.id', 'partner_prep_course.logo'])
+      .innerJoin('partner_prep_course.geo', 'geo')
+      .addSelect(['geo.name', 'geo.site'])
+      .where('partner_prep_course.logo IS NOT NULL')
+      .getMany();
+  }
+
   async findOneByIdRes(id: string): Promise<PartnerPrepCourse> {
     return await this.repository
       .createQueryBuilder('partner_prep_course')
