@@ -143,6 +143,15 @@ export class PartnerPrepCourseController {
     return await this.service.inviteMember(dto.email, (req.user as User).id);
   }
 
+  @Get('logos')
+  @ApiResponse({
+    status: 200,
+    description: 'obter logos de todos os cursinhos parceiros',
+  })
+  async getLogos() {
+    return await this.service.getLogos();
+  }
+
   @Get('summary')
   async getSummary() {
     return await this.service.getSummary();
