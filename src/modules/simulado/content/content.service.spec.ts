@@ -15,6 +15,7 @@ describe('ContentProxyService', () => {
     deleteFile: jest.Mock;
   };
   let mockCache: { wrap: jest.Mock; del: jest.Mock };
+  let mockUserService: { findUserById: jest.Mock };
 
   beforeEach(() => {
     mockAxios = {
@@ -33,6 +34,15 @@ describe('ContentProxyService', () => {
       del: jest.fn(),
     };
 
+    mockUserService = {
+      findUserById: jest.fn().mockResolvedValue({
+        firstName: 'João',
+        lastName: 'Silva',
+        socialName: null,
+        useSocialName: false,
+      }),
+    };
+
     const mockFactory = { create: jest.fn().mockReturnValue(mockAxios) };
     const mockEnv = {
       get: jest.fn((key: string) => {
@@ -47,6 +57,7 @@ describe('ContentProxyService', () => {
       mockEnv as any,
       mockBlobService as any,
       mockCache as any,
+      mockUserService as any,
     );
   });
 
@@ -121,25 +132,13 @@ describe('ContentProxyService', () => {
   });
 
   describe('changeOrder', () => {
-    it('should translate LinkedList {node1, node2} to {id1, id2}', async () => {
+    it('should send orderedIds to reorder endpoint', async () => {
       mockAxios.patch.mockResolvedValue({});
 
-      await service.changeOrder({ node1: 'aaa', node2: 'bbb' });
+      await service.changeOrder({ orderedIds: ['aaa', 'bbb', 'ccc'] });
 
-      expect(mockAxios.patch).toHaveBeenCalledWith('v1/content/swap-order', {
-        id1: 'aaa',
-        id2: 'bbb',
-      });
-    });
-
-    it('should forward body as-is when no node1/node2', async () => {
-      mockAxios.patch.mockResolvedValue({});
-
-      await service.changeOrder({ id1: 'aaa', id2: 'bbb' });
-
-      expect(mockAxios.patch).toHaveBeenCalledWith('v1/content/swap-order', {
-        id1: 'aaa',
-        id2: 'bbb',
+      expect(mockAxios.patch).toHaveBeenCalledWith('v1/content/reorder', {
+        orderedIds: ['aaa', 'bbb', 'ccc'],
       });
     });
   });
@@ -307,7 +306,7 @@ describe('ContentProxyService', () => {
 
   describe('simple proxy methods', () => {
     it('getById should call correct URL', async () => {
-      mockAxios.get.mockResolvedValue({});
+      mockAxios.get.mockResolvedValue({ _id: 'abc', title: 'Test' });
       await service.getById('abc');
       expect(mockAxios.get).toHaveBeenCalledWith('v1/content/abc');
     });

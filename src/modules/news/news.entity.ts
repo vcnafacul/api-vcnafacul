@@ -1,6 +1,6 @@
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
-import { User } from '../user/user.entity';
 import { BaseEntity } from '../../shared/modules/base/entity.base';
+import { User } from '../user/user.entity';
 
 @Entity('news')
 export class News extends BaseEntity {
@@ -18,6 +18,9 @@ export class News extends BaseEntity {
 
   @Column({ default: true })
   actived: boolean;
+
+  @Column({ name: 'expire_at', type: 'date', nullable: true })
+  expireAt: Date | null;
 
   @ManyToOne(() => User, (user) => user)
   @JoinColumn({ name: 'updated_by' })

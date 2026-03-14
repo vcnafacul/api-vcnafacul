@@ -146,6 +146,53 @@ export class ContentProxyController {
     return await this.contentService.getSnapshotContentStatus();
   }
 
+  @Post(':id/proposal')
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.uploadDemanda)
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadProposal(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body('comment') comment: string,
+    @Req() req: Request,
+  ) {
+    return await this.contentService.uploadProposal(
+      id,
+      (req.user as User).id,
+      file,
+      comment,
+    );
+  }
+
+  @Get(':id/proposals')
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarDemanda)
+  async getProposals(@Param('id') id: string) {
+    return await this.contentService.getProposalsByContent(id);
+  }
+
+  @Patch('proposal/:id/review')
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.validarDemanda)
+  async reviewProposal(
+    @Param('id') id: string,
+    @Body() dto: { status: number },
+    @Req() req: Request,
+  ) {
+    return await this.contentService.reviewProposal(
+      id,
+      dto.status,
+      (req.user as User).id,
+    );
+  }
+
+  @Get(':id/file-history')
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarDemanda)
+  async getFileHistory(@Param('id') id: string) {
+    return await this.contentService.getFileHistory(id);
+  }
+
   @Get(':id')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.visualizarDemanda)

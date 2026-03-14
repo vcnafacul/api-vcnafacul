@@ -195,6 +195,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
         description: inscription.description,
         startDate: inscription.startDate,
         endDate: inscription.endDate,
+        expectedOpening: inscription.expectedOpening,
         status:
           inscription.actived === Status.Rejected ? Status.Rejected : status,
       },
@@ -381,6 +382,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
       (student) => {
         return Object.assign(new GetSubscribersDtoOutput(), {
           id: student.id,
+          userId: student.userId,
           cadastrado_em: student.createdAt,
           isento: student.isFree ? 'Sim' : 'Não',
           convocar: student.selectEnrolled ? 'Sim' : 'Não',

@@ -5,6 +5,7 @@ import { LogStudent } from '../../studentCourse/log-student/log-student.entity';
 export class GetSubscribersDtoOutput {
   //pt-br
   id: string;
+  userId: string;
   cadastrado_em: Date;
   isento: string;
   convocar: string;

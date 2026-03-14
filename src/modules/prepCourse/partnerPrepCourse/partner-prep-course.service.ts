@@ -566,6 +566,36 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     return updatedRole;
   }
 
+  async getLogos() {
+    return await this.cache.wrap<
+      { id: string; name: string; logoUrl: string; siteUrl: string }[]
+    >(
+      'partner:logos',
+      async () => {
+        const courses = await this.repository.findAllLogos();
+        const bucket = this.envService.get('BUCKET_PARTNERSHIP_DOC');
+        const results = await Promise.all(
+          courses
+            .filter((c) => c.logo)
+            .map(async (c) => {
+              const { buffer, contentType } = await this.blobService.getFile(
+                c.logo,
+                bucket,
+              );
+              return {
+                id: c.id,
+                name: c.geo?.name ?? '',
+                logoUrl: `data:${contentType};base64,${buffer}`,
+                siteUrl: c.geo?.site ?? '',
+              };
+            }),
+        );
+        return results;
+      },
+      60 * 60 * 24 * 7 * 7 * 1000, // 7 semanas
+    );
+  }
+
   async getSummary() {
     return await this.cache.wrap<number>('partnerPrepCourse:total', async () =>
       this.repository.getTotalEntity(),

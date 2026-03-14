@@ -1,4 +1,5 @@
 import { adjustDate } from './adjustDate';
+import { cleanString } from './cleanString';
 import { maskCpf } from './maskCpf';
 import { maskEmail } from './maskEmail';
 import { maskPhone } from './maskPhone';
@@ -77,5 +78,25 @@ describe('adjustDate', () => {
     const date = new Date(2025, 5, 15);
     adjustDate(date, 10);
     expect(date.getDate()).toBe(15);
+  });
+});
+
+describe('cleanString', () => {
+  it('should remove accents', () => {
+    expect(cleanString('café')).toBe('cafe');
+    expect(cleanString('José')).toBe('Jose');
+  });
+
+  it('should replace special characters with nothing and spaces with underscore', () => {
+    expect(cleanString('foo bar')).toBe('foo_bar');
+    expect(cleanString('a-b c.d')).toBe('ab_cd');
+  });
+
+  it('should keep alphanumeric and replace spaces with underscore', () => {
+    expect(cleanString('hello world')).toBe('hello_world');
+  });
+
+  it('should handle empty string', () => {
+    expect(cleanString('')).toBe('');
   });
 });

@@ -140,12 +140,19 @@ export class StudentCourseController {
         ? req.body.selectedCourses
         : [req.body.selectedCourses]
       : [];
+    const declarationContext = {
+      userAgent: (req.headers['user-agent'] as string) || undefined,
+      ip:
+        (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ??
+        req.socket?.remoteAddress,
+    };
     await this.service.declaredInterest(
       files.files || [],
       files.photo?.[0] || null,
       areaInterest,
       selectedCourses,
       req.body.studentId,
+      declarationContext,
     );
   }
 
@@ -446,8 +453,17 @@ export class StudentCourseController {
   })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  async confirmDeclaration(@Body() dto: ConfirmDeclarationDtoInput) {
-    await this.service.confirmDeclaration(dto.studentId);
+  async confirmDeclaration(
+    @Body() dto: ConfirmDeclarationDtoInput,
+    @Req() req: Request,
+  ) {
+    const declarationContext = {
+      userAgent: (req.headers['user-agent'] as string) || undefined,
+      ip:
+        (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ??
+        req.socket?.remoteAddress,
+    };
+    await this.service.confirmDeclaration(dto.studentId, declarationContext);
   }
 
   @Get(':id/details')

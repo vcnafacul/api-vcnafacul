@@ -56,6 +56,7 @@ export const envSchema = z.object({
   BUCKET_QUESTION: z.string().default('simulado-questoes'),
   BUCKET_SIMULADO: z.string().default('vcnafacul-simulado'),
   BUCKET_CONTENT: z.string().default('vcnafacul-content'),
+  BUCKET_NEWS: z.string().default('vcnafacul-news'),
   BUCKET_PARTNERSHIP_DOC: z.string().default('vcnafacul-partnership-doc'),
   AWS_STORAGE_CLASS: z.enum(['STANDARD']).default('STANDARD'),
 
@@ -68,6 +69,11 @@ export const envSchema = z.object({
   CACHE_DRIVER: z.string().default('inMemory'),
   REDIS_PORT: z.coerce.number().default(6379),
   REDIS_HOST: z.string().default('localhost'),
+
+  // Google Places API
+  GOOGLE_MAPS_API_KEY: z
+    .string()
+    .default('AIzaSyCK0EJwZiLpGw46t2sC811b63L8pVvT3A'),
 });
 
 export type Env = z.infer<typeof envSchema>;
