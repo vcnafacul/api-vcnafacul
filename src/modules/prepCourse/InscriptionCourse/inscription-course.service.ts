@@ -55,7 +55,9 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     const parnetPrepCourse =
       await this.partnerPrepCourseService.getByUserId(userId);
 
-    const hasActiveForm = await this.formService.hasActiveForm();
+    const hasActiveForm = await this.formService.hasActiveForm(
+      parnetPrepCourse.id,
+    );
     if (!hasActiveForm) {
       throw new HttpException(
         'Não existe um formulário ativo - Entre em contato com o suporte',
@@ -80,7 +82,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     inscriptionCourse.description = dto.description || '';
     inscriptionCourse.partnerPrepCourse = parnetPrepCourse;
     const result = await this.repository.create(inscriptionCourse);
-    await this.formService.createFormFull(result.id);
+    await this.formService.createFormFull(result.id, parnetPrepCourse.id);
     return {
       id: result.id,
       name: result.name,

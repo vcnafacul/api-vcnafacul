@@ -24,12 +24,25 @@ export class FormService {
   }
 
   //@Post(':inscriptionId/create-form-full')
-  public async createFormFull(inscriptionId: string) {
-    return await this.axios.post(`v1/form/${inscriptionId}/create-form-full`);
+  public async createFormFull(inscriptionId: string, partnerId: string) {
+    return await this.axios.post(`v1/form/${inscriptionId}/create-form-full`, {
+      partnerId,
+    });
   }
 
   //@Get has-active-form
-  public async hasActiveForm(): Promise<boolean> {
-    return await this.axios.get(`v1/form/has-active`);
+  public async hasActiveForm(partnerId: string): Promise<boolean> {
+    return await this.axios.get(`v1/form/has-active?partnerId=${partnerId}`);
+  }
+
+  public async createPartnerForm(partnerId: string) {
+    return await this.axios.post(
+      `v1/form`,
+      { name: 'Formulário do Cursinho', ownerType: 'PARTNER' },
+      {
+        'X-Owner-Type': 'PARTNER',
+        'X-Owner-Id': partnerId,
+      },
+    );
   }
 }
