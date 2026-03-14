@@ -19,6 +19,13 @@ export class QuestionFormService {
     );
   }
 
+  private partnerHeaders(partnerId: string): Record<string, string> {
+    return {
+      'X-Owner-Type': 'PARTNER',
+      'X-Owner-Id': partnerId,
+    };
+  }
+
   public async getQuestionForm(query: GetAllDtoInput) {
     let url = `v1/question`;
     const queryParams = Object.keys(query)
@@ -36,20 +43,38 @@ export class QuestionFormService {
     return await this.axios.get(`v1/question/${id}`);
   }
 
-  public async createQuestionForm(dto: any) {
-    return await this.axios.post(`v1/question`, dto);
+  public async createQuestionForm(dto: any, partnerId: string) {
+    return await this.axios.post(
+      `v1/question`,
+      dto,
+      this.partnerHeaders(partnerId),
+    );
   }
 
-  public async setActiveQuestionForm(id: string) {
-    await this.axios.patch(`v1/question/${id}/set-active`);
+  public async setActiveQuestionForm(id: string, partnerId: string) {
+    await this.axios.patch(
+      `v1/question/${id}/set-active`,
+      undefined,
+      this.partnerHeaders(partnerId),
+    );
   }
 
-  //delete question form
-  public async deleteQuestionForm(id: string) {
-    return await this.axios.delete(`v1/question/${id}`);
+  public async deleteQuestionForm(id: string, partnerId: string) {
+    return await this.axios.delete(
+      `v1/question/${id}`,
+      this.partnerHeaders(partnerId),
+    );
   }
 
-  public async updateQuestionForm(id: string, dto: unknown) {
-    return await this.axios.put(`v1/question/${id}`, dto);
+  public async updateQuestionForm(
+    id: string,
+    dto: unknown,
+    partnerId: string,
+  ) {
+    return await this.axios.put(
+      `v1/question/${id}`,
+      dto,
+      this.partnerHeaders(partnerId),
+    );
   }
 }
