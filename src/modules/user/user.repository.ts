@@ -140,12 +140,28 @@ export class UserRepository extends BaseRepository<User> {
     return buildFullSeriesActive(groupBy, raw);
   }
 
-  async aggregateUsersByRole(): Promise<AggregateUsersByRoleDtoOutput[]> {
-    return (await this.repository
+  async aggregateUsersByRole(
+    partnerId?: string,
+    baseOnly?: boolean,
+  ): Promise<AggregateUsersByRoleDtoOutput[]> {
+    const qb = this.repository
       .createQueryBuilder('u')
       .innerJoin('u.role', 'r')
       .select('r.name', 'name')
-      .addSelect('COUNT(*)', 'total')
+      .addSelect('COUNT(*)', 'total');
+
+    if (partnerId) {
+      qb.innerJoin('r.partnerPrepCourse', 'ppc').andWhere(
+        'ppc.id = :partnerId',
+        { partnerId },
+      );
+    }
+
+    if (baseOnly) {
+      qb.andWhere('r.base = :base', { base: true });
+    }
+
+    return (await qb
       .groupBy('r.id')
       .addGroupBy('r.name')
       .orderBy('total', 'DESC')
