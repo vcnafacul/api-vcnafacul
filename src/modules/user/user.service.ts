@@ -372,10 +372,12 @@ export class UserService extends BaseService<User> {
     );
   }
 
-  async aggregateUsersByRole() {
+  async aggregateUsersByRole(partnerId?: string, baseOnly?: boolean) {
+    const cacheKey = `aggregateUsersByRole:${partnerId ?? 'all'}:${baseOnly ?? false}`;
     return await this.cache.wrap<AggregateUsersByRoleDtoOutput[]>(
-      'aggregateUsersByRole',
-      async () => await this.userRepository.aggregateUsersByRole(),
+      cacheKey,
+      async () =>
+        await this.userRepository.aggregateUsersByRole(partnerId, baseOnly),
     );
   }
 
