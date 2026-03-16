@@ -204,8 +204,14 @@ export class UserController {
   }
 
   @Get('aggregate-role')
-  async aggregateUsersByRole() {
-    return await this.userService.aggregateUsersByRole();
+  async aggregateUsersByRole(
+    @Query('partnerId') partnerId?: string,
+    @Query('baseOnly') baseOnly?: string,
+  ) {
+    return await this.userService.aggregateUsersByRole(
+      partnerId || undefined,
+      baseOnly === 'true',
+    );
   }
 
   @Get('aggregate-last-access')

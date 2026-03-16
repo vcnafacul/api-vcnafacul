@@ -266,6 +266,32 @@ export class CollaboratorService extends BaseService<Collaborator> {
     };
   }
 
+  async getFrentesBatch(
+    userId: string,
+  ): Promise<Record<string, string[]>> {
+    const partnerPrepCourse =
+      await this.partnerPrepCourseService.getByUserId(userId);
+    if (!partnerPrepCourse) {
+      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
+    }
+    const collaborators = await this.repository.findOneByPrepPartner(
+      partnerPrepCourse.id,
+    );
+    const collaboratorIds = collaborators.map((c) => c.id);
+    const records =
+      await this.collaboratorFrenteRepository.findByCollaboratorIds(
+        collaboratorIds,
+      );
+    const map: Record<string, string[]> = {};
+    for (const record of records) {
+      if (!map[record.collaboratorId]) {
+        map[record.collaboratorId] = [];
+      }
+      map[record.collaboratorId].push(record.frenteId);
+    }
+    return map;
+  }
+
   async getAfinidades(collaboratorId: string): Promise<AfinidadeDto[]> {
     const records =
       await this.collaboratorFrenteRepository.findByCollaboratorId(

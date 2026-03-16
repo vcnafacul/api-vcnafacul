@@ -39,6 +39,15 @@ export class CollaboratorController {
     });
   }
 
+  @Get('frentes/batch')
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarColaboradores)
+  async getFrentesBatch(
+    @Req() req: Request,
+  ): Promise<Record<string, string[]>> {
+    return await this.service.getFrentesBatch((req.user as User).id);
+  }
+
   @Get(':id/prepCourse')
   async getCollaboratorByPrepPartner(@Param('id') id: string) {
     return await this.service.getCollaboratorByPrepPartner(id);

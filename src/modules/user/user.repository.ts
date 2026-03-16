@@ -33,6 +33,7 @@ export class UserRepository extends BaseRepository<User> {
     page,
     limit,
     name,
+    roleId,
   }: GetUserDtoInput): Promise<GetAllOutput<User>> {
     const query = this.repository
       .createQueryBuilder('entity')
@@ -45,13 +46,20 @@ export class UserRepository extends BaseRepository<User> {
 
     if (name) {
       query.andWhere(
-        '(entity.firstName LIKE :name OR entity.lastName LIKE :name)',
+        '(entity.firstName LIKE :name OR entity.lastName LIKE :name OR entity.email LIKE :name)',
         { name: `%${name}%` },
       );
       count.andWhere(
-        '(entity.firstName LIKE :name OR entity.lastName LIKE :name)',
+        '(entity.firstName LIKE :name OR entity.lastName LIKE :name OR entity.email LIKE :name)',
         { name: `%${name}%` },
       );
+    }
+
+    if (roleId) {
+      query.andWhere('role.id = :roleId', { roleId });
+      count.innerJoin('entity.role', 'role').andWhere('role.id = :roleId', {
+        roleId,
+      });
     }
 
     const [data, totalItems] = await Promise.all([
@@ -140,12 +148,28 @@ export class UserRepository extends BaseRepository<User> {
     return buildFullSeriesActive(groupBy, raw);
   }
 
-  async aggregateUsersByRole(): Promise<AggregateUsersByRoleDtoOutput[]> {
-    return (await this.repository
+  async aggregateUsersByRole(
+    partnerId?: string,
+    baseOnly?: boolean,
+  ): Promise<AggregateUsersByRoleDtoOutput[]> {
+    const qb = this.repository
       .createQueryBuilder('u')
       .innerJoin('u.role', 'r')
       .select('r.name', 'name')
-      .addSelect('COUNT(*)', 'total')
+      .addSelect('COUNT(*)', 'total');
+
+    if (partnerId) {
+      qb.innerJoin('r.partnerPrepCourse', 'ppc').andWhere(
+        'ppc.id = :partnerId',
+        { partnerId },
+      );
+    }
+
+    if (baseOnly) {
+      qb.andWhere('r.base = :base', { base: true });
+    }
+
+    return (await qb
       .groupBy('r.id')
       .addGroupBy('r.name')
       .orderBy('total', 'DESC')
