@@ -6,4 +6,8 @@ export class GetUserDtoInput extends GetAllDtoInput {
   @ApiProperty({ default: '', required: false })
   @IsOptional()
   name: string = '';
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  roleId: string = '';
 }
