@@ -312,11 +312,13 @@ export class UserService extends BaseService<User> {
     page,
     limit,
     name,
+    roleId,
   }: GetUserDtoInput): Promise<GetAllDtoOutput<UserWithRoleName>> {
     const result = await this.userRepository.findAllBy({
       name,
       page,
       limit,
+      roleId,
     });
 
     const data = result.data.map((user) => ({
@@ -372,10 +374,12 @@ export class UserService extends BaseService<User> {
     );
   }
 
-  async aggregateUsersByRole() {
+  async aggregateUsersByRole(partnerId?: string, baseOnly?: boolean) {
+    const cacheKey = `aggregateUsersByRole:${partnerId ?? 'all'}:${baseOnly ?? false}`;
     return await this.cache.wrap<AggregateUsersByRoleDtoOutput[]>(
-      'aggregateUsersByRole',
-      async () => await this.userRepository.aggregateUsersByRole(),
+      cacheKey,
+      async () =>
+        await this.userRepository.aggregateUsersByRole(partnerId, baseOnly),
     );
   }
 

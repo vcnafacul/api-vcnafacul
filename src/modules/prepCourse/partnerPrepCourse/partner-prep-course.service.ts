@@ -21,6 +21,7 @@ import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
+import { FormService } from 'src/modules/vcnafacul-form/form/form.service';
 import { createThumbnail } from 'src/utils/createThumbnail';
 import { DataSource } from 'typeorm';
 import { Collaborator } from '../collaborator/collaborator.entity';
@@ -50,6 +51,7 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     private dataSource: DataSource,
     private envService: EnvService,
     private readonly cache: CacheService,
+    private readonly formService: FormService,
   ) {
     super(repository);
   }
@@ -157,6 +159,16 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
         `Erro ao criar cursinho parceiro: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    }
+    // Cria form do parceiro no vcnafacul-form (best-effort, não bloqueia criação do cursinho)
+    if (partnerPrepCourse) {
+      try {
+        await this.formService.createPartnerForm(partnerPrepCourse.id);
+      } catch (error) {
+        this.logger.warn(
+          `Falha ao criar form para parceiro ${partnerPrepCourse.id}: ${error.message}`,
+        );
+      }
     }
     if (partnerPrepCourse) {
       const newPrep = await this.repository.findOneByIdRes(
@@ -564,6 +576,36 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     await this.logPartnerRepository.create(logPartner);
 
     return updatedRole;
+  }
+
+  async getLogos() {
+    return await this.cache.wrap<
+      { id: string; name: string; logoUrl: string; siteUrl: string }[]
+    >(
+      'partner:logos',
+      async () => {
+        const courses = await this.repository.findAllLogos();
+        const bucket = this.envService.get('BUCKET_PARTNERSHIP_DOC');
+        const results = await Promise.all(
+          courses
+            .filter((c) => c.logo)
+            .map(async (c) => {
+              const { buffer, contentType } = await this.blobService.getFile(
+                c.logo,
+                bucket,
+              );
+              return {
+                id: c.id,
+                name: c.geo?.name ?? '',
+                logoUrl: `data:${contentType};base64,${buffer}`,
+                siteUrl: c.geo?.site ?? '',
+              };
+            }),
+        );
+        return results;
+      },
+      60 * 60 * 24 * 7 * 7 * 1000, // 7 semanas
+    );
   }
 
   async getSummary() {

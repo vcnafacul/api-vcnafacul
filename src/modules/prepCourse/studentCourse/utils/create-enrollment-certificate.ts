@@ -162,18 +162,6 @@ export const createEnrollmentCertificate = async (
     {
       stack: [
         {
-          canvas: [
-            {
-              type: 'line',
-              x1: 150,
-              y1: 0,
-              x2: 350,
-              y2: 0,
-              lineWidth: 1,
-            },
-          ],
-        },
-        {
           text: `Comissão Organizadora do ${data.geo.name}`,
           style: 'signature',
           alignment: 'center',
@@ -215,6 +203,12 @@ export const createEnrollmentCertificate = async (
           text: '',
         },
       ],
+    },
+    {
+      text: 'Esta declaração possui autenticação digital, podendo ser conferida sua validade por meio do link ou do QR Code, o que dispensa assinatura e carimbo.',
+      style: 'footerNote',
+      alignment: 'center',
+      margin: [0, 30, 0, 0],
     },
   ];
 
@@ -261,6 +255,11 @@ export const createEnrollmentCertificate = async (
         fontSize: 8,
         color: '#0066cc',
         decoration: 'underline',
+      },
+      footerNote: {
+        fontSize: 9,
+        color: '#555',
+        italics: true,
       },
     },
   };

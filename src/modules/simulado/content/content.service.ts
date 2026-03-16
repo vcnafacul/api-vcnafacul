@@ -6,6 +6,7 @@ import {
   HttpServiceAxiosFactory,
 } from 'src/shared/services/axios/http-service-axios.factory';
 import { BlobService } from 'src/shared/services/blob/blob-service';
+import { UserService } from 'src/modules/user/user.service';
 import { cleanString } from 'src/utils/cleanString';
 
 @Injectable()
@@ -17,10 +18,24 @@ export class ContentProxyService {
     private readonly envService: EnvService,
     @Inject('BlobService') private readonly blobService: BlobService,
     private readonly cache: CacheService,
+    private readonly userService: UserService,
   ) {
     this.axios = this.httpServiceFactory.create(
       this.envService.get('SIMULADO_URL'),
     );
+  }
+
+  private async resolveUserName(userId: string): Promise<string> {
+    try {
+      const user = await this.userService.findUserById(userId);
+      if (!user) return userId;
+      const displayName = user.useSocialName
+        ? `${user.socialName} ${user.lastName}`
+        : `${user.firstName} ${user.lastName}`;
+      return displayName;
+    } catch {
+      return userId;
+    }
   }
 
   async create(body: any, userId: string) {
@@ -43,7 +58,13 @@ export class ContentProxyService {
   }
 
   async getById(id: string) {
-    return await this.axios.get(`v1/content/${id}`);
+    const content = await this.axios.get<any>(`v1/content/${id}`);
+    if (content?.lastEditedBy) {
+      content.lastEditedByName = await this.resolveUserName(
+        content.lastEditedBy,
+      );
+    }
+    return content;
   }
 
   async getBySubject(subjectId: string, status?: number) {
@@ -166,15 +187,10 @@ export class ContentProxyService {
     return await this.axios.delete(`v1/content/${id}`);
   }
 
-  async changeOrder(body: any) {
-    const { node1, node2 } = body;
-    if (node1 && node2) {
-      return await this.axios.patch('v1/content/swap-order', {
-        id1: node1,
-        id2: node2,
-      });
-    }
-    return await this.axios.patch('v1/content/swap-order', body);
+  async changeOrder(body: { orderedIds: string[] }) {
+    return await this.axios.patch('v1/content/reorder', {
+      orderedIds: body.orderedIds,
+    });
   }
 
   async getSummary() {
@@ -196,6 +212,114 @@ export class ContentProxyService {
       'content:snapshot-content-status',
       async () =>
         await this.axios.get<any>('v1/content/snapshot-content-status'),
+    );
+  }
+
+  async uploadProposal(
+    contentId: string,
+    userId: string,
+    file: Express.Multer.File,
+    comment?: string,
+  ) {
+    if (!file) {
+      throw new HttpException('file not found', HttpStatus.BAD_REQUEST);
+    }
+
+    const content = await this.axios.get<any>(
+      `v1/content/${contentId}/populated`,
+    );
+    if (!content) {
+      throw new HttpException('demand not found', HttpStatus.NOT_FOUND);
+    }
+
+    const directory = this.getDirectory(content);
+    const fileKey = await this.blobService.uploadFile(
+      file,
+      this.envService.get('BUCKET_CONTENT'),
+      undefined,
+      directory,
+    );
+
+    if (!fileKey) {
+      throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);
+    }
+
+    const fileContent = await this.axios.post<any>(
+      'v1/file-content/standalone',
+      {
+        fileKey,
+        originalName: file.originalname,
+        content: contentId,
+        uploadedBy: userId,
+      },
+    );
+
+    return await this.axios.post('v1/adjustment-proposal', {
+      content: contentId,
+      file: fileContent._id,
+      author: userId,
+      comment,
+    });
+  }
+
+  async getProposalsByContent(contentId: string) {
+    const proposals = await this.axios.get<any[]>(
+      `v1/adjustment-proposal/content/${contentId}`,
+    );
+    if (!proposals || !Array.isArray(proposals)) return proposals;
+
+    return await Promise.all(
+      proposals.map(async (p) => ({
+        ...p,
+        authorName: await this.resolveUserName(p.author),
+        ...(p.reviewedBy
+          ? { reviewedByName: await this.resolveUserName(p.reviewedBy) }
+          : {}),
+      })),
+    );
+  }
+
+  async reviewProposal(
+    proposalId: string,
+    status: number,
+    reviewedBy: string,
+  ) {
+    const result = await this.axios.patch(
+      `v1/adjustment-proposal/${proposalId}/review`,
+      { status, reviewedBy },
+    );
+
+    if (status === 1) {
+      try {
+        const proposal = await this.axios.get<any>(
+          `v1/adjustment-proposal/${proposalId}`,
+        );
+        if (proposal?.content) {
+          const contentId =
+            typeof proposal.content === 'string'
+              ? proposal.content
+              : proposal.content._id;
+          await this.invalidateContentCaches(contentId);
+        }
+      } catch {
+        // ignore cache invalidation errors
+      }
+    }
+
+    return result;
+  }
+
+  async getFileHistory(contentId: string) {
+    const history = await this.axios.get<any[]>(
+      `v1/content-file-history/content/${contentId}`,
+    );
+    if (!history || !Array.isArray(history)) return history;
+
+    return await Promise.all(
+      history.map(async (h) => ({
+        ...h,
+        uploadedByName: await this.resolveUserName(h.uploadedBy),
+      })),
     );
   }
 }
