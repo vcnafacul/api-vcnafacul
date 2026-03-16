@@ -49,7 +49,7 @@ describe('HttpServiceAxios', () => {
 
       const result = await service.get('v1/items');
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('http://localhost:3000/v1/items');
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('http://localhost:3000/v1/items', undefined);
       expect(result).toEqual({ id: 1 });
     });
 
@@ -86,6 +86,7 @@ describe('HttpServiceAxios', () => {
       expect(mockAxiosInstance.post).toHaveBeenCalledWith(
         'http://localhost:3000/v1/items',
         { name: 'test' },
+        undefined,
       );
       expect(result).toEqual({ id: 2 });
     });
@@ -100,6 +101,7 @@ describe('HttpServiceAxios', () => {
       expect(mockAxiosInstance.patch).toHaveBeenCalledWith(
         'http://localhost:3000/v1/items/1',
         { name: 'updated' },
+        undefined,
       );
       expect(result).toEqual({ updated: true });
     });
@@ -113,6 +115,7 @@ describe('HttpServiceAxios', () => {
 
       expect(mockAxiosInstance.delete).toHaveBeenCalledWith(
         'http://localhost:3000/v1/items/1',
+        undefined,
       );
       expect(result).toBeNull();
     });
@@ -127,6 +130,7 @@ describe('HttpServiceAxios', () => {
       expect(mockAxiosInstance.put).toHaveBeenCalledWith(
         'http://localhost:3000/v1/items/1',
         { name: 'new' },
+        undefined,
       );
       expect(result).toEqual({ replaced: true });
     });

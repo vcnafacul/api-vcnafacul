@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { GeoModule } from 'src/modules/geo/geo.module';
 import { RoleModule } from 'src/modules/role/role.module';
 import { UserModule } from 'src/modules/user/user.module';
+import { VcnafaculFormModule } from 'src/modules/vcnafacul-form/vcnafacul-form.module';
 import { EnvModule } from 'src/shared/modules/env/env.module';
 import { BlobModule } from 'src/shared/services/blob/blob.module';
 import { EmailService } from 'src/shared/services/email/email.service';
@@ -21,6 +22,7 @@ import { PartnerPrepCourseExistValidator } from './validator/partner-pret-course
     BlobModule,
     GeoModule,
     EnvModule,
+    forwardRef(() => VcnafaculFormModule),
   ],
   providers: [
     PartnerPrepCourseService,

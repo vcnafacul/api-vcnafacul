@@ -70,6 +70,9 @@ export const envSchema = z.object({
   REDIS_PORT: z.coerce.number().default(6379),
   REDIS_HOST: z.string().default('localhost'),
 
+  // Form Service
+  ADMIN_FORM_SECRET: z.string().default('dev-secret'),
+
   // Google Places API
   GOOGLE_MAPS_API_KEY: z
     .string()

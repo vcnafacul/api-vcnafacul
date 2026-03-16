@@ -55,38 +55,56 @@ export class HttpServiceAxios {
     }
   }
 
-  public async get<T>(url: string): Promise<T> {
+  public async get<T>(
+    url: string,
+    headers?: Record<string, string>,
+  ): Promise<T> {
     // Construir URL completa manualmente para garantir que não há interferência
     const fullURL = this.getFullURL(url);
 
     // Usar URL completa em vez de baseURL + url para evitar interferência
     return this.requestWrapper(
-      this.axiosInstance.get<T>(fullURL).then((response) => response.data),
-    );
-  }
-
-  public async post<T>(url: string, body?: any): Promise<T> {
-    const fullURL = this.getFullURL(url);
-    return this.requestWrapper(
       this.axiosInstance
-        .post<T>(fullURL, body)
+        .get<T>(fullURL, headers ? { headers } : undefined)
         .then((response) => response.data),
     );
   }
 
-  public async patch<T>(url: string, body?: any): Promise<T> {
+  public async post<T>(
+    url: string,
+    body?: any,
+    headers?: Record<string, string>,
+  ): Promise<T> {
     const fullURL = this.getFullURL(url);
     return this.requestWrapper(
       this.axiosInstance
-        .patch<T>(fullURL, body)
+        .post<T>(fullURL, body, headers ? { headers } : undefined)
         .then((response) => response.data),
     );
   }
 
-  public async delete<T>(url: string): Promise<T> {
+  public async patch<T>(
+    url: string,
+    body?: any,
+    headers?: Record<string, string>,
+  ): Promise<T> {
     const fullURL = this.getFullURL(url);
     return this.requestWrapper(
-      this.axiosInstance.delete<T>(fullURL).then((response) => response.data),
+      this.axiosInstance
+        .patch<T>(fullURL, body, headers ? { headers } : undefined)
+        .then((response) => response.data),
+    );
+  }
+
+  public async delete<T>(
+    url: string,
+    headers?: Record<string, string>,
+  ): Promise<T> {
+    const fullURL = this.getFullURL(url);
+    return this.requestWrapper(
+      this.axiosInstance
+        .delete<T>(fullURL, headers ? { headers } : undefined)
+        .then((response) => response.data),
     );
   }
 
@@ -103,11 +121,15 @@ export class HttpServiceAxios {
     return `${cleanBaseURL}/${cleanURL}`;
   }
 
-  public async put<T>(url: string, body: any): Promise<T> {
+  public async put<T>(
+    url: string,
+    body: any,
+    headers?: Record<string, string>,
+  ): Promise<T> {
     const fullURL = this.getFullURL(url);
     return this.requestWrapper(
       this.axiosInstance
-        .put<T>(fullURL, body)
+        .put<T>(fullURL, body, headers ? { headers } : undefined)
         .then((response) => response.data),
     );
   }
