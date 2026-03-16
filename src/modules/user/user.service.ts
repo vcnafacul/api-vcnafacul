@@ -312,11 +312,13 @@ export class UserService extends BaseService<User> {
     page,
     limit,
     name,
+    roleId,
   }: GetUserDtoInput): Promise<GetAllDtoOutput<UserWithRoleName>> {
     const result = await this.userRepository.findAllBy({
       name,
       page,
       limit,
+      roleId,
     });
 
     const data = result.data.map((user) => ({
