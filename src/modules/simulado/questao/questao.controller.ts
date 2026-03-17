@@ -89,6 +89,19 @@ export class QuestaoController {
     return await this.questaoService.getById(id);
   }
 
+  @Post('assets')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'upload de asset inline para rich text',
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  @UseInterceptors(FileInterceptor('file'))
+  public async uploadAsset(@UploadedFile() file: Express.Multer.File) {
+    return await this.questaoService.uploadAsset(file);
+  }
+
   @Patch(':id/classification')
   @ApiBearerAuth()
   @ApiResponse({

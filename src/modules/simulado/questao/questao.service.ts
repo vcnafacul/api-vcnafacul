@@ -96,6 +96,19 @@ export class QuestaoService {
     return fileKey;
   }
 
+  public async uploadAsset(file: Express.Multer.File): Promise<{ assetId: string }> {
+    if (!file) {
+      throw new Error('Nenhum arquivo fornecido');
+    }
+    const fileKey = await this.blobService.uploadFile(
+      file,
+      this.envService.get('BUCKET_QUESTION'),
+      undefined,
+      'assets',
+    );
+    return { assetId: fileKey };
+  }
+
   public async delete(id: string) {
     await this.axios.delete(`v1/questao/${id}`);
   }
