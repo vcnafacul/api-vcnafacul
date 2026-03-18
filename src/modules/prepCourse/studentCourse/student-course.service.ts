@@ -1499,11 +1499,24 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     }
 
     // Verifica se o estudante requisitante é o mesmo do certificado
+    // ou se é um colaborador do mesmo cursinho com permissão de gerenciar estudantes
     if (student.userId !== userId) {
-      throw new HttpException(
-        'Você não tem permissão para acessar esta declaração',
-        HttpStatus.FORBIDDEN,
-      );
+      const collaborator =
+        await this.collaboratorRepository.findOneByUserId(userId);
+      const user = await this.userRepository.findOneBy({ id: userId });
+
+      const isCollaboratorWithPermission =
+        collaborator &&
+        user?.role?.gerenciarEstudantes &&
+        collaborator.partnerPrepCourse?.id ===
+          student.partnerPrepCourse?.id;
+
+      if (!isCollaboratorWithPermission) {
+        throw new HttpException(
+          'Você não tem permissão para acessar esta declaração',
+          HttpStatus.FORBIDDEN,
+        );
+      }
     }
 
     // Verifica se o estudante está matriculado
