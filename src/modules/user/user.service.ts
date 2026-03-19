@@ -408,7 +408,11 @@ export class UserService extends BaseService<User> {
     }
 
     // Gera o access token (15 minutos)
-    const accessToken = await this.jwtService.signAsync({ user, roles });
+    const accessToken = await this.jwtService.signAsync({
+      user,
+      roles,
+      roleId: domain.role.id,
+    });
 
     // Gera o refresh token (7 dias)
     const refreshToken = await this.refreshTokenService.generateRefreshToken(
@@ -507,6 +511,7 @@ export class UserService extends BaseService<User> {
     const accessToken = await this.jwtService.signAsync({
       user: userDto,
       roles,
+      roleId: user.role.id,
     });
 
     this.logger.log(`Access token renovado para usuário: ${user.id}`);
