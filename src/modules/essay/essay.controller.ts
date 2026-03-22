@@ -134,6 +134,12 @@ export class EssayController {
     return this.essayService.findMyEssays(req.user.id, +page, +limit);
   }
 
+  @Get('my/stats')
+  @UseGuards(JwtAuthGuard)
+  async myStats(@Req() req: { user: { id: string } }) {
+    return this.essayService.getMyStats(req.user.id);
+  }
+
   // ---- Review endpoints ----
 
   @Get('all')
