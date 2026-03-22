@@ -9,7 +9,10 @@ import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
 import { UpdateRoleDtoInput } from 'src/modules/role/dto/update.role.dto';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
+import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import * as request from 'supertest';
+
+jest.mock('src/shared/services/webhooks/discord.ts');
 import { createNestAppTest } from './utils/createNestAppTest';
 
 describe('Role e2e', () => {
@@ -21,6 +24,8 @@ describe('Role e2e', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
+      .overrideProvider(DiscordWebhook)
+      .useValue({ sendMessage: jest.fn() })
       .overrideGuard(PermissionsGuard)
       .useValue({
         canActivate: jest.fn(() => true),
@@ -77,6 +82,8 @@ describe('Role e2e', () => {
         visualizarMinhasInscricoes: false,
         gerenciarFormularioGlobal: false,
         gerenciarTemas: false,
+        revisarRedacoes: false,
+        revisarTodasRedacoes: false,
       };
 
       const baseRoleResponse = await request(app.getHttpServer())
@@ -122,6 +129,8 @@ describe('Role e2e', () => {
         visualizarMinhasInscricoes: false,
         gerenciarFormularioGlobal: false,
         gerenciarTemas: false,
+        revisarRedacoes: false,
+        revisarTodasRedacoes: false,
       };
 
       const childRoleResponse = await request(app.getHttpServer())
@@ -251,6 +260,8 @@ describe('Role e2e', () => {
         visualizarMinhasInscricoes: false,
         gerenciarFormularioGlobal: false,
         gerenciarTemas: false,
+        revisarRedacoes: false,
+        revisarTodasRedacoes: false,
       };
 
       const baseRoleResponse = await request(app.getHttpServer())
@@ -288,6 +299,8 @@ describe('Role e2e', () => {
         visualizarMinhasInscricoes: false,
         gerenciarFormularioGlobal: false,
         gerenciarTemas: false,
+        revisarRedacoes: false,
+        revisarTodasRedacoes: false,
       };
 
       const childRoleResponse = await request(app.getHttpServer())

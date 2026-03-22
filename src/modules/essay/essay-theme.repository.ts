@@ -23,4 +23,25 @@ export class EssayThemeRepository extends BaseRepository<EssayTheme> {
       .orderBy('theme.week_start', 'DESC')
       .getOne();
   }
+
+  async findAvailableForUser(userId: string): Promise<EssayTheme[]> {
+    return this.repository
+      .createQueryBuilder('theme')
+      .where('theme.deletedAt IS NULL')
+      .andWhere('theme.active = :active', { active: true })
+      .andWhere('theme.week_start <= CURDATE()')
+      .andWhere('theme.week_end >= CURDATE()')
+      .andWhere(
+        `NOT EXISTS (
+          SELECT 1 FROM essays e
+          WHERE e.theme_id = theme.id
+            AND e.user_id = :userId
+            AND e.status != 'DRAFT'
+            AND e.deleted_at IS NULL
+        )`,
+        { userId },
+      )
+      .orderBy('theme.week_end', 'ASC')
+      .getMany();
+  }
 }

@@ -3,13 +3,13 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
-  OneToOne,
+  OneToMany,
   Unique,
 } from 'typeorm';
 import { BaseEntity } from '../../../shared/modules/base/entity.base';
 import { User } from '../../user/user.entity';
 import { EssayTheme } from './essay-theme.entity';
-import { EssayAIReview } from './essay-ai-review.entity';
+import { EssayReview } from './essay-review.entity';
 import { EssayStatus } from '../enums/essay-status.enum';
 import { EssayInputType } from '../enums/essay-input-type.enum';
 
@@ -57,6 +57,6 @@ export class Essay extends BaseEntity {
   @JoinColumn({ name: 'theme_id' })
   theme: EssayTheme;
 
-  @OneToOne(() => EssayAIReview, (review) => review.essay)
-  aiReview: EssayAIReview;
+  @OneToMany(() => EssayReview, (review) => review.essay)
+  reviews: EssayReview[];
 }

@@ -4,20 +4,25 @@ import { EnvModule } from '../../shared/modules/env/env.module';
 import { UserModule } from '../user/user.module';
 import { EssayTheme } from './entities/essay-theme.entity';
 import { Essay } from './entities/essay.entity';
-import { EssayAIReview } from './entities/essay-ai-review.entity';
+import { EssayReview } from './entities/essay-review.entity';
+import { EssaySettings } from './entities/essay-settings.entity';
 import { EssayThemeRepository } from './essay-theme.repository';
 import { EssayRepository } from './essay.repository';
+import { EssaySettingsRepository } from './essay-settings.repository';
 import { EssayThemeService } from './essay-theme.service';
 import { EssayService } from './essay.service';
+import { EssaySettingsService } from './essay-settings.service';
 import { EssayController } from './essay.controller';
 import { ClaudeEssayProvider } from './ai/claude-essay.provider';
 import { NoopEssayProvider } from './ai/noop-essay.provider';
+import { OpenAIEssayProvider } from './ai/openai-essay.provider';
 import { ESSAY_AI_PROVIDER } from './ai/essay-ai.interface';
 import { EnvService } from '../../shared/modules/env/env.service';
+import { EmailService } from '../../shared/services/email/email.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([EssayTheme, Essay, EssayAIReview]),
+    TypeOrmModule.forFeature([EssayTheme, Essay, EssayReview, EssaySettings]),
     EnvModule,
     UserModule,
   ],
@@ -25,22 +30,34 @@ import { EnvService } from '../../shared/modules/env/env.service';
   providers: [
     EssayThemeRepository,
     EssayRepository,
+    EssaySettingsRepository,
     EssayThemeService,
     EssayService,
+    EssaySettingsService,
+    EmailService,
     ClaudeEssayProvider,
     NoopEssayProvider,
+    OpenAIEssayProvider,
     {
       provide: ESSAY_AI_PROVIDER,
       useFactory: (
         env: EnvService,
         claude: ClaudeEssayProvider,
+        openai: OpenAIEssayProvider,
         noop: NoopEssayProvider,
       ) => {
-        return env.get('ESSAY_AI_ENABLED') && env.get('ANTHROPIC_API_KEY')
-          ? claude
-          : noop;
+        const provider = env.get('ESSAY_AI_PROVIDER');
+        if (provider === 'openai' && env.get('OPENAI_API_KEY')) return openai;
+        if (provider === 'claude' && env.get('ANTHROPIC_API_KEY'))
+          return claude;
+        return noop;
       },
-      inject: [EnvService, ClaudeEssayProvider, NoopEssayProvider],
+      inject: [
+        EnvService,
+        ClaudeEssayProvider,
+        OpenAIEssayProvider,
+        NoopEssayProvider,
+      ],
     },
   ],
 })

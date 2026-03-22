@@ -27,6 +27,8 @@ export enum Permissions {
   visualizarMinhasInscricoes = 'visualizar_minhas_inscricoes',
   gerenciarFormularioGlobal = 'gerenciar_formulario_global',
   gerenciarTemas = 'gerenciar_temas',
+  revisarRedacoes = 'revisar_redacoes',
+  revisarTodasRedacoes = 'revisar_todas_redacoes',
 }
 
 @Entity('roles')
@@ -123,6 +125,12 @@ export class Role extends BaseEntity {
 
   @Column({ name: Permissions.gerenciarTemas, default: false })
   gerenciarTemas: boolean;
+
+  @Column({ name: Permissions.revisarRedacoes, default: false })
+  revisarRedacoes: boolean;
+
+  @Column({ name: Permissions.revisarTodasRedacoes, default: false })
+  revisarTodasRedacoes: boolean;
 
   @OneToMany(() => User, (user) => user.role)
   users: User[];

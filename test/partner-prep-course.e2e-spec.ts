@@ -23,6 +23,7 @@ import { SubmissionService } from 'src/modules/vcnafacul-form/submission/submiss
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
+import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import * as request from 'supertest';
 import { CreateGeoDTOInputFaker } from './faker/create-geo.dto.input.faker';
 import { CreateInscriptionCourseDTOInputFaker } from './faker/create-inscription-course.dto.faker';
@@ -33,6 +34,7 @@ import { createNestAppTest } from './utils/createNestAppTest';
 // Mock the EmailService globally
 jest.mock('src/shared/services/email/email.service');
 jest.mock('src/shared/services/blob/blob-service.ts');
+jest.mock('src/shared/services/webhooks/discord.ts');
 
 describe('PartnerPrepCourse (e2e)', () => {
   let app: INestApplication;
@@ -52,10 +54,15 @@ describe('PartnerPrepCourse (e2e)', () => {
   let logGeoRepository: LogGeoRepository;
   let geoRepository: GeoRepository;
 
+  const discordWebhookMock = {
+    sendMessage: jest.fn(),
+  };
+
   const formServiceMock = {
     hasActiveForm: jest.fn().mockResolvedValue(true),
     createFormFull: jest.fn().mockResolvedValue('hashKeyFile'),
     getFormFullByInscriptionId: jest.fn().mockResolvedValue('hashKeyFile'),
+    createPartnerForm: jest.fn().mockResolvedValue(undefined),
   };
 
   beforeAll(async () => {
@@ -63,6 +70,8 @@ describe('PartnerPrepCourse (e2e)', () => {
       imports: [AppModule],
       providers: [EmailService, ConfigService],
     })
+      .overrideProvider(DiscordWebhook)
+      .useValue(discordWebhookMock)
       .overrideProvider(FormService)
       .useValue(formServiceMock)
       .overrideGuard(JwtAuthGuard) // Aqui estamos substituindo o guard por um mock

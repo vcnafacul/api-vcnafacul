@@ -40,7 +40,10 @@ export class QuestionFormService {
   }
 
   public async getQuestionFormById(id: string, partnerId: string) {
-    return await this.axios.get(`v1/question/${id}`, this.partnerHeaders(partnerId));
+    return await this.axios.get(
+      `v1/question/${id}`,
+      this.partnerHeaders(partnerId),
+    );
   }
 
   public async createQuestionForm(dto: any, partnerId: string) {

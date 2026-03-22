@@ -77,7 +77,9 @@ describe('EssayThemeService', () => {
     it('should throw NotFoundException if not found', async () => {
       themeRepo.findOneBy.mockResolvedValue(null);
 
-      await expect(service.findById('theme-1')).rejects.toThrow(NotFoundException);
+      await expect(service.findById('theme-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -101,19 +103,23 @@ describe('EssayThemeService', () => {
   });
 
   describe('remove', () => {
-    it('should soft delete a theme', async () => {
-      themeRepo.findOneBy.mockResolvedValue(mockTheme);
-      themeRepo.softDelete.mockResolvedValue(undefined);
+    it('should deactivate a theme', async () => {
+      themeRepo.findOneBy.mockResolvedValue({ ...mockTheme, active: true });
+      themeRepo.update.mockResolvedValue(undefined);
 
       await service.remove('theme-1');
 
-      expect(themeRepo.softDelete).toHaveBeenCalledWith('theme-1');
+      expect(themeRepo.update).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'theme-1', active: false }),
+      );
     });
 
     it('should throw NotFoundException if theme not found', async () => {
       themeRepo.findOneBy.mockResolvedValue(null);
 
-      await expect(service.remove('theme-1')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('theme-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

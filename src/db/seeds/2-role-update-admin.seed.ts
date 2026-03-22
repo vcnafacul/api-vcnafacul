@@ -21,6 +21,9 @@ export class RoleUpdateAdminSeedService {
 
       // Atualiza as permissões da role admin
       await this.roleRepository.updateRole('admin', {
+        validarCursinho: true,
+        alterarPermissao: true,
+        criarSimulado: true,
         criarQuestao: true,
         visualizarQuestao: true,
         validarQuestao: true,
@@ -38,7 +41,11 @@ export class RoleUpdateAdminSeedService {
         gerenciarEstudantes: true,
         visualizarEstudantes: true,
         gerenciarPermissoesCursinho: true,
+        visualizarMinhasInscricoes: true,
         gerenciarFormularioGlobal: true,
+        gerenciarTemas: true,
+        revisarRedacoes: true,
+        revisarTodasRedacoes: true,
       });
 
       this.logger.log('Role admin atualizada com sucesso');
