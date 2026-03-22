@@ -19,6 +19,10 @@ export class EssayThemeService {
     return this.themeRepo.findCurrentTheme();
   }
 
+  async findAvailable(userId: string): Promise<EssayTheme[]> {
+    return this.themeRepo.findAvailableForUser(userId);
+  }
+
   async findAll(page = 1, limit = 10) {
     return this.themeRepo.findAllBy({ page, limit });
   }
@@ -36,7 +40,8 @@ export class EssayThemeService {
   }
 
   async remove(id: string): Promise<void> {
-    await this.findById(id);
-    await this.themeRepo.softDelete(id);
+    const theme = await this.findById(id);
+    theme.active = false;
+    await this.themeRepo.update(theme);
   }
 }

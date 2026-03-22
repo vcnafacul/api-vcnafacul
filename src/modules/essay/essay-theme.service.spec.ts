@@ -77,7 +77,9 @@ describe('EssayThemeService', () => {
     it('should throw NotFoundException if not found', async () => {
       themeRepo.findOneBy.mockResolvedValue(null);
 
-      await expect(service.findById('theme-1')).rejects.toThrow(NotFoundException);
+      await expect(service.findById('theme-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -113,7 +115,9 @@ describe('EssayThemeService', () => {
     it('should throw NotFoundException if theme not found', async () => {
       themeRepo.findOneBy.mockResolvedValue(null);
 
-      await expect(service.remove('theme-1')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('theme-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

@@ -16,6 +16,7 @@ import { sendEmailDeclaredInterestBulk } from './templates/declared-interest-bul
 import { sendEmailInviteMember } from './templates/invite-member-prep-course';
 import { sendEmail } from './templates/reset-password';
 import { sendEmailWaitingList } from './templates/waiting-list';
+import { sendEssayReviewNotification } from './templates/essay-review-notification';
 
 @Injectable()
 export class EmailService {
@@ -431,5 +432,36 @@ export class EmailService {
     this.sendBulkNotification(bccList, subject, message).catch((error) => {
       this.logger.error(`Erro no envio em massa assíncrono: ${error.message}`);
     });
+  }
+
+  async sendEssayReviewEmail(
+    studentEmail: string,
+    context: {
+      studentName: string;
+      reviewerName: string;
+      themeTitle: string;
+      totalScore: number;
+      comp1Score: number;
+      comp2Score: number;
+      comp3Score: number;
+      comp4Score: number;
+      comp5Score: number;
+      reviewUrl: string;
+    },
+  ): Promise<void> {
+    try {
+      const options = {
+        from: `Voce na Facul <${this.envService.get('SMTP_USERNAME')}>`,
+        to: studentEmail,
+        subject: `Sua redacao foi revisada — ${context.themeTitle}`,
+        context,
+      };
+      await sendEssayReviewNotification({
+        transporter: this.transporter,
+        options,
+      });
+    } catch (error) {
+      this.logger.error('Erro ao enviar email de revisao de redacao', error);
+    }
   }
 }

@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -22,6 +23,7 @@ import { CreateEssayThemeDto } from './dtos/create-essay-theme.dto';
 import { UpdateEssayThemeDto } from './dtos/update-essay-theme.dto';
 import { CreateEssayDto } from './dtos/create-essay.dto';
 import { SubmitEssayDto } from './dtos/submit-essay.dto';
+import { CreateEssayReviewDto } from './dtos/create-essay-review.dto';
 
 @ApiTags('Essay')
 @Controller('essay')
@@ -60,6 +62,12 @@ export class EssayController {
   @UseGuards(JwtAuthGuard)
   getCurrentTheme() {
     return this.themeService.findCurrent();
+  }
+
+  @Get('theme/available')
+  @UseGuards(JwtAuthGuard)
+  getAvailableThemes(@Req() req: any) {
+    return this.themeService.findAvailable(req.user.id);
   }
 
   @Get('theme')
@@ -126,9 +134,95 @@ export class EssayController {
     return this.essayService.findMyEssays(req.user.id, +page, +limit);
   }
 
+  // ---- Review endpoints ----
+
+  @Get('all')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.revisarTodasRedacoes)
+  getAllEssays(
+    @Query('page') page = 1,
+    @Query('limit') limit = 20,
+    @Query('themeId') themeId?: string,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.essayService.findAllEssays(+page, +limit, {
+      themeId,
+      status,
+      search,
+    });
+  }
+
+  @Get('my-cursinho')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.revisarRedacoes)
+  getMyCursinhoEssays(
+    @Req() req: any,
+    @Query('page') page = 1,
+    @Query('limit') limit = 20,
+    @Query('themeId') themeId?: string,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.essayService.findEssaysForCollaborator(req.user.id, +page, +limit, {
+      themeId,
+      status,
+      search,
+    });
+  }
+
+  @Get('prep-course/:prepCourseId')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.revisarRedacoes)
+  async getPrepCourseEssays(
+    @Param('prepCourseId') prepCourseId: string,
+    @Req() req: any,
+    @Query('page') page = 1,
+    @Query('limit') limit = 20,
+    @Query('themeId') themeId?: string,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+  ) {
+    await this.essayService.validatePrepCourseAccess(prepCourseId, req.user.id);
+    return this.essayService.findEssaysByPrepCourse(
+      prepCourseId,
+      +page,
+      +limit,
+      { themeId, status, search },
+    );
+  }
+
+  @Post(':id/review')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.revisarRedacoes)
+  async createReview(
+    @Param('id') id: string,
+    @Body() dto: CreateEssayReviewDto,
+    @Req() req: any,
+  ) {
+    await this.essayService.validateReviewerScope(id, req.user.id);
+    return this.essayService.createHumanReview(id, req.user.id, dto);
+  }
+
+  @Get(':id/reviews')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.revisarRedacoes)
+  async getReviews(@Param('id') id: string, @Req() req: any) {
+    await this.essayService.validateReviewerScope(id, req.user.id);
+    return this.essayService.findReviewsByEssayId(id);
+  }
+
   @Get(':id')
   @UseGuards(JwtAuthGuard)
-  getEssay(@Param('id') id: string, @Req() req: any) {
-    return this.essayService.findById(id, req.user.id);
+  async getEssay(@Param('id') id: string, @Req() req: any) {
+    try {
+      return await this.essayService.findById(id, req.user.id);
+    } catch {
+      if (req.user?.permissao?.revisarRedacoes) {
+        await this.essayService.validateReviewerScope(id, req.user.id);
+        return this.essayService.findByIdForReviewer(id);
+      }
+      throw new NotFoundException('Redacao nao encontrada');
+    }
   }
 }

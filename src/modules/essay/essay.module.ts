@@ -4,7 +4,7 @@ import { EnvModule } from '../../shared/modules/env/env.module';
 import { UserModule } from '../user/user.module';
 import { EssayTheme } from './entities/essay-theme.entity';
 import { Essay } from './entities/essay.entity';
-import { EssayAIReview } from './entities/essay-ai-review.entity';
+import { EssayReview } from './entities/essay-review.entity';
 import { EssaySettings } from './entities/essay-settings.entity';
 import { EssayThemeRepository } from './essay-theme.repository';
 import { EssayRepository } from './essay.repository';
@@ -18,10 +18,11 @@ import { NoopEssayProvider } from './ai/noop-essay.provider';
 import { OpenAIEssayProvider } from './ai/openai-essay.provider';
 import { ESSAY_AI_PROVIDER } from './ai/essay-ai.interface';
 import { EnvService } from '../../shared/modules/env/env.service';
+import { EmailService } from '../../shared/services/email/email.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([EssayTheme, Essay, EssayAIReview, EssaySettings]),
+    TypeOrmModule.forFeature([EssayTheme, Essay, EssayReview, EssaySettings]),
     EnvModule,
     UserModule,
   ],
@@ -33,6 +34,7 @@ import { EnvService } from '../../shared/modules/env/env.service';
     EssayThemeService,
     EssayService,
     EssaySettingsService,
+    EmailService,
     ClaudeEssayProvider,
     NoopEssayProvider,
     OpenAIEssayProvider,
@@ -46,7 +48,8 @@ import { EnvService } from '../../shared/modules/env/env.service';
       ) => {
         const provider = env.get('ESSAY_AI_PROVIDER');
         if (provider === 'openai' && env.get('OPENAI_API_KEY')) return openai;
-        if (provider === 'claude' && env.get('ANTHROPIC_API_KEY')) return claude;
+        if (provider === 'claude' && env.get('ANTHROPIC_API_KEY'))
+          return claude;
         return noop;
       },
       inject: [

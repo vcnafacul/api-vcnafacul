@@ -1,11 +1,23 @@
-import { Column, Entity, JoinColumn, OneToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../shared/modules/base/entity.base';
 import { Essay } from './essay.entity';
+import { User } from '../../user/user.entity';
+import { ReviewType } from '../enums/review-type.enum';
 
-@Entity('essay_ai_reviews')
-export class EssayAIReview extends BaseEntity {
+@Entity('essay_reviews')
+export class EssayReview extends BaseEntity {
   @Column({ name: 'essay_id' })
   essayId: string;
+
+  @Column({
+    name: 'review_type',
+    type: 'enum',
+    enum: ReviewType,
+  })
+  reviewType: ReviewType;
+
+  @Column({ name: 'reviewer_id', nullable: true })
+  reviewerId: string;
 
   @Column({ name: 'comp1_score' })
   comp1Score: number;
@@ -71,13 +83,17 @@ export class EssayAIReview extends BaseEntity {
   @Column({ name: 'processing_time_ms', nullable: true })
   processingTimeMs: number;
 
-  @Column({ length: 50 })
+  @Column({ length: 50, nullable: true })
   provider: string;
 
-  @Column({ length: 100 })
+  @Column({ length: 100, nullable: true })
   model: string;
 
-  @OneToOne(() => Essay, (essay) => essay.aiReview)
+  @ManyToOne(() => Essay, (essay) => essay.reviews)
   @JoinColumn({ name: 'essay_id' })
   essay: Essay;
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'reviewer_id' })
+  reviewer: User;
 }

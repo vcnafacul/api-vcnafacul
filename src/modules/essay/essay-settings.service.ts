@@ -10,7 +10,9 @@ export class EssaySettingsService {
     return { aiEnabled: settings.aiEnabled };
   }
 
-  async updateSettings(data: { aiEnabled: boolean }): Promise<{ aiEnabled: boolean }> {
+  async updateSettings(data: {
+    aiEnabled: boolean;
+  }): Promise<{ aiEnabled: boolean }> {
     const settings = await this.settingsRepo.updateSettings(data);
     return { aiEnabled: settings.aiEnabled };
   }

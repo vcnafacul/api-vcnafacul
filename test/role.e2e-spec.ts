@@ -77,6 +77,8 @@ describe('Role e2e', () => {
         visualizarMinhasInscricoes: false,
         gerenciarFormularioGlobal: false,
         gerenciarTemas: false,
+        revisarRedacoes: false,
+        revisarTodasRedacoes: false,
       };
 
       const baseRoleResponse = await request(app.getHttpServer())
@@ -122,6 +124,8 @@ describe('Role e2e', () => {
         visualizarMinhasInscricoes: false,
         gerenciarFormularioGlobal: false,
         gerenciarTemas: false,
+        revisarRedacoes: false,
+        revisarTodasRedacoes: false,
       };
 
       const childRoleResponse = await request(app.getHttpServer())
@@ -251,6 +255,8 @@ describe('Role e2e', () => {
         visualizarMinhasInscricoes: false,
         gerenciarFormularioGlobal: false,
         gerenciarTemas: false,
+        revisarRedacoes: false,
+        revisarTodasRedacoes: false,
       };
 
       const baseRoleResponse = await request(app.getHttpServer())
@@ -288,6 +294,8 @@ describe('Role e2e', () => {
         visualizarMinhasInscricoes: false,
         gerenciarFormularioGlobal: false,
         gerenciarTemas: false,
+        revisarRedacoes: false,
+        revisarTodasRedacoes: false,
       };
 
       const childRoleResponse = await request(app.getHttpServer())

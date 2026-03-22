@@ -10,6 +10,8 @@ describe('EssayService', () => {
   let aiProvider: any;
   let envService: any;
   let settingsService: any;
+  let entityManager: any;
+  let emailService: any;
 
   const mockTheme = { id: 'theme-1', title: 'Tema', motivationalText: 'Texto' };
   const mockEssay = {
@@ -29,8 +31,8 @@ describe('EssayService', () => {
       findEssayById: jest.fn(),
       update: jest.fn(),
       findByUser: jest.fn(),
-      createAIReview: jest.fn(),
-      saveAIReview: jest.fn(),
+      createReview: jest.fn(),
+      saveReview: jest.fn(),
     };
     themeService = {
       findById: jest.fn().mockResolvedValue(mockTheme),
@@ -46,8 +48,22 @@ describe('EssayService', () => {
       getSettings: jest.fn().mockResolvedValue({ aiEnabled: false }),
       updateSettings: jest.fn(),
     };
+    entityManager = {
+      findOne: jest.fn(),
+    };
+    emailService = {
+      sendEssayReviewEmail: jest.fn().mockResolvedValue(undefined),
+    };
 
-    service = new EssayService(essayRepo, themeService, aiProvider, envService, settingsService);
+    service = new EssayService(
+      essayRepo,
+      themeService,
+      aiProvider,
+      envService,
+      settingsService,
+      entityManager,
+      emailService,
+    );
   });
 
   describe('create', () => {
@@ -61,7 +77,10 @@ describe('EssayService', () => {
       );
 
       expect(themeService.findById).toHaveBeenCalledWith('theme-1');
-      expect(essayRepo.findByUserAndTheme).toHaveBeenCalledWith('user-1', 'theme-1');
+      expect(essayRepo.findByUserAndTheme).toHaveBeenCalledWith(
+        'user-1',
+        'theme-1',
+      );
       expect(result).toEqual(mockEssay);
     });
 
@@ -93,7 +112,10 @@ describe('EssayService', () => {
     });
 
     it('should throw NotFoundException if user does not own the essay', async () => {
-      essayRepo.findEssayById.mockResolvedValue({ ...mockEssay, userId: 'other' });
+      essayRepo.findEssayById.mockResolvedValue({
+        ...mockEssay,
+        userId: 'other',
+      });
 
       await expect(
         service.updateDraft('essay-1', { title: 'X' }, 'user-1'),
@@ -160,11 +182,16 @@ describe('EssayService', () => {
     it('should throw NotFoundException if not found', async () => {
       essayRepo.findEssayById.mockResolvedValue(null);
 
-      await expect(service.findById('essay-1')).rejects.toThrow(NotFoundException);
+      await expect(service.findById('essay-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw NotFoundException if userId does not match', async () => {
-      essayRepo.findEssayById.mockResolvedValue({ ...mockEssay, userId: 'other' });
+      essayRepo.findEssayById.mockResolvedValue({
+        ...mockEssay,
+        userId: 'other',
+      });
 
       await expect(service.findById('essay-1', 'user-1')).rejects.toThrow(
         NotFoundException,

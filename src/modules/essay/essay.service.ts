@@ -1,16 +1,22 @@
 import {
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { InjectEntityManager } from '@nestjs/typeorm';
+import { EntityManager } from 'typeorm';
 import { EssayRepository } from './essay.repository';
 import { EssayThemeService } from './essay-theme.service';
 import { CreateEssayDto } from './dtos/create-essay.dto';
 import { SubmitEssayDto } from './dtos/submit-essay.dto';
+import { CreateEssayReviewDto } from './dtos/create-essay-review.dto';
 import { Essay } from './entities/essay.entity';
+import { EssayReview } from './entities/essay-review.entity';
 import { EssayStatus } from './enums/essay-status.enum';
+import { ReviewType } from './enums/review-type.enum';
 import { EssayInputType } from './enums/essay-input-type.enum';
 import {
   AICorrectionResult,
@@ -19,6 +25,7 @@ import {
 } from './ai/essay-ai.interface';
 import { EnvService } from '../../shared/modules/env/env.service';
 import { EssaySettingsService } from './essay-settings.service';
+import { EmailService } from '../../shared/services/email/email.service';
 
 @Injectable()
 export class EssayService {
@@ -31,6 +38,9 @@ export class EssayService {
     private readonly aiProvider: EssayAIProvider,
     private readonly envService: EnvService,
     private readonly settingsService: EssaySettingsService,
+    @InjectEntityManager()
+    private readonly entityManager: EntityManager,
+    private readonly emailService: EmailService,
   ) {}
 
   async create(dto: CreateEssayDto, userId: string): Promise<Essay> {
@@ -88,7 +98,14 @@ export class EssayService {
 
     essay.title = dto.title;
     essay.text = dto.text;
-    essay.wordCount = dto.text.split(/\s+/).filter(Boolean).length;
+    const plainText = dto.text
+      .replace(/#{1,6}\s/g, '')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/^>\s/gm, '')
+      .replace(/^[-*+]\s/gm, '')
+      .replace(/^\d+\.\s/gm, '');
+    essay.wordCount = plainText.split(/\s+/).filter(Boolean).length;
     essay.status = EssayStatus.SUBMITTED;
     essay.submittedAt = new Date();
 
@@ -115,12 +132,199 @@ export class EssayService {
     return essay;
   }
 
+  async findByIdForReviewer(id: string): Promise<Essay> {
+    const essay = await this.essayRepo.findEssayById(id);
+    if (!essay) throw new NotFoundException('Redacao nao encontrada');
+    return essay;
+  }
+
   async findMyEssays(
     userId: string,
     page = 1,
     limit = 10,
   ): Promise<{ data: Essay[]; total: number }> {
     return this.essayRepo.findByUser(userId, page, limit);
+  }
+
+  async findAllEssays(
+    page: number,
+    limit: number,
+    filters: { themeId?: string; status?: string; search?: string },
+  ): Promise<{ data: Essay[]; total: number }> {
+    return this.essayRepo.findAllEssays(page, limit, filters);
+  }
+
+  async findEssaysForCollaborator(
+    userId: string,
+    page: number,
+    limit: number,
+    filters: { themeId?: string; status?: string; search?: string },
+  ): Promise<{ data: Essay[]; total: number }> {
+    // Find the collaborator's prepCourse
+    const [collaborator] = await this.entityManager.query(
+      `SELECT c.partner_prep_course_id FROM collaborators c
+       WHERE c.user_id = ? AND c.actived = 1 LIMIT 1`,
+      [userId],
+    );
+
+    if (!collaborator) {
+      return { data: [], total: 0 };
+    }
+
+    return this.essayRepo.findEssaysByPrepCourse(
+      collaborator.partner_prep_course_id,
+      page,
+      limit,
+      filters,
+    );
+  }
+
+  async findEssaysByPrepCourse(
+    prepCourseId: string,
+    page: number,
+    limit: number,
+    filters: { themeId?: string; status?: string; search?: string },
+  ): Promise<{ data: Essay[]; total: number }> {
+    return this.essayRepo.findEssaysByPrepCourse(
+      prepCourseId,
+      page,
+      limit,
+      filters,
+    );
+  }
+
+  async findReviewsByEssayId(essayId: string): Promise<EssayReview[]> {
+    const essay = await this.essayRepo.findEssayById(essayId);
+    if (!essay) throw new NotFoundException('Redacao nao encontrada');
+    return this.essayRepo.findReviewsByEssayId(essayId);
+  }
+
+  async createHumanReview(
+    essayId: string,
+    reviewerId: string,
+    dto: CreateEssayReviewDto,
+  ): Promise<EssayReview> {
+    const essay = await this.essayRepo.findEssayById(essayId);
+    if (!essay) throw new NotFoundException('Redacao nao encontrada');
+
+    if (
+      essay.status !== EssayStatus.SUBMITTED &&
+      essay.status !== EssayStatus.REVIEWED
+    ) {
+      throw new ConflictException(
+        'Somente redacoes submetidas podem ser revisadas',
+      );
+    }
+
+    const review = this.essayRepo.createReview({
+      essay: { id: essayId } as Essay,
+      reviewType: ReviewType.HUMAN,
+      reviewerId,
+      ...dto,
+    });
+
+    const saved = await this.essayRepo.saveReview(review);
+
+    if (essay.status === EssayStatus.SUBMITTED) {
+      await this.essayRepo.updateEssayStatus(essayId, EssayStatus.REVIEWED);
+    }
+
+    // Send email notification (fire-and-forget)
+    const [reviewer] = await this.entityManager.query(
+      'SELECT id, firstName, lastName, email FROM users WHERE id = ? LIMIT 1',
+      [reviewerId],
+    );
+    const [student] = await this.entityManager.query(
+      'SELECT id, firstName, lastName, email FROM users WHERE id = ? LIMIT 1',
+      [essay.userId],
+    );
+
+    if (student && reviewer) {
+      const frontendUrl = this.envService.get('FRONT_URL');
+      this.emailService
+        .sendEssayReviewEmail(student.email, {
+          studentName: `${student.firstName} ${student.lastName}`,
+          reviewerName: `${reviewer.firstName} ${reviewer.lastName}`,
+          themeTitle: essay.theme?.title ?? '',
+          totalScore: dto.totalScore,
+          comp1Score: dto.comp1Score,
+          comp2Score: dto.comp2Score,
+          comp3Score: dto.comp3Score,
+          comp4Score: dto.comp4Score,
+          comp5Score: dto.comp5Score,
+          reviewUrl: `${frontendUrl}/dashboard/redacao/${essayId}`,
+        })
+        .catch((err) =>
+          this.logger.error('Failed to send review notification', err),
+        );
+    }
+
+    return saved;
+  }
+
+  async validateReviewerScope(
+    essayId: string,
+    reviewerUserId: string,
+  ): Promise<void> {
+    // Check if reviewer is admin (role.base or role.name = 'admin')
+    const [reviewerRole] = await this.entityManager.query(
+      `SELECT r.base, r.name FROM users u
+       INNER JOIN roles r ON u.roleId = r.id
+       WHERE u.id = ?`,
+      [reviewerUserId],
+    );
+    if (reviewerRole?.base || reviewerRole?.name === 'admin') return;
+
+    const essay = await this.essayRepo.findEssayById(essayId);
+    if (!essay) throw new NotFoundException('Redacao nao encontrada');
+
+    // Find the student's prep course
+    const [studentCourse] = await this.entityManager.query(
+      `SELECT sc.partner_prep_course_id FROM student_course sc
+       WHERE sc.user_id = ? LIMIT 1`,
+      [essay.userId],
+    );
+
+    if (!studentCourse) {
+      throw new ForbiddenException('Estudante nao vinculado a nenhum cursinho');
+    }
+
+    // Check if reviewer is a collaborator of that prep course
+    const [collaborator] = await this.entityManager.query(
+      `SELECT c.id FROM collaborators c
+       WHERE c.user_id = ? AND c.partner_prep_course_id = ? AND c.actived = 1`,
+      [reviewerUserId, studentCourse.partner_prep_course_id],
+    );
+
+    if (!collaborator) {
+      throw new ForbiddenException(
+        'Voce nao tem permissao para acessar redacoes deste cursinho',
+      );
+    }
+  }
+
+  async validatePrepCourseAccess(
+    prepCourseId: string,
+    userId: string,
+  ): Promise<void> {
+    // Check if user is admin (role.base or role.name = 'admin')
+    const [userRole] = await this.entityManager.query(
+      `SELECT r.base, r.name FROM users u
+       INNER JOIN roles r ON u.roleId = r.id
+       WHERE u.id = ?`,
+      [userId],
+    );
+    if (userRole?.base || userRole?.name === 'admin') return;
+
+    const [collaborator] = await this.entityManager.query(
+      `SELECT c.id FROM collaborators c
+       WHERE c.user_id = ? AND c.partner_prep_course_id = ? AND c.actived = 1`,
+      [userId, prepCourseId],
+    );
+
+    if (!collaborator) {
+      throw new ForbiddenException('Voce nao e colaborador deste cursinho');
+    }
   }
 
   private async processAICorrection(essayId: string): Promise<void> {
@@ -140,8 +344,9 @@ export class EssayService {
       const comp = (n: number) =>
         result.competencias.find((c) => c.numero === n);
 
-      const review = this.essayRepo.createAIReview({
-        essayId,
+      const review = this.essayRepo.createReview({
+        essay: { id: essayId } as Essay,
+        reviewType: ReviewType.AI,
         comp1Score: comp(1)?.nota ?? 0,
         comp1Feedback: comp(1)?.justificativa ?? '',
         comp1Suggestion: comp(1)?.sugestao ?? '',
@@ -166,14 +371,12 @@ export class EssayService {
         model: this.envService.get('ESSAY_AI_MODEL'),
       });
 
-      await this.essayRepo.saveAIReview(review);
+      await this.essayRepo.saveReview(review);
 
-      essay.status = EssayStatus.AI_REVIEWED;
-      await this.essayRepo.update(essay);
+      await this.essayRepo.updateEssayStatus(essayId, EssayStatus.REVIEWED);
     } catch (error) {
       this.logger.error(`AI correction error for essay ${essayId}`, error);
-      essay.status = EssayStatus.AI_FAILED;
-      await this.essayRepo.update(essay);
+      // Status stays SUBMITTED on failure
     }
   }
 }

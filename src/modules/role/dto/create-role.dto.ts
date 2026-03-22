@@ -81,4 +81,10 @@ export class CreateRoleDtoInput {
 
   @IsBoolean()
   gerenciarTemas: boolean;
+
+  @IsBoolean()
+  revisarRedacoes: boolean;
+
+  @IsBoolean()
+  revisarTodasRedacoes: boolean;
 }

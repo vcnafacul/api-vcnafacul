@@ -44,6 +44,8 @@ export class RoleUpdateAdminSeedService {
         visualizarMinhasInscricoes: true,
         gerenciarFormularioGlobal: true,
         gerenciarTemas: true,
+        revisarRedacoes: true,
+        revisarTodasRedacoes: true,
       });
 
       this.logger.log('Role admin atualizada com sucesso');
