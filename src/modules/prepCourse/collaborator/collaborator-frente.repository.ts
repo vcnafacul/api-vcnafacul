@@ -27,9 +27,7 @@ export class CollaboratorFrenteRepository extends BaseRepository<CollaboratorFre
     await this.repository.delete({ frenteId });
   }
 
-  async findByCollaboratorIds(
-    ids: string[],
-  ): Promise<CollaboratorFrente[]> {
+  async findByCollaboratorIds(ids: string[]): Promise<CollaboratorFrente[]> {
     if (ids.length === 0) return [];
     return this.repository
       .createQueryBuilder('cf')

@@ -2,7 +2,12 @@ import { FrenteProxyService } from './frente.service';
 
 describe('FrenteProxyService', () => {
   let service: FrenteProxyService;
-  let mockAxios: { get: jest.Mock; post: jest.Mock; patch: jest.Mock; delete: jest.Mock };
+  let mockAxios: {
+    get: jest.Mock;
+    post: jest.Mock;
+    patch: jest.Mock;
+    delete: jest.Mock;
+  };
   let mockCache: { wrap: jest.Mock };
   let mockCollaboratorFrenteRepo: { deleteByFrenteId: jest.Mock };
 
@@ -35,7 +40,11 @@ describe('FrenteProxyService', () => {
     it('should translate name to nome and forward materia ObjectId', async () => {
       mockAxios.post.mockResolvedValue({ _id: 'new-frente' });
 
-      await service.create({ name: 'Genética', materia: 'materia-obj-id', extra: 'value' });
+      await service.create({
+        name: 'Genética',
+        materia: 'materia-obj-id',
+        extra: 'value',
+      });
 
       expect(mockAxios.post).toHaveBeenCalledWith('v1/frente', {
         nome: 'Genética',
@@ -59,7 +68,10 @@ describe('FrenteProxyService', () => {
     it('should translate name to nome', async () => {
       mockAxios.patch.mockResolvedValue({});
 
-      await service.update('frente-id', { name: 'Novo Nome', description: 'desc' });
+      await service.update('frente-id', {
+        name: 'Novo Nome',
+        description: 'desc',
+      });
 
       expect(mockAxios.patch).toHaveBeenCalledWith('v1/frente/frente-id', {
         nome: 'Novo Nome',
@@ -84,7 +96,9 @@ describe('FrenteProxyService', () => {
 
       const result = await service.getByMateria('materia-obj-id');
 
-      expect(mockAxios.get).toHaveBeenCalledWith('v1/frente/materia/materia-obj-id');
+      expect(mockAxios.get).toHaveBeenCalledWith(
+        'v1/frente/materia/materia-obj-id',
+      );
       expect(result).toEqual([{ _id: 'frente-1' }]);
     });
   });
@@ -93,7 +107,8 @@ describe('FrenteProxyService', () => {
     it('should forward materia ObjectId directly to ms-simulado', async () => {
       mockAxios.get.mockResolvedValue([{ nome: 'Frente 1', subjects: [] }]);
 
-      const result = await service.getByMateriaContentApproved('materia-obj-id');
+      const result =
+        await service.getByMateriaContentApproved('materia-obj-id');
 
       expect(mockAxios.get).toHaveBeenCalledWith(
         'v1/frente/materiawithcontent/materia-obj-id',
@@ -110,7 +125,9 @@ describe('FrenteProxyService', () => {
       await service.delete('frente-id');
 
       expect(mockAxios.delete).toHaveBeenCalledWith('v1/frente/frente-id');
-      expect(mockCollaboratorFrenteRepo.deleteByFrenteId).toHaveBeenCalledWith('frente-id');
+      expect(mockCollaboratorFrenteRepo.deleteByFrenteId).toHaveBeenCalledWith(
+        'frente-id',
+      );
     });
   });
 

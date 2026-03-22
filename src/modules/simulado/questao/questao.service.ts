@@ -96,7 +96,9 @@ export class QuestaoService {
     return fileKey;
   }
 
-  public async uploadAsset(file: Express.Multer.File): Promise<{ assetId: string }> {
+  public async uploadAsset(
+    file: Express.Multer.File,
+  ): Promise<{ assetId: string }> {
     if (!file) {
       throw new Error('Nenhum arquivo fornecido');
     }

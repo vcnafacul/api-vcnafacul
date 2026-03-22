@@ -2394,10 +2394,7 @@ describe('StudentCourse (e2e)', () => {
 
     const updated = await studentCourseService.findOneBy({ id: student.id });
     expect(updated.surveyDone).toBe(true);
-    expect(JSON.parse(updated.areaInterest)).toEqual([
-      'Matematica',
-      'Fisica',
-    ]);
+    expect(JSON.parse(updated.areaInterest)).toEqual(['Matematica', 'Fisica']);
   }, 30000);
 
   it('declaração por etapa - submitSurvey exige foto antes', async () => {

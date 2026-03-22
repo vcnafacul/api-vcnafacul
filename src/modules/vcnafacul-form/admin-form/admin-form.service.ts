@@ -29,7 +29,7 @@ export class AdminFormService {
   // --- Form ---
 
   public async getGlobalForm() {
-    return await this.axios.get(`v1/form?ownerType=GLOBAL`);
+    return await this.axios.get(`v1/form`, this.adminHeaders);
   }
 
   public async createGlobalForm(dto: { name: string }) {
@@ -80,18 +80,14 @@ export class AdminFormService {
   }
 
   public async deleteSection(id: string) {
-    return await this.axios.delete(
-      `v1/section/${id}`,
-      this.adminHeaders,
-    );
+    return await this.axios.delete(`v1/section/${id}`, this.adminHeaders);
   }
 
-  public async updateSection(id: string, dto: { name: string; description?: string }) {
-    return await this.axios.patch(
-      `v1/section/${id}`,
-      dto,
-      this.adminHeaders,
-    );
+  public async updateSection(
+    id: string,
+    dto: { name: string; description?: string },
+  ) {
+    return await this.axios.patch(`v1/section/${id}`, dto, this.adminHeaders);
   }
 
   public async reorderQuestions(id: string, dto: any) {
@@ -117,18 +113,11 @@ export class AdminFormService {
   }
 
   public async updateQuestion(id: string, dto: any) {
-    return await this.axios.put(
-      `v1/question/${id}`,
-      dto,
-      this.adminHeaders,
-    );
+    return await this.axios.put(`v1/question/${id}`, dto, this.adminHeaders);
   }
 
   public async deleteQuestion(id: string) {
-    return await this.axios.delete(
-      `v1/question/${id}`,
-      this.adminHeaders,
-    );
+    return await this.axios.delete(`v1/question/${id}`, this.adminHeaders);
   }
 
   public async setActiveQuestion(id: string) {

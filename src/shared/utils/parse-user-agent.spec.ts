@@ -1,7 +1,4 @@
-import {
-  majorVersion,
-  parseUserAgentForDisplay,
-} from './parse-user-agent';
+import { majorVersion, parseUserAgentForDisplay } from './parse-user-agent';
 
 describe('majorVersion', () => {
   it('should return first segment of version string', () => {
@@ -91,7 +88,9 @@ describe('parseUserAgentForDisplay', () => {
   });
 
   it('should detect Safari without version', () => {
-    const result = parseUserAgentForDisplay('Mozilla/5.0 (Macintosh) Safari/605.1');
+    const result = parseUserAgentForDisplay(
+      'Mozilla/5.0 (Macintosh) Safari/605.1',
+    );
     expect(result.browser).toBe('Safari');
   });
 
@@ -103,7 +102,9 @@ describe('parseUserAgentForDisplay', () => {
   });
 
   it('should detect IE (MSIE)', () => {
-    const result = parseUserAgentForDisplay('Mozilla/4.0 (compatible; MSIE 8.0)');
+    const result = parseUserAgentForDisplay(
+      'Mozilla/4.0 (compatible; MSIE 8.0)',
+    );
     expect(result.browser).toBe('IE');
   });
 
@@ -163,9 +164,7 @@ describe('parseUserAgentForDisplay', () => {
   });
 
   it('should detect Linux', () => {
-    const result = parseUserAgentForDisplay(
-      'Mozilla/5.0 (X11; Linux x86_64)',
-    );
+    const result = parseUserAgentForDisplay('Mozilla/5.0 (X11; Linux x86_64)');
     expect(result.os).toBe('Linux');
   });
 

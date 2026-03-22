@@ -101,6 +101,9 @@ describe('CoursePeriod (e2e)', () => {
       gerenciarPermissoesCursinho: false,
       visualizarTurmas: false,
       visualizarEstudantes: false,
+      visualizarMinhasInscricoes: false,
+      gerenciarFormularioGlobal: false,
+      gerenciarTemas: false,
     };
     role = await roleService.create(roleDto);
 

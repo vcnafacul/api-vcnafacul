@@ -115,6 +115,9 @@ export class RoleService extends BaseService<Role> {
         ? true
         : false
       : true;
+    role.visualizarMinhasInscricoes = roleDto.visualizarMinhasInscricoes;
+    role.gerenciarFormularioGlobal = roleDto.gerenciarFormularioGlobal;
+    role.gerenciarTemas = roleDto.gerenciarTemas;
 
     if (partnerPrepCourse) {
       role.partnerPrepCourse = partnerPrepCourse;
@@ -178,6 +181,9 @@ export class RoleService extends BaseService<Role> {
         ? true
         : false
       : true;
+    role.visualizarMinhasInscricoes = roleDto.visualizarMinhasInscricoes;
+    role.gerenciarFormularioGlobal = roleDto.gerenciarFormularioGlobal;
+    role.gerenciarTemas = roleDto.gerenciarTemas;
 
     // Atualiza permissões das filhas
     if (role.children?.length > 0) {
@@ -196,6 +202,9 @@ export class RoleService extends BaseService<Role> {
           child.validarDemanda = role.validarDemanda;
           child.visualizarDemanda = role.visualizarDemanda;
           child.alterarPermissao = role.alterarPermissao;
+          child.visualizarMinhasInscricoes = role.visualizarMinhasInscricoes;
+          child.gerenciarFormularioGlobal = role.gerenciarFormularioGlobal;
+          child.gerenciarTemas = role.gerenciarTemas;
           await this.roleRepository.update(child);
         }),
       );

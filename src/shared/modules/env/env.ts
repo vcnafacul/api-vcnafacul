@@ -77,6 +77,15 @@ export const envSchema = z.object({
   GOOGLE_MAPS_API_KEY: z
     .string()
     .default('AIzaSyCK0EJwZiLpGw46t2sC811b63L8pVvT3A'),
+
+  // Essay AI
+  ESSAY_AI_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
+  ESSAY_AI_PROVIDER: z.enum(['claude']).default('claude'),
+  ANTHROPIC_API_KEY: z.string().default(''),
+  ESSAY_AI_MODEL: z.string().default('claude-haiku-4-5-20251001'),
 });
 
 export type Env = z.infer<typeof envSchema>;

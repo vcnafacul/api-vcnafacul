@@ -46,7 +46,10 @@ export class SectionFormService {
     return await this.axios.get(`v1/section/${id}`);
   }
 
-  public async createSectionForm(dto: { name: string; description?: string }, partnerId: string) {
+  public async createSectionForm(
+    dto: { name: string; description?: string },
+    partnerId: string,
+  ) {
     return await this.axios.post(
       `v1/section`,
       dto,
@@ -99,5 +102,9 @@ export class SectionFormService {
       undefined,
       this.partnerHeaders(partnerId),
     );
+  }
+
+  public async getGlobalSections() {
+    return await this.axios.get(`v1/section/global-active`);
   }
 }

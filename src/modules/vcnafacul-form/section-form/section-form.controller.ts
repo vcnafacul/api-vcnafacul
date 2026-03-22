@@ -31,9 +31,19 @@ export class SectionFormController {
 
   private async resolvePartnerId(req: Request): Promise<string> {
     const userId = (req.user as User).id;
-    const partner =
-      await this.partnerPrepCourseService.getByUserId(userId);
+    const partner = await this.partnerPrepCourseService.getByUserId(userId);
     return partner.id;
+  }
+
+  @Get('global')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: 'busca seções globais ativas',
+  })
+  public async getGlobalSections() {
+    return await this.service.getGlobalSections();
   }
 
   @Get()
@@ -103,10 +113,7 @@ export class SectionFormController {
     status: 200,
     description: 'deleta seção do formulário',
   })
-  public async deleteSectionForm(
-    @Req() req: Request,
-    @Param('id') id: string,
-  ) {
+  public async deleteSectionForm(@Req() req: Request, @Param('id') id: string) {
     const partnerId = await this.resolvePartnerId(req);
     await this.service.deleteSectionForm(id, partnerId);
   }
@@ -153,10 +160,7 @@ export class SectionFormController {
     status: 200,
     description: 'duplica seção do formulário',
   })
-  public async duplicateSection(
-    @Req() req: Request,
-    @Param('id') id: string,
-  ) {
+  public async duplicateSection(@Req() req: Request, @Param('id') id: string) {
     const partnerId = await this.resolvePartnerId(req);
     await this.service.duplicateSection(id, partnerId);
   }

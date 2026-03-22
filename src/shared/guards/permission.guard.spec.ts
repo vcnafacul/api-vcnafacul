@@ -10,7 +10,11 @@ describe('PermissionsGuard', () => {
     mockReflector = { get: jest.fn() };
     mockUserService = { checkUserPermission: jest.fn() };
     mockEnvService = { get: jest.fn().mockReturnValue('test-secret') };
-    guard = new PermissionsGuard(mockReflector, mockUserService, mockEnvService);
+    guard = new PermissionsGuard(
+      mockReflector,
+      mockUserService,
+      mockEnvService,
+    );
   });
 
   describe('snakeToCamel', () => {

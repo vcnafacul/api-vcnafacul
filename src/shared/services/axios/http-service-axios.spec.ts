@@ -1,5 +1,8 @@
 import { HttpException, Logger } from '@nestjs/common';
-import { HttpServiceAxios, HttpServiceAxiosFactory } from './http-service-axios.factory';
+import {
+  HttpServiceAxios,
+  HttpServiceAxiosFactory,
+} from './http-service-axios.factory';
 
 const mockAxiosInstance = {
   get: jest.fn(),
@@ -24,7 +27,9 @@ describe('HttpServiceAxios', () => {
 
   describe('getFullURL', () => {
     it('should build full URL correctly', () => {
-      expect(service.getFullURL('v1/test')).toBe('http://localhost:3000/v1/test');
+      expect(service.getFullURL('v1/test')).toBe(
+        'http://localhost:3000/v1/test',
+      );
     });
 
     it('should remove trailing slash from baseURL', () => {
@@ -33,7 +38,9 @@ describe('HttpServiceAxios', () => {
     });
 
     it('should remove leading slash from path', () => {
-      expect(service.getFullURL('/v1/test')).toBe('http://localhost:3000/v1/test');
+      expect(service.getFullURL('/v1/test')).toBe(
+        'http://localhost:3000/v1/test',
+      );
     });
   });
 
@@ -49,7 +56,10 @@ describe('HttpServiceAxios', () => {
 
       const result = await service.get('v1/items');
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('http://localhost:3000/v1/items', undefined);
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
+        'http://localhost:3000/v1/items',
+        undefined,
+      );
       expect(result).toEqual({ id: 1 });
     });
 
