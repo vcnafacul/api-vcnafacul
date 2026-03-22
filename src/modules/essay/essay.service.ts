@@ -146,6 +146,40 @@ export class EssayService {
     return this.essayRepo.findByUser(userId, page, limit);
   }
 
+  async getMyStats(userId: string) {
+    const essays = await this.essayRepo.findUserEssaysForStats(userId);
+
+    const timeline = essays.map((essay) => {
+      const aiReviews = essay.reviews.filter((r) => r.reviewType === 'AI');
+      const humanReviews = essay.reviews.filter((r) => r.reviewType === 'HUMAN');
+
+      const pickReview = (reviews: typeof essay.reviews) => {
+        if (reviews.length === 0) return null;
+        const latest = reviews.reduce((a, b) =>
+          new Date(a.createdAt) > new Date(b.createdAt) ? a : b,
+        );
+        return {
+          totalScore: latest.totalScore,
+          comp1Score: latest.comp1Score,
+          comp2Score: latest.comp2Score,
+          comp3Score: latest.comp3Score,
+          comp4Score: latest.comp4Score,
+          comp5Score: latest.comp5Score,
+        };
+      };
+
+      return {
+        essayId: essay.id,
+        themeTitle: essay.theme?.title ?? '',
+        submittedAt: essay.submittedAt,
+        aiReview: pickReview(aiReviews),
+        humanReview: pickReview(humanReviews),
+      };
+    });
+
+    return { timeline };
+  }
+
   async findAllEssays(
     page: number,
     limit: number,

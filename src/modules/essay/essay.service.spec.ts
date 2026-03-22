@@ -33,6 +33,7 @@ describe('EssayService', () => {
       findByUser: jest.fn(),
       createReview: jest.fn(),
       saveReview: jest.fn(),
+      findUserEssaysForStats: jest.fn(),
     };
     themeService = {
       findById: jest.fn().mockResolvedValue(mockTheme),
@@ -207,6 +208,126 @@ describe('EssayService', () => {
       const result = await service.findMyEssays('user-1', 1, 10);
       expect(result).toEqual(expected);
       expect(essayRepo.findByUser).toHaveBeenCalledWith('user-1', 1, 10);
+    });
+  });
+
+  describe('getMyStats', () => {
+    it('should return timeline with AI and human reviews', async () => {
+      const mockEssays = [
+        {
+          id: 'essay-1',
+          submittedAt: new Date('2026-01-15'),
+          theme: { title: 'Tema 1' },
+          reviews: [
+            {
+              id: 'r1',
+              reviewType: 'AI',
+              totalScore: 600,
+              comp1Score: 120, comp2Score: 120, comp3Score: 120,
+              comp4Score: 120, comp5Score: 120,
+              createdAt: new Date('2026-01-15'),
+            },
+            {
+              id: 'r2',
+              reviewType: 'HUMAN',
+              totalScore: 700,
+              comp1Score: 140, comp2Score: 140, comp3Score: 140,
+              comp4Score: 140, comp5Score: 140,
+              createdAt: new Date('2026-01-16'),
+            },
+          ],
+        },
+        {
+          id: 'essay-2',
+          submittedAt: new Date('2026-02-10'),
+          theme: { title: 'Tema 2' },
+          reviews: [
+            {
+              id: 'r3',
+              reviewType: 'AI',
+              totalScore: 720,
+              comp1Score: 160, comp2Score: 140, comp3Score: 140,
+              comp4Score: 140, comp5Score: 140,
+              createdAt: new Date('2026-02-10'),
+            },
+          ],
+        },
+      ];
+
+      jest.spyOn(essayRepo, 'findUserEssaysForStats').mockResolvedValue(mockEssays as any);
+
+      const result = await service.getMyStats('user-1');
+
+      expect(result.timeline).toHaveLength(2);
+      expect(result.timeline[0].themeTitle).toBe('Tema 1');
+      expect(result.timeline[0].aiReview?.totalScore).toBe(600);
+      expect(result.timeline[0].humanReview?.totalScore).toBe(700);
+      expect(result.timeline[1].humanReview).toBeNull();
+    });
+
+    it('should pick the most recent human review when multiple exist', async () => {
+      const mockEssays = [
+        {
+          id: 'essay-1',
+          submittedAt: new Date('2026-01-15'),
+          theme: { title: 'Tema 1' },
+          reviews: [
+            {
+              id: 'r1', reviewType: 'HUMAN', totalScore: 500,
+              comp1Score: 100, comp2Score: 100, comp3Score: 100,
+              comp4Score: 100, comp5Score: 100,
+              createdAt: new Date('2026-01-16'),
+            },
+            {
+              id: 'r2', reviewType: 'HUMAN', totalScore: 700,
+              comp1Score: 140, comp2Score: 140, comp3Score: 140,
+              comp4Score: 140, comp5Score: 140,
+              createdAt: new Date('2026-01-20'),
+            },
+          ],
+        },
+      ];
+
+      jest.spyOn(essayRepo, 'findUserEssaysForStats').mockResolvedValue(mockEssays as any);
+
+      const result = await service.getMyStats('user-1');
+
+      expect(result.timeline[0].humanReview?.totalScore).toBe(700);
+    });
+
+    it('should handle essays with no reviews', async () => {
+      const mockEssays = [
+        {
+          id: 'essay-1',
+          submittedAt: new Date('2026-01-15'),
+          theme: { title: 'Tema 1' },
+          reviews: [],
+        },
+      ];
+
+      jest.spyOn(essayRepo, 'findUserEssaysForStats').mockResolvedValue(mockEssays as any);
+
+      const result = await service.getMyStats('user-1');
+
+      expect(result.timeline[0].aiReview).toBeNull();
+      expect(result.timeline[0].humanReview).toBeNull();
+    });
+
+    it('should handle null theme gracefully', async () => {
+      const mockEssays = [
+        {
+          id: 'essay-1',
+          submittedAt: new Date('2026-01-15'),
+          theme: null,
+          reviews: [],
+        },
+      ];
+
+      jest.spyOn(essayRepo, 'findUserEssaysForStats').mockResolvedValue(mockEssays as any);
+
+      const result = await service.getMyStats('user-1');
+
+      expect(result.timeline[0].themeTitle).toBe('');
     });
   });
 });
