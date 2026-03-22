@@ -66,7 +66,10 @@ export class EmailService {
    */
   private async sendMailWithRetry(
     mailOptions: object,
-    sendFunction: (opts: { transporter: any; options: object }) => Promise<void>,
+    sendFunction: (opts: {
+      transporter: any;
+      options: object;
+    }) => Promise<void>,
     retries = EMAIL_CONFIG.MAX_RETRY_ATTEMPTS,
   ): Promise<void> {
     for (let attempt = 1; attempt <= retries; attempt++) {
@@ -212,7 +215,10 @@ export class EmailService {
     const allEmails = [...emails, 'cursinho.ufscar@vcnafacul.com.br'];
 
     // Divide em chunks para evitar rate limiting
-    const emailChunks = this.chunkArray(allEmails, EMAIL_CONFIG.MAX_BCC_PER_EMAIL);
+    const emailChunks = this.chunkArray(
+      allEmails,
+      EMAIL_CONFIG.MAX_BCC_PER_EMAIL,
+    );
 
     this.logger.log(
       `Enviando lista de espera para ${allEmails.length} destinatários em ${emailChunks.length} chunks`,
@@ -299,7 +305,10 @@ export class EmailService {
     )}/declarar-interesse/${inscriptionId}`;
 
     // Divide em chunks para evitar rate limiting
-    const emailChunks = this.chunkArray(bccList, EMAIL_CONFIG.MAX_BCC_PER_EMAIL);
+    const emailChunks = this.chunkArray(
+      bccList,
+      EMAIL_CONFIG.MAX_BCC_PER_EMAIL,
+    );
 
     this.logger.log(
       `Enviando interesse declarado em lote para ${bccList.length} destinatários em ${emailChunks.length} chunks`,
@@ -321,7 +330,10 @@ export class EmailService {
       };
 
       try {
-        await this.sendMailWithRetry(mailOptions, sendEmailDeclaredInterestBulk);
+        await this.sendMailWithRetry(
+          mailOptions,
+          sendEmailDeclaredInterestBulk,
+        );
         this.logger.log(
           `Chunk ${i + 1}/${emailChunks.length} enviado com sucesso (${chunk.length} destinatários)`,
         );
@@ -345,7 +357,10 @@ export class EmailService {
     message: string,
   ): Promise<{ success: number; failed: number; errors: string[] }> {
     // Divide em chunks para evitar rate limiting do SMTP
-    const emailChunks = this.chunkArray(bccList, EMAIL_CONFIG.MAX_BCC_PER_EMAIL);
+    const emailChunks = this.chunkArray(
+      bccList,
+      EMAIL_CONFIG.MAX_BCC_PER_EMAIL,
+    );
 
     this.logger.log(
       `Iniciando envio de notificação em massa para ${bccList.length} destinatários em ${emailChunks.length} chunks`,

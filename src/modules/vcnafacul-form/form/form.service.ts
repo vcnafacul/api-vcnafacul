@@ -18,6 +18,13 @@ export class FormService {
     );
   }
 
+  private partnerHeaders(partnerId: string): Record<string, string> {
+    return {
+      'X-Owner-Type': 'PARTNER',
+      'X-Owner-Id': partnerId,
+    };
+  }
+
   //getFormByInscriptionId
   public async getFormFullByInscriptionId(inscriptionId: string) {
     return await this.axios.get(`v1/form-full/${inscriptionId}/inscription`);
@@ -25,14 +32,19 @@ export class FormService {
 
   //@Post(':inscriptionId/create-form-full')
   public async createFormFull(inscriptionId: string, partnerId: string) {
-    return await this.axios.post(`v1/form/${inscriptionId}/create-form-full`, {
-      partnerId,
-    });
+    return await this.axios.post(
+      `v1/form/${inscriptionId}/create-form-full`,
+      { partnerId },
+      this.partnerHeaders(partnerId),
+    );
   }
 
   //@Get has-active-form
-  public async hasActiveForm(partnerId: string): Promise<boolean> {
-    return await this.axios.get(`v1/form/has-active?partnerId=${partnerId}`);
+  public async hasActiveForm(partnerId: string) {
+    return await this.axios.get(
+      `v1/form/has-active`,
+      this.partnerHeaders(partnerId),
+    );
   }
 
   public async createPartnerForm(partnerId: string) {

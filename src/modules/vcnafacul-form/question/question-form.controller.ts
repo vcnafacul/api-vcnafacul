@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   Req,
   SetMetadata,
   UseGuards,
@@ -32,8 +33,7 @@ export class QuestionFormController {
 
   private async resolvePartnerId(req: Request): Promise<string> {
     const userId = (req.user as User).id;
-    const partner =
-      await this.partnerPrepCourseService.getByUserId(userId);
+    const partner = await this.partnerPrepCourseService.getByUserId(userId);
     return partner.id;
   }
 
@@ -44,8 +44,9 @@ export class QuestionFormController {
     status: 200,
     description: 'busca todas as seções do formulário',
   })
-  public async getQuestionForm(query: GetAllDtoInput) {
-    return await this.service.getQuestionForm(query);
+  public async getQuestionForm(@Req() req: Request, @Query() query: GetAllDtoInput) {
+    const partnerId = await this.resolvePartnerId(req);
+    return await this.service.getQuestionForm(query, partnerId);
   }
 
   @Get(':id')
@@ -55,8 +56,9 @@ export class QuestionFormController {
     status: 200,
     description: 'busca seção do formulário por id',
   })
-  public async getQuestionFormById(@Param('id') id: string) {
-    return await this.service.getQuestionFormById(id);
+  public async getQuestionFormById(@Req() req: Request, @Param('id') id: string) {
+    const partnerId = await this.resolvePartnerId(req);
+    return await this.service.getQuestionFormById(id, partnerId);
   }
 
   @Post()
@@ -67,10 +69,7 @@ export class QuestionFormController {
     status: 200,
     description: 'cria seção do formulário',
   })
-  public async createQuestionForm(
-    @Req() req: Request,
-    @Body() dto: unknown,
-  ) {
+  public async createQuestionForm(@Req() req: Request, @Body() dto: unknown) {
     try {
       const partnerId = await this.resolvePartnerId(req);
       return await this.service.createQuestionForm(dto, partnerId);

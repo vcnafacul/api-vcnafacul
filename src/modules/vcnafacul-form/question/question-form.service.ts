@@ -26,7 +26,7 @@ export class QuestionFormService {
     };
   }
 
-  public async getQuestionForm(query: GetAllDtoInput) {
+  public async getQuestionForm(query: GetAllDtoInput, partnerId: string) {
     let url = `v1/question`;
     const queryParams = Object.keys(query)
       .map((key) => `${key}=${query[key]}`)
@@ -36,11 +36,11 @@ export class QuestionFormService {
       url = `${url}?${queryParams}`;
     }
 
-    return await this.axios.get(url);
+    return await this.axios.get(url, this.partnerHeaders(partnerId));
   }
 
-  public async getQuestionFormById(id: string) {
-    return await this.axios.get(`v1/question/${id}`);
+  public async getQuestionFormById(id: string, partnerId: string) {
+    return await this.axios.get(`v1/question/${id}`, this.partnerHeaders(partnerId));
   }
 
   public async createQuestionForm(dto: any, partnerId: string) {
@@ -66,11 +66,7 @@ export class QuestionFormService {
     );
   }
 
-  public async updateQuestionForm(
-    id: string,
-    dto: unknown,
-    partnerId: string,
-  ) {
+  public async updateQuestionForm(id: string, dto: unknown, partnerId: string) {
     return await this.axios.put(
       `v1/question/${id}`,
       dto,

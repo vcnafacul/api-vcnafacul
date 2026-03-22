@@ -26,6 +26,7 @@ export enum Permissions {
   gerenciarPermissoesCursinho = 'gerenciar_permissoes_cursinho',
   visualizarMinhasInscricoes = 'visualizar_minhas_inscricoes',
   gerenciarFormularioGlobal = 'gerenciar_formulario_global',
+  gerenciarTemas = 'gerenciar_temas',
 }
 
 @Entity('roles')
@@ -119,6 +120,9 @@ export class Role extends BaseEntity {
     default: false,
   })
   gerenciarFormularioGlobal: boolean;
+
+  @Column({ name: Permissions.gerenciarTemas, default: false })
+  gerenciarTemas: boolean;
 
   @OneToMany(() => User, (user) => user.role)
   users: User[];

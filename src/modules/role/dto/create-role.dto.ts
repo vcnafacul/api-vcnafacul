@@ -72,4 +72,13 @@ export class CreateRoleDtoInput {
 
   @IsBoolean()
   visualizarEstudantes: boolean;
+
+  @IsBoolean()
+  visualizarMinhasInscricoes: boolean;
+
+  @IsBoolean()
+  gerenciarFormularioGlobal: boolean;
+
+  @IsBoolean()
+  gerenciarTemas: boolean;
 }

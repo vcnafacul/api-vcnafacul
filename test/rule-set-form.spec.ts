@@ -96,7 +96,9 @@ describe('RuleSetFormService', () => {
     it('deve chamar GET v1/rules-set/:id/last-ranking', async () => {
       mockAxios.get.mockResolvedValue({ data: { rankings: [] } });
       await service.getLastRanking('rs-123');
-      expect(mockAxios.get).toHaveBeenCalledWith('v1/rules-set/rs-123/last-ranking');
+      expect(mockAxios.get).toHaveBeenCalledWith(
+        'v1/rules-set/rs-123/last-ranking',
+      );
     });
   });
 });

@@ -44,7 +44,9 @@ export class FrontendErrorsController {
     if (authHeader?.startsWith('Bearer ')) {
       try {
         const token = authHeader.slice(7);
-        const payload = this.jwtService.verify<{ user?: { id?: string } }>(token);
+        const payload = this.jwtService.verify<{ user?: { id?: string } }>(
+          token,
+        );
         if (payload?.user?.id && typeof payload.user.id === 'string') {
           userId = payload.user.id;
         }

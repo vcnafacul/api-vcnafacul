@@ -266,9 +266,7 @@ export class CollaboratorService extends BaseService<Collaborator> {
     };
   }
 
-  async getFrentesBatch(
-    userId: string,
-  ): Promise<Record<string, string[]>> {
+  async getFrentesBatch(userId: string): Promise<Record<string, string[]>> {
     const partnerPrepCourse =
       await this.partnerPrepCourseService.getByUserId(userId);
     if (!partnerPrepCourse) {
@@ -324,9 +322,7 @@ export class CollaboratorService extends BaseService<Collaborator> {
       ),
     );
     const validMaterias = materiaResults.filter(Boolean) as any[];
-    const materiaMap = new Map(
-      validMaterias.map((m) => [String(m._id), m]),
-    );
+    const materiaMap = new Map(validMaterias.map((m) => [String(m._id), m]));
 
     return valid.map(({ frente, record }) => {
       const materiaId = String(frente.materia);

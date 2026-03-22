@@ -79,7 +79,9 @@ export class AdminFormController {
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarFormularioGlobal)
   @ApiResponse({ description: 'criar section no form global' })
-  public async createSection(@Body() dto: { name: string; description?: string }) {
+  public async createSection(
+    @Body() dto: { name: string; description?: string },
+  ) {
     return await this.service.createSection(dto);
   }
 
@@ -114,10 +116,7 @@ export class AdminFormController {
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarFormularioGlobal)
   @ApiResponse({ description: 'reordenar questões da section' })
-  public async reorderQuestions(
-    @Param('id') id: string,
-    @Body() dto: any,
-  ) {
+  public async reorderQuestions(@Param('id') id: string, @Body() dto: any) {
     return await this.service.reorderQuestions(id, dto);
   }
 
@@ -143,10 +142,7 @@ export class AdminFormController {
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarFormularioGlobal)
   @ApiResponse({ description: 'atualizar question' })
-  public async updateQuestion(
-    @Param('id') id: string,
-    @Body() dto: any,
-  ) {
+  public async updateQuestion(@Param('id') id: string, @Body() dto: any) {
     return await this.service.updateQuestion(id, dto);
   }
 

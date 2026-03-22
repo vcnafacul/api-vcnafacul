@@ -74,6 +74,9 @@ describe('Role e2e', () => {
         gerenciarPermissoesCursinho: false,
         visualizarTurmas: false,
         visualizarEstudantes: false,
+        visualizarMinhasInscricoes: false,
+        gerenciarFormularioGlobal: false,
+        gerenciarTemas: false,
       };
 
       const baseRoleResponse = await request(app.getHttpServer())
@@ -116,6 +119,9 @@ describe('Role e2e', () => {
         gerenciarPermissoesCursinho: false,
         visualizarTurmas: false,
         visualizarEstudantes: false,
+        visualizarMinhasInscricoes: false,
+        gerenciarFormularioGlobal: false,
+        gerenciarTemas: false,
       };
 
       const childRoleResponse = await request(app.getHttpServer())
@@ -242,6 +248,9 @@ describe('Role e2e', () => {
         gerenciarPermissoesCursinho: false,
         visualizarTurmas: false,
         visualizarEstudantes: false,
+        visualizarMinhasInscricoes: false,
+        gerenciarFormularioGlobal: false,
+        gerenciarTemas: false,
       };
 
       const baseRoleResponse = await request(app.getHttpServer())
@@ -276,6 +285,9 @@ describe('Role e2e', () => {
         gerenciarPermissoesCursinho: false,
         visualizarTurmas: false,
         visualizarEstudantes: false,
+        visualizarMinhasInscricoes: false,
+        gerenciarFormularioGlobal: false,
+        gerenciarTemas: false,
       };
 
       const childRoleResponse = await request(app.getHttpServer())

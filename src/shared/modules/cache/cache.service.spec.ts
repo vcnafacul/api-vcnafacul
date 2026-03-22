@@ -33,7 +33,11 @@ describe('CacheService', () => {
 
       expect(result).toBe('new-value');
       expect(fn).toHaveBeenCalled();
-      expect(mockCacheManager.set).toHaveBeenCalledWith('key', 'new-value', 5000);
+      expect(mockCacheManager.set).toHaveBeenCalledWith(
+        'key',
+        'new-value',
+        5000,
+      );
     });
 
     it('should use default TTL', async () => {

@@ -50,10 +50,7 @@ export class MateriaProxyController {
   @Patch(':id')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
-  async update(
-    @Param('id') id: string,
-    @Body() body: Record<string, unknown>,
-  ) {
+  async update(@Param('id') id: string, @Body() body: Record<string, unknown>) {
     return await this.materiaService.update(id, body);
   }
 

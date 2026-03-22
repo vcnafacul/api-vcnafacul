@@ -25,6 +25,7 @@
     "migration:revert": "npm run typeorm -- migration:revert"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
     "@aws-sdk/client-s3": "^3.649.0",
     "@keyv/redis": "^4.4.0",
     "@nestjs/axios": "^3.0.0",

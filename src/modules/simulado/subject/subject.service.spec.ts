@@ -2,7 +2,12 @@ import { SubjectProxyService } from './subject.service';
 
 describe('SubjectProxyService', () => {
   let service: SubjectProxyService;
-  let mockAxios: { get: jest.Mock; post: jest.Mock; patch: jest.Mock; delete: jest.Mock };
+  let mockAxios: {
+    get: jest.Mock;
+    post: jest.Mock;
+    patch: jest.Mock;
+    delete: jest.Mock;
+  };
 
   beforeEach(() => {
     mockAxios = {
@@ -22,7 +27,11 @@ describe('SubjectProxyService', () => {
     it('should translate LinkedList format {node1, node2} to {id1, id2} swap', async () => {
       mockAxios.patch.mockResolvedValue({});
 
-      await service.changeOrder({ node1: 'aaa', node2: 'bbb', listId: 'list-1' });
+      await service.changeOrder({
+        node1: 'aaa',
+        node2: 'bbb',
+        listId: 'list-1',
+      });
 
       expect(mockAxios.patch).toHaveBeenCalledWith('v1/subject/swap-order', {
         id1: 'aaa',

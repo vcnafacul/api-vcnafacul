@@ -37,7 +37,12 @@ describe('BaseRepository', () => {
 
       const result = await repo.findAllBy({ page: 1, limit: 10, where: {} });
 
-      expect(result).toEqual({ data: items, page: 1, limit: 10, totalItems: 1 });
+      expect(result).toEqual({
+        data: items,
+        page: 1,
+        limit: 10,
+        totalItems: 1,
+      });
       expect(mockQueryBuilder.skip).toHaveBeenCalledWith(0);
       expect(mockQueryBuilder.take).toHaveBeenCalledWith(10);
     });
