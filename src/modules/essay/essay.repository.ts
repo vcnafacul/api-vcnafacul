@@ -164,4 +164,27 @@ export class EssayRepository extends BaseRepository<Essay> {
       order: { createdAt: 'ASC' },
     });
   }
+
+  async findUserEssaysForStats(userId: string): Promise<Essay[]> {
+    return this.repository
+      .createQueryBuilder('essay')
+      .leftJoinAndSelect('essay.theme', 'theme')
+      .leftJoin('essay.reviews', 'reviews')
+      .addSelect([
+        'reviews.id',
+        'reviews.reviewType',
+        'reviews.totalScore',
+        'reviews.comp1Score',
+        'reviews.comp2Score',
+        'reviews.comp3Score',
+        'reviews.comp4Score',
+        'reviews.comp5Score',
+        'reviews.createdAt',
+      ])
+      .where('essay.user_id = :userId', { userId })
+      .andWhere('essay.deletedAt IS NULL')
+      .andWhere('essay.status != :draft', { draft: 'DRAFT' })
+      .orderBy('essay.submittedAt', 'ASC')
+      .getMany();
+  }
 }
