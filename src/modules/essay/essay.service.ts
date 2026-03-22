@@ -18,6 +18,7 @@ import {
   EssayAIProvider,
 } from './ai/essay-ai.interface';
 import { EnvService } from '../../shared/modules/env/env.service';
+import { EssaySettingsService } from './essay-settings.service';
 
 @Injectable()
 export class EssayService {
@@ -29,6 +30,7 @@ export class EssayService {
     @Inject(ESSAY_AI_PROVIDER)
     private readonly aiProvider: EssayAIProvider,
     private readonly envService: EnvService,
+    private readonly settingsService: EssaySettingsService,
   ) {}
 
   async create(dto: CreateEssayDto, userId: string): Promise<Essay> {
@@ -93,8 +95,9 @@ export class EssayService {
     await this.essayRepo.update(essay);
     const saved = essay;
 
-    // Fire-and-forget AI correction
-    if (this.envService.get('ESSAY_AI_ENABLED')) {
+    // Fire-and-forget AI correction (runtime toggle from DB)
+    const aiEnabled = await this.settingsService.isAIEnabled();
+    if (aiEnabled) {
       this.processAICorrection(saved.id).catch((err) =>
         this.logger.error(`AI correction failed for essay ${saved.id}`, err),
       );

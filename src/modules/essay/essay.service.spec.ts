@@ -9,6 +9,7 @@ describe('EssayService', () => {
   let themeService: any;
   let aiProvider: any;
   let envService: any;
+  let settingsService: any;
 
   const mockTheme = { id: 'theme-1', title: 'Tema', motivationalText: 'Texto' };
   const mockEssay = {
@@ -40,8 +41,13 @@ describe('EssayService', () => {
     envService = {
       get: jest.fn().mockReturnValue(false),
     };
+    settingsService = {
+      isAIEnabled: jest.fn().mockResolvedValue(false),
+      getSettings: jest.fn().mockResolvedValue({ aiEnabled: false }),
+      updateSettings: jest.fn(),
+    };
 
-    service = new EssayService(essayRepo, themeService, aiProvider, envService);
+    service = new EssayService(essayRepo, themeService, aiProvider, envService, settingsService);
   });
 
   describe('create', () => {

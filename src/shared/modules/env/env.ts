@@ -83,8 +83,9 @@ export const envSchema = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((v) => v === 'true'),
-  ESSAY_AI_PROVIDER: z.enum(['claude']).default('claude'),
+  ESSAY_AI_PROVIDER: z.enum(['claude', 'openai']).default('claude'),
   ANTHROPIC_API_KEY: z.string().default(''),
+  OPENAI_API_KEY: z.string().default(''),
   ESSAY_AI_MODEL: z.string().default('claude-haiku-4-5-20251001'),
 });
 

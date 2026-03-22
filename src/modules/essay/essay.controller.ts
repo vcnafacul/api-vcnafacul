@@ -17,6 +17,7 @@ import { PermissionsGuard } from '../../shared/guards/permission.guard';
 import { Permissions } from '../role/role.entity';
 import { EssayThemeService } from './essay-theme.service';
 import { EssayService } from './essay.service';
+import { EssaySettingsService } from './essay-settings.service';
 import { CreateEssayThemeDto } from './dtos/create-essay-theme.dto';
 import { UpdateEssayThemeDto } from './dtos/update-essay-theme.dto';
 import { CreateEssayDto } from './dtos/create-essay.dto';
@@ -28,7 +29,23 @@ export class EssayController {
   constructor(
     private readonly themeService: EssayThemeService,
     private readonly essayService: EssayService,
+    private readonly settingsService: EssaySettingsService,
   ) {}
+
+  // ---- Settings endpoints ----
+
+  @Get('settings')
+  @UseGuards(JwtAuthGuard)
+  getSettings() {
+    return this.settingsService.getSettings();
+  }
+
+  @Patch('settings')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTemas)
+  updateSettings(@Body() body: { aiEnabled: boolean }) {
+    return this.settingsService.updateSettings({ aiEnabled: body.aiEnabled });
+  }
 
   // ---- Theme endpoints ----
 
