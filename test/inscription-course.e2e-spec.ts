@@ -60,6 +60,7 @@ describe('InscriptionCourse (e2e)', () => {
     hasActiveForm: jest.fn().mockResolvedValue(true),
     createFormFull: jest.fn().mockResolvedValue('hashKeyFile'),
     getFormFullByInscriptionId: jest.fn().mockResolvedValue('hashKeyFile'),
+    createPartnerForm: jest.fn().mockResolvedValue(undefined),
   };
 
   beforeAll(async () => {

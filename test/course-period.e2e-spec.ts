@@ -14,6 +14,7 @@ import { Role } from 'src/modules/role/role.entity';
 import { RoleService } from 'src/modules/role/role.service';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
+import { FormService } from 'src/modules/vcnafacul-form/form/form.service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import * as request from 'supertest';
 import CreateClassDtoInputFaker from './faker/create-class.dto.input.faker';
@@ -39,11 +40,20 @@ describe('CoursePeriod (e2e)', () => {
   let logPartnerRepository: LogPartnerRepository;
   let logGeoRepository: LogGeoRepository;
 
+  const formServiceMock = {
+    createPartnerForm: jest.fn().mockResolvedValue(undefined),
+    hasActiveForm: jest.fn().mockResolvedValue(true),
+    createFormFull: jest.fn().mockResolvedValue('hashKeyFile'),
+    getFormFullByInscriptionId: jest.fn().mockResolvedValue('hashKeyFile'),
+  };
+
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
       providers: [EmailService],
     })
+      .overrideProvider(FormService)
+      .useValue(formServiceMock)
       .overrideGuard(ThrottlerGuard)
       .useValue({ canActivate: () => true })
       .compile();
