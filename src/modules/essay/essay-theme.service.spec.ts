@@ -103,13 +103,15 @@ describe('EssayThemeService', () => {
   });
 
   describe('remove', () => {
-    it('should soft delete a theme', async () => {
-      themeRepo.findOneBy.mockResolvedValue(mockTheme);
-      themeRepo.softDelete.mockResolvedValue(undefined);
+    it('should deactivate a theme', async () => {
+      themeRepo.findOneBy.mockResolvedValue({ ...mockTheme, active: true });
+      themeRepo.update.mockResolvedValue(undefined);
 
       await service.remove('theme-1');
 
-      expect(themeRepo.softDelete).toHaveBeenCalledWith('theme-1');
+      expect(themeRepo.update).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'theme-1', active: false }),
+      );
     });
 
     it('should throw NotFoundException if theme not found', async () => {
