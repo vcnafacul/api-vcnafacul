@@ -34,6 +34,10 @@ describe('EssayService', () => {
       createReview: jest.fn(),
       saveReview: jest.fn(),
       findUserEssaysForStats: jest.fn(),
+      findAllEssays: jest.fn(),
+      findEssaysByPrepCourse: jest.fn(),
+      updateEssayStatus: jest.fn(),
+      findReviewsByEssayId: jest.fn(),
     };
     themeService = {
       findById: jest.fn().mockResolvedValue(mockTheme),
@@ -51,6 +55,7 @@ describe('EssayService', () => {
     };
     entityManager = {
       findOne: jest.fn(),
+      query: jest.fn(),
     };
     emailService = {
       sendEssayReviewEmail: jest.fn().mockResolvedValue(undefined),
@@ -328,6 +333,221 @@ describe('EssayService', () => {
       const result = await service.getMyStats('user-1');
 
       expect(result.timeline[0].themeTitle).toBe('');
+    });
+  });
+
+  describe('findByIdForReviewer', () => {
+    it('should return essay without user check', async () => {
+      essayRepo.findEssayById.mockResolvedValue(mockEssay);
+      const result = await service.findByIdForReviewer('essay-1');
+      expect(result).toEqual(mockEssay);
+    });
+
+    it('should throw NotFoundException if not found', async () => {
+      essayRepo.findEssayById.mockResolvedValue(null);
+      await expect(service.findByIdForReviewer('essay-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('findAllEssays', () => {
+    it('should delegate to repository with filters', async () => {
+      const expected = { data: [], total: 0 };
+      essayRepo.findAllEssays.mockResolvedValue(expected);
+      const filters = { themeId: 't1', status: 'SUBMITTED', search: 'query' };
+      const result = await service.findAllEssays(1, 20, filters);
+      expect(result).toEqual(expected);
+      expect(essayRepo.findAllEssays).toHaveBeenCalledWith(1, 20, filters);
+    });
+  });
+
+  describe('findEssaysForCollaborator', () => {
+    it('should return empty when no collaborator found', async () => {
+      entityManager.query.mockResolvedValue([]);
+      const result = await service.findEssaysForCollaborator('user-1', 1, 10, {});
+      expect(result).toEqual({ data: [], total: 0 });
+    });
+
+    it('should delegate to findEssaysByPrepCourse when collaborator found', async () => {
+      entityManager.query.mockResolvedValue([
+        { partner_prep_course_id: 'pc-1' },
+      ]);
+      essayRepo.findEssaysByPrepCourse.mockResolvedValue({
+        data: [],
+        total: 0,
+      });
+      await service.findEssaysForCollaborator('user-1', 1, 10, {});
+      expect(essayRepo.findEssaysByPrepCourse).toHaveBeenCalledWith(
+        'pc-1',
+        1,
+        10,
+        {},
+      );
+    });
+  });
+
+  describe('findEssaysByPrepCourse', () => {
+    it('should delegate to repository', async () => {
+      const expected = { data: [], total: 0 };
+      essayRepo.findEssaysByPrepCourse.mockResolvedValue(expected);
+      const result = await service.findEssaysByPrepCourse('pc-1', 1, 10, {});
+      expect(result).toEqual(expected);
+    });
+  });
+
+  describe('findReviewsByEssayId', () => {
+    it('should return reviews', async () => {
+      essayRepo.findEssayById.mockResolvedValue(mockEssay);
+      essayRepo.findReviewsByEssayId.mockResolvedValue([]);
+      const result = await service.findReviewsByEssayId('essay-1');
+      expect(result).toEqual([]);
+    });
+
+    it('should throw NotFoundException if essay not found', async () => {
+      essayRepo.findEssayById.mockResolvedValue(null);
+      await expect(service.findReviewsByEssayId('essay-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('createHumanReview', () => {
+    const reviewDto = {
+      totalScore: 800,
+      comp1Score: 160,
+      comp2Score: 160,
+      comp3Score: 160,
+      comp4Score: 160,
+      comp5Score: 160,
+      generalComment: 'Boa redacao',
+    };
+
+    it('should create a human review for submitted essay', async () => {
+      const essay = {
+        ...mockEssay,
+        status: EssayStatus.SUBMITTED,
+        theme: { title: 'Tema' },
+      };
+      essayRepo.findEssayById.mockResolvedValue(essay);
+      essayRepo.createReview.mockReturnValue({ id: 'r1' });
+      essayRepo.saveReview.mockResolvedValue({ id: 'r1' });
+      entityManager.query.mockResolvedValue([
+        { id: 'u1', firstName: 'Rev', lastName: 'One', email: 'r@t.com' },
+      ]);
+
+      const result = await service.createHumanReview(
+        'essay-1',
+        'reviewer-1',
+        reviewDto as any,
+      );
+      expect(result).toEqual({ id: 'r1' });
+      expect(essayRepo.updateEssayStatus).toHaveBeenCalledWith(
+        'essay-1',
+        EssayStatus.REVIEWED,
+      );
+    });
+
+    it('should not update status if already reviewed', async () => {
+      const essay = {
+        ...mockEssay,
+        status: EssayStatus.REVIEWED,
+        theme: { title: 'Tema' },
+      };
+      essayRepo.findEssayById.mockResolvedValue(essay);
+      essayRepo.createReview.mockReturnValue({ id: 'r1' });
+      essayRepo.saveReview.mockResolvedValue({ id: 'r1' });
+      entityManager.query.mockResolvedValue([]);
+
+      await service.createHumanReview('essay-1', 'reviewer-1', reviewDto as any);
+      expect(essayRepo.updateEssayStatus).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException if essay not found', async () => {
+      essayRepo.findEssayById.mockResolvedValue(null);
+      await expect(
+        service.createHumanReview('essay-1', 'reviewer-1', reviewDto as any),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ConflictException if essay is draft', async () => {
+      essayRepo.findEssayById.mockResolvedValue({ ...mockEssay });
+      await expect(
+        service.createHumanReview('essay-1', 'reviewer-1', reviewDto as any),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('validateReviewerScope', () => {
+    it('should pass for admin user', async () => {
+      entityManager.query.mockResolvedValue([{ base: true, name: 'admin' }]);
+      await expect(
+        service.validateReviewerScope('essay-1', 'admin-user'),
+      ).resolves.toBeUndefined();
+    });
+
+    it('should pass for collaborator of same prep course', async () => {
+      entityManager.query
+        .mockResolvedValueOnce([{ base: false, name: 'role' }])
+        .mockResolvedValueOnce([{ partner_prep_course_id: 'pc-1' }])
+        .mockResolvedValueOnce([{ id: 'c1' }]);
+      essayRepo.findEssayById.mockResolvedValue(mockEssay);
+
+      await expect(
+        service.validateReviewerScope('essay-1', 'reviewer-1'),
+      ).resolves.toBeUndefined();
+    });
+
+    it('should throw ForbiddenException when student has no prep course', async () => {
+      entityManager.query
+        .mockResolvedValueOnce([{ base: false, name: 'role' }])
+        .mockResolvedValueOnce([]);
+      essayRepo.findEssayById.mockResolvedValue(mockEssay);
+
+      await expect(
+        service.validateReviewerScope('essay-1', 'reviewer-1'),
+      ).rejects.toThrow('Estudante nao vinculado a nenhum cursinho');
+    });
+
+    it('should throw ForbiddenException when reviewer is not collaborator', async () => {
+      entityManager.query
+        .mockResolvedValueOnce([{ base: false, name: 'role' }])
+        .mockResolvedValueOnce([{ partner_prep_course_id: 'pc-1' }])
+        .mockResolvedValueOnce([]);
+      essayRepo.findEssayById.mockResolvedValue(mockEssay);
+
+      await expect(
+        service.validateReviewerScope('essay-1', 'reviewer-1'),
+      ).rejects.toThrow('Voce nao tem permissao para acessar redacoes deste cursinho');
+    });
+  });
+
+  describe('validatePrepCourseAccess', () => {
+    it('should pass for admin user', async () => {
+      entityManager.query.mockResolvedValue([{ base: true, name: 'admin' }]);
+      await expect(
+        service.validatePrepCourseAccess('pc-1', 'admin-user'),
+      ).resolves.toBeUndefined();
+    });
+
+    it('should pass for collaborator', async () => {
+      entityManager.query
+        .mockResolvedValueOnce([{ base: false, name: 'role' }])
+        .mockResolvedValueOnce([{ id: 'c1' }]);
+
+      await expect(
+        service.validatePrepCourseAccess('pc-1', 'user-1'),
+      ).resolves.toBeUndefined();
+    });
+
+    it('should throw ForbiddenException when not collaborator', async () => {
+      entityManager.query
+        .mockResolvedValueOnce([{ base: false, name: 'role' }])
+        .mockResolvedValueOnce([]);
+
+      await expect(
+        service.validatePrepCourseAccess('pc-1', 'user-1'),
+      ).rejects.toThrow('Voce nao e colaborador deste cursinho');
     });
   });
 });

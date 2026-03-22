@@ -12,7 +12,10 @@ import { LoginDtoInput } from 'src/modules/user/dto/login.dto.input';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { EmailService } from 'src/shared/services/email/email.service';
+import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import * as request from 'supertest';
+
+jest.mock('src/shared/services/webhooks/discord.ts');
 import { CreateUserDtoInputFaker } from './faker/create-user.dto.input.faker';
 import { createNestAppTest } from './utils/createNestAppTest';
 
@@ -29,6 +32,8 @@ describe('User e2e', () => {
       imports: [AppModule],
       providers: [EmailService, ConfigService],
     })
+      .overrideProvider(DiscordWebhook)
+      .useValue({ sendMessage: jest.fn() })
       .overrideGuard(PermissionsGuard) // Here we are replacing the guard with a mock
       .useValue({
         canActivate: jest.fn(() => true),

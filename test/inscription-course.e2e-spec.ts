@@ -24,6 +24,7 @@ import { FormService } from 'src/modules/vcnafacul-form/form/form.service';
 import { SubmissionService } from 'src/modules/vcnafacul-form/submission/submission.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
+import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import * as request from 'supertest';
 import { CreateGeoDTOInputFaker } from './faker/create-geo.dto.input.faker';
 import { CreateInscriptionCourseDTOInputFaker } from './faker/create-inscription-course.dto.faker';
@@ -35,6 +36,7 @@ import { createNestAppTest } from './utils/createNestAppTest';
 // Mock the EmailService globally
 jest.mock('src/shared/services/email/email.service');
 jest.mock('src/shared/services/blob/blob-service.ts');
+jest.mock('src/shared/services/webhooks/discord.ts');
 
 describe('InscriptionCourse (e2e)', () => {
   let app: INestApplication;
@@ -56,6 +58,10 @@ describe('InscriptionCourse (e2e)', () => {
   let logPartnerRepository: LogPartnerRepository;
   let logGeoRepository: LogGeoRepository;
 
+  const discordWebhookMock = {
+    sendMessage: jest.fn(),
+  };
+
   const formServiceMock = {
     hasActiveForm: jest.fn().mockResolvedValue(true),
     createFormFull: jest.fn().mockResolvedValue('hashKeyFile'),
@@ -68,6 +74,8 @@ describe('InscriptionCourse (e2e)', () => {
       imports: [AppModule],
       providers: [EmailService, ConfigService],
     })
+      .overrideProvider(DiscordWebhook)
+      .useValue(discordWebhookMock)
       .overrideProvider(FormService)
       .useValue(formServiceMock)
       .overrideGuard(ThrottlerGuard)

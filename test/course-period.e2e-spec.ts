@@ -16,6 +16,7 @@ import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
 import { FormService } from 'src/modules/vcnafacul-form/form/form.service';
 import { EmailService } from 'src/shared/services/email/email.service';
+import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import * as request from 'supertest';
 import CreateClassDtoInputFaker from './faker/create-class.dto.input.faker';
 import { CreateCoursePeriodDtoInputFaker } from './faker/create-course-period.dto.input.faker';
@@ -25,6 +26,7 @@ import { createNestAppTest } from './utils/createNestAppTest';
 
 // Mock the EmailService globally
 jest.mock('src/shared/services/email/email.service');
+jest.mock('src/shared/services/webhooks/discord.ts');
 
 describe('CoursePeriod (e2e)', () => {
   let app: INestApplication;
@@ -40,6 +42,10 @@ describe('CoursePeriod (e2e)', () => {
   let logPartnerRepository: LogPartnerRepository;
   let logGeoRepository: LogGeoRepository;
 
+  const discordWebhookMock = {
+    sendMessage: jest.fn(),
+  };
+
   const formServiceMock = {
     createPartnerForm: jest.fn().mockResolvedValue(undefined),
     hasActiveForm: jest.fn().mockResolvedValue(true),
@@ -52,6 +58,8 @@ describe('CoursePeriod (e2e)', () => {
       imports: [AppModule],
       providers: [EmailService],
     })
+      .overrideProvider(DiscordWebhook)
+      .useValue(discordWebhookMock)
       .overrideProvider(FormService)
       .useValue(formServiceMock)
       .overrideGuard(ThrottlerGuard)
