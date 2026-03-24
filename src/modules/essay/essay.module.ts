@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EnvModule } from '../../shared/modules/env/env.module';
 import { UserModule } from '../user/user.module';
+import { BlobModule } from '../../shared/services/blob/blob.module';
 import { EssayTheme } from './entities/essay-theme.entity';
 import { Essay } from './entities/essay.entity';
 import { EssayReview } from './entities/essay-review.entity';
@@ -25,6 +26,7 @@ import { EmailService } from '../../shared/services/email/email.service';
     TypeOrmModule.forFeature([EssayTheme, Essay, EssayReview, EssaySettings]),
     EnvModule,
     UserModule,
+    BlobModule,
   ],
   controllers: [EssayController],
   providers: [

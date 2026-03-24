@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Inject,
@@ -26,6 +27,7 @@ import {
 import { EnvService } from '../../shared/modules/env/env.service';
 import { EssaySettingsService } from './essay-settings.service';
 import { EmailService } from '../../shared/services/email/email.service';
+import { BlobService } from '../../shared/services/blob/blob-service';
 
 @Injectable()
 export class EssayService {
@@ -41,9 +43,25 @@ export class EssayService {
     @InjectEntityManager()
     private readonly entityManager: EntityManager,
     private readonly emailService: EmailService,
+    @Inject('BlobService')
+    private readonly blobService: BlobService,
   ) {}
 
+  private async assertUserIsEnrolled(userId: string): Promise<void> {
+    const [enrolled] = await this.entityManager.query(
+      `SELECT id FROM student_course
+       WHERE user_id = ? AND applicationStatus = ? LIMIT 1`,
+      [userId, 'Matriculado'],
+    );
+    if (!enrolled) {
+      throw new ForbiddenException(
+        'Apenas alunos matriculados podem enviar redações',
+      );
+    }
+  }
+
   async create(dto: CreateEssayDto, userId: string): Promise<Essay> {
+    await this.assertUserIsEnrolled(userId);
     await this.themeService.findById(dto.themeId);
 
     const existing = await this.essayRepo.findByUserAndTheme(
@@ -96,6 +114,8 @@ export class EssayService {
       throw new ConflictException('Redacao ja foi submetida');
     }
 
+    await this.assertUserIsEnrolled(userId);
+
     essay.title = dto.title;
     essay.text = dto.text;
     const plainText = dto.text
@@ -121,6 +141,94 @@ export class EssayService {
     }
 
     return saved;
+  }
+
+  async submitImage(
+    themeId: string,
+    file: Express.Multer.File,
+    userId: string,
+  ): Promise<Essay> {
+    await this.assertUserIsEnrolled(userId);
+
+    if (!file) {
+      throw new BadRequestException('Arquivo é obrigatório');
+    }
+
+    // Validate theme is active and within period
+    const theme = await this.themeService.findById(themeId);
+    if (!theme.active) {
+      throw new BadRequestException('Tema nao esta ativo');
+    }
+    const now = new Date();
+    const weekStart = new Date(theme.weekStart);
+    const weekEnd = new Date(theme.weekEnd);
+    weekEnd.setHours(23, 59, 59, 999);
+    if (now < weekStart || now > weekEnd) {
+      throw new BadRequestException('Tema fora do periodo de submissao');
+    }
+
+    // Check uniqueness
+    const existing = await this.essayRepo.findByUserAndTheme(userId, themeId);
+    if (existing) {
+      throw new ConflictException('Voce ja possui uma redacao para este tema');
+    }
+
+    // Validate file
+    const allowedMimes = ['image/jpeg', 'image/png', 'application/pdf'];
+    if (!allowedMimes.includes(file.mimetype)) {
+      throw new BadRequestException(
+        'Formato nao aceito. Envie JPG, PNG ou PDF.',
+      );
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      throw new BadRequestException('Arquivo deve ter no maximo 5MB');
+    }
+
+    // Upload to S3
+    const imageKey = await this.blobService.uploadFile(
+      file,
+      this.envService.get('BUCKET_ESSAY'),
+    );
+
+    // Create essay
+    return this.essayRepo.create({
+      userId,
+      themeId,
+      inputType: EssayInputType.UPLOADED,
+      status: EssayStatus.SUBMITTED,
+      imageKey,
+      originalFilename: file.originalname,
+      mimeType: file.mimetype,
+      submittedAt: new Date(),
+    } as Essay);
+  }
+
+  async getImage(
+    essayId: string,
+    userId: string,
+  ): Promise<{ buffer: Buffer; contentType: string; filename: string }> {
+    const essay = await this.essayRepo.findEssayById(essayId);
+    if (!essay) throw new NotFoundException('Redacao nao encontrada');
+
+    if (essay.inputType !== EssayInputType.UPLOADED || !essay.imageKey) {
+      throw new BadRequestException('Redacao nao possui imagem');
+    }
+
+    // Check access: owner or reviewer
+    if (essay.userId !== userId) {
+      await this.validateReviewerScope(essayId, userId);
+    }
+
+    const file = await this.blobService.getFile(
+      essay.imageKey,
+      this.envService.get('BUCKET_ESSAY'),
+    );
+
+    return {
+      buffer: Buffer.from(file.buffer, 'base64'),
+      contentType: essay.mimeType || file.contentType,
+      filename: essay.originalFilename || `redacao-${essayId}`,
+    };
   }
 
   async findById(id: string, userId?: string): Promise<Essay> {

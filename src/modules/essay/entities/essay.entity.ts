@@ -49,6 +49,15 @@ export class Essay extends BaseEntity {
   @Column({ name: 'submitted_at', type: 'timestamp', nullable: true })
   submittedAt: Date;
 
+  @Column({ name: 'image_key', type: 'varchar', nullable: true })
+  imageKey: string;
+
+  @Column({ name: 'original_filename', type: 'varchar', nullable: true })
+  originalFilename: string;
+
+  @Column({ name: 'mime_type', type: 'varchar', length: 50, nullable: true })
+  mimeType: string;
+
   @ManyToOne(() => User)
   @JoinColumn({ name: 'user_id' })
   user: User;
