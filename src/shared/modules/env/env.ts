@@ -58,6 +58,7 @@ export const envSchema = z.object({
   BUCKET_CONTENT: z.string().default('vcnafacul-content'),
   BUCKET_NEWS: z.string().default('vcnafacul-news'),
   BUCKET_PARTNERSHIP_DOC: z.string().default('vcnafacul-partnership-doc'),
+  BUCKET_ESSAY: z.string().default('vcnafacul-essays'),
   AWS_STORAGE_CLASS: z.enum(['STANDARD']).default('STANDARD'),
 
   //GRAFANA

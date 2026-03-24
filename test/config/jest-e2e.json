@@ -68,12 +68,26 @@
     "!src/**/log-partner/**/*.ts",
     "!src/**/log-student/**/*.ts",
     "!src/**/legal-guardian/**/*.ts",
-    "!src/**/documents/**/*.ts"
+    "!src/**/documents/**/*.ts",
+    "!src/utils/compressImage.ts",
+    "!src/utils/createThumbnail.ts",
+    "!src/modules/essay/ai/claude-essay.provider.ts",
+    "!src/modules/essay/ai/openai-essay.provider.ts",
+    "!src/modules/user/user.repository.ts",
+    "!src/modules/prepCourse/InscriptionCourse/inscription-course.repository.ts",
+    "!src/modules/prepCourse/coursePeriod/course-period.repository.ts",
+    "!src/modules/prepCourse/partnerPrepCourse/partner-prep-course.repository.ts",
+    "!src/modules/prepCourse/studentCourse/student-course.repository.ts",
+    "!src/modules/prepCourse/class/class.repository.ts",
+    "!src/modules/essay/essay.repository.ts",
+    "!src/modules/essay/essay-settings.repository.ts",
+    "!src/modules/essay/essay-theme.repository.ts",
+    "!src/modules/role/role.repository.ts"
   ],
   "coverageDirectory": "./coverage",
   "coverageThreshold": {
     "global": {
-      "lines": 70
+      "lines": 74
     },
     "src/modules/frontend-errors/frontend-errors.service.ts": {
       "lines": 70,

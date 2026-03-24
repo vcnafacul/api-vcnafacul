@@ -9,9 +9,14 @@ import {
   Post,
   Query,
   Req,
+  Res,
   SetMetadata,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Response } from 'express';
 import { ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../shared/guards/permission.guard';
@@ -23,6 +28,7 @@ import { CreateEssayThemeDto } from './dtos/create-essay-theme.dto';
 import { UpdateEssayThemeDto } from './dtos/update-essay-theme.dto';
 import { CreateEssayDto } from './dtos/create-essay.dto';
 import { SubmitEssayDto } from './dtos/submit-essay.dto';
+import { SubmitEssayImageDto } from './dtos/submit-essay-image.dto';
 import { CreateEssayReviewDto } from './dtos/create-essay-review.dto';
 
 @ApiTags('Essay')
@@ -104,6 +110,19 @@ export class EssayController {
     return this.essayService.create(dto, req.user.id);
   }
 
+  @Post('submit-image')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  submitImage(
+    @Body() dto: SubmitEssayImageDto,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: any,
+  ) {
+    return this.essayService.submitImage(dto.themeId, file, req.user.id);
+  }
+
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
   updateDraft(
@@ -122,6 +141,22 @@ export class EssayController {
     @Req() req: any,
   ) {
     return this.essayService.submit(id, dto, req.user.id);
+  }
+
+  @Get(':id/image')
+  @UseGuards(JwtAuthGuard)
+  async getImage(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Res() res: Response,
+  ) {
+    const { buffer, contentType, filename } =
+      await this.essayService.getImage(id, req.user.id);
+    res.set({
+      'Content-Type': contentType,
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    });
+    res.send(buffer);
   }
 
   @Get('my')

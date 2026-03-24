@@ -12,6 +12,7 @@ describe('EssayService', () => {
   let settingsService: any;
   let entityManager: any;
   let emailService: any;
+  let blobService: any;
 
   const mockTheme = { id: 'theme-1', title: 'Tema', motivationalText: 'Texto' };
   const mockEssay = {
@@ -55,10 +56,15 @@ describe('EssayService', () => {
     };
     entityManager = {
       findOne: jest.fn(),
-      query: jest.fn(),
+      query: jest.fn().mockResolvedValue([{ id: 'sc-1' }]),
     };
     emailService = {
       sendEssayReviewEmail: jest.fn().mockResolvedValue(undefined),
+    };
+    blobService = {
+      uploadFile: jest.fn(),
+      getFile: jest.fn(),
+      deleteFile: jest.fn(),
     };
 
     service = new EssayService(
@@ -69,6 +75,7 @@ describe('EssayService', () => {
       settingsService,
       entityManager,
       emailService,
+      blobService,
     );
   });
 
