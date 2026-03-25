@@ -259,7 +259,9 @@ export class EssayService {
 
     const timeline = essays.map((essay) => {
       const aiReviews = essay.reviews.filter((r) => r.reviewType === 'AI');
-      const humanReviews = essay.reviews.filter((r) => r.reviewType === 'HUMAN');
+      const humanReviews = essay.reviews.filter(
+        (r) => r.reviewType === 'HUMAN',
+      );
 
       const pickReview = (reviews: typeof essay.reviews) => {
         if (reviews.length === 0) return null;

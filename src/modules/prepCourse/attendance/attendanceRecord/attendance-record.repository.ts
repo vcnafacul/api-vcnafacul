@@ -181,6 +181,25 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
     return await query.getRawMany();
   }
 
+  async findAllInRange(
+    classId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<AttendanceRecord[]> {
+    return this.repository
+      .createQueryBuilder('ar')
+      .leftJoinAndSelect('ar.studentAttendance', 'sa')
+      .leftJoinAndSelect('sa.studentCourse', 'sc')
+      .leftJoinAndSelect('sc.user', 'user')
+      .leftJoinAndSelect('sa.justification', 'aj')
+      .where('ar.class = :classId', { classId })
+      .andWhere('DATE(ar.registeredAt) >= :startDate', { startDate })
+      .andWhere('DATE(ar.registeredAt) <= :endDate', { endDate })
+      .andWhere('ar.deletedAt IS NULL')
+      .orderBy('ar.registeredAt', 'ASC')
+      .getMany();
+  }
+
   async findByClassIdAndDate(
     classId: string,
     date: Date,

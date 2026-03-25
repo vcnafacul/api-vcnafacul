@@ -120,10 +120,7 @@ describe('RefreshTokenService', () => {
     it('should revoke old token and generate new one', async () => {
       cache.wrap.mockResolvedValue(null); // for addTokenToUserList
 
-      const newToken = await service.rotateRefreshToken(
-        'old-token',
-        'user-1',
-      );
+      const newToken = await service.rotateRefreshToken('old-token', 'user-1');
 
       expect(cache.del).toHaveBeenCalledWith('refresh_token:old-token');
       expect(newToken).toBeDefined();

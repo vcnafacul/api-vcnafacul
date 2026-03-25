@@ -7,11 +7,12 @@ import {
   Post,
   Query,
   Req,
+  Res,
   SetMetadata,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { Permissions } from 'src/modules/role/role.entity';
 import { User } from 'src/modules/user/user.entity';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
@@ -25,6 +26,7 @@ import { GetAttendanceRecordByIdDtoOutput } from './dtos/get-attendance-record-b
 import { GetAttendanceRecordByStudent } from './dtos/get-attendance-record-by-student';
 import { GetAttendanceRecord } from './dtos/get-attendance-record.dto.input';
 import { AttendanceRecordByStudentDtoOutput } from './dtos/attendance-record-by-student.dto.output';
+import { ExportAttendanceRecordDtoInput } from './dtos/export-attendance-record.dto.input';
 
 @ApiTags('Attendance Record')
 @Controller('attendance-record')
@@ -78,6 +80,17 @@ export class AttendanceRecordController {
     @Query() dto: AttendanceRecordByClassInput,
   ): Promise<AttendanceRecordByStudentDtoOutput> {
     return await this.service.getStudentPresenceReportByClassId(dto);
+  }
+
+  @Get('export')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
+  async export(
+    @Query() dto: ExportAttendanceRecordDtoInput,
+    @Res() res: Response,
+  ) {
+    return this.service.exportToExcel(dto, res);
   }
 
   @Get(':id')

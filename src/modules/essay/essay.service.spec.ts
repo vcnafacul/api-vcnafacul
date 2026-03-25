@@ -235,16 +235,22 @@ describe('EssayService', () => {
               id: 'r1',
               reviewType: 'AI',
               totalScore: 600,
-              comp1Score: 120, comp2Score: 120, comp3Score: 120,
-              comp4Score: 120, comp5Score: 120,
+              comp1Score: 120,
+              comp2Score: 120,
+              comp3Score: 120,
+              comp4Score: 120,
+              comp5Score: 120,
               createdAt: new Date('2026-01-15'),
             },
             {
               id: 'r2',
               reviewType: 'HUMAN',
               totalScore: 700,
-              comp1Score: 140, comp2Score: 140, comp3Score: 140,
-              comp4Score: 140, comp5Score: 140,
+              comp1Score: 140,
+              comp2Score: 140,
+              comp3Score: 140,
+              comp4Score: 140,
+              comp5Score: 140,
               createdAt: new Date('2026-01-16'),
             },
           ],
@@ -258,15 +264,20 @@ describe('EssayService', () => {
               id: 'r3',
               reviewType: 'AI',
               totalScore: 720,
-              comp1Score: 160, comp2Score: 140, comp3Score: 140,
-              comp4Score: 140, comp5Score: 140,
+              comp1Score: 160,
+              comp2Score: 140,
+              comp3Score: 140,
+              comp4Score: 140,
+              comp5Score: 140,
               createdAt: new Date('2026-02-10'),
             },
           ],
         },
       ];
 
-      jest.spyOn(essayRepo, 'findUserEssaysForStats').mockResolvedValue(mockEssays as any);
+      jest
+        .spyOn(essayRepo, 'findUserEssaysForStats')
+        .mockResolvedValue(mockEssays as any);
 
       const result = await service.getMyStats('user-1');
 
@@ -285,22 +296,34 @@ describe('EssayService', () => {
           theme: { title: 'Tema 1' },
           reviews: [
             {
-              id: 'r1', reviewType: 'HUMAN', totalScore: 500,
-              comp1Score: 100, comp2Score: 100, comp3Score: 100,
-              comp4Score: 100, comp5Score: 100,
+              id: 'r1',
+              reviewType: 'HUMAN',
+              totalScore: 500,
+              comp1Score: 100,
+              comp2Score: 100,
+              comp3Score: 100,
+              comp4Score: 100,
+              comp5Score: 100,
               createdAt: new Date('2026-01-16'),
             },
             {
-              id: 'r2', reviewType: 'HUMAN', totalScore: 700,
-              comp1Score: 140, comp2Score: 140, comp3Score: 140,
-              comp4Score: 140, comp5Score: 140,
+              id: 'r2',
+              reviewType: 'HUMAN',
+              totalScore: 700,
+              comp1Score: 140,
+              comp2Score: 140,
+              comp3Score: 140,
+              comp4Score: 140,
+              comp5Score: 140,
               createdAt: new Date('2026-01-20'),
             },
           ],
         },
       ];
 
-      jest.spyOn(essayRepo, 'findUserEssaysForStats').mockResolvedValue(mockEssays as any);
+      jest
+        .spyOn(essayRepo, 'findUserEssaysForStats')
+        .mockResolvedValue(mockEssays as any);
 
       const result = await service.getMyStats('user-1');
 
@@ -317,7 +340,9 @@ describe('EssayService', () => {
         },
       ];
 
-      jest.spyOn(essayRepo, 'findUserEssaysForStats').mockResolvedValue(mockEssays as any);
+      jest
+        .spyOn(essayRepo, 'findUserEssaysForStats')
+        .mockResolvedValue(mockEssays as any);
 
       const result = await service.getMyStats('user-1');
 
@@ -335,7 +360,9 @@ describe('EssayService', () => {
         },
       ];
 
-      jest.spyOn(essayRepo, 'findUserEssaysForStats').mockResolvedValue(mockEssays as any);
+      jest
+        .spyOn(essayRepo, 'findUserEssaysForStats')
+        .mockResolvedValue(mockEssays as any);
 
       const result = await service.getMyStats('user-1');
 
@@ -372,7 +399,12 @@ describe('EssayService', () => {
   describe('findEssaysForCollaborator', () => {
     it('should return empty when no collaborator found', async () => {
       entityManager.query.mockResolvedValue([]);
-      const result = await service.findEssaysForCollaborator('user-1', 1, 10, {});
+      const result = await service.findEssaysForCollaborator(
+        'user-1',
+        1,
+        10,
+        {},
+      );
       expect(result).toEqual({ data: [], total: 0 });
     });
 
@@ -466,7 +498,11 @@ describe('EssayService', () => {
       essayRepo.saveReview.mockResolvedValue({ id: 'r1' });
       entityManager.query.mockResolvedValue([]);
 
-      await service.createHumanReview('essay-1', 'reviewer-1', reviewDto as any);
+      await service.createHumanReview(
+        'essay-1',
+        'reviewer-1',
+        reviewDto as any,
+      );
       expect(essayRepo.updateEssayStatus).not.toHaveBeenCalled();
     });
 
@@ -525,7 +561,9 @@ describe('EssayService', () => {
 
       await expect(
         service.validateReviewerScope('essay-1', 'reviewer-1'),
-      ).rejects.toThrow('Voce nao tem permissao para acessar redacoes deste cursinho');
+      ).rejects.toThrow(
+        'Voce nao tem permissao para acessar redacoes deste cursinho',
+      );
     });
   });
 
