@@ -150,8 +150,10 @@ export class EssayController {
     @Req() req: any,
     @Res() res: Response,
   ) {
-    const { buffer, contentType, filename } =
-      await this.essayService.getImage(id, req.user.id);
+    const { buffer, contentType, filename } = await this.essayService.getImage(
+      id,
+      req.user.id,
+    );
     res.set({
       'Content-Type': contentType,
       'Content-Disposition': `attachment; filename="${filename}"`,
@@ -205,11 +207,16 @@ export class EssayController {
     @Query('status') status?: string,
     @Query('search') search?: string,
   ) {
-    return this.essayService.findEssaysForCollaborator(req.user.id, +page, +limit, {
-      themeId,
-      status,
-      search,
-    });
+    return this.essayService.findEssaysForCollaborator(
+      req.user.id,
+      +page,
+      +limit,
+      {
+        themeId,
+        status,
+        search,
+      },
+    );
   }
 
   @Get('prep-course/:prepCourseId')

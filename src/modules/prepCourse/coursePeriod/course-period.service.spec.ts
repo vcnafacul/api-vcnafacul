@@ -76,7 +76,10 @@ describe('CoursePeriodService', () => {
       partnerRepository.findOneByUserId.mockResolvedValue(null);
 
       await expect(
-        service.create({ startDate: '2026-01-01', endDate: '2026-06-30' } as any, 'user-1'),
+        service.create(
+          { startDate: '2026-01-01', endDate: '2026-06-30' } as any,
+          'user-1',
+        ),
       ).rejects.toThrow(HttpException);
     });
 
@@ -111,9 +114,9 @@ describe('CoursePeriodService', () => {
     it('should throw when course period not found', async () => {
       repository.findOneBy.mockResolvedValue(null);
 
-      await expect(
-        service.update({ id: 'bad-id' } as any),
-      ).rejects.toThrow(HttpException);
+      await expect(service.update({ id: 'bad-id' } as any)).rejects.toThrow(
+        HttpException,
+      );
     });
 
     it('should validate dates when updating', async () => {
@@ -168,7 +171,9 @@ describe('CoursePeriodService', () => {
 
       await service.closeExpiredCoursePeriods();
 
-      expect(studentCourseRepository.updateStudentStatus).not.toHaveBeenCalled();
+      expect(
+        studentCourseRepository.updateStudentStatus,
+      ).not.toHaveBeenCalled();
     });
 
     it('should update students and send discord messages', async () => {
@@ -255,7 +260,9 @@ describe('CoursePeriodService', () => {
 
       await service.closeExpiredCoursePeriods();
 
-      expect(studentCourseRepository.updateStudentStatus).not.toHaveBeenCalled();
+      expect(
+        studentCourseRepository.updateStudentStatus,
+      ).not.toHaveBeenCalled();
     });
   });
 });

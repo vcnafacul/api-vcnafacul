@@ -6,6 +6,8 @@ import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output'
 import { DataSource } from 'typeorm';
 import { ClassRepository } from '../../class/class.repository';
 import { CollaboratorRepository } from '../../collaborator/collaborator.repository';
+import { AbsenceJustification } from '../absenceJustification/absence-justification.entity';
+import { PeriodJustification } from '../periodJustification/period-justification.entity';
 import { StudentAttendance } from '../studentAttendance/student-attendance.entity';
 import { AttendanceRecord } from './attendance-record.entity';
 import { AttendanceRecordRepository } from './attendance-record.repository';
@@ -19,6 +21,9 @@ import { CreateAttendanceRecordDtoInput } from './dtos/create-attendance-record.
 import { GetAttendanceRecordByIdDtoOutput } from './dtos/get-attendance-record-by-id.dto.output';
 import { GetAttendanceRecordByStudent } from './dtos/get-attendance-record-by-student';
 import { GetAttendanceRecord } from './dtos/get-attendance-record.dto.input';
+import * as ExcelJS from 'exceljs';
+import { Response } from 'express';
+import { ExportAttendanceRecordDtoInput } from './dtos/export-attendance-record.dto.input';
 
 @Injectable()
 export class AttendanceRecordService extends BaseService<AttendanceRecord> {
@@ -81,6 +86,63 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
             return studentAttendance;
           });
         await manager.getRepository(StudentAttendance).save(studentAttendances);
+
+        // Auto-apply period justifications for absent students
+        const absentAttendances = studentAttendances.filter(
+          (sa) => !sa.present,
+        );
+        if (absentAttendances.length > 0) {
+          const pjRepo = manager.getRepository(PeriodJustification);
+          const ajRepo = manager.getRepository(AbsenceJustification);
+
+          const absentStudentCourseIds = absentAttendances.map((sa) =>
+            typeof sa.studentCourse === 'string'
+              ? sa.studentCourse
+              : sa.studentCourse.id,
+          );
+
+          const recordDate = dto.date; // the date string from the DTO
+          const activePJs = await pjRepo
+            .createQueryBuilder('pj')
+            .leftJoinAndSelect('pj.studentCourse', 'sc')
+            .where('pj.student_course_id IN (:...ids)', {
+              ids: absentStudentCourseIds,
+            })
+            .andWhere('pj.start_date <= :date', { date: recordDate })
+            .andWhere('pj.end_date >= :date', { date: recordDate })
+            .andWhere('pj.deleted_at IS NULL')
+            .getMany();
+
+          if (activePJs.length > 0) {
+            const pjByStudentId = new Map<string, PeriodJustification>();
+            for (const pj of activePJs) {
+              const scId =
+                pj.studentCourse?.id || (pj as any).student_course_id;
+              pjByStudentId.set(scId, pj);
+            }
+
+            const justificationsToCreate: AbsenceJustification[] = [];
+            for (const sa of absentAttendances) {
+              const scId =
+                typeof sa.studentCourse === 'string'
+                  ? sa.studentCourse
+                  : sa.studentCourse.id;
+              const pj = pjByStudentId.get(scId);
+              if (pj) {
+                justificationsToCreate.push(
+                  ajRepo.create({
+                    studentAttendance: sa,
+                    justification: pj.justification,
+                  }),
+                );
+              }
+            }
+
+            if (justificationsToCreate.length > 0) {
+              await ajRepo.save(justificationsToCreate);
+            }
+          }
+        }
       });
     } catch (error) {
       console.error('Error creating attendance record:', error);
@@ -278,5 +340,184 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
       endDate,
       report,
     });
+  }
+
+  async exportToExcel(
+    dto: ExportAttendanceRecordDtoInput,
+    res: Response,
+  ): Promise<void> {
+    const startDate = new Date(dto.startDate);
+    const endDate = new Date(dto.endDate);
+
+    const diffDays = Math.ceil(
+      (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
+    );
+    if (diffDays > 180) {
+      throw new HttpException(
+        'O período máximo para exportação é de 180 dias',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const records = await this.repository.findAllInRange(
+      dto.classId,
+      dto.startDate,
+      dto.endDate,
+    );
+
+    const classEntity =
+      await this.classRepository.findOneByIdToAttendanceRecord(dto.classId);
+
+    // Build unique student list from records (includes user data via joins)
+    const studentMap = new Map<
+      string,
+      { id: string; codEnrolled: string; name: string; email: string }
+    >();
+    for (const record of records) {
+      for (const sa of record.studentAttendance) {
+        if (!studentMap.has(sa.studentCourse.id)) {
+          const user = sa.studentCourse.user;
+          const name =
+            user.useSocialName && user.socialName
+              ? user.socialName
+              : `${user.firstName} ${user.lastName}`;
+          studentMap.set(sa.studentCourse.id, {
+            id: sa.studentCourse.id,
+            codEnrolled: sa.studentCourse.cod_enrolled,
+            name,
+            email: user.email,
+          });
+        }
+      }
+    }
+
+    const students = [...studentMap.values()].sort((a, b) =>
+      a.name.localeCompare(b.name, 'pt-BR'),
+    );
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Frequência');
+
+    const className = classEntity?.name || '';
+    const year = classEntity?.coursePeriod?.year || '';
+    sheet.addRow([`Turma: ${className} - ${year}`]);
+    sheet.addRow([
+      `Período: ${startDate.toLocaleDateString('pt-BR')} a ${endDate.toLocaleDateString('pt-BR')}`,
+    ]);
+    sheet.addRow([
+      `Limite máximo de faltas injustificadas: ${dto.maxAbsencePercent}%`,
+    ]);
+    sheet.addRow([]);
+
+    const dates = records.map((r) => ({
+      id: r.id,
+      date: new Date(r.registeredAt),
+      label: new Date(r.registeredAt).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+      }),
+    }));
+
+    const headerRow = [
+      'Matrícula',
+      'Nome Completo',
+      'Email',
+      ...dates.map((d) => d.label),
+      '% Presença',
+      '% Faltas',
+      '% Faltas Justif.',
+      'Excedeu Limite',
+    ];
+    const excelHeaderRow = sheet.addRow(headerRow);
+    excelHeaderRow.font = { bold: true };
+
+    const attendanceMap = new Map<
+      string,
+      Map<string, { present: boolean; justified: boolean }>
+    >();
+    for (const record of records) {
+      const sMap = new Map<string, { present: boolean; justified: boolean }>();
+      for (const sa of record.studentAttendance) {
+        sMap.set(sa.studentCourse.id, {
+          present: sa.present,
+          justified: !!sa.justification,
+        });
+      }
+      attendanceMap.set(record.id, sMap);
+    }
+
+    for (const student of students) {
+      let totalRecords = 0;
+      let presentCount = 0;
+      let justifiedAbsences = 0;
+
+      const dayCells = dates.map((d) => {
+        const sMap = attendanceMap.get(d.id);
+        const entry = sMap?.get(student.id);
+        if (!entry) return '-';
+        totalRecords++;
+        if (entry.present) {
+          presentCount++;
+          return 'P';
+        }
+        if (entry.justified) {
+          justifiedAbsences++;
+          return 'FJ';
+        }
+        return 'F';
+      });
+
+      const presencePercent =
+        totalRecords > 0 ? Math.round((presentCount / totalRecords) * 100) : 0;
+      const absencePercent =
+        totalRecords > 0
+          ? Math.round(((totalRecords - presentCount) / totalRecords) * 100)
+          : 0;
+      const justifiedPercent =
+        totalRecords > 0
+          ? Math.round((justifiedAbsences / totalRecords) * 100)
+          : 0;
+      const unjustifiedAbsences =
+        totalRecords - presentCount - justifiedAbsences;
+      const unjustifiedPercent =
+        totalRecords > 0
+          ? Math.round((unjustifiedAbsences / totalRecords) * 100)
+          : 0;
+      const exceededLimit =
+        unjustifiedPercent > dto.maxAbsencePercent ? 'Sim' : 'Não';
+
+      sheet.addRow([
+        student.codEnrolled,
+        student.name,
+        student.email,
+        ...dayCells,
+        `${presencePercent}%`,
+        `${absencePercent}%`,
+        `${justifiedPercent}%`,
+        exceededLimit,
+      ]);
+    }
+
+    sheet.columns.forEach((column) => {
+      let maxLength = 10;
+      column.eachCell({ includeEmpty: true }, (cell) => {
+        const len = cell.value ? cell.value.toString().length : 0;
+        if (len > maxLength) maxLength = len;
+      });
+      column.width = Math.min(maxLength + 2, 40);
+    });
+
+    const fileName = `frequencia-${className}-${dto.startDate}-${dto.endDate}.xlsx`;
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${encodeURIComponent(fileName)}"`,
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
   }
 }

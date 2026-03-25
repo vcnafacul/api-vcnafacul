@@ -2,7 +2,11 @@ import { buildEssayPrompt } from './essay-prompt';
 
 describe('buildEssayPrompt', () => {
   it('should include theme title, motivational text, and essay text', () => {
-    const result = buildEssayPrompt('Tema X', 'Texto motivador', 'Minha redacao');
+    const result = buildEssayPrompt(
+      'Tema X',
+      'Texto motivador',
+      'Minha redacao',
+    );
     expect(result).toContain('Tema X');
     expect(result).toContain('Texto motivador');
     expect(result).toContain('Minha redacao');
