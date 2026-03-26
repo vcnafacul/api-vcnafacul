@@ -46,6 +46,8 @@ export class CoursePeriodRepository extends BaseRepository<CoursePeriod> {
         'course_period.classes',
       );
 
+    queryBuilder.andWhere('course_period.deletedAt IS NULL');
+
     if (where) {
       Object.keys(where).forEach((key) => {
         if (where[key] !== undefined && where[key] !== null) {
@@ -55,6 +57,42 @@ export class CoursePeriodRepository extends BaseRepository<CoursePeriod> {
         }
       });
     }
+
+    const totalItems = await queryBuilder.getCount();
+    const data = await queryBuilder
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getMany();
+
+    return {
+      data,
+      page,
+      limit,
+      totalItems,
+    };
+  }
+
+  async findAllByPartner(
+    page: number,
+    limit: number,
+    partnerPrepCourseId: string,
+  ): Promise<GetAllOutput<CoursePeriod>> {
+    const queryBuilder = this.repository
+      .createQueryBuilder('course_period')
+      .leftJoinAndSelect(
+        'course_period.partnerPrepCourse',
+        'partner_prep_course',
+      )
+      .leftJoinAndSelect('course_period.classes', 'classes')
+      .leftJoinAndSelect('classes.students', 'students')
+      .loadRelationCountAndMap(
+        'course_period.classesCount',
+        'course_period.classes',
+      )
+      .where('partner_prep_course.id = :partnerPrepCourseId', {
+        partnerPrepCourseId,
+      })
+      .andWhere('course_period.deletedAt IS NULL');
 
     const totalItems = await queryBuilder.getCount();
     const data = await queryBuilder
