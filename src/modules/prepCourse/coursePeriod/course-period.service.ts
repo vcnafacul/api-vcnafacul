@@ -184,22 +184,17 @@ export class CoursePeriodService extends BaseService<CoursePeriod> {
     limit: number,
     userId: string,
   ): Promise<GetAllOutput<CoursePeriodDtoOutput>> {
-    const coursePeriods = await this.repository.findAllBy({
-      page,
-      limit,
-      where: {},
-    });
-
-    // Filtrar apenas períodos do parceiro do usuário
     const partnerPrepCourse =
       await this.partnerRepository.findOneByUserId(userId);
 
-    const filteredPeriods = coursePeriods.data.filter(
-      (period) => period.partnerPrepCourse.id === partnerPrepCourse.id,
+    const coursePeriods = await this.repository.findAllByPartner(
+      page,
+      limit,
+      partnerPrepCourse.id,
     );
 
     return {
-      data: filteredPeriods.map((period) => ({
+      data: coursePeriods.data.map((period) => ({
         id: period.id,
         name: period.name,
         year: period.year,
@@ -218,7 +213,7 @@ export class CoursePeriodService extends BaseService<CoursePeriod> {
       })),
       page: coursePeriods.page,
       limit: coursePeriods.limit,
-      totalItems: filteredPeriods.length,
+      totalItems: coursePeriods.totalItems,
     };
   }
 
