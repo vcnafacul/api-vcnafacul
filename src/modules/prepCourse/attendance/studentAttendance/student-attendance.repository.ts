@@ -21,6 +21,15 @@ export class StudentAttendanceRepository extends BaseRepository<StudentAttendanc
       .getOne();
   }
 
+  async findOneWithClass(id: string): Promise<StudentAttendance> {
+    return await this.repository
+      .createQueryBuilder('sa')
+      .innerJoinAndSelect('sa.attendanceRecord', 'ar')
+      .innerJoinAndSelect('ar.class', 'class')
+      .where('sa.id = :id', { id })
+      .getOne();
+  }
+
   async findAllByAttendanceRecordsWithJustification(
     studentCourseId: string,
     attendanceRecordIds: string[],

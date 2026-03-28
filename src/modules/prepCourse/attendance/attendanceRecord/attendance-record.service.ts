@@ -23,6 +23,7 @@ import { GetAttendanceRecordByStudent } from './dtos/get-attendance-record-by-st
 import { GetAttendanceRecord } from './dtos/get-attendance-record.dto.input';
 import * as ExcelJS from 'exceljs';
 import { Response } from 'express';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { ExportAttendanceRecordDtoInput } from './dtos/export-attendance-record.dto.input';
 
 @Injectable()
@@ -33,6 +34,7 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
     private readonly repository: AttendanceRecordRepository,
     private readonly classRepository: ClassRepository,
     private readonly collaboratorRepository: CollaboratorRepository,
+    private readonly cache: CacheService,
   ) {
     super(repository);
   }
@@ -157,6 +159,7 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
+    await this.cache.del(`presence_by_class_id_${dto.classId}`);
     return record;
   }
 
@@ -234,7 +237,11 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
   }
 
   async delete(id: string): Promise<void> {
+    const record = await this.repository.findOneBy({ id });
     await this.repository.delete(id);
+    if (record?.class?.id) {
+      await this.cache.del(`presence_by_class_id_${record.class.id}`);
+    }
   }
 
   groupByDate(records: AttendanceRecordItem[]): AttendanceRecordItem[] {
@@ -412,11 +419,11 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
       'Matrícula',
       'Nome Completo',
       'Email',
-      ...dates.map((d) => d.label),
       '% Presença',
       '% Faltas',
       '% Faltas Justif.',
       'Excedeu Limite',
+      ...dates.map((d) => d.label),
     ];
     const excelHeaderRow = sheet.addRow(headerRow);
     excelHeaderRow.font = { bold: true };
@@ -457,34 +464,28 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
         return 'F';
       });
 
+      const unjustifiedAbsences =
+        totalRecords - presentCount - justifiedAbsences;
       const presencePercent =
         totalRecords > 0 ? Math.round((presentCount / totalRecords) * 100) : 0;
-      const absencePercent =
-        totalRecords > 0
-          ? Math.round(((totalRecords - presentCount) / totalRecords) * 100)
-          : 0;
       const justifiedPercent =
         totalRecords > 0
           ? Math.round((justifiedAbsences / totalRecords) * 100)
           : 0;
-      const unjustifiedAbsences =
-        totalRecords - presentCount - justifiedAbsences;
-      const unjustifiedPercent =
-        totalRecords > 0
-          ? Math.round((unjustifiedAbsences / totalRecords) * 100)
-          : 0;
+      const absencePercent =
+        totalRecords > 0 ? 100 - presencePercent - justifiedPercent : 0;
       const exceededLimit =
-        unjustifiedPercent > dto.maxAbsencePercent ? 'Sim' : 'Não';
+        absencePercent > dto.maxAbsencePercent ? 'Sim' : 'Não';
 
       sheet.addRow([
         student.codEnrolled,
         student.name,
         student.email,
-        ...dayCells,
         `${presencePercent}%`,
         `${absencePercent}%`,
         `${justifiedPercent}%`,
         exceededLimit,
+        ...dayCells,
       ]);
     }
 

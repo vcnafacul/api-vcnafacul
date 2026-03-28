@@ -1,5 +1,6 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { PeriodJustificationRepository } from './period-justification.repository';
 import { CreatePeriodJustificationDtoInput } from './dtos/create-period-justification.dto.input';
 import { GetPeriodJustificationDtoInput } from './dtos/get-period-justification.dto.input';
@@ -15,6 +16,7 @@ export class PeriodJustificationService {
     private readonly repository: PeriodJustificationRepository,
     private readonly collaboratorRepository: CollaboratorRepository,
     private readonly dataSource: DataSource,
+    private readonly cache: CacheService,
   ) {}
 
   async create(
@@ -75,7 +77,7 @@ export class PeriodJustificationService {
     }
 
     // Entire operation is transactional: overlap check + create + retroactive apply
-    return this.dataSource.transaction(async (manager) => {
+    const result = await this.dataSource.transaction(async (manager) => {
       const pjRepo = manager.getRepository(PeriodJustification);
       const saRepo = manager.getRepository(StudentAttendance);
       const ajRepo = manager.getRepository(AbsenceJustification);
@@ -140,6 +142,14 @@ export class PeriodJustificationService {
 
       return saved;
     });
+
+    if (studentCourse?.class?.id) {
+      await this.cache.del(
+        `presence_by_class_id_${studentCourse.class.id}`,
+      );
+    }
+
+    return result;
   }
 
   async findAll(dto: GetPeriodJustificationDtoInput) {
