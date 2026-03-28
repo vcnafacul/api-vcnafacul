@@ -261,16 +261,14 @@ export class EssayController {
   }
 
   @Get(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.revisarRedacoes)
   async getEssay(@Param('id') id: string, @Req() req: any) {
     try {
       return await this.essayService.findById(id, req.user.id);
     } catch {
-      if (req.user?.permissao?.revisarRedacoes) {
-        await this.essayService.validateReviewerScope(id, req.user.id);
-        return this.essayService.findByIdForReviewer(id);
-      }
-      throw new NotFoundException('Redacao nao encontrada');
+      await this.essayService.validateReviewerScope(id, req.user.id);
+      return this.essayService.findByIdForReviewer(id);
     }
   }
 }

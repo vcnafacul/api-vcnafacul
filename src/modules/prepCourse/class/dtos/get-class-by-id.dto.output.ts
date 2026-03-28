@@ -11,6 +11,7 @@ export class GetClassByIdDtoOutput {
   coursePeriodStartDate: Date;
   coursePeriodEndDate: Date;
   number_students: number;
+  totalAttendanceRecords: number;
   students: StudentClass[];
 }
 
