@@ -349,16 +349,6 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
     const startDate = new Date(dto.startDate);
     const endDate = new Date(dto.endDate);
 
-    const diffDays = Math.ceil(
-      (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
-    );
-    if (diffDays > 180) {
-      throw new HttpException(
-        'O período máximo para exportação é de 180 dias',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
     const records = await this.repository.findAllInRange(
       dto.classId,
       dto.startDate,
