@@ -79,7 +79,10 @@ export class ClassService extends BaseService<Class> {
         const role = await this.roleService.findOneById(user.role.id);
         const manager = role.gerenciarEstudantes;
 
-        // Buscar % de presença por aluno usando datas do período letivo
+        // Buscar contagem de registros e % de presença em paralelo
+        const totalAttendanceRecords =
+          await this.repository.countAttendanceRecords(id);
+
         let presenceMap = new Map<
           string,
           {
@@ -133,6 +136,7 @@ export class ClassService extends BaseService<Class> {
           coursePeriodStartDate:
             classEntity.coursePeriod?.startDate || new Date(),
           coursePeriodEndDate: classEntity.coursePeriod?.endDate || new Date(),
+          totalAttendanceRecords,
           students,
         };
         return result as unknown as GetClassByIdDtoOutput;

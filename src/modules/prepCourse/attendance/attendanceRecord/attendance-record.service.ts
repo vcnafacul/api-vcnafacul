@@ -1,8 +1,11 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { format } from 'date-fns/format';
+import * as ExcelJS from 'exceljs';
+import { Response } from 'express';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { DataSource } from 'typeorm';
 import { ClassRepository } from '../../class/class.repository';
 import { CollaboratorRepository } from '../../collaborator/collaborator.repository';
@@ -18,13 +21,10 @@ import {
 } from './dtos/attendance-record-by-class.dto.output';
 import { AttendanceRecordByStudentDtoOutput } from './dtos/attendance-record-by-student.dto.output';
 import { CreateAttendanceRecordDtoInput } from './dtos/create-attendance-record.dto.input';
+import { ExportAttendanceRecordDtoInput } from './dtos/export-attendance-record.dto.input';
 import { GetAttendanceRecordByIdDtoOutput } from './dtos/get-attendance-record-by-id.dto.output';
 import { GetAttendanceRecordByStudent } from './dtos/get-attendance-record-by-student';
 import { GetAttendanceRecord } from './dtos/get-attendance-record.dto.input';
-import * as ExcelJS from 'exceljs';
-import { Response } from 'express';
-import { CacheService } from 'src/shared/modules/cache/cache.service';
-import { ExportAttendanceRecordDtoInput } from './dtos/export-attendance-record.dto.input';
 
 @Injectable()
 export class AttendanceRecordService extends BaseService<AttendanceRecord> {
@@ -362,8 +362,9 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
       dto.endDate,
     );
 
-    const classEntity =
-      await this.classRepository.findOneByIdToAttendanceRecord(dto.classId);
+    const classEntity = await this.classRepository.findOneByIdWithCoursePeriod(
+      dto.classId,
+    );
 
     // Build unique student list from records (includes user data via joins)
     const studentMap = new Map<
@@ -464,8 +465,6 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
         return 'F';
       });
 
-      const unjustifiedAbsences =
-        totalRecords - presentCount - justifiedAbsences;
       const presencePercent =
         totalRecords > 0 ? Math.round((presentCount / totalRecords) * 100) : 0;
       const justifiedPercent =

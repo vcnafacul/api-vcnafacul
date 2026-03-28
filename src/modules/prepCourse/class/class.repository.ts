@@ -84,7 +84,11 @@ export class ClassRepository extends BaseRepository<Class> {
     return this.repository
       .createQueryBuilder('entity')
       .leftJoin('entity.students', 'student_course')
-      .addSelect(['student_course.id', 'student_course.cod_enrolled'])
+      .addSelect([
+        'student_course.id',
+        'student_course.cod_enrolled',
+        'student_course.applicationStatus',
+      ])
       .leftJoin('student_course.user', 'user')
       .addSelect([
         'user.firstName',
@@ -94,9 +98,27 @@ export class ClassRepository extends BaseRepository<Class> {
       ])
       .leftJoinAndSelect('entity.coursePeriod', 'course_period')
       .where('entity.id = :id', { id })
-      .andWhere('student_course.applicationStatus = :status', {
+      .andWhere(`student_course.applicationStatus = :status`, {
         status: StatusApplication.Enrolled,
       })
+      .getOne();
+  }
+
+  async countAttendanceRecords(classId: string): Promise<number> {
+    const attendanceRepo =
+      this._entityManager.getRepository(AttendanceRecord);
+    return attendanceRepo
+      .createQueryBuilder('ar')
+      .where('ar.class = :classId', { classId })
+      .andWhere('ar.deletedAt IS NULL')
+      .getCount();
+  }
+
+  async findOneByIdWithCoursePeriod(id: string): Promise<Class> {
+    return this.repository
+      .createQueryBuilder('entity')
+      .leftJoinAndSelect('entity.coursePeriod', 'course_period')
+      .where('entity.id = :id', { id })
       .getOne();
   }
 
