@@ -1,5 +1,6 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { BaseService } from 'src/shared/modules/base/base.service';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { AbsenceJustification } from '../absenceJustification/absence-justification.entity';
 import { AbsenceJustificationRepository } from '../absenceJustification/absence-justification.repository';
 import { UpdateAttendanceDtoInput } from './dtos/update-attendance.dto.input';
@@ -11,6 +12,7 @@ export class StudentAttendanceService extends BaseService<StudentAttendance> {
   constructor(
     private readonly repository: StudentAttendanceRepository,
     private readonly absenceJustificationRepository: AbsenceJustificationRepository,
+    private readonly cache: CacheService,
   ) {
     super(repository);
   }
@@ -49,6 +51,18 @@ export class StudentAttendanceService extends BaseService<StudentAttendance> {
       studentAttendance.justification = absenceJustification;
     }
     await this.repository.update(studentAttendance);
+    await this.invalidatePresenceCache(id);
+  }
+
+  private async invalidatePresenceCache(
+    studentAttendanceId: string,
+  ): Promise<void> {
+    const sa = await this.repository.findOneWithClass(studentAttendanceId);
+    if (sa?.attendanceRecord?.class?.id) {
+      await this.cache.del(
+        `presence_by_class_id_${sa.attendanceRecord.class.id}`,
+      );
+    }
   }
 
   async updateJustificationsForAttendanceRecords(
@@ -79,6 +93,10 @@ export class StudentAttendanceService extends BaseService<StudentAttendance> {
       }
 
       studentAttendance.justification = absenceJustification;
+    }
+
+    if (studentAttendances.length > 0) {
+      await this.invalidatePresenceCache(studentAttendances[0].id);
     }
   }
 }
