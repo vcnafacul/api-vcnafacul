@@ -1,12 +1,16 @@
-name: vCnafacul
+# =============================================================================
+# main - CI only (deploy é feito via tag no release.yml)
+# =============================================================================
+
+name: CI Main
+
 on:
   pull_request:
     branches: ['main']
-    types: [opened, synchronize, reopened, closed]
+    types: [opened, synchronize, reopened]
 
 jobs:
   CI:
-    if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened')
     runs-on: ubuntu-latest
     services:
       mysql:
@@ -19,12 +23,11 @@ jobs:
     steps:
       - name: Docker login
         run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USER }}" --password-stdin
-      - uses: actions/checkout@v3
-      - name: Iniciando CI
-        run: echo "Iniciando CI"
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20.x
+          cache: yarn
       - name: Install sharp depend
         run: yarn add sharp --ignore-engines
       - name: Install depends
@@ -48,68 +51,3 @@ jobs:
       - name: Run tests
         run: dotenv -e ./test/.env.test -- yarn test --forceExit --detectOpenHandles
         timeout-minutes: 15
-
-  BUILD_AND_PUSH:
-    needs: CI
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Obter versão do package.json
-        id: package
-        run: echo "VERSION=$(jq -r .version package.json)" >> $GITHUB_ENV
-      - name: Exibir versão obtida
-        run: echo "Versão extraída $VERSION"
-      - name: Install sharp depend
-        run: yarn add sharp --ignore-engines
-      - name: Install depends
-        run: yarn
-      - name: Build app vCnafacul
-        run: yarn build
-      - name: Iniciando Build da Imagem
-        run: docker build -t vcnafacul/api:$VERSION -f node.dockerfile .
-      - name: docker login
-        run: docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }}
-      - name: Image Push
-        run: docker push vcnafacul/api:$VERSION
-  PUSH:
-    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
-    runs-on: ubuntu-latest
-    steps:
-      # Checkout main para a imagem refletir o estado da branch em produção
-      - uses: actions/checkout@v3
-        with:
-          ref: main
-          fetch-depth: 0
-      - name: Iniciando CI
-        run: echo "Iniciando PUSH"
-      - uses: actions/setup-node@v1
-        with:
-          node-version: 20.x
-      - name: Install sharp depend
-        run: yarn add sharp --ignore-engines
-      - name: Install depends
-        run: yarn
-      - name: Build app vCnafacul
-        run: yarn build
-      - name: Build Image
-        run: docker build -t vcnafacul -f node.dockerfile .
-      - name: docker tags
-        run: docker tag vcnafacul vcnafacul/api:stable
-      - name: docker login
-        run: docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }}
-      - name: Image Push
-        run: docker push vcnafacul/api:stable
-  DEPLOY_PROD:
-    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.base_ref == 'main'
-    needs: PUSH
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy em Produção (Hostinger)
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.DEPLOY_HOST_PROD }}
-          username: ${{ secrets.DEPLOY_USER_PROD }}
-          password: ${{ secrets.DEPLOY_PASS_PROD }}
-          script: |
-            chmod +x ~/subir_api.sh
-            ~/subir_api.sh
