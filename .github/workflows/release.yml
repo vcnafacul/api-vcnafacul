@@ -1,0 +1,83 @@
+# =============================================================================
+# release - Build, Deploy Production & Create GitHub Release
+# =============================================================================
+# Disparado por push de tag (ex: git tag v1.2.0 && git push origin v1.2.0)
+# 1. Build + push Docker image (tag versão + :stable)
+# 2. Deploy em produção via SSH
+# 3. Cria Release no GitHub com changelog automático (PRs entre tags)
+# =============================================================================
+
+name: Release & Deploy Production
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  BUILD_AND_PUSH:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: yarn
+
+      - name: Install sharp depend
+        run: yarn add sharp --ignore-engines
+
+      - name: Install depends
+        run: yarn
+
+      - name: Build app vCnafacul
+        run: yarn build
+
+      - name: Build Docker image
+        run: |
+          docker build -t vcnafacul/api:${{ github.ref_name }} \
+                        -t vcnafacul/api:stable \
+                        -f node.dockerfile .
+
+      - name: Docker login
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USER }}" --password-stdin
+
+      - name: Push Docker image
+        run: |
+          docker push vcnafacul/api:${{ github.ref_name }}
+          docker push vcnafacul/api:stable
+
+  DEPLOY_PROD:
+    needs: BUILD_AND_PUSH
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy em Produção (Hostinger)
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST_PROD }}
+          username: ${{ secrets.DEPLOY_USER_PROD }}
+          password: ${{ secrets.DEPLOY_PASS_PROD }}
+          script: |
+            chmod +x ~/subir_api.sh
+            ~/subir_api.sh
+
+  CREATE_RELEASE:
+    needs: DEPLOY_PROD
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          tag_name: ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
