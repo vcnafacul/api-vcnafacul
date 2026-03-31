@@ -196,6 +196,22 @@ export class EssayController {
     });
   }
 
+  @Get('my-cursinho/count')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.revisarRedacoes)
+  async getMyCursinhoEssayCount(
+    @Req() req: any,
+    @Query('status') status?: string,
+  ) {
+    const result = await this.essayService.findEssaysForCollaborator(
+      req.user.id,
+      1,
+      1,
+      { status },
+    );
+    return { count: result.total };
+  }
+
   @Get('my-cursinho')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.revisarRedacoes)

@@ -11,6 +11,11 @@ import { FrenteProxyService } from '../simulado/frente/frente.service';
 import { MateriaProxyService } from '../simulado/materia/materia.service';
 import { StudentCourseRepository } from '../prepCourse/studentCourse/student-course.repository';
 import { RoleRepository } from '../role/role.repository';
+import {
+  ProfileDetectorService,
+  STUDENT_COURSE_REPO_TOKEN,
+  COLLABORATOR_REPO_TOKEN,
+} from './services/profile-detector.service';
 import { RefreshTokenService } from './services/refresh-token.service';
 import { UserController } from './user.controller';
 import { UserRepository } from './user.repository';
@@ -38,6 +43,12 @@ import { UserExistValidator } from './validator/user-exist.validator';
     RoleRepository,
     StudentCourseRepository,
     DiscordWebhook,
+    ProfileDetectorService,
+    {
+      provide: STUDENT_COURSE_REPO_TOKEN,
+      useExisting: StudentCourseRepository,
+    },
+    { provide: COLLABORATOR_REPO_TOKEN, useExisting: CollaboratorRepository },
   ],
   exports: [UserService, UserRepository, RefreshTokenService],
 })

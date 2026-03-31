@@ -19,6 +19,7 @@ import { LogStudentRepository } from '../studentCourse/log-student/log-student.r
 import { StudentCourse } from '../studentCourse/student-course.entity';
 import { StudentCourseRepository } from '../studentCourse/student-course.repository';
 import { CreateInscriptionCourseInput } from './dtos/create-inscription-course.dto.input';
+import { OpenInscriptionDtoOutput } from './dtos/open-inscription.dto.output';
 import { ExtendInscriptionCourseDtoInput } from './dtos/extend-inscription-course.dto.input';
 import { InscriptionCourseDtoOutput } from './dtos/get-all-inscription.dto.output';
 import { GetAllWithNameDtoOutput } from './dtos/get-all-with-name';
@@ -568,6 +569,19 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
         await this.logStudentRepository.create(log);
       }),
     );
+  }
+
+  async findOpen(): Promise<OpenInscriptionDtoOutput[]> {
+    const inscriptions = await this.repository.findOpen();
+    return inscriptions.map((ic) => ({
+      id: ic.id,
+      name: ic.name,
+      endDate: ic.endDate,
+      cursinho: {
+        name: ic.partnerPrepCourse?.geo?.name ?? '',
+        logo: ic.partnerPrepCourse?.logo ?? null,
+      },
+    }));
   }
 
   async getSummary() {

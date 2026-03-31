@@ -81,6 +81,28 @@ export class CollaboratorRepository extends BaseRepository<Collaborator> {
       .getMany();
   }
 
+  async findActiveByUserId(userId: string): Promise<Collaborator | null> {
+    return this.repository.findOne({
+      where: {
+        user: { id: userId },
+        actived: true,
+      },
+    });
+  }
+
+  async findActiveByUserIdWithDetails(
+    userId: string,
+  ): Promise<Collaborator | null> {
+    return this.repository
+      .createQueryBuilder('entity')
+      .innerJoin('entity.user', 'user')
+      .innerJoinAndSelect('entity.partnerPrepCourse', 'ppc')
+      .innerJoinAndSelect('ppc.geo', 'geo')
+      .where('user.id = :userId', { userId })
+      .andWhere('entity.actived = true')
+      .getOne();
+  }
+
   async findCollaboratorsByPermission(
     permission: Permissions,
     prepCourseId: string,

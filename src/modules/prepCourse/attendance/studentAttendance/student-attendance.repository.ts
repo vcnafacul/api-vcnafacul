@@ -30,6 +30,26 @@ export class StudentAttendanceRepository extends BaseRepository<StudentAttendanc
       .getOne();
   }
 
+  async countByStudentCourseId(
+    studentCourseId: string,
+  ): Promise<{ presencas: number; faltas: number }> {
+    const result = await this.repository
+      .createQueryBuilder('sa')
+      .select('SUM(CASE WHEN sa.present = true THEN 1 ELSE 0 END)', 'presencas')
+      .addSelect(
+        'SUM(CASE WHEN sa.present = false THEN 1 ELSE 0 END)',
+        'faltas',
+      )
+      .innerJoin('sa.studentCourse', 'sc')
+      .where('sc.id = :studentCourseId', { studentCourseId })
+      .getRawOne();
+
+    return {
+      presencas: parseInt(result?.presencas ?? '0', 10),
+      faltas: parseInt(result?.faltas ?? '0', 10),
+    };
+  }
+
   async findAllByAttendanceRecordsWithJustification(
     studentCourseId: string,
     attendanceRecordIds: string[],
