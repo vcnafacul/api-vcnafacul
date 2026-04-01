@@ -1,5 +1,7 @@
-import { Controller, Get, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Req, SetMetadata, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../../shared/guards/permission.guard';
+import { Permissions } from '../role/role.entity';
 import { DashboardService } from './dashboard.service';
 
 @Controller('dashboard')
@@ -16,5 +18,12 @@ export class DashboardController {
   @Get('collaborator')
   async getCollaboratorDashboard(@Req() req: any) {
     return this.dashboardService.getCollaboratorDashboard(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.validarQuestao)
+  @Get('questoes-pendentes')
+  async getQuestoesPendentes(@Req() req: any) {
+    return this.dashboardService.getQuestoesPendentes(req.user.id);
   }
 }

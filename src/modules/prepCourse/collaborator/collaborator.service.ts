@@ -213,6 +213,12 @@ export class CollaboratorService extends BaseService<Collaborator> {
       Object.assign(new CollaboratorFrente(), { collaboratorId, frenteId }),
     );
     await this.collaboratorFrenteRepository.createMany(entities);
+
+    // Invalidate collaborator dashboard cache
+    const collaborator = await this.repository.findOneBy({ id: collaboratorId });
+    if (collaborator?.user?.id) {
+      await this.cache.del(`dashboard:collab:${collaborator.user.id}`);
+    }
   }
 
   async getEnrichedFrentes(

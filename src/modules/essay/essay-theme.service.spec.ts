@@ -13,6 +13,8 @@ describe('EssayThemeService', () => {
     createdBy: 'admin-1',
   };
 
+  let mockCacheService: any;
+
   beforeEach(() => {
     themeRepo = {
       create: jest.fn(),
@@ -22,7 +24,11 @@ describe('EssayThemeService', () => {
       update: jest.fn(),
       softDelete: jest.fn(),
     };
-    service = new EssayThemeService(themeRepo);
+    mockCacheService = {
+      wrap: jest.fn().mockImplementation((_key, fn) => fn()),
+      del: jest.fn().mockResolvedValue(undefined),
+    };
+    service = new EssayThemeService(themeRepo, mockCacheService);
   });
 
   describe('create', () => {

@@ -8,6 +8,7 @@ describe('DashboardService', () => {
   let mockCollaboratorRepository: any;
   let mockCollaboratorFrenteRepository: any;
   let mockFrenteProxyService: any;
+  let mockCacheService: any;
 
   beforeEach(() => {
     mockStudentCourseRepo = {
@@ -25,6 +26,10 @@ describe('DashboardService', () => {
     mockFrenteProxyService = {
       getById: jest.fn(),
     };
+    mockCacheService = {
+      wrap: jest.fn().mockImplementation((_key, fn) => fn()),
+      del: jest.fn().mockResolvedValue(undefined),
+    };
 
     service = new DashboardService(
       mockStudentCourseRepo as any,
@@ -32,6 +37,7 @@ describe('DashboardService', () => {
       mockCollaboratorRepository as any,
       mockCollaboratorFrenteRepository as any,
       mockFrenteProxyService as any,
+      mockCacheService as any,
     );
   });
 
