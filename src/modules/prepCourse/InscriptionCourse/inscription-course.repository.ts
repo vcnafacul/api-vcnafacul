@@ -7,6 +7,9 @@ import { LinkedListRepository } from 'src/shared/modules/linked/linked-list.repo
 import { EntityManager } from 'typeorm';
 import { StudentCourse } from '../studentCourse/student-course.entity';
 import { InscriptionCourse } from './inscription-course.entity';
+import { Period } from 'src/modules/user/enum/period';
+import { AggregateInscriptionCoursePeriodDtoOutput } from './dtos/aggregate-inscription-course-period.dto.output';
+import { buildFullSeries } from './handler/build-full-series';
 
 @Injectable()
 export class InscriptionCourseRepository extends LinkedListRepository<
@@ -174,5 +177,53 @@ export class InscriptionCourseRepository extends LinkedListRepository<
       .where('entity.deletedAt IS NULL')
       .andWhere('entity.actived = :status', { status })
       .getCount();
+  }
+
+  async aggregateInscriptionCourseByPeriod(
+    groupBy: Period,
+  ): Promise<AggregateInscriptionCoursePeriodDtoOutput[]> {
+    let dateExpr: string;
+    switch (groupBy) {
+      case 'day':
+        dateExpr = 'DATE_FORMAT(pc.created_at, "%Y-%m-%d")';
+        break;
+      case 'month':
+        dateExpr = "DATE_FORMAT(pc.created_at, '%Y-%m')";
+        break;
+      case 'year':
+        dateExpr = 'YEAR(pc.created_at)';
+        break;
+      default:
+        throw new Error('Invalid groupBy value');
+    }
+
+    const qb = this.repository
+      .createQueryBuilder('pc')
+      .select(`${dateExpr}`, 'period')
+      .addSelect('COUNT(*)', 'total')
+      .groupBy('period')
+      .orderBy('period', 'ASC');
+
+    const results = await qb.getRawMany();
+
+    const raw = results.map((r) => ({
+      period: r.period,
+      total: Number(r.total),
+      cumulativeTotal: 0,
+    }));
+
+    const fullSeries = buildFullSeries(groupBy, raw);
+
+    let running = 0;
+
+    return fullSeries.map((item) => {
+      running += item.total;
+
+      return {
+        period: item.period,
+        total: item.total,
+        cumulativeTotal: running,
+      };
+    });
   }
 }

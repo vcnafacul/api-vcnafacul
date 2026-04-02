@@ -6,6 +6,9 @@ import { NodeRepository } from 'src/shared/modules/node/node.repository';
 import { EntityManager } from 'typeorm';
 import { StatusApplication } from './enums/stastusApplication';
 import { StudentCourse } from './student-course.entity';
+import { Period } from 'src/modules/user/enum/period';
+import { AggregateStudentCoursePeriodDtoOutput } from './dtos/aggregate-student-course-period.dto.output';
+import { buildFullSeries } from './handler/build-full-series';
 
 @Injectable()
 export class StudentCourseRepository extends NodeRepository<StudentCourse> {
@@ -339,5 +342,99 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .orderBy('logs.created_at', 'DESC')
       .addOrderBy('documents.created_at', 'DESC')
       .getOne();
+  }
+
+  async aggregateStudentCourseByPeriod(
+    groupBy: Period,
+  ): Promise<AggregateStudentCoursePeriodDtoOutput[]> {
+    let inscriptionDateExpr: string;
+    let enrolmentDateExpr: string;
+
+    switch (groupBy) {
+      case 'day':
+        inscriptionDateExpr = `DATE_FORMAT(sc.created_at, '%Y-%m-%d')`;
+        enrolmentDateExpr = `DATE_FORMAT(sc.selectEnrolledAt, '%Y-%m-%d')`;
+        break;
+
+      case 'month':
+        inscriptionDateExpr = `DATE_FORMAT(sc.created_at, '%Y-%m')`;
+        enrolmentDateExpr = `DATE_FORMAT(sc.selectEnrolledAt, '%Y-%m')`;
+        break;
+
+      case 'year':
+        inscriptionDateExpr = `CAST(YEAR(sc.created_at) AS CHAR)`;
+        enrolmentDateExpr = `CAST(YEAR(sc.selectEnrolledAt) AS CHAR)`;
+        break;
+
+      default:
+        throw new Error('Invalid groupBy value');
+    }
+
+    const inscriptions = await this.repository
+      .createQueryBuilder('sc')
+      .select(inscriptionDateExpr, 'period')
+      .addSelect('COUNT(*)', 'totalInscriptions')
+      .groupBy('period')
+      .orderBy('period', 'ASC')
+      .getRawMany();
+
+    const enrolments = await this.repository
+      .createQueryBuilder('sc')
+      .select(enrolmentDateExpr, 'period')
+      .addSelect('COUNT(*)', 'totalEnrolments')
+      .where('sc.selectEnrolledAt IS NOT NULL')
+      .groupBy('period')
+      .orderBy('period', 'ASC')
+      .getRawMany();
+
+    const periodsMap = new Map<string, AggregateStudentCoursePeriodDtoOutput>();
+
+    for (const row of inscriptions) {
+      periodsMap.set(row.period, {
+        period: row.period,
+        totalInscriptions: Number(row.totalInscriptions),
+        totalEnrolments: 0,
+        cumulativeEnrolmentsTotal: 0,
+        cumulativeInscriptionsTotal: 0,
+      });
+    }
+
+    for (const row of enrolments) {
+      const existing = periodsMap.get(row.period);
+
+      if (existing) {
+        existing.totalEnrolments = Number(row.totalEnrolments);
+      } else {
+        periodsMap.set(row.period, {
+          period: row.period,
+          totalInscriptions: 0,
+          totalEnrolments: Number(row.totalEnrolments),
+          cumulativeEnrolmentsTotal: 0,
+          cumulativeInscriptionsTotal: 0,
+        });
+      }
+    }
+
+    const sorted = [...periodsMap.values()].sort((a, b) =>
+      a.period.localeCompare(b.period),
+    );
+
+    const fullSeries = buildFullSeries(groupBy, sorted);
+
+    let cumulativeInscriptions = 0;
+    let cumulativeEnrolments = 0;
+
+    return fullSeries.map((item) => {
+      cumulativeInscriptions += item.totalInscriptions;
+      cumulativeEnrolments += item.totalEnrolments ?? 0;
+
+      return {
+        period: item.period,
+        totalInscriptions: item.totalInscriptions,
+        totalEnrolments: item.totalEnrolments,
+        cumulativeInscriptionsTotal: cumulativeInscriptions,
+        cumulativeEnrolmentsTotal: cumulativeEnrolments,
+      };
+    });
   }
 }

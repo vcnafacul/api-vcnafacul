@@ -26,6 +26,8 @@ import { GetSubscribersDtoOutput } from './dtos/get-subscribers.dto.output';
 import { UpdateInscriptionCourseDTOInput } from './dtos/update-inscription-course.dto.input';
 import { InscriptionCourse } from './inscription-course.entity';
 import { InscriptionCourseRepository } from './inscription-course.repository';
+import { AggregatePeriodDtoInput } from 'src/shared/dtos/aggregate-period.dto.input';
+import { AggregateInscriptionCoursePeriodDtoOutput } from './dtos/aggregate-inscription-course-period.dto.output';
 
 @Injectable()
 export class InscriptionCourseService extends BaseService<InscriptionCourse> {
@@ -594,5 +596,17 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
       inscriptionApproved,
       inscriptionRejected,
     };
+  }
+
+  async aggregateInscriptionCourseByPeriod({
+    groupBy,
+  }: AggregatePeriodDtoInput): Promise<
+    AggregateInscriptionCoursePeriodDtoOutput[]
+  > {
+    return await this.cache.wrap<AggregateInscriptionCoursePeriodDtoOutput[]>(
+      `aggregateInscriptionCourseByPeriod:${groupBy}`,
+      async () =>
+        await this.repository.aggregateInscriptionCourseByPeriod(groupBy),
+    );
   }
 }
