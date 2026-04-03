@@ -8,6 +8,7 @@ describe('DashboardService', () => {
   let mockCollaboratorRepository: any;
   let mockCollaboratorFrenteRepository: any;
   let mockFrenteProxyService: any;
+  let mockQuestaoService: any;
   let mockCacheService: any;
 
   beforeEach(() => {
@@ -26,6 +27,9 @@ describe('DashboardService', () => {
     mockFrenteProxyService = {
       getById: jest.fn(),
     };
+    mockQuestaoService = {
+      getPendingByMateria: jest.fn(),
+    };
     mockCacheService = {
       wrap: jest.fn().mockImplementation((_key, fn) => fn()),
       del: jest.fn().mockResolvedValue(undefined),
@@ -37,6 +41,7 @@ describe('DashboardService', () => {
       mockCollaboratorRepository as any,
       mockCollaboratorFrenteRepository as any,
       mockFrenteProxyService as any,
+      mockQuestaoService as any,
       mockCacheService as any,
     );
   });
@@ -48,7 +53,7 @@ describe('DashboardService', () => {
           id: 'sc-1',
           cod_enrolled: 'MAT-001',
           partnerPrepCourse: {
-            logo: 'logo.png',
+            thumbnail: Buffer.from('img'),
             geo: { name: 'Cursinho ABC' },
           },
           class: {
@@ -109,11 +114,12 @@ describe('DashboardService', () => {
 
   describe('getCollaboratorDashboard', () => {
     it('should return collaborator dashboard data with frentes', async () => {
+      const thumbnailBuffer = Buffer.from('fake-image');
       mockCollaboratorRepository.findActiveByUserIdWithDetails.mockResolvedValue(
         {
           id: 'col-1',
           partnerPrepCourse: {
-            logo: 'logo.png',
+            thumbnail: thumbnailBuffer,
             geo: { name: 'Cursinho XYZ' },
           },
         },
@@ -129,7 +135,9 @@ describe('DashboardService', () => {
       const result = await service.getCollaboratorDashboard('user-1');
 
       expect(result.cursinho.name).toBe('Cursinho XYZ');
-      expect(result.cursinho.logo).toBe('logo.png');
+      expect(result.cursinho.logo).toBe(
+        `data:image/webp;base64,${thumbnailBuffer.toString('base64')}`,
+      );
       expect(result.frentes).toHaveLength(2);
       expect(result.frentes[0]).toEqual({ id: 'frente-1', name: 'Matemática' });
       expect(result.frentes[1]).toEqual({ id: 'frente-2', name: 'Física' });
@@ -188,6 +196,111 @@ describe('DashboardService', () => {
 
       expect(result.frentes).toHaveLength(1);
       expect(result.frentes[0]).toEqual({ id: 'frente-1', name: 'Química' });
+    });
+  });
+
+  describe('getQuestoesPendentes', () => {
+    it('should return pending questions filtered by collaborator frentes', async () => {
+      mockCollaboratorRepository.findActiveByUserId = jest
+        .fn()
+        .mockResolvedValue({ id: 'col-1' });
+      mockCollaboratorFrenteRepository.findByCollaboratorId.mockResolvedValue([
+        { frenteId: 'frente-1', collaboratorId: 'col-1' },
+      ]);
+      mockFrenteProxyService.getById.mockResolvedValue({
+        _id: 'frente-1',
+        materia: 'materia-1',
+      });
+      mockQuestaoService.getPendingByMateria.mockResolvedValue({
+        total: 5,
+        questoes: [],
+      });
+
+      const result = await service.getQuestoesPendentes('user-1');
+
+      expect(mockQuestaoService.getPendingByMateria).toHaveBeenCalledWith([
+        'materia-1',
+      ]);
+      expect(result).toEqual({ total: 5, questoes: [] });
+    });
+
+    it('should return all pending questions when user is not a collaborator', async () => {
+      mockCollaboratorRepository.findActiveByUserId = jest
+        .fn()
+        .mockResolvedValue(null);
+      mockQuestaoService.getPendingByMateria.mockResolvedValue({
+        total: 10,
+        questoes: [],
+      });
+
+      const result = await service.getQuestoesPendentes('user-1');
+
+      expect(mockQuestaoService.getPendingByMateria).toHaveBeenCalledWith(
+        undefined,
+      );
+      expect(result).toEqual({ total: 10, questoes: [] });
+    });
+
+    it('should return all pending when collaborator has no frentes', async () => {
+      mockCollaboratorRepository.findActiveByUserId = jest
+        .fn()
+        .mockResolvedValue({ id: 'col-1' });
+      mockCollaboratorFrenteRepository.findByCollaboratorId.mockResolvedValue(
+        [],
+      );
+      mockQuestaoService.getPendingByMateria.mockResolvedValue({
+        total: 3,
+        questoes: [],
+      });
+
+      const result = await service.getQuestoesPendentes('user-1');
+
+      expect(mockQuestaoService.getPendingByMateria).toHaveBeenCalledWith(
+        undefined,
+      );
+      expect(result).toEqual({ total: 3, questoes: [] });
+    });
+
+    it('should skip frentes that fail to resolve materia', async () => {
+      mockCollaboratorRepository.findActiveByUserId = jest
+        .fn()
+        .mockResolvedValue({ id: 'col-1' });
+      mockCollaboratorFrenteRepository.findByCollaboratorId.mockResolvedValue([
+        { frenteId: 'frente-1', collaboratorId: 'col-1' },
+        { frenteId: 'frente-bad', collaboratorId: 'col-1' },
+      ]);
+      mockFrenteProxyService.getById
+        .mockResolvedValueOnce({ _id: 'frente-1', materia: 'materia-1' })
+        .mockRejectedValueOnce(new Error('Not found'));
+      mockQuestaoService.getPendingByMateria.mockResolvedValue({
+        total: 2,
+        questoes: [],
+      });
+
+      const result = await service.getQuestoesPendentes('user-1');
+
+      expect(mockQuestaoService.getPendingByMateria).toHaveBeenCalledWith([
+        'materia-1',
+      ]);
+      expect(result).toEqual({ total: 2, questoes: [] });
+    });
+  });
+
+  describe('invalidateStudentDashboard', () => {
+    it('should delete student dashboard cache', async () => {
+      await service.invalidateStudentDashboard('user-1');
+      expect(mockCacheService.del).toHaveBeenCalledWith(
+        'dashboard:student:user-1',
+      );
+    });
+  });
+
+  describe('invalidateCollaboratorDashboard', () => {
+    it('should delete collaborator dashboard cache', async () => {
+      await service.invalidateCollaboratorDashboard('user-1');
+      expect(mockCacheService.del).toHaveBeenCalledWith(
+        'dashboard:collab:user-1',
+      );
     });
   });
 });
