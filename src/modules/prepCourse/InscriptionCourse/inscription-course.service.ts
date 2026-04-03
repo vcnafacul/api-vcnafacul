@@ -454,6 +454,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
   async updateInfosInscription() {
     try {
       await this.repository.updateAllInscriptionsStatus();
+      await this.cache.del('inscription-course:open');
     } catch (error) {
       this.discordWebhook.sendMessage(
         `Erro ao atualizar status das inscrições: ${error}`,
