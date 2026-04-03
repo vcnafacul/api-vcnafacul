@@ -320,6 +320,30 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .getOne();
   }
 
+  async findEnrolledByUserId(userId: string): Promise<StudentCourse | null> {
+    return this.repository.findOne({
+      where: {
+        user: { id: userId },
+        applicationStatus: StatusApplication.Enrolled,
+      },
+    });
+  }
+
+  async findAllEnrolledWithDetails(userId: string): Promise<StudentCourse[]> {
+    return this.repository
+      .createQueryBuilder('entity')
+      .innerJoin('entity.user', 'user')
+      .innerJoinAndSelect('entity.partnerPrepCourse', 'ppc')
+      .innerJoinAndSelect('ppc.geo', 'geo')
+      .leftJoinAndSelect('entity.class', 'class')
+      .leftJoinAndSelect('class.coursePeriod', 'coursePeriod')
+      .where('user.id = :userId', { userId })
+      .andWhere('entity.applicationStatus = :status', {
+        status: StatusApplication.Enrolled,
+      })
+      .getMany();
+  }
+
   async existsByUserId(userId: string): Promise<boolean> {
     const count = await this.repository
       .createQueryBuilder('entity')

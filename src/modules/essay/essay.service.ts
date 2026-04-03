@@ -28,6 +28,7 @@ import { EnvService } from '../../shared/modules/env/env.service';
 import { EssaySettingsService } from './essay-settings.service';
 import { EmailService } from '../../shared/services/email/email.service';
 import { BlobService } from '../../shared/services/blob/blob-service';
+import { CacheService } from '../../shared/modules/cache/cache.service';
 
 @Injectable()
 export class EssayService {
@@ -45,6 +46,7 @@ export class EssayService {
     private readonly emailService: EmailService,
     @Inject('BlobService')
     private readonly blobService: BlobService,
+    private readonly cache: CacheService,
   ) {}
 
   private async assertUserIsEnrolled(userId: string): Promise<void> {
@@ -131,6 +133,9 @@ export class EssayService {
 
     await this.essayRepo.update(essay);
     const saved = essay;
+
+    // TODO: invalidate dashboard:essay-count:<collaboratorUserId> for all collaborators
+    // of the student's cursinho. Requires extra query — skipped to avoid N+1.
 
     // Fire-and-forget AI correction (runtime toggle from DB)
     const aiEnabled = await this.settingsService.isAIEnabled();
@@ -373,6 +378,9 @@ export class EssayService {
       await this.essayRepo.updateEssayStatus(essayId, EssayStatus.REVIEWED);
     }
 
+    // Invalidate essay-count cache for the reviewer (collaborator)
+    await this.cache.del(`dashboard:essay-count:${reviewerId}`);
+
     // Send email notification (fire-and-forget)
     const [reviewer] = await this.entityManager.query(
       'SELECT id, firstName, lastName, email FROM users WHERE id = ? LIMIT 1',
@@ -404,6 +412,21 @@ export class EssayService {
     }
 
     return saved;
+  }
+
+  async countSubmittedForCollaborator(
+    userId: string,
+  ): Promise<{ count: number }> {
+    return this.cache.wrap(
+      `dashboard:essay-count:${userId}`,
+      async () => {
+        const result = await this.findEssaysForCollaborator(userId, 1, 1, {
+          status: 'SUBMITTED',
+        });
+        return { count: result.total };
+      },
+      7 * 24 * 60 * 60 * 1000, // 7d
+    );
   }
 
   async validateReviewerScope(

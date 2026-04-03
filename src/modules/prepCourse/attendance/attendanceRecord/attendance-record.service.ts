@@ -160,6 +160,17 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
       );
     }
     await this.cache.del(`presence_by_class_id_${dto.classId}`);
+
+    // Invalidate student dashboard cache for all students in the class
+    await Promise.all(
+      classEntity.students.map((student) => {
+        if (student.userId) {
+          return this.cache.del(`dashboard:student:${student.userId}`);
+        }
+        return Promise.resolve();
+      }),
+    );
+
     return record;
   }
 

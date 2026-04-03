@@ -55,6 +55,6 @@ import { SubjectProxyService } from './subject/subject.service';
     ContentProxyService,
     CollaboratorFrenteRepository,
   ],
-  exports: [FrenteProxyService, MateriaProxyService],
+  exports: [FrenteProxyService, MateriaProxyService, QuestaoService],
 })
 export class SimuladoModule {}

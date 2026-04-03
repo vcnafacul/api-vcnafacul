@@ -38,6 +38,7 @@ import { DiscordWebhook } from './shared/services/webhooks/discord';
 import { JwtStrategy } from './shared/strategy/jwt.strategy';
 import { PlacesModule } from './modules/places/places.module';
 import { EssayModule } from './modules/essay/essay.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 /**
  * Desabilita ThrottlerGuard em ambiente de teste para evitar erros 429
@@ -109,6 +110,7 @@ const throttlerProvider: Provider = isTestEnv
     VcnafaculFormModule,
     PlacesModule,
     EssayModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [

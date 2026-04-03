@@ -86,6 +86,7 @@ export class ClassRepository extends BaseRepository<Class> {
       .leftJoin('entity.students', 'student_course')
       .addSelect([
         'student_course.id',
+        'student_course.userId',
         'student_course.cod_enrolled',
         'student_course.applicationStatus',
       ])
@@ -105,8 +106,7 @@ export class ClassRepository extends BaseRepository<Class> {
   }
 
   async countAttendanceRecords(classId: string): Promise<number> {
-    const attendanceRepo =
-      this._entityManager.getRepository(AttendanceRecord);
+    const attendanceRepo = this._entityManager.getRepository(AttendanceRecord);
     return attendanceRepo
       .createQueryBuilder('ar')
       .where('ar.class = :classId', { classId })

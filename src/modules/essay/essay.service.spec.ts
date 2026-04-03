@@ -13,6 +13,7 @@ describe('EssayService', () => {
   let entityManager: any;
   let emailService: any;
   let blobService: any;
+  let mockCacheService: any;
 
   const mockTheme = { id: 'theme-1', title: 'Tema', motivationalText: 'Texto' };
   const mockEssay = {
@@ -66,6 +67,10 @@ describe('EssayService', () => {
       getFile: jest.fn(),
       deleteFile: jest.fn(),
     };
+    mockCacheService = {
+      wrap: jest.fn().mockImplementation((_key, fn) => fn()),
+      del: jest.fn().mockResolvedValue(undefined),
+    };
 
     service = new EssayService(
       essayRepo,
@@ -76,6 +81,7 @@ describe('EssayService', () => {
       entityManager,
       emailService,
       blobService,
+      mockCacheService,
     );
   });
 
