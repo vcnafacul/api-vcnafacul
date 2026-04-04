@@ -429,6 +429,19 @@ export class EssayService {
     );
   }
 
+  async countAllSubmitted(): Promise<{ count: number }> {
+    return this.cache.wrap(
+      'dashboard:essay-count:all',
+      async () => {
+        const result = await this.findAllEssays(1, 1, {
+          status: 'SUBMITTED',
+        });
+        return { count: result.total };
+      },
+      7 * 24 * 60 * 60 * 1000, // 7d
+    );
+  }
+
   async validateReviewerScope(
     essayId: string,
     reviewerUserId: string,
