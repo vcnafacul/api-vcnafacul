@@ -15,7 +15,7 @@ export function CreateUserDtoInputFaker(): CreateUserDtoInput {
     state: faker.location.state(),
     city: faker.location.city(),
     gender: Gender.Other,
-    about: faker.lorem.paragraph(),
+    about: faker.lorem.sentence(),
     lgpd: true,
   };
 }
