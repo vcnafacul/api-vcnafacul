@@ -179,6 +179,13 @@ export class EssayController {
 
   // ---- Review endpoints ----
 
+  @Get('all/count')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.revisarTodasRedacoes)
+  async getAllEssayCount() {
+    return this.essayService.countAllSubmitted();
+  }
+
   @Get('all')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.revisarTodasRedacoes)

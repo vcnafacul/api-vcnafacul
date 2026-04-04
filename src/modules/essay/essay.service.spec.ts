@@ -441,6 +441,17 @@ describe('EssayService', () => {
     });
   });
 
+  describe('countAllSubmitted', () => {
+    it('should return count of all submitted essays', async () => {
+      essayRepo.findAllEssays.mockResolvedValue({ data: [], total: 5 });
+      const result = await service.countAllSubmitted();
+      expect(result).toEqual({ count: 5 });
+      expect(essayRepo.findAllEssays).toHaveBeenCalledWith(1, 1, {
+        status: 'SUBMITTED',
+      });
+    });
+  });
+
   describe('findReviewsByEssayId', () => {
     it('should return reviews', async () => {
       essayRepo.findEssayById.mockResolvedValue(mockEssay);
