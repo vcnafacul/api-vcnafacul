@@ -1,6 +1,9 @@
+import { AttendancePeriod } from '../enum/attendance-period.enum';
+
 export class GetAttendanceRecordByIdDtoOutput {
   id: string;
   registeredAt: Date;
+  period: AttendancePeriod;
   createdAt: Date;
   classId: string;
   studentAttendance: {
