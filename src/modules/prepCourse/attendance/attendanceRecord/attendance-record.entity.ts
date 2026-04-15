@@ -3,6 +3,7 @@ import { BaseEntity } from '../../../../shared/modules/base/entity.base';
 import { Class } from '../../class/class.entity';
 import { Collaborator } from '../../collaborator/collaborator.entity';
 import { StudentAttendance } from '../studentAttendance/student-attendance.entity';
+import { AttendancePeriod } from './enum/attendance-period.enum';
 
 @Entity('attendance_record')
 export class AttendanceRecord extends BaseEntity {
@@ -24,4 +25,10 @@ export class AttendanceRecord extends BaseEntity {
 
   @Column({ type: 'datetime' })
   public registeredAt: Date;
+
+  @Column({
+    type: 'enum',
+    enum: AttendancePeriod,
+  })
+  public period: AttendancePeriod;
 }

@@ -7,6 +7,7 @@ import { EntityManager } from 'typeorm';
 import { StudentCourse } from '../../studentCourse/student-course.entity';
 import { AttendanceRecord } from './attendance-record.entity';
 import { AttendanceRecordItem } from './dtos/attendance-record-by-class.dto.output';
+import { AttendancePeriod } from './enum/attendance-period.enum';
 
 @Injectable()
 export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord> {
@@ -133,13 +134,16 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
       })
       .andWhere('attendance.deletedAt IS NULL')
       .select('attendance.registeredAt', 'date')
+      .addSelect('attendance.period', 'period')
       .addSelect('COUNT(studentAttendance.id)', 'total')
       .addSelect(
         `SUM(CASE WHEN studentAttendance.present = true THEN 1 ELSE 0 END)`,
         'presentCount',
       )
       .groupBy('attendance.registeredAt')
+      .addGroupBy('attendance.period')
       .orderBy('attendance.registeredAt', 'ASC')
+      .addOrderBy('attendance.period', 'ASC')
       .getRawMany();
   }
 
@@ -161,6 +165,7 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
       .select('class.id', 'classId')
       .addSelect('class.name', 'className')
       .addSelect('attendance.registeredAt', 'date')
+      .addSelect('attendance.period', 'period')
       .addSelect('COUNT(studentAttendance.id)', 'total')
       .addSelect(
         `SUM(CASE WHEN studentAttendance.present = true THEN 1 ELSE 0 END)`,
@@ -169,8 +174,10 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
       .groupBy('class.id')
       .addGroupBy('class.name')
       .addGroupBy('attendance.registeredAt')
+      .addGroupBy('attendance.period')
       .orderBy('class.name', 'ASC')
-      .addOrderBy('attendance.registeredAt', 'ASC');
+      .addOrderBy('attendance.registeredAt', 'ASC')
+      .addOrderBy('attendance.period', 'ASC');
 
     if (classIds.length > 0) {
       query.andWhere('class.id IN (:...classIds)', { classIds });
@@ -200,9 +207,10 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
       .getMany();
   }
 
-  async findByClassIdAndDate(
+  async findByClassIdAndDateAndPeriod(
     classId: string,
     date: Date,
+    period: AttendancePeriod,
   ): Promise<AttendanceRecord | null> {
     const formattedDate = (date as unknown as string).split('T')[0]; // yyyy-MM-dd
 
@@ -211,6 +219,7 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
       .innerJoin('entity.class', 'class')
       .where('class.id = :classId', { classId })
       .andWhere('DATE(entity.registeredAt) = :date', { date: formattedDate })
+      .andWhere('entity.period = :period', { period })
       .andWhere('entity.deletedAt IS NULL')
       .getOne();
   }

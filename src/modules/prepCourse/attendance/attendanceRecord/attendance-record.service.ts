@@ -50,11 +50,14 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
     }
 
     const isAttendanceRecordToday =
-      (await this.repository.findByClassIdAndDate(classEntity.id, dto.date)) !==
-      null;
+      (await this.repository.findByClassIdAndDateAndPeriod(
+        classEntity.id,
+        dto.date,
+        dto.period,
+      )) !== null;
     if (isAttendanceRecordToday) {
       throw new HttpException(
-        'Já existe um registro de presença para a data informada',
+        'Já existe um registro de presença para esta data e período',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -70,6 +73,7 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
     const attendanceRecord = new AttendanceRecord();
     attendanceRecord.class = classEntity;
     attendanceRecord.registeredAt = dto.date;
+    attendanceRecord.period = dto.period;
     attendanceRecord.registeredBy = collaborator;
 
     let record: AttendanceRecord = null;
@@ -186,6 +190,7 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
       id: record.id,
       classId: record.class.id,
       registeredAt: record.registeredAt,
+      period: record.period,
       studentAttendance: record.studentAttendance.map((studentAttendance) => ({
         id: studentAttendance.id,
         present: studentAttendance.present,
@@ -256,25 +261,35 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
   }
 
   groupByDate(records: AttendanceRecordItem[]): AttendanceRecordItem[] {
-    const grouped = new Map<string, { total: number; presentCount: number }>();
+    const grouped = new Map<
+      string,
+      {
+        date: string;
+        period: AttendanceRecordItem['period'];
+        total: number;
+        presentCount: number;
+      }
+    >();
 
     for (const record of records) {
       const dateKey = format(new Date(record.date), 'yyyy-MM-dd');
+      const key = `${dateKey}__${record.period}`;
 
-      if (!grouped.has(dateKey)) {
-        grouped.set(dateKey, { total: 0, presentCount: 0 });
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          date: dateKey,
+          period: record.period,
+          total: 0,
+          presentCount: 0,
+        });
       }
 
-      const agg = grouped.get(dateKey)!;
+      const agg = grouped.get(key)!;
       agg.total += Number(record.total);
       agg.presentCount += Number(record.presentCount);
     }
 
-    return Array.from(grouped.entries()).map(([date, data]) => ({
-      date,
-      total: data.total,
-      presentCount: data.presentCount,
-    }));
+    return Array.from(grouped.values());
   }
 
   async getAttendanceRecordByClassId({
@@ -318,14 +333,19 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
         .map((item) => ({
           ...item,
           date: format(new Date(item.date), 'yyyy-MM-dd'),
+          period: item.period,
           total: Number(item.total),
           presentCount: Number(item.presentCount),
         }))
-        .sort((a, b) => b.date.localeCompare(a.date)),
+        .sort((a, b) => {
+          const byDate = b.date.localeCompare(a.date);
+          return byDate !== 0 ? byDate : a.period.localeCompare(b.period);
+        }),
 
-      generalReport: this.groupByDate(generalReport).sort((a, b) =>
-        b.date.localeCompare(a.date),
-      ),
+      generalReport: this.groupByDate(generalReport).sort((a, b) => {
+        const byDate = b.date.localeCompare(a.date);
+        return byDate !== 0 ? byDate : a.period.localeCompare(b.period);
+      }),
     };
   }
 
@@ -418,13 +438,19 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
     ]);
     sheet.addRow([]);
 
+    const periodShort: Record<string, string> = {
+      MANHA: 'M',
+      TARDE: 'T',
+      NOITE: 'N',
+    };
     const dates = records.map((r) => ({
       id: r.id,
       date: new Date(r.registeredAt),
-      label: new Date(r.registeredAt).toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-      }),
+      label:
+        new Date(r.registeredAt).toLocaleDateString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+        }) + ` ${periodShort[r.period] ?? ''}`,
     }));
 
     const headerRow = [
