@@ -254,6 +254,13 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .getCount();
   }
 
+  async getTotalEnrolled() {
+    return this.repository
+      .createQueryBuilder('entity')
+      .where('entity.cod_enrolled IS NOT NULL')
+      .getCount();
+  }
+
   async entityByStatus(status: StatusApplication) {
     return this.repository
       .createQueryBuilder('entity')

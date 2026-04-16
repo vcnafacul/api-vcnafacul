@@ -1466,7 +1466,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     );
     const studentEnrolled = await this.cache.wrap<number>(
       'student:enrolled',
-      async () => this.repository.entityByStatus(StatusApplication.Enrolled),
+      async () => this.repository.getTotalEnrolled(),
     );
 
     return {
