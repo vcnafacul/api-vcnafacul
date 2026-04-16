@@ -80,6 +80,9 @@ export class CreateRoleDtoInput {
   gerenciarFormularioGlobal: boolean;
 
   @IsBoolean()
+  gerenciarFormulario: boolean;
+
+  @IsBoolean()
   gerenciarTemas: boolean;
 
   @IsBoolean()

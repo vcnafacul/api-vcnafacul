@@ -43,6 +43,7 @@ export class RoleUpdateAdminSeedService {
         gerenciarPermissoesCursinho: true,
         visualizarMinhasInscricoes: true,
         gerenciarFormularioGlobal: true,
+        gerenciarFormulario: true,
         gerenciarTemas: true,
         revisarRedacoes: true,
         revisarTodasRedacoes: true,

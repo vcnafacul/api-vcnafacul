@@ -121,6 +121,7 @@ describe('CoursePeriod (e2e)', () => {
       visualizarEstudantes: false,
       visualizarMinhasInscricoes: false,
       gerenciarFormularioGlobal: false,
+      gerenciarFormulario: false,
       gerenciarTemas: false,
       revisarRedacoes: false,
       revisarTodasRedacoes: false,
