@@ -8,6 +8,7 @@ import { RoleService } from 'src/modules/role/role.service';
 import { UserService } from 'src/modules/user/user.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { maskEmail } from 'src/utils/maskEmail';
 import { CoursePeriodRepository } from '../coursePeriod/course-period.repository';
 import { PartnerPrepCourseRepository } from '../partnerPrepCourse/partner-prep-course.repository';
@@ -27,6 +28,7 @@ export class ClassService extends BaseService<Class> {
     private readonly coursePeriodRepository: CoursePeriodRepository,
     private readonly userService: UserService,
     private readonly roleService: RoleService,
+    private readonly cache: CacheService,
   ) {
     super(repository);
   }
@@ -63,46 +65,86 @@ export class ClassService extends BaseService<Class> {
     id: string,
     userId: string,
   ): Promise<GetClassByIdDtoOutput> {
-    const classEntity = await this.repository.findOneById(id);
+    // adicionar a consulta em cache usando wrap
+    const cachedData = await this.cache.wrap<GetClassByIdDtoOutput>(
+      `presence_by_class_id_${id}`,
+      async () => {
+        const classEntity = await this.repository.findOneById(id);
 
-    if (!classEntity) {
-      throw new NotFoundException(`Class with id ${id} not found`);
-    }
+        if (!classEntity) {
+          throw new NotFoundException(`Class with id ${id} not found`);
+        }
 
-    const user = await this.userService.findUserById(userId);
-    const role = await this.roleService.findOneById(user.role.id);
-    const manager = role.gerenciarEstudantes;
+        const user = await this.userService.findUserById(userId);
+        const role = await this.roleService.findOneById(user.role.id);
+        const manager = role.gerenciarEstudantes;
 
-    const students = classEntity.students.map((student) => {
-      return {
-        id: student.id,
-        name: student.user.useSocialName
-          ? `${student.user.socialName?.split(' ')[0]} ${student.user.lastName}`
-          : `${student.user.firstName} ${student.user.lastName}`,
-        email: manager ? student.user.email : maskEmail(student.user.email),
-        status: student.applicationStatus,
-        cod_enrolled: student.cod_enrolled,
-        created_at: student.createdAt,
-        updated_at: student.updatedAt,
-        photo: student.photo,
-        logs: student.logs,
-        birthday: student.user.birthday,
-        socioeconomic: student.socioeconomic,
-        areaInterest: student.areaInterest,
-        selectedCourses: student.selectedCourses,
-        isFree: student.isFree,
-      };
-    });
-    const result = {
-      ...classEntity,
-      coursePeriodId: classEntity.coursePeriod?.id || '',
-      coursePeriodName: classEntity.coursePeriod?.name || '',
-      coursePeriodYear: classEntity.coursePeriod?.year || 0,
-      coursePeriodStartDate: classEntity.coursePeriod?.startDate || new Date(),
-      coursePeriodEndDate: classEntity.coursePeriod?.endDate || new Date(),
-      students,
-    };
-    return result as unknown as GetClassByIdDtoOutput;
+        // Buscar contagem de registros e % de presença em paralelo
+        const totalAttendanceRecords =
+          await this.repository.countAttendanceRecords(id);
+
+        let presenceMap = new Map<
+          string,
+          {
+            presencePercentage: number;
+            absencePercentage: number;
+            justifiedAbsencePercentage: number;
+          }
+        >();
+        if (
+          classEntity.coursePeriod?.startDate &&
+          classEntity.coursePeriod?.endDate
+        ) {
+          presenceMap = await this.repository.getPresenceByClassId(
+            id,
+            classEntity.coursePeriod.startDate,
+            classEntity.coursePeriod.endDate,
+          );
+        }
+
+        const students = classEntity.students.map((student) => {
+          return {
+            id: student.id,
+            name: student.user.useSocialName
+              ? `${student.user.socialName?.split(' ')[0]} ${student.user.lastName}`
+              : `${student.user.firstName} ${student.user.lastName}`,
+            email: manager ? student.user.email : maskEmail(student.user.email),
+            status: student.applicationStatus,
+            cod_enrolled: student.cod_enrolled,
+            created_at: student.createdAt,
+            updated_at: student.updatedAt,
+            photo: student.photo,
+            logs: student.logs,
+            birthday: student.user.birthday,
+            socioeconomic: student.socioeconomic,
+            areaInterest: student.areaInterest,
+            selectedCourses: student.selectedCourses,
+            isFree: student.isFree,
+            presencePercentage:
+              presenceMap.get(student.id)?.presencePercentage ?? null,
+            absencePercentage:
+              presenceMap.get(student.id)?.absencePercentage ?? null,
+            justifiedAbsencePercentage:
+              presenceMap.get(student.id)?.justifiedAbsencePercentage ?? null,
+          };
+        });
+        const result = {
+          ...classEntity,
+          coursePeriodId: classEntity.coursePeriod?.id || '',
+          coursePeriodName: classEntity.coursePeriod?.name || '',
+          coursePeriodYear: classEntity.coursePeriod?.year || 0,
+          coursePeriodStartDate:
+            classEntity.coursePeriod?.startDate || new Date(),
+          coursePeriodEndDate: classEntity.coursePeriod?.endDate || new Date(),
+          totalAttendanceRecords,
+          students,
+        };
+        return result as unknown as GetClassByIdDtoOutput;
+      },
+      60 * 60 * 24 * 1000 * 7,
+    );
+
+    return cachedData;
   }
 
   async update(dto: UpdateClassDTOInput): Promise<void> {

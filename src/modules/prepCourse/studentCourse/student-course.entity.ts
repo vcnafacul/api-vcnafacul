@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { NodeEntity } from '../../../shared/modules/node/node.entity';
 import { User } from '../../user/user.entity';
+import { PeriodJustification } from '../attendance/periodJustification/period-justification.entity';
 import { StudentAttendance } from '../attendance/studentAttendance/student-attendance.entity';
 import { Class } from '../class/class.entity';
 import { InscriptionCourse } from '../InscriptionCourse/inscription-course.entity';
@@ -127,4 +128,7 @@ export class StudentCourse extends NodeEntity {
     (studentAttendance) => studentAttendance.studentCourse,
   )
   public attendance: StudentAttendance[];
+
+  @OneToMany(() => PeriodJustification, (pj) => pj.studentCourse)
+  public periodJustifications: PeriodJustification[];
 }

@@ -279,11 +279,7 @@ export class ContentProxyService {
     );
   }
 
-  async reviewProposal(
-    proposalId: string,
-    status: number,
-    reviewedBy: string,
-  ) {
+  async reviewProposal(proposalId: string, status: number, reviewedBy: string) {
     const result = await this.axios.patch(
       `v1/adjustment-proposal/${proposalId}/review`,
       { status, reviewedBy },

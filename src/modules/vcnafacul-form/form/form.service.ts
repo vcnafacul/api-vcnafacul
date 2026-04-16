@@ -18,18 +18,43 @@ export class FormService {
     );
   }
 
+  private partnerHeaders(partnerId: string): Record<string, string> {
+    return {
+      'X-Owner-Type': 'PARTNER',
+      'X-Owner-Id': partnerId,
+    };
+  }
+
   //getFormByInscriptionId
   public async getFormFullByInscriptionId(inscriptionId: string) {
     return await this.axios.get(`v1/form-full/${inscriptionId}/inscription`);
   }
 
   //@Post(':inscriptionId/create-form-full')
-  public async createFormFull(inscriptionId: string) {
-    return await this.axios.post(`v1/form/${inscriptionId}/create-form-full`);
+  public async createFormFull(inscriptionId: string, partnerId: string) {
+    return await this.axios.post(
+      `v1/form/${inscriptionId}/create-form-full`,
+      { partnerId },
+      this.partnerHeaders(partnerId),
+    );
   }
 
   //@Get has-active-form
-  public async hasActiveForm(): Promise<boolean> {
-    return await this.axios.get(`v1/form/has-active`);
+  public async hasActiveForm(partnerId: string) {
+    return await this.axios.get(
+      `v1/form/has-active`,
+      this.partnerHeaders(partnerId),
+    );
+  }
+
+  public async createPartnerForm(partnerId: string) {
+    return await this.axios.post(
+      `v1/form`,
+      { name: 'Formulário do Cursinho', ownerType: 'PARTNER' },
+      {
+        'X-Owner-Type': 'PARTNER',
+        'X-Owner-Id': partnerId,
+      },
+    );
   }
 }

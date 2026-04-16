@@ -85,4 +85,3 @@ export const THROTTLE_CONFIG = {
     limit: 100,
   },
 } as const;
-

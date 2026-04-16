@@ -11,6 +11,7 @@ export class GetClassByIdDtoOutput {
   coursePeriodStartDate: Date;
   coursePeriodEndDate: Date;
   number_students: number;
+  totalAttendanceRecords: number;
   students: StudentClass[];
 }
 
@@ -29,4 +30,7 @@ export class StudentClass {
   isFree: string;
   areaInterest: string;
   selectedCourses: string;
+  presencePercentage?: number | null;
+  absencePercentage?: number | null;
+  justifiedAbsencePercentage?: number | null;
 }

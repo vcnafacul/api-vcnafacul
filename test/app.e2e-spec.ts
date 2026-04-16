@@ -3,6 +3,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import * as request from 'supertest';
 import { AppModule } from './../src/app.module';
+import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
+
+jest.mock('src/shared/services/webhooks/discord.ts');
 
 describe('AppController (e2e)', () => {
   let app: INestApplication;
@@ -11,6 +14,8 @@ describe('AppController (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
+      .overrideProvider(DiscordWebhook)
+      .useValue({ sendMessage: jest.fn() })
       .overrideGuard(ThrottlerGuard)
       .useValue({ canActivate: () => true })
       .compile();

@@ -33,6 +33,7 @@ export class UserRepository extends BaseRepository<User> {
     page,
     limit,
     name,
+    roleId,
   }: GetUserDtoInput): Promise<GetAllOutput<User>> {
     const query = this.repository
       .createQueryBuilder('entity')
@@ -45,13 +46,20 @@ export class UserRepository extends BaseRepository<User> {
 
     if (name) {
       query.andWhere(
-        '(entity.firstName LIKE :name OR entity.lastName LIKE :name)',
+        '(entity.firstName LIKE :name OR entity.lastName LIKE :name OR entity.email LIKE :name)',
         { name: `%${name}%` },
       );
       count.andWhere(
-        '(entity.firstName LIKE :name OR entity.lastName LIKE :name)',
+        '(entity.firstName LIKE :name OR entity.lastName LIKE :name OR entity.email LIKE :name)',
         { name: `%${name}%` },
       );
+    }
+
+    if (roleId) {
+      query.andWhere('role.id = :roleId', { roleId });
+      count.innerJoin('entity.role', 'role').andWhere('role.id = :roleId', {
+        roleId,
+      });
     }
 
     const [data, totalItems] = await Promise.all([

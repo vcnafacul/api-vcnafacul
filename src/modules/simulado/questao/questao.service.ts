@@ -96,6 +96,21 @@ export class QuestaoService {
     return fileKey;
   }
 
+  public async uploadAsset(
+    file: Express.Multer.File,
+  ): Promise<{ assetId: string }> {
+    if (!file) {
+      throw new Error('Nenhum arquivo fornecido');
+    }
+    const fileKey = await this.blobService.uploadFile(
+      file,
+      this.envService.get('BUCKET_QUESTION'),
+      undefined,
+      'assets',
+    );
+    return { assetId: fileKey };
+  }
+
   public async delete(id: string) {
     await this.axios.delete(`v1/questao/${id}`);
   }
@@ -175,6 +190,13 @@ export class QuestaoService {
     return this.cache.wrap<object>(
       'questao',
       async () => await this.axios.get<any>(`v1/questao/summary`),
+    );
+  }
+
+  public async getPendingByMateria(materiaIds?: string[]) {
+    const params = materiaIds?.length ? `?materias=${materiaIds.join(',')}` : '';
+    return await this.axios.get<any>(
+      `v1/questao/pending-by-materia${params}`,
     );
   }
 

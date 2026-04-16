@@ -65,8 +65,6 @@ export class RuleSetFormService {
   }
 
   public async getRuleSetByInscriptionId(inscriptionId: string) {
-    return await this.axios.get(
-      `v1/rules-set/by-inscription/${inscriptionId}`,
-    );
+    return await this.axios.get(`v1/rules-set/by-inscription/${inscriptionId}`);
   }
 }

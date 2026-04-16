@@ -97,10 +97,7 @@ export class RuleSetFormController {
     status: 200,
     description: 'atualiza conjunto de regras',
   })
-  public async updateRuleSet(
-    @Param('id') id: string,
-    @Body() dto: unknown,
-  ) {
+  public async updateRuleSet(@Param('id') id: string, @Body() dto: unknown) {
     return await this.service.updateRuleSet(id, dto);
   }
 

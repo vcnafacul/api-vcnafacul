@@ -58,6 +58,7 @@ export const envSchema = z.object({
   BUCKET_CONTENT: z.string().default('vcnafacul-content'),
   BUCKET_NEWS: z.string().default('vcnafacul-news'),
   BUCKET_PARTNERSHIP_DOC: z.string().default('vcnafacul-partnership-doc'),
+  BUCKET_ESSAY: z.string().default('vcnafacul-essays'),
   AWS_STORAGE_CLASS: z.enum(['STANDARD']).default('STANDARD'),
 
   //GRAFANA
@@ -70,10 +71,23 @@ export const envSchema = z.object({
   REDIS_PORT: z.coerce.number().default(6379),
   REDIS_HOST: z.string().default('localhost'),
 
+  // Form Service
+  ADMIN_FORM_SECRET: z.string().default('dev-secret'),
+
   // Google Places API
   GOOGLE_MAPS_API_KEY: z
     .string()
     .default('AIzaSyCK0EJwZiLpGw46t2sC811b63L8pVvT3A'),
+
+  // Essay AI
+  ESSAY_AI_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
+  ESSAY_AI_PROVIDER: z.enum(['claude', 'openai']).default('openai'),
+  ANTHROPIC_API_KEY: z.string().default(''),
+  OPENAI_API_KEY: z.string().default(''),
+  ESSAY_AI_MODEL: z.string().default('gpt-4o'),
 });
 
 export type Env = z.infer<typeof envSchema>;

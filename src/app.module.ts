@@ -18,6 +18,7 @@ import { GeoModule } from './modules/geo/geo.module';
 import { NewsModule } from './modules/news/news.module';
 import { AbsenceJustificationModule } from './modules/prepCourse/attendance/absenceJustification/absence-justification.module';
 import { AttendanceRecordModule } from './modules/prepCourse/attendance/attendanceRecord/attendance-record.module';
+import { PeriodJustificationModule } from './modules/prepCourse/attendance/periodJustification/period-justification.module';
 import { StudentAttendanceModule } from './modules/prepCourse/attendance/studentAttendance/student-attendance.module';
 import { ClassModule } from './modules/prepCourse/class/class.module';
 import { CollaboratorModule } from './modules/prepCourse/collaborator/collaborator.module';
@@ -36,6 +37,8 @@ import { BlobModule } from './shared/services/blob/blob.module';
 import { DiscordWebhook } from './shared/services/webhooks/discord';
 import { JwtStrategy } from './shared/strategy/jwt.strategy';
 import { PlacesModule } from './modules/places/places.module';
+import { EssayModule } from './modules/essay/essay.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 /**
  * Desabilita ThrottlerGuard em ambiente de teste para evitar erros 429
@@ -102,9 +105,12 @@ const throttlerProvider: Provider = isTestEnv
     AttendanceRecordModule,
     StudentAttendanceModule,
     AbsenceJustificationModule,
+    PeriodJustificationModule,
     CacheManagerModule,
     VcnafaculFormModule,
     PlacesModule,
+    EssayModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [

@@ -213,6 +213,12 @@ export class CollaboratorService extends BaseService<Collaborator> {
       Object.assign(new CollaboratorFrente(), { collaboratorId, frenteId }),
     );
     await this.collaboratorFrenteRepository.createMany(entities);
+
+    // Invalidate collaborator dashboard cache
+    const collaborator = await this.repository.findOneBy({ id: collaboratorId });
+    if (collaborator?.user?.id) {
+      await this.cache.del(`dashboard:collab:${collaborator.user.id}`);
+    }
   }
 
   async getEnrichedFrentes(
@@ -266,9 +272,7 @@ export class CollaboratorService extends BaseService<Collaborator> {
     };
   }
 
-  async getFrentesBatch(
-    userId: string,
-  ): Promise<Record<string, string[]>> {
+  async getFrentesBatch(userId: string): Promise<Record<string, string[]>> {
     const partnerPrepCourse =
       await this.partnerPrepCourseService.getByUserId(userId);
     if (!partnerPrepCourse) {
@@ -324,9 +328,7 @@ export class CollaboratorService extends BaseService<Collaborator> {
       ),
     );
     const validMaterias = materiaResults.filter(Boolean) as any[];
-    const materiaMap = new Map(
-      validMaterias.map((m) => [String(m._id), m]),
-    );
+    const materiaMap = new Map(validMaterias.map((m) => [String(m._id), m]));
 
     return valid.map(({ frente, record }) => {
       const materiaId = String(frente.materia);

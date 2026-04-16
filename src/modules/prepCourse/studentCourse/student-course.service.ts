@@ -1508,8 +1508,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       const isCollaboratorWithPermission =
         collaborator &&
         user?.role?.gerenciarEstudantes &&
-        collaborator.partnerPrepCourse?.id ===
-          student.partnerPrepCourse?.id;
+        collaborator.partnerPrepCourse?.id === student.partnerPrepCourse?.id;
 
       if (!isCollaboratorWithPermission) {
         throw new HttpException(
