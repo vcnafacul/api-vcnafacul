@@ -26,6 +26,7 @@ export enum Permissions {
   gerenciarPermissoesCursinho = 'gerenciar_permissoes_cursinho',
   visualizarMinhasInscricoes = 'visualizar_minhas_inscricoes',
   gerenciarFormularioGlobal = 'gerenciar_formulario_global',
+  gerenciarFormulario = 'gerenciar_formulario',
   gerenciarTemas = 'gerenciar_temas',
   revisarRedacoes = 'revisar_redacoes',
   revisarTodasRedacoes = 'revisar_todas_redacoes',
@@ -122,6 +123,12 @@ export class Role extends BaseEntity {
     default: false,
   })
   gerenciarFormularioGlobal: boolean;
+
+  @Column({
+    name: Permissions.gerenciarFormulario,
+    default: false,
+  })
+  gerenciarFormulario: boolean;
 
   @Column({ name: Permissions.gerenciarTemas, default: false })
   gerenciarTemas: boolean;

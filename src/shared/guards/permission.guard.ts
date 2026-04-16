@@ -69,7 +69,7 @@ export class PermissionsGuard implements CanActivate {
               ),
           ),
         );
-        return results.reduce((acc, value) => acc || value, true);
+        return results.reduce((acc, value) => acc || value, false);
       }
       return await this.userService.checkUserPermission(
         userId,
