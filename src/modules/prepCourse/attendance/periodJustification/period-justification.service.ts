@@ -144,9 +144,7 @@ export class PeriodJustificationService {
     });
 
     if (studentCourse?.class?.id) {
-      await this.cache.del(
-        `presence_by_class_id_${studentCourse.class.id}`,
-      );
+      await this.cache.del(`presence_by_class_id_${studentCourse.class.id}`);
     }
 
     return result;

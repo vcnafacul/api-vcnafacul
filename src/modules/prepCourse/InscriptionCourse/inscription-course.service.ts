@@ -19,6 +19,7 @@ import { LogStudentRepository } from '../studentCourse/log-student/log-student.r
 import { StudentCourse } from '../studentCourse/student-course.entity';
 import { StudentCourseRepository } from '../studentCourse/student-course.repository';
 import { CreateInscriptionCourseInput } from './dtos/create-inscription-course.dto.input';
+import { OpenInscriptionDtoOutput } from './dtos/open-inscription.dto.output';
 import { ExtendInscriptionCourseDtoInput } from './dtos/extend-inscription-course.dto.input';
 import { InscriptionCourseDtoOutput } from './dtos/get-all-inscription.dto.output';
 import { GetAllWithNameDtoOutput } from './dtos/get-all-with-name';
@@ -85,6 +86,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     inscriptionCourse.partnerPrepCourse = parnetPrepCourse;
     const result = await this.repository.create(inscriptionCourse);
     await this.formService.createFormFull(result.id, parnetPrepCourse.id);
+    await this.cache.del('inscription-course:open');
     return {
       id: result.id,
       name: result.name,
@@ -224,6 +226,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     inscriptionCourse.actived = Status.Rejected;
     inscriptionCourse.deletedAt = new Date();
     await this.repository.update(inscriptionCourse);
+    await this.cache.del('inscription-course:open');
   }
 
   async update(entity: InscriptionCourse) {
@@ -311,6 +314,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     });
 
     await this.repository.update(inscriptionCourse);
+    await this.cache.del('inscription-course:open');
   }
 
   async extendInscription(id: string, dto: ExtendInscriptionCourseDtoInput) {
@@ -370,6 +374,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     });
 
     await this.repository.update(inscriptionCourse);
+    await this.cache.del('inscription-course:open');
   }
 
   async getSubscribers(
@@ -451,6 +456,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
   async updateInfosInscription() {
     try {
       await this.repository.updateAllInscriptionsStatus();
+      await this.cache.del('inscription-course:open');
     } catch (error) {
       this.discordWebhook.sendMessage(
         `Erro ao atualizar status das inscrições: ${error}`,
@@ -569,6 +575,31 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
         log.description = 'Enviou email de lista de espera';
         await this.logStudentRepository.create(log);
       }),
+    );
+  }
+
+  async findOpen(): Promise<OpenInscriptionDtoOutput[]> {
+    return this.cache.wrap(
+      'inscription-course:open',
+      async () => {
+        const inscriptions = await this.repository.findOpen();
+        return inscriptions.map((ic) => {
+          const thumbnail = ic.partnerPrepCourse?.thumbnail;
+          const logo = thumbnail
+            ? `data:image/webp;base64,${thumbnail.toString('base64')}`
+            : null;
+          return {
+            id: ic.id,
+            name: ic.name,
+            endDate: ic.endDate,
+            cursinho: {
+              name: ic.partnerPrepCourse?.geo?.name ?? '',
+              logo,
+            },
+          };
+        });
+      },
+      60 * 60 * 1000, // 1h
     );
   }
 

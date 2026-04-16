@@ -29,6 +29,7 @@ import { UpdateUserDTOInput } from './dto/update.dto.input';
 import { UserDtoOutput } from './dto/user.dto.output';
 import { UserWithRoleName } from './dto/userWithRoleName';
 import { CreateFlow } from './enum/create-flow';
+import { ProfileDetectorService } from './services/profile-detector.service';
 import { RefreshTokenService } from './services/refresh-token.service';
 import { User } from './user.entity';
 import { UserRepository } from './user.repository';
@@ -49,6 +50,7 @@ export class UserService extends BaseService<User> {
     private readonly envService: EnvService,
     private readonly cache: CacheService,
     private readonly refreshTokenService: RefreshTokenService,
+    private readonly profileDetector: ProfileDetectorService,
   ) {
     super(userRepository);
   }
@@ -247,6 +249,7 @@ export class UserService extends BaseService<User> {
       userDto.collaboratorFrentes = afinidades.map((a) => a.frenteId);
       userDto.afinidades = afinidades;
     }
+    userDto.profiles = await this.profileDetector.detect(userId);
     return userDto;
   }
 
@@ -407,11 +410,14 @@ export class UserService extends BaseService<User> {
       roles.push('visualizarMinhasInscricoes');
     }
 
+    const profiles = await this.profileDetector.detect(domain.id);
+
     // Gera o access token (15 minutos)
     const accessToken = await this.jwtService.signAsync({
       user,
       roles,
       roleId: domain.role.id,
+      profiles,
     });
 
     // Gera o refresh token (7 dias)
@@ -508,10 +514,13 @@ export class UserService extends BaseService<User> {
       roles.push('visualizarMinhasInscricoes');
     }
 
+    const profiles = await this.profileDetector.detect(userId);
+
     const accessToken = await this.jwtService.signAsync({
       user: userDto,
       roles,
       roleId: user.role.id,
+      profiles,
     });
 
     this.logger.log(`Access token renovado para usuário: ${user.id}`);

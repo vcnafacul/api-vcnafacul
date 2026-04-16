@@ -226,4 +226,15 @@ export class InscriptionCourseRepository extends LinkedListRepository<
       };
     });
   }
+
+  async findOpen(): Promise<InscriptionCourse[]> {
+    const now = new Date();
+    return this.repository
+      .createQueryBuilder('ic')
+      .leftJoinAndSelect('ic.partnerPrepCourse', 'ppc')
+      .leftJoinAndSelect('ppc.geo', 'geo')
+      .where('ic.endDate > :now', { now })
+      .andWhere('ic.actived = :actived', { actived: Status.Approved })
+      .getMany();
+  }
 }

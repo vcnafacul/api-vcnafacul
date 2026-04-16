@@ -26,6 +26,7 @@ import { CreateInscriptionCourseInput } from './dtos/create-inscription-course.d
 import { ExtendInscriptionCourseDtoInput } from './dtos/extend-inscription-course.dto.input';
 import { InscriptionCourseDtoOutput } from './dtos/get-all-inscription.dto.output';
 import { GetAllWithNameDtoOutput } from './dtos/get-all-with-name';
+import { OpenInscriptionDtoOutput } from './dtos/open-inscription.dto.output';
 import { GetSubscribersDtoOutput } from './dtos/get-subscribers.dto.output';
 import { UpdateInscriptionCourseDTOInput } from './dtos/update-inscription-course.dto.input';
 import { InscriptionCourse } from './inscription-course.entity';
@@ -128,6 +129,12 @@ export class InscriptionCourseController {
   @Get('aggregate')
   async aggregate(@Query() query: AggregatePeriodDtoInput) {
     return await this.service.aggregateInscriptionCourseByPeriod(query);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('open')
+  async findOpen(): Promise<OpenInscriptionDtoOutput[]> {
+    return this.service.findOpen();
   }
 
   @Get(':id')
