@@ -22,7 +22,8 @@
     "migration:show": "npm run typeorm -- migration:show",
     "migration:generate": "npm run typeorm migration:generate -n",
     "migration:run": "npm run typeorm -- migration:run",
-    "migration:revert": "npm run typeorm -- migration:revert"
+    "migration:revert": "npm run typeorm -- migration:revert",
+    "create-admin-user": "node --require ts-node/register scripts/create-admin-user.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",

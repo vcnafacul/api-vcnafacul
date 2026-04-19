@@ -15,6 +15,7 @@ import { LokiLoggerService } from './logger/loki-logger';
 import { AuditLogModule } from './modules/audit-log/audit-log.module';
 import { FrontendErrorsModule } from './modules/frontend-errors/frontend-errors.module';
 import { GeoModule } from './modules/geo/geo.module';
+import { HomeContentModule } from './modules/home-content/home-content.module';
 import { NewsModule } from './modules/news/news.module';
 import { AbsenceJustificationModule } from './modules/prepCourse/attendance/absenceJustification/absence-justification.module';
 import { AttendanceRecordModule } from './modules/prepCourse/attendance/attendanceRecord/attendance-record.module';
@@ -95,6 +96,7 @@ const throttlerProvider: Provider = isTestEnv
     CoursePeriodModule,
     AuditLogModule,
     FrontendErrorsModule,
+    HomeContentModule,
     NewsModule,
     StudentCourseModule,
     InscriptionCourseModule,
