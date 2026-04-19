@@ -11,7 +11,7 @@ FROM node:20-alpine
 WORKDIR /var/www
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY dist ./
+COPY dist/src/. ./
 COPY src/shared/services/assets/* shared/services/assets/
 COPY src/shared/services/email/templates/* shared/services/email/templates/
 COPY package.json .
