@@ -20,6 +20,9 @@ export class HomeSupporter {
   @Column({ type: 'varchar', length: 512 })
   link: string;
 
+  @Column({ type: 'varchar', length: 280, nullable: true })
+  description: string | null;
+
   @Column({ type: 'int', default: 0 })
   order: number;
 
