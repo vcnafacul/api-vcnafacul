@@ -166,4 +166,135 @@ describe('News destaque mutex (e2e)', () => {
     expect(res.status).toBe(200);
     expect(res.body.description).toHaveLength(280);
   });
+
+  describe('rich text content (text type)', () => {
+    it('cria news tipo text com body', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/news')
+        .send({
+          title: 'TextNews',
+          contentType: 'text',
+          body: '# Hello\n\nworld',
+        });
+      expect(res.status).toBe(201);
+      expect(res.body.contentType).toBe('text');
+      expect(res.body.body).toContain('Hello');
+      expect(res.body.fileName).toBeNull();
+    });
+
+    it('rejeita text sem body', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/news')
+        .send({
+          title: 'NoBody',
+          contentType: 'text',
+        });
+      expect(res.status).toBe(400);
+    });
+
+    it('rejeita body com mais de 50000 chars', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/news')
+        .send({
+          title: 'Big',
+          contentType: 'text',
+          body: 'x'.repeat(50001),
+        });
+      expect(res.status).toBe(400);
+    });
+
+    it('PATCH ignora contentType e mantém o tipo original', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/news')
+        .send({
+          title: 'Locked',
+          contentType: 'text',
+          body: 'content',
+        });
+      const id = created.body.id;
+      const patch = await request(app.getHttpServer())
+        .patch(`/news/${id}`)
+        .send({ contentType: 'file', title: 'Updated' });
+      expect(patch.status).toBe(200);
+      expect(patch.body.contentType).toBe('text');
+      expect(patch.body.title).toBe('Updated');
+    });
+
+    it('rejeita PATCH com body em news tipo file', async () => {
+      const created = await createNews({ title: 'FileType' });
+      const id = created.body.id;
+      const patch = await request(app.getHttpServer())
+        .patch(`/news/${id}`)
+        .send({ body: 'tentativa' });
+      expect(patch.status).toBe(400);
+    });
+
+    it('PATCH atualiza body em news tipo text', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/news')
+        .send({
+          title: 'EditableText',
+          contentType: 'text',
+          body: 'v1',
+        });
+      const id = created.body.id;
+      const patch = await request(app.getHttpServer())
+        .patch(`/news/${id}`)
+        .send({ body: 'v2' });
+      expect(patch.status).toBe(200);
+      expect(patch.body.body).toBe('v2');
+    });
+
+    it('POST /news/assets retorna assetId', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/news/assets')
+        .attach('file', Buffer.from('PNG-bytes'), 'pic.png');
+      expect(res.status).toBe(201);
+      expect(typeof res.body.assetId).toBe('string');
+      expect(res.body.assetId.length).toBeGreaterThan(0);
+    });
+
+    it('DELETE em news text remove assets do bucket', async () => {
+      const blobService = app.get<any>('BlobService');
+      const deleteSpy = jest.spyOn(blobService, 'deleteFile');
+      deleteSpy.mockClear();
+
+      const created = await request(app.getHttpServer())
+        .post('/news')
+        .send({
+          title: 'WithAssets',
+          contentType: 'text',
+          body: 'before ![](asset://abc) middle ![](asset://def) end',
+        });
+      const id = created.body.id;
+
+      await request(app.getHttpServer()).delete(`/news/${id}`);
+
+      const deletedKeys = deleteSpy.mock.calls.map((c: any) => c[0]);
+      expect(deletedKeys).toEqual(expect.arrayContaining(['abc', 'def']));
+    });
+
+    it('PATCH body remove apenas assets que sumiram', async () => {
+      const blobService = app.get<any>('BlobService');
+      const deleteSpy = jest.spyOn(blobService, 'deleteFile');
+      deleteSpy.mockClear();
+
+      const created = await request(app.getHttpServer())
+        .post('/news')
+        .send({
+          title: 'Diffed',
+          contentType: 'text',
+          body: 'a ![](asset://aaa) b ![](asset://bbb)',
+        });
+      const id = created.body.id;
+
+      await request(app.getHttpServer())
+        .patch(`/news/${id}`)
+        .send({ body: 'a ![](asset://aaa) c' });
+
+      const deletedKeys = deleteSpy.mock.calls.map((c: any) => c[0]);
+      expect(deletedKeys).toContain('bbb');
+      expect(deletedKeys).not.toContain('aaa');
+    });
+  });
 });
