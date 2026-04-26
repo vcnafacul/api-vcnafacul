@@ -25,6 +25,15 @@ export class UpdateNewsDtoInput {
   destaque?: boolean;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(50000)
+  @ApiProperty({
+    required: false,
+    description: 'Markdown da novidade (apenas para contentType=text)',
+  })
+  body?: string;
+
+  @IsOptional()
   @IsDateString()
   @ApiProperty({
     description: 'Data de expiração (YYYY-MM-DD), deve ser hoje ou futura',
