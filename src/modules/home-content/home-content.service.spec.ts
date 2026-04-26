@@ -421,7 +421,11 @@ describe('HomeContentService', () => {
         const dto = { name: 'ACME', link: 'https://acme.com' };
         await service.createSupporter(dto as any);
         expect(supporterRepo.save).toHaveBeenCalledWith(
-          expect.objectContaining({ name: 'ACME', link: 'https://acme.com' }),
+          expect.objectContaining({
+            name: 'ACME',
+            link: 'https://acme.com',
+            description: null,
+          }),
         );
       });
     });
