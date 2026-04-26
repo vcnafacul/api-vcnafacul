@@ -13,4 +13,10 @@ export class UpdateHomeSupporterDto {
   @MaxLength(512)
   @ApiProperty({ required: false })
   link?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(280)
+  @ApiProperty({ required: false })
+  description?: string;
 }

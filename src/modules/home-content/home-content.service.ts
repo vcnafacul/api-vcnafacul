@@ -223,6 +223,7 @@ export class HomeContentService {
     const entity = new HomeSupporter();
     entity.name = dto.name;
     entity.link = dto.link;
+    entity.description = dto.description ?? null;
     entity.order = (await this.supporterRepo.maxOrder()) + 1;
     const saved = await this.supporterRepo.save(entity);
     await this.cache.del(CACHE_KEYS.supporters);
@@ -239,6 +240,9 @@ export class HomeContentService {
     }
     if (dto.name !== undefined) entity.name = dto.name;
     if (dto.link !== undefined) entity.link = dto.link;
+    if (dto.description !== undefined) {
+      entity.description = dto.description;
+    }
     const saved = await this.supporterRepo.save(entity);
     await this.cache.del(CACHE_KEYS.supporters);
     return saved;

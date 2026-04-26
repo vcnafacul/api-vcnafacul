@@ -51,7 +51,9 @@ describe('HomeContentService', () => {
     blobService = {
       uploadFile: jest.fn().mockResolvedValue('new-key'),
       deleteFile: jest.fn().mockResolvedValue(undefined),
-      getFile: jest.fn().mockResolvedValue({ buffer: 'b64', contentType: 'image/png' }),
+      getFile: jest
+        .fn()
+        .mockResolvedValue({ buffer: 'b64', contentType: 'image/png' }),
     };
 
     service = new HomeContentService(
@@ -193,7 +195,9 @@ describe('HomeContentService', () => {
       aboutRepo.findSingleton.mockResolvedValue(existing);
       blobService.deleteFile.mockRejectedValueOnce(new Error('boom'));
 
-      await expect(service.uploadAboutThumbnail(fakeFile)).resolves.toBeDefined();
+      await expect(
+        service.uploadAboutThumbnail(fakeFile),
+      ).resolves.toBeDefined();
     });
   });
 
@@ -246,9 +250,9 @@ describe('HomeContentService', () => {
       it('throws NOT_FOUND when feature does not exist', async () => {
         featureRepo.findById.mockResolvedValue(null);
 
-        await expect(
-          service.updateFeature(1, { title: 'x' }),
-        ).rejects.toThrow(HttpException);
+        await expect(service.updateFeature(1, { title: 'x' })).rejects.toThrow(
+          HttpException,
+        );
       });
 
       it('patches only provided fields', async () => {
@@ -320,9 +324,9 @@ describe('HomeContentService', () => {
       it('throws NOT_FOUND when feature missing', async () => {
         featureRepo.findById.mockResolvedValue(null);
 
-        await expect(
-          service.uploadFeatureImage(1, fakeFile),
-        ).rejects.toThrow(HttpException);
+        await expect(service.uploadFeatureImage(1, fakeFile)).rejects.toThrow(
+          HttpException,
+        );
       });
 
       it('uploads, replaces previous image and invalidates caches', async () => {
@@ -379,9 +383,9 @@ describe('HomeContentService', () => {
       it('throws NOT_FOUND when supporter does not exist', async () => {
         supporterRepo.findById.mockResolvedValue(null);
 
-        await expect(
-          service.updateSupporter(1, { name: 'x' }),
-        ).rejects.toThrow(HttpException);
+        await expect(service.updateSupporter(1, { name: 'x' })).rejects.toThrow(
+          HttpException,
+        );
       });
 
       it('patches fields and invalidates cache', async () => {
@@ -395,6 +399,48 @@ describe('HomeContentService', () => {
         expect(saved.name).toBe('Novo');
         expect(saved.link).toBe('https://novo.com');
         expect(cache.del).toHaveBeenCalledWith(CACHE_KEYS.supporters);
+      });
+    });
+
+    describe('createSupporter — description', () => {
+      it('persiste description quando fornecida', async () => {
+        supporterRepo.maxOrder.mockResolvedValue(0);
+        const dto = {
+          name: 'ACME',
+          link: 'https://acme.com',
+          description: 'Empresa apoiadora',
+        };
+        await service.createSupporter(dto as any);
+        expect(supporterRepo.save).toHaveBeenCalledWith(
+          expect.objectContaining({ description: 'Empresa apoiadora' }),
+        );
+      });
+
+      it('aceita description ausente (null)', async () => {
+        supporterRepo.maxOrder.mockResolvedValue(0);
+        const dto = { name: 'ACME', link: 'https://acme.com' };
+        await service.createSupporter(dto as any);
+        expect(supporterRepo.save).toHaveBeenCalledWith(
+          expect.objectContaining({ name: 'ACME', link: 'https://acme.com' }),
+        );
+      });
+    });
+
+    describe('updateSupporter — description', () => {
+      it('atualiza description quando fornecida', async () => {
+        const existing = {
+          id: 1,
+          name: 'ACME',
+          link: 'https://acme.com',
+          description: null,
+        } as HomeSupporter;
+        supporterRepo.findById.mockResolvedValue(existing);
+        await service.updateSupporter(1, {
+          description: 'Nova descrição',
+        } as any);
+        expect(supporterRepo.save).toHaveBeenCalledWith(
+          expect.objectContaining({ description: 'Nova descrição' }),
+        );
       });
     });
 
@@ -452,9 +498,9 @@ describe('HomeContentService', () => {
       it('throws NOT_FOUND when supporter missing', async () => {
         supporterRepo.findById.mockResolvedValue(null);
 
-        await expect(
-          service.uploadSupporterLogo(1, fakeFile),
-        ).rejects.toThrow(HttpException);
+        await expect(service.uploadSupporterLogo(1, fakeFile)).rejects.toThrow(
+          HttpException,
+        );
       });
 
       it('uploads new logo, removes previous and invalidates caches', async () => {
