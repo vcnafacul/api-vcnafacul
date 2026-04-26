@@ -5,10 +5,10 @@ import { User } from '../user/user.entity';
 @Entity('news')
 export class News extends BaseEntity {
   @Column()
-  session: string;
-
-  @Column()
   title: string;
+
+  @Column({ length: 280, nullable: true })
+  description: string | null;
 
   @Column()
   fileName: string;
@@ -18,6 +18,9 @@ export class News extends BaseEntity {
 
   @Column({ default: true })
   actived: boolean;
+
+  @Column({ default: false })
+  destaque: boolean;
 
   @Column({ name: 'expire_at', type: 'date', nullable: true })
   expireAt: Date | null;
