@@ -43,6 +43,10 @@ export const envSchema = z.object({
   MAIL_PASSWORD: z.string().default('password'),
   TEMPLATE_EMAIL: z.string().default('vcnafacul'),
   TEMPLATE_EMAIL_ASSET: z.string().default('vcnafacul'),
+  SMTP_FAKE: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
 
   //S3
   BLOB_PROVIDER: z.enum(['S3']).default('S3'),
