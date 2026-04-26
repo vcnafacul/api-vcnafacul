@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsUrl,
+  MaxLength,
+  ValidateIf,
+} from 'class-validator';
 
 export class UpdateHomeSupporterDto {
   @IsOptional()
@@ -13,4 +19,11 @@ export class UpdateHomeSupporterDto {
   @MaxLength(512)
   @ApiProperty({ required: false })
   link?: string;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @MaxLength(280)
+  @ApiProperty({ required: false, nullable: true })
+  description?: string | null;
 }
