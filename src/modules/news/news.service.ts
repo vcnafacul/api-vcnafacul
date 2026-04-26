@@ -1,5 +1,7 @@
 import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { InjectEntityManager } from '@nestjs/typeorm';
+import { EntityManager } from 'typeorm';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { CacheService } from 'src/shared/modules/cache/cache.service';
@@ -60,6 +62,7 @@ export class NewsService extends BaseService<News> {
     private envService: EnvService,
     private readonly cache: CacheService,
     @Inject('BlobService') private readonly blobService: BlobService,
+    @InjectEntityManager() private readonly entityManager: EntityManager,
   ) {
     super(repository);
   }
@@ -79,31 +82,55 @@ export class NewsService extends BaseService<News> {
     if (!fileKey) {
       throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);
     }
-    const news = new News();
-    news.session = request.session;
-    news.title = request.title;
-    news.fileName = fileKey;
-    news.updatedBy = userId;
-    news.expireAt = expireAt ?? null;
 
-    return await this.repository.create(news);
+    return await this.entityManager.transaction(async (manager) => {
+      if (request.destaque === true) {
+        await this.repository.unsetAllDestaqueExcept(null, manager);
+      }
+
+      const news = manager.create(News, {
+        title: request.title,
+        description: request.description ?? null,
+        fileName: fileKey,
+        updatedBy: userId,
+        destaque: request.destaque === true,
+        expireAt: expireAt ?? null,
+      });
+
+      return await manager.save(News, news);
+    });
   }
 
   async update(id: string, request: UpdateNewsDtoInput, userId: string) {
-    const news = await this.repository.findOneBy({ id });
-    if (!news) {
-      throw new HttpException('Novidade não encontrada', HttpStatus.NOT_FOUND);
-    }
-    if (request.expire_at !== undefined) {
-      const expireAt = parseExpireAt(request.expire_at);
-      validateExpireAtNotInPast(expireAt);
-      news.expireAt = expireAt;
-    }
-    if (request.session !== undefined) news.session = request.session;
-    if (request.title !== undefined) news.title = request.title;
-    news.updatedBy = userId;
-    await this.repository.update(news);
-    return news;
+    return await this.entityManager.transaction(async (manager) => {
+      const news = await manager.findOne(News, { where: { id } });
+      if (!news) {
+        throw new HttpException(
+          'Novidade não encontrada',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (request.expire_at !== undefined) {
+        const expireAt = parseExpireAt(request.expire_at);
+        validateExpireAtNotInPast(expireAt);
+        news.expireAt = expireAt;
+      }
+      if (request.title !== undefined) news.title = request.title;
+      if (request.description !== undefined) {
+        news.description = request.description || null;
+      }
+      if (request.destaque === true) {
+        await this.repository.unsetAllDestaqueExcept(id, manager);
+        news.destaque = true;
+      } else if (request.destaque === false) {
+        news.destaque = false;
+      }
+      news.updatedBy = userId;
+
+      await manager.save(News, news);
+      return news;
+    });
   }
 
   async getFile(
