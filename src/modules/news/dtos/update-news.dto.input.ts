@@ -1,16 +1,28 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsDateString,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
 export class UpdateNewsDtoInput {
   @IsOptional()
   @IsString()
   @ApiProperty({ required: false })
-  session?: string;
+  title?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(280)
+  @ApiProperty({ required: false, description: 'Descrição (máx 280 chars)' })
+  description?: string;
+
+  @IsOptional()
+  @IsBoolean()
   @ApiProperty({ required: false })
-  title?: string;
+  destaque?: boolean;
 
   @IsOptional()
   @IsDateString()
