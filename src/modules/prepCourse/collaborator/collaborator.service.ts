@@ -111,6 +111,13 @@ export class CollaboratorService extends BaseService<Collaborator> {
     userId: string,
   ): Promise<string> {
     const collaborator = await this.repository.findOneByUserId(userId);
+    return this.replacePhoto(collaborator, file);
+  }
+
+  private async replacePhoto(
+    collaborator: Collaborator,
+    file: Express.Multer.File,
+  ): Promise<string> {
     if (collaborator.photo) {
       try {
         await this.blobService.deleteFile(
@@ -215,7 +222,9 @@ export class CollaboratorService extends BaseService<Collaborator> {
     await this.collaboratorFrenteRepository.createMany(entities);
 
     // Invalidate collaborator dashboard cache
-    const collaborator = await this.repository.findOneBy({ id: collaboratorId });
+    const collaborator = await this.repository.findOneBy({
+      id: collaboratorId,
+    });
     if (collaborator?.user?.id) {
       await this.cache.del(`dashboard:collab:${collaborator.user.id}`);
     }
