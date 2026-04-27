@@ -28,8 +28,12 @@ export class EmailService {
   const useFakeSmtp = !isProd && this.envService.get('SMTP_FAKE') === true;
 
   this.transporter = nodemailer.createTransport({
-    host: this.envService.get('SMTP_HOST'),
-    port: Number(this.envService.get('SMTP_PORT')),
+    host: useFakeSmtp
+      ? this.envService.get('SMTP_FAKE_HOST')
+      : this.envService.get('SMTP_HOST'),
+    port: useFakeSmtp
+      ? Number(this.envService.get('SMTP_FAKE_PORT'))
+      : Number(this.envService.get('SMTP_PORT')),
     secure: !useFakeSmtp,
     ...(useFakeSmtp ? {} : {
       auth: {
