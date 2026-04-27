@@ -47,6 +47,8 @@ export const envSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
+  SMTP_FAKE_HOST: z.string().default('mailpit'),
+  SMTP_FAKE_PORT: z.coerce.number().default(1025),
 
   //S3
   BLOB_PROVIDER: z.enum(['S3']).default('S3'),
