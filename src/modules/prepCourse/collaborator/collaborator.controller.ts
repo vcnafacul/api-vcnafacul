@@ -63,6 +63,17 @@ export class CollaboratorController {
     return await this.service.uploadImage(file, (req.user as User).id);
   }
 
+  @Patch(':id/photo')
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadImageAdmin(
+    @Param('id') collaboratorId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return await this.service.uploadImageByCollaboratorId(file, collaboratorId);
+  }
+
   @Delete('photo')
   @UseGuards(JwtAuthGuard)
   async removeImage(@Req() req: Request) {
@@ -90,7 +101,9 @@ export class CollaboratorController {
   }
   @Get(':imageKey/photo')
   async getPhoto(@Param('imageKey') imageKey: string) {
-    return await this.service.getPhoto(imageKey);
+    // Keys com prefix (collaborators/<uuid>.<ext>) chegam URL-encoded do
+    // client. Decode pra recompor a chave original do R2.
+    return await this.service.getPhoto(decodeURIComponent(imageKey));
   }
 
   @Put('me/frentes')
