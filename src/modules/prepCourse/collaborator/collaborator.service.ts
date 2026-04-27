@@ -132,6 +132,8 @@ export class CollaboratorService extends BaseService<Collaborator> {
     const fileName = await this.blobService.uploadFile(
       file,
       this.envService.get('BUCKET_DOC'),
+      undefined,
+      'collaborators',
     );
     if (!fileName) {
       throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);

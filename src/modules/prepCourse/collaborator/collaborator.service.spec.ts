@@ -85,7 +85,12 @@ describe('CollaboratorService — photo handling', () => {
         'docs-bucket',
       );
       expect(cache.del).toHaveBeenCalledWith('collaborator:photo:old-key.jpg');
-      expect(blobService.uploadFile).toHaveBeenCalledWith(file, 'docs-bucket');
+      expect(blobService.uploadFile).toHaveBeenCalledWith(
+        file,
+        'docs-bucket',
+        undefined,
+        'collaborators',
+      );
       expect(repository.update).toHaveBeenCalledWith(
         expect.objectContaining({ photo: 'new-key.jpg' }),
       );
@@ -115,7 +120,12 @@ describe('CollaboratorService — photo handling', () => {
 
       expect(blobService.deleteFile).not.toHaveBeenCalled();
       expect(cache.del).not.toHaveBeenCalled();
-      expect(blobService.uploadFile).toHaveBeenCalled();
+      expect(blobService.uploadFile).toHaveBeenCalledWith(
+        file,
+        'docs-bucket',
+        undefined,
+        'collaborators',
+      );
       expect(cache.set).toHaveBeenCalled();
     });
 
