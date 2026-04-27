@@ -97,7 +97,7 @@ describe('CollaboratorService — photo handling', () => {
       expect(cache.set).toHaveBeenCalledWith(
         'collaborator:photo:new-key.jpg',
         { buffer: 'b64', contentType: 'image/jpeg' },
-        60 * 60 * 24 * 1000 * 7, // current TTL — bumped in Task 3
+        1000 * 60 * 60 * 24 * 30, // 30 days
       );
       expect(result).toBe('new-key.jpg');
     });
@@ -144,6 +144,29 @@ describe('CollaboratorService — photo handling', () => {
       );
     });
 
+    it('uses 30-day TTL on cache.set after upload', async () => {
+      const collaborator: any = { id: 'c-ttl', photo: null };
+      repository.findOneByUserId.mockResolvedValue(collaborator);
+      blobService.uploadFile.mockResolvedValue('ttl-key.jpg');
+      blobService.getFile.mockResolvedValue({
+        buffer: 'b64',
+        contentType: 'image/jpeg',
+      });
+
+      const file: any = {
+        originalname: 'a.jpg',
+        mimetype: 'image/jpeg',
+        buffer: Buffer.from('x'),
+      };
+      await service.uploadImage(file, 'user-ttl');
+
+      expect(cache.set).toHaveBeenCalledWith(
+        'collaborator:photo:ttl-key.jpg',
+        { buffer: 'b64', contentType: 'image/jpeg' },
+        1000 * 60 * 60 * 24 * 30,
+      );
+    });
+
     it('continues upload when deleting old blob fails (best-effort)', async () => {
       const collaborator: any = { id: 'c-4', photo: 'old.jpg' };
       repository.findOneByUserId.mockResolvedValue(collaborator);
@@ -161,6 +184,21 @@ describe('CollaboratorService — photo handling', () => {
       };
       const result = await service.uploadImage(file, 'user-4');
       expect(result).toBe('new.jpg');
+    });
+  });
+
+  describe('getPhoto', () => {
+    it('wraps cache with 30-day TTL', async () => {
+      cache.wrap.mockResolvedValue({
+        buffer: 'b64',
+        contentType: 'image/jpeg',
+      });
+      await service.getPhoto('some-key.jpg');
+      expect(cache.wrap).toHaveBeenCalledWith(
+        'collaborator:photo:some-key.jpg',
+        expect.any(Function),
+        1000 * 60 * 60 * 24 * 30,
+      );
     });
   });
 });

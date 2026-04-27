@@ -147,7 +147,7 @@ export class CollaboratorService extends BaseService<Collaborator> {
     await this.cache.set(
       `collaborator:photo:${fileName}`,
       buffer,
-      60 * 60 * 24 * 1000 * 7,
+      1000 * 60 * 60 * 24 * 30,
     );
     return fileName;
   }
@@ -198,7 +198,7 @@ export class CollaboratorService extends BaseService<Collaborator> {
           this.envService.get('BUCKET_DOC'),
         );
       },
-      60 * 60 * 24 * 1000 * 7,
+      1000 * 60 * 60 * 24 * 30,
     );
     return cachedFile;
   }
