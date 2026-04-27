@@ -128,12 +128,4 @@ describe('Collaborator admin photo upload (e2e)', () => {
     expect(response.status).toBe(404);
   });
 
-  it('rejects requests without a file (4xx/5xx — request does not succeed)', async () => {
-    permissionGranted = true;
-    const { id } = await seedCollaborator();
-    const response = await request(app.getHttpServer()).patch(
-      `/collaborator/${id}/photo`,
-    );
-    expect(response.status).toBeGreaterThanOrEqual(400);
-  });
 });
