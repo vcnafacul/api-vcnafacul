@@ -25,7 +25,7 @@ export class EmailService {
 
   constructor(private envService: EnvService) {
   const isProd = this.envService.get('NODE_ENV') === 'production';
-  const useFakeSmtp = !isProd && this.envService.get('SMTP_FAKE') === true;
+  const useFakeSmtp = !isProd && this.envService.get('USE_SMTP_FAKE') === true;
 
   this.transporter = nodemailer.createTransport({
     host: useFakeSmtp
