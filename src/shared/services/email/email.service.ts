@@ -30,7 +30,7 @@ export class EmailService {
   this.transporter = nodemailer.createTransport({
     host: this.envService.get('SMTP_HOST'),
     port: Number(this.envService.get('SMTP_PORT')),
-    secure: useFakeSmtp,
+    secure: !useFakeSmtp,
     ...(useFakeSmtp ? {} : {
       auth: {
         user: this.envService.get('SMTP_USERNAME'),
