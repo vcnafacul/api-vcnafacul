@@ -187,6 +187,52 @@ describe('CollaboratorService — photo handling', () => {
     });
   });
 
+  describe('uploadImageByCollaboratorId (admin)', () => {
+    it('throws 404 when collaborator id is unknown', async () => {
+      repository.findOneBy.mockResolvedValue(null);
+      const file: any = {
+        originalname: 'a.jpg',
+        mimetype: 'image/jpeg',
+        buffer: Buffer.from('x'),
+      };
+      await expect(
+        service.uploadImageByCollaboratorId(file, 'missing-id'),
+      ).rejects.toMatchObject({
+        status: 404,
+        message: 'Collaborator not found',
+      });
+    });
+
+    it('delegates to replacePhoto when collaborator exists', async () => {
+      const collaborator: any = { id: 'c-9', photo: null };
+      repository.findOneBy.mockResolvedValue(collaborator);
+      blobService.uploadFile.mockResolvedValue('admin-key.jpg');
+      blobService.getFile.mockResolvedValue({
+        buffer: 'b64',
+        contentType: 'image/jpeg',
+      });
+
+      const file: any = {
+        originalname: 'a.jpg',
+        mimetype: 'image/jpeg',
+        buffer: Buffer.from('x'),
+      };
+      const result = await service.uploadImageByCollaboratorId(file, 'c-9');
+
+      expect(repository.findOneBy).toHaveBeenCalledWith({ id: 'c-9' });
+      expect(blobService.uploadFile).toHaveBeenCalledWith(
+        file,
+        'docs-bucket',
+        undefined,
+        'collaborators',
+      );
+      expect(repository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ photo: 'admin-key.jpg' }),
+      );
+      expect(result).toBe('admin-key.jpg');
+    });
+  });
+
   describe('getPhoto', () => {
     it('wraps cache with 30-day TTL', async () => {
       cache.wrap.mockResolvedValue({

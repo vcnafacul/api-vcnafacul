@@ -114,6 +114,19 @@ export class CollaboratorService extends BaseService<Collaborator> {
     return this.replacePhoto(collaborator, file);
   }
 
+  async uploadImageByCollaboratorId(
+    file: Express.Multer.File,
+    collaboratorId: string,
+  ): Promise<string> {
+    const collaborator = await this.repository.findOneBy({
+      id: collaboratorId,
+    });
+    if (!collaborator) {
+      throw new HttpException('Collaborator not found', HttpStatus.NOT_FOUND);
+    }
+    return this.replacePhoto(collaborator, file);
+  }
+
   private async replacePhoto(
     collaborator: Collaborator,
     file: Express.Multer.File,
