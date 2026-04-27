@@ -101,7 +101,9 @@ export class CollaboratorController {
   }
   @Get(':imageKey/photo')
   async getPhoto(@Param('imageKey') imageKey: string) {
-    return await this.service.getPhoto(imageKey);
+    // Keys com prefix (collaborators/<uuid>.<ext>) chegam URL-encoded do
+    // client. Decode pra recompor a chave original do R2.
+    return await this.service.getPhoto(decodeURIComponent(imageKey));
   }
 
   @Put('me/frentes')
