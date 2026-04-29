@@ -138,7 +138,12 @@ export class ChatService {
       closedBy: null,
       unreadCountStudent: 0,
       unreadCountSupport: 0,
-      metadata,
+      metadata: {
+        page: metadata.page,
+        userAgent: metadata.userAgent,
+        device: metadata.device,
+        browser: metadata.browser,
+      },
     });
     this.logger.log(
       `chat.conversation_opened id=${created.id} user=${userId}`,
