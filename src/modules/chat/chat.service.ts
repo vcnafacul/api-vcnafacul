@@ -219,4 +219,80 @@ export class ChatService {
 
     return { id: messageRef.id };
   }
+
+  /**
+   * Encerra a conversa, registra `closedBy`/`closedAt` (inicia o cooldown de
+   * 15min para o estudante). Tanto estudante quanto suporte podem fechar;
+   * estudante só pode fechar a própria conversa.
+   */
+  async closeConversation(
+    conversationId: string,
+    actorId: string,
+    actorType: SenderType,
+  ): Promise<void> {
+    const ref = this.firebase
+      .firestore()
+      .collection('conversations')
+      .doc(conversationId);
+    const snap = await ref.get();
+    if (!snap.exists) {
+      throw new NotFoundException('Conversa não encontrada');
+    }
+
+    const data = snap.data()!;
+    if (actorType === 'student' && data.userId !== actorId) {
+      throw new ForbiddenException('Sem permissão nesta conversa');
+    }
+
+    await ref.update({
+      status: 'closed',
+      closedAt: admin.firestore.Timestamp.now(),
+      closedBy: actorType,
+    });
+    this.logger.log(
+      `chat.conversation_closed id=${conversationId} by=${actorType}`,
+    );
+  }
+
+  /**
+   * Zera o contador de não-lidas do lado que chamou (estudante vê
+   * `unreadCountStudent`, suporte vê `unreadCountSupport`). Estudante só
+   * pode marcar a própria conversa como lida.
+   */
+  async markRead(
+    conversationId: string,
+    actorId: string,
+    actorType: SenderType,
+  ): Promise<void> {
+    const ref = this.firebase
+      .firestore()
+      .collection('conversations')
+      .doc(conversationId);
+    const snap = await ref.get();
+    if (!snap.exists) {
+      throw new NotFoundException('Conversa não encontrada');
+    }
+    if (actorType === 'student' && snap.data()!.userId !== actorId) {
+      throw new ForbiddenException('Sem permissão nesta conversa');
+    }
+
+    const field =
+      actorType === 'student' ? 'unreadCountStudent' : 'unreadCountSupport';
+    await ref.update({ [field]: 0 });
+  }
+
+  /**
+   * Resolve o tipo de ator (`student` | `support`) a partir do `userId`.
+   * Necessário porque o `req.user` vindo do JwtStrategy não inclui
+   * `role.supportAgent` — então cada endpoint que precisa diferenciar
+   * delega aqui (1 query extra por chamada; OK pra MVP, otimizar com
+   * Redis se necessário).
+   */
+  async resolveActorType(userId: string): Promise<SenderType> {
+    const user = await this.userRepository.findOneBy({ id: userId });
+    if (!user || !user.role) {
+      throw new UnauthorizedException('Usuário não autenticado');
+    }
+    return user.role.supportAgent ? 'support' : 'student';
+  }
 }

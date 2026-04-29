@@ -424,4 +424,142 @@ describe('ChatService', () => {
       );
     });
   });
+
+  describe('closeConversation', () => {
+    let convDocRef: { get: jest.Mock; update: jest.Mock };
+
+    beforeEach(() => {
+      convDocRef = {
+        get: jest.fn(),
+        update: jest.fn().mockResolvedValue(undefined),
+      };
+      mockFirebase.firestore = () => ({
+        collection: () => ({ doc: () => convDocRef }),
+      });
+    });
+
+    it('rejects when conversation not found', async () => {
+      convDocRef.get.mockResolvedValue({ exists: false });
+      await expect(
+        service.closeConversation('c1', 'u1', 'student'),
+      ).rejects.toThrow(/não encontrada/i);
+    });
+
+    it('closes conversation marking who closed it (student)', async () => {
+      convDocRef.get.mockResolvedValue({
+        exists: true,
+        data: () => ({ status: 'open', userId: 'u1' }),
+      });
+      await service.closeConversation('c1', 'u1', 'student');
+      expect(convDocRef.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'closed',
+          closedBy: 'student',
+        }),
+      );
+      const payload = convDocRef.update.mock.calls[0][0];
+      expect(payload.closedAt).toBeDefined();
+    });
+
+    it('closes conversation when support closes (any conv)', async () => {
+      convDocRef.get.mockResolvedValue({
+        exists: true,
+        data: () => ({ status: 'open', userId: 'OTHER' }),
+      });
+      await service.closeConversation('c1', 'agent-1', 'support');
+      expect(convDocRef.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'closed',
+          closedBy: 'support',
+        }),
+      );
+    });
+
+    it('rejects student closing other user conv', async () => {
+      convDocRef.get.mockResolvedValue({
+        exists: true,
+        data: () => ({ status: 'open', userId: 'OTHER' }),
+      });
+      await expect(
+        service.closeConversation('c1', 'u1', 'student'),
+      ).rejects.toThrow(/permissão/i);
+    });
+  });
+
+  describe('markRead', () => {
+    let convDocRef: { get: jest.Mock; update: jest.Mock };
+
+    beforeEach(() => {
+      convDocRef = {
+        get: jest.fn().mockResolvedValue({
+          exists: true,
+          data: () => ({ userId: 'u1' }),
+        }),
+        update: jest.fn().mockResolvedValue(undefined),
+      };
+      mockFirebase.firestore = () => ({
+        collection: () => ({ doc: () => convDocRef }),
+      });
+    });
+
+    it('rejects when conversation not found', async () => {
+      convDocRef.get.mockResolvedValue({ exists: false });
+      await expect(
+        service.markRead('c1', 'u1', 'student'),
+      ).rejects.toThrow(/não encontrada/i);
+    });
+
+    it('resets student unread counter', async () => {
+      await service.markRead('c1', 'u1', 'student');
+      expect(convDocRef.update).toHaveBeenCalledWith({ unreadCountStudent: 0 });
+    });
+
+    it('resets support unread counter', async () => {
+      await service.markRead('c1', 'agent-1', 'support');
+      expect(convDocRef.update).toHaveBeenCalledWith({ unreadCountSupport: 0 });
+    });
+
+    it('rejects student marking another user conv as read', async () => {
+      convDocRef.get.mockResolvedValue({
+        exists: true,
+        data: () => ({ userId: 'OTHER' }),
+      });
+      await expect(
+        service.markRead('c1', 'u1', 'student'),
+      ).rejects.toThrow(/permissão/i);
+    });
+  });
+
+  describe('resolveActorType', () => {
+    it("returns 'support' when user.role.supportAgent === true", async () => {
+      mockUserRepo.findOneBy.mockResolvedValue({
+        id: 'u1',
+        role: { supportAgent: true },
+      });
+      const t = await service.resolveActorType('u1');
+      expect(t).toBe('support');
+    });
+
+    it("returns 'student' when supportAgent === false", async () => {
+      mockUserRepo.findOneBy.mockResolvedValue({
+        id: 'u2',
+        role: { supportAgent: false },
+      });
+      expect(await service.resolveActorType('u2')).toBe('student');
+    });
+
+    it('throws Unauthorized when user not found', async () => {
+      mockUserRepo.findOneBy.mockResolvedValue(null);
+      await expect(service.resolveActorType('missing')).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('throws Unauthorized when user has no role', async () => {
+      mockUserRepo.findOneBy.mockResolvedValue({ id: 'u3', role: null });
+      await expect(service.resolveActorType('u3')).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+  });
 });
