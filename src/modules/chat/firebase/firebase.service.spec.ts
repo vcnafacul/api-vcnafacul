@@ -86,7 +86,10 @@ describe('FirebaseService', () => {
 
   it('faz no-op (sem throw) quando env vars Firebase ausentes', () => {
     const service = new FirebaseService(
-      buildEnv({ FIREBASE_PROJECT_ID: '', FIREBASE_SERVICE_ACCOUNT_BASE64: '' }),
+      buildEnv({
+        FIREBASE_PROJECT_ID: '',
+        FIREBASE_SERVICE_ACCOUNT_BASE64: '',
+      }),
     );
     expect(() => service.onModuleInit()).not.toThrow();
     expect(admin.initializeApp).not.toHaveBeenCalled();
