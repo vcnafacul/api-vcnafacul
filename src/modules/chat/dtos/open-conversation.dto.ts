@@ -16,6 +16,7 @@ export class ConversationMetadataDto {
   page: string;
 
   @IsString()
+  @IsNotEmpty()
   @MaxLength(500)
   @ApiProperty()
   userAgent: string;
