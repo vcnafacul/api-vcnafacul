@@ -126,6 +126,8 @@ export class ChatService {
 
     // 3. Cria nova conversa.
     const now = admin.firestore.Timestamp.now();
+    // TODO: userName denormalizado fica stale se user muda nome social.
+    // Aceitável MVP — Fase 2 pode considerar refresh ou query a cada listener tick.
     const created = await convs.add({
       userId,
       userName,
@@ -258,6 +260,9 @@ export class ChatService {
    * Zera o contador de não-lidas do lado que chamou (estudante vê
    * `unreadCountStudent`, suporte vê `unreadCountSupport`). Estudante só
    * pode marcar a própria conversa como lida.
+   *
+   * Funciona mesmo em conversas closed (estudante volta pra ver histórico
+   * → counter zera independente do status — comportamento intencional).
    */
   async markRead(
     conversationId: string,

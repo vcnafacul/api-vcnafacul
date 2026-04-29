@@ -528,6 +528,15 @@ describe('ChatService', () => {
         service.markRead('c1', 'u1', 'student'),
       ).rejects.toThrow(/permissão/i);
     });
+
+    it('zera unreadCount mesmo em conversa fechada (intencional)', async () => {
+      convDocRef.get.mockResolvedValue({
+        exists: true,
+        data: () => ({ status: 'closed', userId: 'u1' }),
+      });
+      await service.markRead('c1', 'u1', 'student');
+      expect(convDocRef.update).toHaveBeenCalledWith({ unreadCountStudent: 0 });
+    });
   });
 
   describe('resolveActorType', () => {

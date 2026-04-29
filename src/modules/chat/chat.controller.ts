@@ -40,6 +40,8 @@ export class ChatController {
     return { token };
   }
 
+  // Sem ChatRateLimitGuard: cooldown 15min embutido em ChatService já protege
+  // contra abuse de open/close em loop.
   @Post('chat/conversation/open')
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
