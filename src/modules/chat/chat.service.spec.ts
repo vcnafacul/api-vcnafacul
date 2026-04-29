@@ -27,7 +27,7 @@ describe('ChatService', () => {
         firstName: 'Ana',
         lastName: 'Souza',
         socialName: 'Aninha',
-        role: { name: 'aluno' },
+        role: { name: 'aluno', supportAgent: false },
       });
       mockAuth.createCustomToken.mockResolvedValue('tk');
 
@@ -37,7 +37,7 @@ describe('ChatService', () => {
       expect(mockUserRepo.findOneBy).toHaveBeenCalledWith({ id: 'u1' });
       expect(mockAuth.createCustomToken).toHaveBeenCalledWith('u1', {
         userId: 'u1',
-        role: 'aluno',
+        role: 'student',
         name: 'Aninha Souza',
       });
     });
@@ -48,7 +48,7 @@ describe('ChatService', () => {
         firstName: 'Bruno',
         lastName: 'Lima',
         socialName: null,
-        role: { name: 'support_agent' },
+        role: { name: 'admin', supportAgent: true },
       });
       mockAuth.createCustomToken.mockResolvedValue('tk2');
 
@@ -59,6 +59,42 @@ describe('ChatService', () => {
         role: 'support_agent',
         name: 'Bruno Lima',
       });
+    });
+
+    it("claim role is 'support_agent' when user.role.supportAgent === true", async () => {
+      mockUserRepo.findOneBy.mockResolvedValue({
+        id: 'u3',
+        firstName: 'Carla',
+        lastName: 'Reis',
+        socialName: null,
+        role: { name: 'aluno', supportAgent: true },
+      });
+      mockAuth.createCustomToken.mockResolvedValue('tk3');
+
+      await service.issueTokenForUserId('u3');
+
+      expect(mockAuth.createCustomToken).toHaveBeenCalledWith(
+        'u3',
+        expect.objectContaining({ role: 'support_agent' }),
+      );
+    });
+
+    it("claim role is 'student' when user.role.supportAgent === false", async () => {
+      mockUserRepo.findOneBy.mockResolvedValue({
+        id: 'u4',
+        firstName: 'Diego',
+        lastName: 'Pires',
+        socialName: null,
+        role: { name: 'admin', supportAgent: false },
+      });
+      mockAuth.createCustomToken.mockResolvedValue('tk4');
+
+      await service.issueTokenForUserId('u4');
+
+      expect(mockAuth.createCustomToken).toHaveBeenCalledWith(
+        'u4',
+        expect.objectContaining({ role: 'student' }),
+      );
     });
 
     it('lança UnauthorizedException quando userId ausente', async () => {

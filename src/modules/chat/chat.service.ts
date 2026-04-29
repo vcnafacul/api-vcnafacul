@@ -11,7 +11,7 @@ type UserLike = {
   id: string;
   name: string;
   socialName?: string | null;
-  role: { name: string };
+  role: { supportAgent: boolean };
 };
 
 @Injectable()
@@ -30,7 +30,7 @@ export class ChatService {
   private async generateCustomToken(user: UserLike): Promise<string> {
     const claims = {
       userId: user.id,
-      role: user.role.name,
+      role: user.role.supportAgent ? 'support_agent' : 'student',
       name: user.socialName ?? user.name,
     };
     return await this.firebase.auth().createCustomToken(user.id, claims);
@@ -64,7 +64,7 @@ export class ChatService {
       id: user.id,
       name: fullName,
       socialName,
-      role: { name: user.role?.name ?? '' },
+      role: { supportAgent: user.role?.supportAgent === true },
     });
   }
 }
