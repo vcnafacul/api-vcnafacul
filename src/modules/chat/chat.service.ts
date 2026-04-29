@@ -1,4 +1,6 @@
 import {
+  BadRequestException,
+  ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -8,10 +10,12 @@ import {
 } from '@nestjs/common';
 import * as admin from 'firebase-admin';
 import { UserRepository } from 'src/modules/user/user.repository';
-import { ConversationMetadata } from './chat.types';
+import { ConversationMetadata, SenderType } from './chat.types';
 import { FirebaseService } from './firebase/firebase.service';
 
 const COOLDOWN_MS = 15 * 60 * 1000;
+const MAX_CONTENT = 1000;
+const TTL_DAYS = 7;
 
 type UserLike = {
   id: string;
@@ -138,5 +142,81 @@ export class ChatService {
       `chat.conversation_opened id=${created.id} user=${userId}`,
     );
     return { id: created.id };
+  }
+
+  /**
+   * Persiste uma mensagem em `messages/{id}` com TTL 7d e atualiza
+   * `conversations/{id}` (lastMessageAt + unreadCount do destinatário) em
+   * transação Firestore atômica. Estudante só pode escrever na própria
+   * conversa; suporte escreve em qualquer uma aberta.
+   */
+  async sendMessage(input: {
+    senderId: string;
+    senderName: string;
+    senderType: SenderType;
+    conversationId: string;
+    content: string;
+  }): Promise<{ id: string }> {
+    const content = input.content.trim();
+    if (content.length === 0) {
+      throw new BadRequestException('Mensagem vazia');
+    }
+    if (content.length > MAX_CONTENT) {
+      throw new BadRequestException(
+        `Mensagem maior que ${MAX_CONTENT} caracteres`,
+      );
+    }
+
+    const db = this.firebase.firestore();
+    const convRef = db.collection('conversations').doc(input.conversationId);
+    const convSnap = await convRef.get();
+    if (!convSnap.exists) {
+      throw new NotFoundException('Conversa não encontrada');
+    }
+
+    const conv = convSnap.data()!;
+    if (conv.status !== 'open') {
+      throw new BadRequestException('Conversa fechada');
+    }
+
+    if (input.senderType === 'student' && conv.userId !== input.senderId) {
+      throw new ForbiddenException('Sem permissão nesta conversa');
+    }
+
+    const messageRef = db.collection('messages').doc();
+    const now = admin.firestore.Timestamp.now();
+    const expiresAt = admin.firestore.Timestamp.fromMillis(
+      now.toMillis() + TTL_DAYS * 24 * 60 * 60 * 1000,
+    );
+
+    const unreadField =
+      input.senderType === 'student'
+        ? 'unreadCountSupport'
+        : 'unreadCountStudent';
+
+    await db.runTransaction(async (tx) => {
+      tx.set(messageRef, {
+        conversationId: input.conversationId,
+        // Denormalizado da conversation: permite security rules sem get() extra
+        // (ver spec seção 4.5).
+        conversationUserId: conv.userId,
+        senderId: input.senderId,
+        senderName: input.senderName,
+        senderType: input.senderType,
+        content,
+        createdAt: now,
+        expiresAt,
+      });
+      tx.update(convRef, {
+        lastMessageAt: now,
+        [unreadField]: admin.firestore.FieldValue.increment(1),
+      });
+    });
+
+    this.logger.log(
+      `chat.message_sent conv=${input.conversationId} sender=${input.senderType}/${input.senderId}`,
+    );
+
+    return { id: messageRef.id };
   }
 }

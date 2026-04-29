@@ -246,4 +246,182 @@ describe('ChatService', () => {
       expect(conversationsRef.add).toHaveBeenCalled();
     });
   });
+
+  describe('sendMessage', () => {
+    let convDocRef: { get: jest.Mock; update: jest.Mock };
+    let messagesDocRef: { id: string; set: jest.Mock };
+    let messagesRef: { doc: jest.Mock };
+    let txRunner: jest.Mock;
+    let txOps: { set: jest.Mock; update: jest.Mock };
+
+    beforeEach(() => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-04-28T12:00:00Z'));
+      convDocRef = {
+        get: jest.fn(),
+        update: jest.fn().mockResolvedValue(undefined),
+      };
+      messagesDocRef = { id: 'm1', set: jest.fn() };
+      messagesRef = { doc: jest.fn().mockReturnValue(messagesDocRef) };
+      txOps = {
+        set: jest.fn(),
+        update: jest.fn(),
+      };
+      txRunner = jest.fn(async (cb) => {
+        await cb(txOps);
+      });
+
+      const collection = jest.fn((name: string) => {
+        if (name === 'conversations') {
+          return { doc: () => convDocRef };
+        }
+        if (name === 'messages') return messagesRef;
+        return {};
+      });
+
+      mockFirebase.firestore = () => ({
+        collection,
+        runTransaction: txRunner,
+      });
+    });
+
+    afterEach(() => jest.useRealTimers());
+
+    it('rejects when conversation does not exist', async () => {
+      convDocRef.get.mockResolvedValue({ exists: false });
+      await expect(
+        service.sendMessage({
+          senderId: 'u1',
+          senderName: 'A',
+          senderType: 'student',
+          conversationId: 'c-x',
+          content: 'oi',
+        }),
+      ).rejects.toThrow(/não encontrada/i);
+    });
+
+    it('rejects when conversation is closed', async () => {
+      convDocRef.get.mockResolvedValue({
+        exists: true,
+        data: () => ({ status: 'closed', userId: 'u1' }),
+      });
+      await expect(
+        service.sendMessage({
+          senderId: 'u1',
+          senderName: 'A',
+          senderType: 'student',
+          conversationId: 'c-x',
+          content: 'oi',
+        }),
+      ).rejects.toThrow(/fechada/i);
+    });
+
+    it('rejects when student tries to write into someone else conversation', async () => {
+      convDocRef.get.mockResolvedValue({
+        exists: true,
+        data: () => ({ status: 'open', userId: 'OTHER' }),
+      });
+      await expect(
+        service.sendMessage({
+          senderId: 'u1',
+          senderName: 'A',
+          senderType: 'student',
+          conversationId: 'c-x',
+          content: 'oi',
+        }),
+      ).rejects.toThrow(/permissão/i);
+    });
+
+    it('rejects content > 1000 chars', async () => {
+      convDocRef.get.mockResolvedValue({
+        exists: true,
+        data: () => ({ status: 'open', userId: 'u1' }),
+      });
+      await expect(
+        service.sendMessage({
+          senderId: 'u1',
+          senderName: 'A',
+          senderType: 'student',
+          conversationId: 'c-x',
+          content: 'a'.repeat(1001),
+        }),
+      ).rejects.toThrow(/1000/);
+    });
+
+    it('rejects content empty after trim', async () => {
+      convDocRef.get.mockResolvedValue({
+        exists: true,
+        data: () => ({ status: 'open', userId: 'u1' }),
+      });
+      await expect(
+        service.sendMessage({
+          senderId: 'u1',
+          senderName: 'A',
+          senderType: 'student',
+          conversationId: 'c-x',
+          content: '   ',
+        }),
+      ).rejects.toThrow(/vazia/i);
+    });
+
+    it('writes message and updates conversation atomically (student → unreadCountSupport)', async () => {
+      convDocRef.get.mockResolvedValue({
+        exists: true,
+        data: () => ({ status: 'open', userId: 'u1' }),
+      });
+
+      const result = await service.sendMessage({
+        senderId: 'u1',
+        senderName: 'João',
+        senderType: 'student',
+        conversationId: 'c-x',
+        content: '  oi  ',
+      });
+
+      expect(txRunner).toHaveBeenCalled();
+      // mensagem persistida com content trim, conversationUserId denormalizado, expiresAt
+      expect(txOps.set).toHaveBeenCalledWith(
+        messagesDocRef,
+        expect.objectContaining({
+          conversationId: 'c-x',
+          conversationUserId: 'u1',
+          senderId: 'u1',
+          senderName: 'João',
+          senderType: 'student',
+          content: 'oi',
+        }),
+      );
+      const setPayload = txOps.set.mock.calls[0][1];
+      expect(setPayload.expiresAt).toBeDefined();
+      // unreadCountSupport incrementado (estudante enviou)
+      expect(txOps.update).toHaveBeenCalledWith(
+        convDocRef,
+        expect.objectContaining({
+          unreadCountSupport: expect.anything(),
+        }),
+      );
+      expect(result.id).toBe('m1');
+    });
+
+    it('support sender increments unreadCountStudent', async () => {
+      convDocRef.get.mockResolvedValue({
+        exists: true,
+        data: () => ({ status: 'open', userId: 'u1' }),
+      });
+
+      await service.sendMessage({
+        senderId: 'agent-1',
+        senderName: 'Suporte',
+        senderType: 'support',
+        conversationId: 'c-x',
+        content: 'olá',
+      });
+
+      expect(txOps.update).toHaveBeenCalledWith(
+        convDocRef,
+        expect.objectContaining({
+          unreadCountStudent: expect.anything(),
+        }),
+      );
+    });
+  });
 });
