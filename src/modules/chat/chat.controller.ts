@@ -51,13 +51,15 @@ export class ChatController {
   ): Promise<{ id: string }> {
     const user = getReqUser(req);
     if (!user?.id) throw new ForbiddenException();
-    const actor = await this.chatService.resolveActorType(user.id);
-    if (actor !== 'student') {
+    const { actorType, displayName } = await this.chatService.resolveActor(
+      user.id,
+    );
+    if (actorType !== 'student') {
       throw new ForbiddenException('Apenas estudantes abrem conversas');
     }
     return this.chatService.openConversation(
       user.id,
-      user.socialName ?? user.name ?? '',
+      displayName,
       body.metadata,
     );
   }
@@ -85,11 +87,13 @@ export class ChatController {
   ): Promise<{ id: string }> {
     const user = getReqUser(req);
     if (!user?.id) throw new ForbiddenException();
-    const senderType = await this.chatService.resolveActorType(user.id);
+    const { actorType, displayName } = await this.chatService.resolveActor(
+      user.id,
+    );
     return this.chatService.sendMessage({
       senderId: user.id,
-      senderName: user.socialName ?? user.name ?? '',
-      senderType,
+      senderName: displayName,
+      senderType: actorType,
       conversationId: body.conversationId,
       content: body.content,
     });

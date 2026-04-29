@@ -299,10 +299,26 @@ export class ChatService {
    * Redis se necessário).
    */
   async resolveActorType(userId: string): Promise<SenderType> {
+    const { actorType } = await this.resolveActor(userId);
+    return actorType;
+  }
+
+  /**
+   * Resolve actorType + displayName num único load. Usado pelos endpoints
+   * que precisam dos dois (open/send) — evita 2 queries.
+   */
+  async resolveActor(
+    userId: string,
+  ): Promise<{ actorType: SenderType; displayName: string }> {
     const user = await this.userRepository.findOneBy({ id: userId });
     if (!user || !user.role) {
       throw new UnauthorizedException('Usuário não autenticado');
     }
-    return user.role.supportAgent ? 'support' : 'student';
+    const actorType: SenderType = user.role.supportAgent ? 'support' : 'student';
+    const displayName =
+      user.useSocialName && user.socialName
+        ? `${user.socialName} ${user.lastName}`
+        : `${user.firstName} ${user.lastName}`;
+    return { actorType, displayName };
   }
 }
