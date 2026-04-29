@@ -1,12 +1,15 @@
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { UserRepository } from 'src/modules/user/user.repository';
 import { ChatService } from './chat.service';
 import { FirebaseService } from './firebase/firebase.service';
-import { UserRepository } from 'src/modules/user/user.repository';
 
 describe('ChatService', () => {
   let service: ChatService;
   const mockAuth = { createCustomToken: jest.fn() };
-  const mockFirebase = {
+  const mockFirebase: {
+    auth: () => typeof mockAuth;
+    firestore: () => unknown;
+  } = {
     auth: () => mockAuth,
     firestore: () => ({}),
   };
@@ -111,6 +114,136 @@ describe('ChatService', () => {
         NotFoundException,
       );
       expect(mockAuth.createCustomToken).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('openConversation', () => {
+    const fixedNow = new Date('2026-04-28T12:00:00Z');
+    let conversationsRef: {
+      where: jest.Mock;
+      orderBy: jest.Mock;
+      limit: jest.Mock;
+      get: jest.Mock;
+      add: jest.Mock;
+    };
+
+    beforeEach(() => {
+      jest.useFakeTimers().setSystemTime(fixedNow);
+
+      conversationsRef = {
+        where: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        get: jest.fn(),
+        add: jest.fn().mockResolvedValue({ id: 'new-conv' }),
+      };
+
+      mockFirebase.firestore = () => ({
+        collection: jest.fn().mockReturnValue(conversationsRef),
+      });
+    });
+
+    afterEach(() => jest.useRealTimers());
+
+    it('returns existing open conversation if any', async () => {
+      conversationsRef.get.mockResolvedValueOnce({
+        empty: false,
+        docs: [
+          {
+            id: 'conv-existing',
+            data: () => ({ status: 'open', userId: 'u1' }),
+          },
+        ],
+      });
+
+      const result = await service.openConversation('u1', 'João', {
+        page: '/x',
+        userAgent: 'UA',
+        device: 'desktop',
+        browser: 'chrome',
+      });
+
+      expect(result.id).toBe('conv-existing');
+      expect(conversationsRef.add).not.toHaveBeenCalled();
+    });
+
+    it('throws 429 when cooldown active', async () => {
+      // sem conversa aberta
+      conversationsRef.get.mockResolvedValueOnce({ empty: true, docs: [] });
+      // última fechada há 5 min (cooldown 15 min)
+      const closedAt = new Date(fixedNow.getTime() - 5 * 60_000);
+      conversationsRef.get.mockResolvedValueOnce({
+        empty: false,
+        docs: [
+          {
+            id: 'c-old',
+            data: () => ({
+              status: 'closed',
+              closedAt: { toDate: () => closedAt },
+            }),
+          },
+        ],
+      });
+
+      await expect(
+        service.openConversation('u1', 'João', {
+          page: '/',
+          userAgent: 'UA',
+          device: 'desktop',
+          browser: 'chrome',
+        }),
+      ).rejects.toThrow(/cooldown/i);
+    });
+
+    it('creates new conversation when none open and cooldown passed', async () => {
+      conversationsRef.get.mockResolvedValueOnce({ empty: true, docs: [] });
+      conversationsRef.get.mockResolvedValueOnce({ empty: true, docs: [] });
+
+      const result = await service.openConversation('u1', 'João', {
+        page: '/y',
+        userAgent: 'UA',
+        device: 'desktop',
+        browser: 'chrome',
+      });
+
+      expect(conversationsRef.add).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'u1',
+          userName: 'João',
+          status: 'open',
+          unreadCountStudent: 0,
+          unreadCountSupport: 0,
+        }),
+      );
+      expect(result.id).toBe('new-conv');
+    });
+
+    it('creates new conversation when last closed older than cooldown', async () => {
+      conversationsRef.get.mockResolvedValueOnce({ empty: true, docs: [] });
+      // fechada há 30 min
+      const closedAt = new Date(fixedNow.getTime() - 30 * 60_000);
+      conversationsRef.get.mockResolvedValueOnce({
+        empty: false,
+        docs: [
+          {
+            id: 'c-old',
+            data: () => ({
+              status: 'closed',
+              closedAt: { toDate: () => closedAt },
+            }),
+          },
+        ],
+      });
+
+      const result = await service.openConversation('u1', 'João', {
+        page: '/y',
+        userAgent: 'UA',
+        device: 'desktop',
+        browser: 'chrome',
+      });
+
+      expect(result.id).toBe('new-conv');
+      expect(conversationsRef.add).toHaveBeenCalled();
     });
   });
 });
