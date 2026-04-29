@@ -1,4 +1,9 @@
-import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { FirebaseService } from './firebase/firebase.service';
 
@@ -22,7 +27,7 @@ export class ChatService {
    * Gera um Firebase Custom Token para o usuário, com claims
    * `userId`, `role` e `name` (usa nome social quando disponível).
    */
-  async generateCustomToken(user: UserLike): Promise<string> {
+  private async generateCustomToken(user: UserLike): Promise<string> {
     const claims = {
       userId: user.id,
       role: user.role.name,
@@ -39,10 +44,7 @@ export class ChatService {
    */
   async issueTokenForUserId(userId?: string): Promise<string> {
     if (!userId) {
-      throw new HttpException(
-        'Usuário não autenticado',
-        HttpStatus.UNAUTHORIZED,
-      );
+      throw new UnauthorizedException('Usuário não autenticado');
     }
 
     // O payload do JWT (req.user via JwtStrategy) não traz role.name nem
@@ -50,7 +52,7 @@ export class ChatService {
     // corretos no custom token Firebase.
     const user = await this.userRepository.findOneBy({ id: userId });
     if (!user) {
-      throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
+      throw new NotFoundException('Usuário não encontrado');
     }
 
     const fullName = `${user.firstName} ${user.lastName}`;
