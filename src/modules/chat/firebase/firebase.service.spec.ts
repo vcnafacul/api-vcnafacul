@@ -1,3 +1,4 @@
+import { ServiceUnavailableException } from '@nestjs/common';
 import { EnvService } from 'src/shared/modules/env/env.service';
 import { FirebaseService } from './firebase.service';
 
@@ -93,5 +94,29 @@ describe('FirebaseService', () => {
     );
     expect(() => service.onModuleInit()).not.toThrow();
     expect(admin.initializeApp).not.toHaveBeenCalled();
+  });
+
+  it('auth() lança ServiceUnavailableException quando Firebase não inicializado', () => {
+    const service = new FirebaseService(
+      buildEnv({
+        FIREBASE_PROJECT_ID: '',
+        FIREBASE_SERVICE_ACCOUNT_BASE64: '',
+      }),
+    );
+    service.onModuleInit();
+
+    expect(() => service.auth()).toThrow(ServiceUnavailableException);
+  });
+
+  it('firestore() lança ServiceUnavailableException quando Firebase não inicializado', () => {
+    const service = new FirebaseService(
+      buildEnv({
+        FIREBASE_PROJECT_ID: '',
+        FIREBASE_SERVICE_ACCOUNT_BASE64: '',
+      }),
+    );
+    service.onModuleInit();
+
+    expect(() => service.firestore()).toThrow(ServiceUnavailableException);
   });
 });
