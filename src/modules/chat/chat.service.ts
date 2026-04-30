@@ -216,6 +216,8 @@ export class ChatService {
       });
       tx.update(convRef, {
         lastMessageAt: now,
+        lastMessageText: content.slice(0, 100),
+        lastMessageSenderType: input.senderType,
         [unreadField]: admin.firestore.FieldValue.increment(1),
       });
     });
