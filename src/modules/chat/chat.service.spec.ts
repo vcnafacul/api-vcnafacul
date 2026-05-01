@@ -652,5 +652,26 @@ describe('ChatService', () => {
       expect(mockTx.set).toHaveBeenCalledTimes(1); // só a msg, não a conv
       expect(mockTx.update).toHaveBeenCalledTimes(1); // atualiza conv existente
     });
+
+    it('rejeita se role do target ≠ aluno|estudante', async () => {
+      mockUserRepo.findOneBy.mockResolvedValue({
+        id: 'admin1',
+        firstName: 'X',
+        lastName: 'Y',
+        role: { name: 'admin', supportAgent: false },
+      });
+
+      await expect(
+        service.initiateConversation('s1', 'Sup', 'admin1', 'oi'),
+      ).rejects.toThrow(/Apenas estudantes/);
+    });
+
+    it('lança NotFound quando target user não existe', async () => {
+      mockUserRepo.findOneBy.mockResolvedValue(null);
+
+      await expect(
+        service.initiateConversation('s1', 'Sup', 'ghost', 'oi'),
+      ).rejects.toThrow(NotFoundException);
+    });
   });
 });
