@@ -571,4 +571,59 @@ describe('ChatService', () => {
       );
     });
   });
+
+  describe('initiateConversation', () => {
+    const mockTx = {
+      set: jest.fn(),
+      update: jest.fn(),
+    };
+    const mockMessageDoc = { id: 'msg1' };
+    const mockConvDoc = { id: 'conv1' };
+    const mockMessagesCol = { doc: jest.fn(() => mockMessageDoc) };
+    const mockConvsCol = {
+      where: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      get: jest.fn(),
+      add: jest.fn(),
+      doc: jest.fn(() => mockConvDoc),
+    };
+    const mockFirestore = {
+      collection: jest.fn((name: string) =>
+        name === 'conversations' ? mockConvsCol : mockMessagesCol,
+      ),
+      runTransaction: jest.fn(async (fn: (tx: typeof mockTx) => unknown) =>
+        fn(mockTx),
+      ),
+    };
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      // Match the existing reassignment pattern used elsewhere in this file
+      // (see e.g. mockFirebase.firestore = () => ({...}) on line ~141).
+      mockFirebase.firestore = () => mockFirestore;
+    });
+
+    it('cria conversation + primeira mensagem quando não existe conv aberta', async () => {
+      mockUserRepo.findOneBy.mockResolvedValue({
+        id: 'student1',
+        firstName: 'Ana',
+        lastName: 'Souza',
+        socialName: null,
+        useSocialName: false,
+        role: { name: 'estudante', supportAgent: false },
+      });
+      mockConvsCol.get.mockResolvedValue({ empty: true, docs: [] });
+
+      const result = await service.initiateConversation(
+        'support1',
+        'Carlos Suporte',
+        'student1',
+        'Olá, vi sua matrícula',
+      );
+
+      expect(result).toEqual({ conversationId: 'conv1', messageId: 'msg1' });
+      expect(mockTx.set).toHaveBeenCalledTimes(2);
+      expect(mockTx.update).not.toHaveBeenCalled();
+    });
+  });
 });

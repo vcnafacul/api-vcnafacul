@@ -7,6 +7,7 @@ import {
   Logger,
   NotFoundException,
   UnauthorizedException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import * as admin from 'firebase-admin';
 import { UserRepository } from 'src/modules/user/user.repository';
@@ -149,6 +150,113 @@ export class ChatService {
       `chat.conversation_opened id=${created.id} user=${userId}`,
     );
     return { id: created.id };
+  }
+
+  /**
+   * Suporte inicia uma conversa com um estudante (proativo). Se já existe
+   * conversa aberta com o estudante, reusa. Caso contrário, cria + posta
+   * a primeira mensagem em transação atômica.
+   */
+  async initiateConversation(
+    supportAgentId: string,
+    supportAgentName: string,
+    targetUserId: string,
+    content: string,
+  ): Promise<{ conversationId: string; messageId: string }> {
+    const target = await this.userRepository.findOneBy({ id: targetUserId });
+    if (!target) {
+      throw new NotFoundException('Estudante não encontrado');
+    }
+    const roleName = target.role?.name?.toLowerCase();
+    if (roleName !== 'aluno' && roleName !== 'estudante') {
+      throw new UnprocessableEntityException(
+        'Apenas estudantes podem ser contatados',
+      );
+    }
+
+    const trimmed = content.trim();
+    if (trimmed.length === 0) {
+      throw new BadRequestException('Mensagem vazia');
+    }
+
+    const displayName =
+      target.useSocialName && target.socialName
+        ? `${target.socialName} ${target.lastName}`
+        : `${target.firstName} ${target.lastName}`;
+
+    const db = this.firebase.firestore();
+    const convs = db.collection('conversations');
+
+    // Idempotency check is BEFORE the transaction (mirrors openConversation pattern).
+    const openSnap = await convs
+      .where('userId', '==', targetUserId)
+      .where('status', '==', 'open')
+      .limit(1)
+      .get();
+
+    const now = admin.firestore.Timestamp.now();
+    const expiresAt = admin.firestore.Timestamp.fromMillis(
+      now.toMillis() + TTL_DAYS * 24 * 60 * 60 * 1000,
+    );
+
+    let convRef: admin.firestore.DocumentReference;
+    let creatingNewConv = false;
+    if (openSnap.empty) {
+      creatingNewConv = true;
+      convRef = convs.doc();
+    } else {
+      convRef = openSnap.docs[0].ref;
+    }
+
+    const messageRef = db.collection('messages').doc();
+
+    await db.runTransaction(async (tx) => {
+      if (creatingNewConv) {
+        tx.set(convRef, {
+          userId: targetUserId,
+          userName: displayName,
+          status: 'open',
+          initiatedBy: 'support',
+          createdAt: now,
+          lastMessageAt: now,
+          closedAt: null,
+          closedBy: null,
+          unreadCountStudent: 1,
+          unreadCountSupport: 0,
+          metadata: {
+            page: 'support-initiated',
+            userAgent: 'support-dashboard',
+            device: 'desktop',
+            browser: 'n/a',
+          },
+          lastMessageText: trimmed.slice(0, 100),
+          lastMessageSenderType: 'support',
+        });
+      } else {
+        tx.update(convRef, {
+          lastMessageAt: now,
+          lastMessageText: trimmed.slice(0, 100),
+          lastMessageSenderType: 'support',
+          unreadCountStudent: admin.firestore.FieldValue.increment(1),
+        });
+      }
+      tx.set(messageRef, {
+        conversationId: convRef.id,
+        conversationUserId: targetUserId,
+        senderId: supportAgentId,
+        senderName: supportAgentName,
+        senderType: 'support',
+        content: trimmed,
+        createdAt: now,
+        expiresAt,
+      });
+    });
+
+    this.logger.log(
+      `chat.conversation_initiated_by_support id=${convRef.id} support=${supportAgentId} target=${targetUserId}`,
+    );
+
+    return { conversationId: convRef.id, messageId: messageRef.id };
   }
 
   /**
