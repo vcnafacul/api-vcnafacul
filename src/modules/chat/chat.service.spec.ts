@@ -584,7 +584,6 @@ describe('ChatService', () => {
       where: jest.fn().mockReturnThis(),
       limit: jest.fn().mockReturnThis(),
       get: jest.fn(),
-      add: jest.fn(),
       doc: jest.fn(() => mockConvDoc),
     };
     const mockFirestore = {

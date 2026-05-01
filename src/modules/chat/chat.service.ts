@@ -178,6 +178,11 @@ export class ChatService {
     if (trimmed.length === 0) {
       throw new BadRequestException('Mensagem vazia');
     }
+    if (trimmed.length > MAX_CONTENT) {
+      throw new BadRequestException(
+        `Mensagem maior que ${MAX_CONTENT} caracteres`,
+      );
+    }
 
     const displayName =
       target.useSocialName && target.socialName
