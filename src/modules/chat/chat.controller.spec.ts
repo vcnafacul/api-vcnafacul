@@ -319,3 +319,64 @@ describe('ChatController.markRead (contract)', () => {
     expect(markRead).toHaveBeenCalledWith('c1', 'agent-1', 'support');
   });
 });
+
+async function initiateConversationLogic(
+  chatService: Pick<ChatService, 'resolveActor' | 'initiateConversation'>,
+  req: Request,
+  body: { targetUserId: string; content: string },
+): Promise<{ conversationId: string; messageId: string }> {
+  const user = getReqUser(req);
+  if (!user?.id) throw new ForbiddenException();
+  const { actorType, displayName } = await chatService.resolveActor(user.id);
+  if (actorType !== 'support') {
+    throw new ForbiddenException('Apenas suporte pode iniciar conversa');
+  }
+  return chatService.initiateConversation(
+    user.id,
+    displayName,
+    body.targetUserId,
+    body.content,
+  );
+}
+
+describe('initiateConversationLogic', () => {
+  it('chama service quando ator é suporte', async () => {
+    const chatService = {
+      resolveActor: jest
+        .fn()
+        .mockResolvedValue({ actorType: 'support', displayName: 'Sup' }),
+      initiateConversation: jest
+        .fn()
+        .mockResolvedValue({ conversationId: 'c1', messageId: 'm1' }),
+    };
+    const req = { user: { id: 's1' } } as unknown as Request;
+    const result = await initiateConversationLogic(chatService, req, {
+      targetUserId: 't1',
+      content: 'oi',
+    });
+    expect(result).toEqual({ conversationId: 'c1', messageId: 'm1' });
+    expect(chatService.initiateConversation).toHaveBeenCalledWith(
+      's1',
+      'Sup',
+      't1',
+      'oi',
+    );
+  });
+
+  it('rejeita quando ator é estudante', async () => {
+    const chatService = {
+      resolveActor: jest
+        .fn()
+        .mockResolvedValue({ actorType: 'student', displayName: 'Ana' }),
+      initiateConversation: jest.fn(),
+    };
+    const req = { user: { id: 'u1' } } as unknown as Request;
+    await expect(
+      initiateConversationLogic(chatService, req, {
+        targetUserId: 't1',
+        content: 'oi',
+      }),
+    ).rejects.toThrow(ForbiddenException);
+    expect(chatService.initiateConversation).not.toHaveBeenCalled();
+  });
+});

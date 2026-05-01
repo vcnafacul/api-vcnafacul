@@ -11,6 +11,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { ChatService } from './chat.service';
+import { InitiateConversationDto } from './dtos/initiate-conversation.dto';
 import { OpenConversationDto } from './dtos/open-conversation.dto';
 import { SendMessageDto } from './dtos/send-message.dto';
 import { TokenResponseDto } from './dtos/token-response.dto';
@@ -111,5 +112,28 @@ export class ChatController {
     const actorType = await this.chatService.resolveActorType(user.id);
     await this.chatService.markRead(id, user.id, actorType);
     return { ok: true };
+  }
+
+  @Post('chat/conversations/initiate')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  async initiateConversation(
+    @Req() req: Request,
+    @Body() body: InitiateConversationDto,
+  ): Promise<{ conversationId: string; messageId: string }> {
+    const user = getReqUser(req);
+    if (!user?.id) throw new ForbiddenException();
+    const { actorType, displayName } = await this.chatService.resolveActor(
+      user.id,
+    );
+    if (actorType !== 'support') {
+      throw new ForbiddenException('Apenas suporte pode iniciar conversa');
+    }
+    return this.chatService.initiateConversation(
+      user.id,
+      displayName,
+      body.targetUserId,
+      body.content,
+    );
   }
 }
