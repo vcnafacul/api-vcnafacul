@@ -624,5 +624,33 @@ describe('ChatService', () => {
       expect(mockTx.set).toHaveBeenCalledTimes(2);
       expect(mockTx.update).not.toHaveBeenCalled();
     });
+
+    it('append msg na conv existente quando já há conv aberta (idempotente)', async () => {
+      mockUserRepo.findOneBy.mockResolvedValue({
+        id: 'student1',
+        firstName: 'Ana',
+        lastName: 'Souza',
+        socialName: null,
+        useSocialName: false,
+        role: { name: 'aluno', supportAgent: false },
+      });
+      const existingRef = { id: 'existingConv' };
+      mockConvsCol.get.mockResolvedValue({
+        empty: false,
+        docs: [{ ref: existingRef }],
+      });
+
+      const result = await service.initiateConversation(
+        'support1',
+        'Carlos',
+        'student1',
+        'Mensagem nova',
+      );
+
+      expect(result.conversationId).toBe('existingConv');
+      expect(result.messageId).toBe('msg1');
+      expect(mockTx.set).toHaveBeenCalledTimes(1); // só a msg, não a conv
+      expect(mockTx.update).toHaveBeenCalledTimes(1); // atualiza conv existente
+    });
   });
 });
