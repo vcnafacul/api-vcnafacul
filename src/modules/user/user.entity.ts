@@ -18,9 +18,9 @@ export class User extends BaseEntity {
   @Column({ unique: true })
   public email: string;
 
-  @Column()
+  @Column({ nullable: true })
   @Exclude()
-  public password: string;
+  public password?: string;
 
   @Column()
   public firstName: string;
@@ -34,14 +34,14 @@ export class User extends BaseEntity {
   @Column({ default: false })
   public useSocialName: boolean;
 
-  @Column()
-  public phone: string;
+  @Column({ nullable: true })
+  public phone?: string;
 
-  @Column()
-  public gender: Gender;
+  @Column({ nullable: true })
+  public gender?: Gender;
 
-  @Column()
-  public birthday: Date;
+  @Column({ nullable: true })
+  public birthday?: Date;
 
   @Column({ nullable: true })
   public street?: string;
@@ -58,11 +58,17 @@ export class User extends BaseEntity {
   @Column({ nullable: true })
   public neighborhood?: string;
 
-  @Column()
-  public state: string;
+  @Column({ nullable: true })
+  public state?: string;
 
-  @Column()
-  public city: string;
+  @Column({ nullable: true })
+  public city?: string;
+
+  @Column({ nullable: true, name: 'google_id', unique: true })
+  public googleId?: string;
+
+  @Column({ nullable: true, name: 'profile_complete' })
+  public profileComplete?: boolean;
 
   @Column({ nullable: true })
   public about?: string;

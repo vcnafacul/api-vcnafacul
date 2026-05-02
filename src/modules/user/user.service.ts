@@ -18,6 +18,7 @@ import { MateriaProxyService } from '../simulado/materia/materia.service';
 import { AggregateUserLastAcessDtoOutput } from './dto/aggregate-user-last-acess.dto.output';
 import { AggregateUserPeriodDtoOutput } from './dto/aggregate-user-period.dto.output';
 import { AggregateUsersByRoleDtoOutput } from './dto/aggregate-users-by-role.dto.output';
+import { CompleteProfileDtoInput } from './dto/complete-profile.dto.input';
 import { CreateUserDtoInput } from './dto/create.dto.input';
 import { GetUserDtoInput } from './dto/get-user.dto.input';
 import { LoginTokenDTO } from './dto/login-token.dto.input';
@@ -31,6 +32,7 @@ import { UserWithRoleName } from './dto/userWithRoleName';
 import { CreateFlow } from './enum/create-flow';
 import { ProfileDetectorService } from './services/profile-detector.service';
 import { RefreshTokenService } from './services/refresh-token.service';
+import { GoogleUser } from './strategy/google.strategy';
 import { User } from './user.entity';
 import { UserRepository } from './user.repository';
 
@@ -143,6 +145,12 @@ export class UserService extends BaseService<User> {
     if (!userFullInfo || userFullInfo.deletedAt != null) {
       throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     }
+    if (!userFullInfo.password) {
+      throw new HttpException(
+        'password not set, use Google login or reset password',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
     if (!(await bcrypt.compare(loginInput.password, userFullInfo?.password))) {
       throw new HttpException('password invalid', HttpStatus.CONFLICT);
     }
@@ -216,6 +224,68 @@ export class UserService extends BaseService<User> {
       email,
       token,
     );
+  }
+
+  async handleGoogleCallback(googleUser: GoogleUser): Promise<string> {
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    let user = await this.userRepository.findOneBy({ email: googleUser.email });
+
+    if (user) {
+      if (!user.googleId) {
+        user.googleId = googleUser.googleId;
+        if (user.emailConfirmSended) {
+          user.emailConfirmSended = null;
+        }
+        await this.userRepository.update(user);
+      }
+      const tokenData = await this.getAccessToken(user);
+      if (user.profileComplete === false) {
+        return `${clientUrl}/onboarding?token=${tokenData.access_token}`;
+      }
+      return `${clientUrl}/auth/callback?token=${tokenData.access_token}`;
+    }
+
+    const role = await this.roleRepository.findOneBy({ name: 'aluno' });
+    if (!role) {
+      throw new HttpException('role not found', HttpStatus.BAD_REQUEST);
+    }
+    const newUser = new User();
+    newUser.email = googleUser.email;
+    newUser.firstName = googleUser.firstName;
+    newUser.lastName = googleUser.lastName;
+    newUser.googleId = googleUser.googleId;
+    newUser.profileComplete = false;
+    newUser.emailConfirmSended = null;
+    newUser.lgpd = false;
+    newUser.role = role;
+    const created = await this.userRepository.create(newUser);
+    const tokenData = await this.getAccessToken(created);
+    return `${clientUrl}/onboarding?token=${tokenData.access_token}`;
+  }
+
+  async completeProfile(
+    dto: CompleteProfileDtoInput,
+    userId: string,
+  ): Promise<LoginTokenDTO> {
+    const user = await this.userRepository.findOneBy({ id: userId });
+    if (!user) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
+    if (user.profileComplete !== false) {
+      throw new HttpException(
+        'Only Google OAuth users with incomplete profiles can use this endpoint',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+    user.phone = dto.phone;
+    user.gender = dto.gender;
+    user.birthday = new Date(dto.birthday);
+    user.state = dto.state;
+    user.city = dto.city;
+    user.lgpd = dto.lgpd;
+    user.profileComplete = true;
+    await this.userRepository.update(user);
+    return this.getAccessToken(user);
   }
 
   async reset(resetPassword: ResetPasswordDtoInput, userId: string) {
@@ -411,6 +481,7 @@ export class UserService extends BaseService<User> {
     }
 
     const profiles = await this.profileDetector.detect(domain.id);
+    const profileComplete = domain.profileComplete ?? null;
 
     // Gera o access token (15 minutos)
     const accessToken = await this.jwtService.signAsync({
@@ -418,6 +489,7 @@ export class UserService extends BaseService<User> {
       roles,
       roleId: domain.role.id,
       profiles,
+      profileComplete,
     });
 
     // Gera o refresh token (7 dias)
