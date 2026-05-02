@@ -1,5 +1,6 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
+import { PassportModule } from '@nestjs/passport';
 import { EnvModule } from 'src/shared/modules/env/env.module';
 import { HttpServiceAxiosFactory } from 'src/shared/services/axios/http-service-axios.factory';
 import { EmailService } from 'src/shared/services/email/email.service';
@@ -17,6 +18,7 @@ import {
   COLLABORATOR_REPO_TOKEN,
 } from './services/profile-detector.service';
 import { RefreshTokenService } from './services/refresh-token.service';
+import { GoogleStrategy } from './strategy/google.strategy';
 import { UserController } from './user.controller';
 import { UserRepository } from './user.repository';
 import { UserService } from './user.service';
@@ -26,7 +28,7 @@ import { UserExistValidator } from './validator/user-exist.validator';
 
 @Module({
   controllers: [UserController],
-  imports: [AuditLogModule, EnvModule, HttpModule],
+  imports: [AuditLogModule, EnvModule, HttpModule, PassportModule],
   providers: [
     UserService,
     UserRepository,
@@ -49,6 +51,7 @@ import { UserExistValidator } from './validator/user-exist.validator';
       useExisting: StudentCourseRepository,
     },
     { provide: COLLABORATOR_REPO_TOKEN, useExisting: CollaboratorRepository },
+    GoogleStrategy,
   ],
   exports: [UserService, UserRepository, RefreshTokenService],
 })
