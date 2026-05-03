@@ -72,4 +72,6 @@ export class UserDtoOutput {
   collaboratorFrentes?: string[] = undefined;
   afinidades?: AfinidadeDto[] = undefined;
   profiles?: string[] = undefined;
+
+  profileComplete: boolean | null = null;
 }

@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   HttpStatus,
   Param,
   Patch,
@@ -22,6 +23,7 @@ import { GetAllDtoOutput } from 'src/shared/dtos/get-all.dto.output';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { Permissions } from '../role/role.entity';
+import { CompleteProfileDto } from './dto/complete-profile.dto';
 import { CreateUserDtoInput } from './dto/create.dto.input';
 import { ForgotPasswordDtoInput } from './dto/forgot-password.dto.input';
 import { GetUserDtoInput } from './dto/get-user.dto.input';
@@ -34,6 +36,8 @@ import { SendBulkEmailDtoInput } from './dto/send-bulk-email.dto.input';
 import { UpdateUserRoleInput } from './dto/update-user-role.dto.input';
 import { UpdateUserDTOInput } from './dto/update.dto.input';
 import { UserWithRoleName } from './dto/userWithRoleName';
+import { GoogleAuthGuard } from './guards/google-auth.guard';
+import { GoogleUser } from './strategy/google.strategy';
 import { User } from './user.entity';
 import { UserService } from './user.service';
 
@@ -133,6 +137,28 @@ export class UserController {
     return res.status(200).json({
       message: 'Logout de todos os dispositivos realizado com sucesso',
     });
+  }
+
+  @Get('auth/google')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(GoogleAuthGuard)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async googleAuth(@Req() _req: Request) {}
+
+  @Get('auth/google/callback')
+  @UseGuards(GoogleAuthGuard)
+  async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
+    const redirectUrl = await this.userService.handleGoogleCallback(
+      req.user as GoogleUser,
+    );
+    return res.redirect(redirectUrl);
+  }
+
+  @Patch('complete-profile')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async completeProfile(@Body() dto: CompleteProfileDto, @Req() req: Request) {
+    return await this.userService.completeProfile(dto, (req.user as User).id);
   }
 
   @Post('hasemail')
