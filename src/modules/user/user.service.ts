@@ -227,7 +227,7 @@ export class UserService extends BaseService<User> {
   }
 
   async handleGoogleCallback(googleUser: GoogleUser): Promise<string> {
-    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const clientUrl = this.envService.get('CLIENT_URL');
     let user = await this.userRepository.findOneBy({ email: googleUser.email });
 
     if (user) {
