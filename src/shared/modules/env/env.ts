@@ -95,12 +95,6 @@ export const envSchema = z.object({
   ANTHROPIC_API_KEY: z.string().default(''),
   OPENAI_API_KEY: z.string().default(''),
   ESSAY_AI_MODEL: z.string().default('gpt-4o'),
-
-  // Google OAuth
-  GOOGLE_CLIENT_ID: z.string().default(''),
-  GOOGLE_CLIENT_SECRET: z.string().default(''),
-  GOOGLE_CALLBACK_URL: z.string().default(''),
-  CLIENT_URL: z.string().default('http://localhost:3000'),
 });
 
 export type Env = z.infer<typeof envSchema>;
