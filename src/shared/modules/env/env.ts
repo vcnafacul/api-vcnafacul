@@ -95,6 +95,10 @@ export const envSchema = z.object({
   ANTHROPIC_API_KEY: z.string().default(''),
   OPENAI_API_KEY: z.string().default(''),
   ESSAY_AI_MODEL: z.string().default('gpt-4o'),
+
+  // Firebase (chat de suporte)
+  FIREBASE_PROJECT_ID: z.string().default(''),
+  FIREBASE_SERVICE_ACCOUNT_BASE64: z.string().default(''),
 });
 
 export type Env = z.infer<typeof envSchema>;

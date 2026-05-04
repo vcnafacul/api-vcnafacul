@@ -228,7 +228,7 @@ export class UserRepository extends BaseRepository<User> {
       .orWhere('CONCAT(user.socialName, " ", user.lastName) LIKE :name', {
         name: `%${name}%`,
       })
-      .limit(10)
+      .limit(20)
       .getMany();
   }
 }

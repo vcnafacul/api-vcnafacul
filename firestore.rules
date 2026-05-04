@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isStudent() {
+      return request.auth != null && request.auth.token.role == 'student';
+    }
+    function isSupport() {
+      return request.auth != null && request.auth.token.role == 'support_agent';
+    }
+    function ownsConversation(conv) {
+      return isStudent() && conv.userId == request.auth.token.userId;
+    }
+
+    match /conversations/{conversationId} {
+      allow read: if isSupport() || ownsConversation(resource.data);
+      allow write: if false;
+    }
+
+    match /messages/{messageId} {
+      allow read: if isSupport()
+        || (isStudent() && resource.data.conversationUserId == request.auth.token.userId);
+      allow write: if false;
+    }
+  }
+}

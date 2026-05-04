@@ -40,6 +40,8 @@ import { JwtStrategy } from './shared/strategy/jwt.strategy';
 import { PlacesModule } from './modules/places/places.module';
 import { EssayModule } from './modules/essay/essay.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { ChatModule } from './modules/chat/chat.module';
+import { FirebaseModule } from './modules/chat/firebase/firebase.module';
 
 /**
  * Desabilita ThrottlerGuard em ambiente de teste para evitar erros 429
@@ -113,6 +115,8 @@ const throttlerProvider: Provider = isTestEnv
     PlacesModule,
     EssayModule,
     DashboardModule,
+    FirebaseModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [
