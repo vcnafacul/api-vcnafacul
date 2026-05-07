@@ -19,4 +19,7 @@ export class InscriptionInfoFormDtoOutput {
 
   @ApiProperty()
   expectedOpening: number;
+
+  @ApiProperty()
+  isTest: boolean;
 }

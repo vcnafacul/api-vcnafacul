@@ -40,4 +40,7 @@ export class InscriptionCourseDtoOutput {
 
   @ApiProperty()
   requestDocuments: boolean;
+
+  @ApiProperty()
+  isTest: boolean;
 }

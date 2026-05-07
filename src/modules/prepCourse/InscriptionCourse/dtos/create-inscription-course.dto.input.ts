@@ -37,4 +37,13 @@ export class CreateInscriptionCourseInput {
   @IsOptional()
   @IsBoolean()
   requestDocuments: boolean = false;
+
+  @ApiProperty({
+    required: false,
+    default: true,
+    description: 'Indica se o processo é de teste',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isTest: boolean = false;
 }

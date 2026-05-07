@@ -99,6 +99,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
       partnerPrepCourseId: parnetPrepCourse.id,
       partnerPrepCourseName: parnetPrepCourse.geo.name,
       requestDocuments: result.requestDocuments,
+      isTest: result.isTest,
     };
   }
 
@@ -130,6 +131,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
           partnerPrepCourseId: i.partnerPrepCourse.id,
           partnerPrepCourseName: i.partnerPrepCourse.geo.name,
           requestDocuments: i.requestDocuments,
+          isTest: i.isTest,
         }),
       ),
       page: inscription.page,
@@ -200,6 +202,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
         startDate: inscription.startDate,
         endDate: inscription.endDate,
         expectedOpening: inscription.expectedOpening,
+        isTest: inscription.isTest,
         status:
           inscription.actived === Status.Rejected ? Status.Rejected : status,
       },
