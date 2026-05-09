@@ -94,7 +94,8 @@ export class NewsController {
   @ApiBearerAuth()
   @ApiResponse({
     status: 200,
-    description: 'atualizar novidade (title, description, destaque, body, expire_at)',
+    description:
+      'atualizar novidade (title, description, destaque, body, expire_at)',
   })
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.uploadNews)
