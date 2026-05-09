@@ -1,4 +1,5 @@
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { CollaboratorRepository } from 'src/modules/prepCourse/collaborator/collaborator.repository';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { ChatService } from './chat.service';
 import { FirebaseService } from './firebase/firebase.service';
@@ -14,12 +15,14 @@ describe('ChatService', () => {
     firestore: () => ({}),
   };
   const mockUserRepo = { findOneBy: jest.fn() };
+  const mockCollaboratorRepository = { findOneByUserId: jest.fn() };
 
   beforeEach(() => {
     jest.clearAllMocks();
     service = new ChatService(
       mockFirebase as unknown as FirebaseService,
       mockUserRepo as unknown as UserRepository,
+      mockCollaboratorRepository as unknown as CollaboratorRepository,
     );
   });
 
@@ -41,6 +44,7 @@ describe('ChatService', () => {
       expect(mockAuth.createCustomToken).toHaveBeenCalledWith('u1', {
         userId: 'u1',
         role: 'student',
+        partnerPrepId: null,
         name: 'Aninha Souza',
       });
     });
@@ -60,6 +64,7 @@ describe('ChatService', () => {
       expect(mockAuth.createCustomToken).toHaveBeenCalledWith('u2', {
         userId: 'u2',
         role: 'support_agent',
+        partnerPrepId: null,
         name: 'Bruno Lima',
       });
     });
@@ -672,6 +677,44 @@ describe('ChatService', () => {
       await expect(
         service.initiateConversation('s1', 'Sup', 'ghost', 'oi'),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('resolveTokenClaims', () => {
+    it('returns support_agent with partnerPrepId=null for global support', async () => {
+      // user with supportAgent=true — no collaborator lookup needed
+      const claims = await service['resolveTokenClaims']({
+        role: { supportAgent: true, partnerPrepSupportAgent: false },
+      } as any);
+      expect(claims).toEqual({ role: 'support_agent', partnerPrepId: null });
+    });
+
+    it('returns support_agent with partnerPrepId for partner support with valid collaborator', async () => {
+      mockCollaboratorRepository.findOneByUserId.mockResolvedValue({
+        partnerPrepCourse: { id: 'prep-uuid-123' },
+      });
+      const claims = await service['resolveTokenClaims']({
+        id: 'user-2',
+        role: { supportAgent: false, partnerPrepSupportAgent: true },
+      } as any);
+      expect(claims).toEqual({ role: 'support_agent', partnerPrepId: 'prep-uuid-123' });
+    });
+
+    it('returns student when partnerPrepSupportAgent=true but no collaborator row', async () => {
+      mockCollaboratorRepository.findOneByUserId.mockResolvedValue(null);
+      const claims = await service['resolveTokenClaims']({
+        id: 'user-3',
+        role: { supportAgent: false, partnerPrepSupportAgent: true },
+      } as any);
+      expect(claims).toEqual({ role: 'student', partnerPrepId: null });
+    });
+
+    it('returns student for regular user', async () => {
+      const claims = await service['resolveTokenClaims']({
+        id: 'user-4',
+        role: { supportAgent: false, partnerPrepSupportAgent: false },
+      } as any);
+      expect(claims).toEqual({ role: 'student', partnerPrepId: null });
     });
   });
 });

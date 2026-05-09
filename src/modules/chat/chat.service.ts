@@ -10,6 +10,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import * as admin from 'firebase-admin';
+import { CollaboratorRepository } from 'src/modules/prepCourse/collaborator/collaborator.repository';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { ConversationMetadata, SenderType } from './chat.types';
 import { FirebaseService } from './firebase/firebase.service';
@@ -22,7 +23,7 @@ type UserLike = {
   id: string;
   name: string;
   socialName?: string | null;
-  role: { supportAgent: boolean };
+  role: { supportAgent: boolean; partnerPrepSupportAgent?: boolean };
 };
 
 @Injectable()
@@ -32,16 +33,40 @@ export class ChatService {
   constructor(
     private readonly firebase: FirebaseService,
     private readonly userRepository: UserRepository,
+    private readonly collaboratorRepository: CollaboratorRepository,
   ) {}
 
   /**
+   * Resolve o role e partnerPrepId para as claims do Firebase custom token.
+   * Regra de segurança: partnerPrepSupportAgent=true SEM Collaborator válido
+   * → role='student', partnerPrepId=null (evita acesso global por má configuração).
+   */
+  private async resolveTokenClaims(
+    user: UserLike,
+  ): Promise<{ role: string; partnerPrepId: string | null }> {
+    if (user.role.supportAgent) {
+      return { role: 'support_agent', partnerPrepId: null };
+    }
+    if (user.role.partnerPrepSupportAgent) {
+      const collaborator = await this.collaboratorRepository.findOneByUserId(user.id);
+      const partnerPrepId = collaborator?.partnerPrepCourse?.id ?? null;
+      if (partnerPrepId) {
+        return { role: 'support_agent', partnerPrepId };
+      }
+    }
+    return { role: 'student', partnerPrepId: null };
+  }
+
+  /**
    * Gera um Firebase Custom Token para o usuário, com claims
-   * `userId`, `role` e `name` (usa nome social quando disponível).
+   * `userId`, `role`, `partnerPrepId` e `name` (usa nome social quando disponível).
    */
   private async generateCustomToken(user: UserLike): Promise<string> {
+    const { role, partnerPrepId } = await this.resolveTokenClaims(user);
     const claims = {
       userId: user.id,
-      role: user.role.supportAgent ? 'support_agent' : 'student',
+      role,
+      partnerPrepId,
       name: user.socialName ?? user.name,
     };
     return await this.firebase.auth().createCustomToken(user.id, claims);
@@ -75,7 +100,10 @@ export class ChatService {
       id: user.id,
       name: fullName,
       socialName,
-      role: { supportAgent: user.role?.supportAgent === true },
+      role: {
+        supportAgent: user.role?.supportAgent === true,
+        partnerPrepSupportAgent: user.role?.partnerPrepSupportAgent === true,
+      },
     });
   }
 
