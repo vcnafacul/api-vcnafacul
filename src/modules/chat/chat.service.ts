@@ -53,7 +53,9 @@ export class ChatService {
       return { role: 'support_agent', partnerPrepId: null };
     }
     if (user.role.partnerPrepSupportAgent) {
-      const collaborator = await this.collaboratorRepository.findOneByUserId(user.id);
+      const collaborator = await this.collaboratorRepository.findOneByUserId(
+        user.id,
+      );
       const partnerPrepId = collaborator?.partnerPrepCourse?.id ?? null;
       if (partnerPrepId) {
         return { role: 'support_agent', partnerPrepId };
@@ -70,15 +72,17 @@ export class ChatService {
     dto: Pick<OpenConversationDto, 'inscriptionCourseId' | 'studentCourseId'>,
   ): Promise<string | null> {
     if (dto.inscriptionCourseId) {
-      const inscription = await this.inscriptionCourseRepository.findOneWithPartnerPrep(
-        dto.inscriptionCourseId,
-      );
+      const inscription =
+        await this.inscriptionCourseRepository.findOneWithPartnerPrep(
+          dto.inscriptionCourseId,
+        );
       return inscription?.partnerPrepCourse?.id ?? null;
     }
     if (dto.studentCourseId) {
-      const studentCourse = await this.studentCourseRepository.findOneWithPartnerPrep(
-        dto.studentCourseId,
-      );
+      const studentCourse =
+        await this.studentCourseRepository.findOneWithPartnerPrep(
+          dto.studentCourseId,
+        );
       return studentCourse?.partnerPrepCourse?.id ?? null;
     }
     return null;
@@ -143,7 +147,10 @@ export class ChatService {
     userId: string,
     userName: string,
     metadata: ConversationMetadata,
-    context?: Pick<OpenConversationDto, 'inscriptionCourseId' | 'studentCourseId'>,
+    context?: Pick<
+      OpenConversationDto,
+      'inscriptionCourseId' | 'studentCourseId'
+    >,
   ): Promise<{ id: string }> {
     const db = this.firebase.firestore();
     const convs = db.collection('conversations');
@@ -183,7 +190,9 @@ export class ChatService {
 
     // 3. Cria nova conversa.
     const now = admin.firestore.Timestamp.now();
-    const partnerPrepId = context ? await this.resolvePartnerPrepId(context) : null;
+    const partnerPrepId = context
+      ? await this.resolvePartnerPrepId(context)
+      : null;
     // TODO: userName denormalizado fica stale se user muda nome social.
     // Aceitável MVP — Fase 2 pode considerar refresh ou query a cada listener tick.
     const created = await convs.add({
@@ -204,9 +213,7 @@ export class ChatService {
         browser: metadata.browser,
       },
     });
-    this.logger.log(
-      `chat.conversation_opened id=${created.id} user=${userId}`,
-    );
+    this.logger.log(`chat.conversation_opened id=${created.id} user=${userId}`);
     return { id: created.id };
   }
 
@@ -487,11 +494,27 @@ export class ChatService {
     if (!user || !user.role) {
       throw new UnauthorizedException('Usuário não autenticado');
     }
-    const actorType: SenderType = user.role.supportAgent ? 'support' : 'student';
+    const actorType: SenderType = user.role.supportAgent
+      ? 'support'
+      : 'student';
     const displayName =
       user.useSocialName && user.socialName
         ? `${user.socialName} ${user.lastName}`
         : `${user.firstName} ${user.lastName}`;
     return { actorType, displayName };
+  }
+
+  /**
+   * Retorna o partnerPrepCourse.id do Collaborator vinculado ao usuário,
+   * independente de ele também ser supportAgent global.
+   * Usado pela tela /dashboard/suporte-cursinho para sempre escopar ao
+   * cursinho correto — sem depender das claims do token Firebase.
+   */
+  async getCallerPartnerPrepId(
+    userId: string,
+  ): Promise<{ partnerPrepId: string | null }> {
+    const collaborator =
+      await this.collaboratorRepository.findOneByUserId(userId);
+    return { partnerPrepId: collaborator?.partnerPrepCourse?.id ?? null };
   }
 }
