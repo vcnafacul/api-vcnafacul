@@ -483,6 +483,30 @@ export class ChatService {
     return actorType;
   }
 
+  async resolveActorForMessage(
+    userId: string,
+  ): Promise<{ actorType: SenderType; senderName: string }> {
+    const user = await this.userRepository.findOneBy({ id: userId });
+    if (!user || !user.role) {
+      throw new UnauthorizedException('Usuário não autenticado');
+    }
+    const actorType: SenderType =
+      user.role.supportAgent || user.role.partnerPrepSupportAgent
+        ? 'support'
+        : 'student';
+    const baseName =
+      user.useSocialName && user.socialName
+        ? `${user.socialName} ${user.lastName}`
+        : `${user.firstName} ${user.lastName}`;
+    const senderName = await this.buildSenderName(
+      userId,
+      baseName,
+      actorType,
+      user.role,
+    );
+    return { actorType, senderName };
+  }
+
   /**
    * Resolve actorType + displayName num único load. Usado pelos endpoints
    * que precisam dos dois (open/send) — evita 2 queries.
@@ -503,6 +527,25 @@ export class ChatService {
         ? `${user.socialName} ${user.lastName}`
         : `${user.firstName} ${user.lastName}`;
     return { actorType, displayName };
+  }
+
+  /**
+   * Retorna o nome do remetente com contexto entre parênteses para mensagens
+   * de suporte: "Nome (Suporte Você na Facul)" ou "Nome (Nome do Cursinho)".
+   * Estudantes recebem apenas o nome sem contexto.
+   */
+  private async buildSenderName(
+    userId: string,
+    baseName: string,
+    actorType: SenderType,
+    role: { supportAgent: boolean; partnerPrepSupportAgent?: boolean },
+  ): Promise<string> {
+    if (actorType !== 'support') return baseName;
+    if (role.supportAgent) return `${baseName} (Suporte Você na Facul)`;
+    const collaborator =
+      await this.collaboratorRepository.findOneByUserIdWithGeo(userId);
+    const cursinhoName = collaborator?.partnerPrepCourse?.geo?.name;
+    return cursinhoName ? `${baseName} (${cursinhoName})` : baseName;
   }
 
   /**

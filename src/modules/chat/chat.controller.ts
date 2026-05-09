@@ -104,12 +104,11 @@ export class ChatController {
   ): Promise<{ id: string }> {
     const user = getReqUser(req);
     if (!user?.id) throw new ForbiddenException();
-    const { actorType, displayName } = await this.chatService.resolveActor(
-      user.id,
-    );
+    const { actorType, senderName } =
+      await this.chatService.resolveActorForMessage(user.id);
     return this.chatService.sendMessage({
       senderId: user.id,
-      senderName: displayName,
+      senderName,
       senderType: actorType,
       conversationId: body.conversationId,
       content: body.content,

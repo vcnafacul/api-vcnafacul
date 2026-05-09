@@ -72,6 +72,16 @@ export class CollaboratorRepository extends BaseRepository<Collaborator> {
       .getOne();
   }
 
+  async findOneByUserIdWithGeo(id: string): Promise<Collaborator | null> {
+    return await this.repository
+      .createQueryBuilder('entity')
+      .leftJoinAndSelect('entity.partnerPrepCourse', 'prep')
+      .leftJoinAndSelect('prep.geo', 'geo')
+      .innerJoin('entity.user', 'user')
+      .where('user.id = :id', { id })
+      .getOne();
+  }
+
   async findOneByPrepPartner(id: string): Promise<Collaborator[]> {
     return await this.repository
       .createQueryBuilder('entity')
