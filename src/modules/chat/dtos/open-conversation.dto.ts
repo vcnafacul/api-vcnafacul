@@ -3,7 +3,9 @@ import { Type } from 'class-transformer';
 import {
   IsIn,
   IsNotEmpty,
+  IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
   ValidateNested,
 } from 'class-validator';
@@ -36,4 +38,14 @@ export class OpenConversationDto {
   @Type(() => ConversationMetadataDto)
   @ApiProperty({ type: ConversationMetadataDto })
   metadata: ConversationMetadataDto;
+
+  @IsOptional()
+  @IsUUID()
+  @ApiProperty({ required: false, example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
+  inscriptionCourseId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  @ApiProperty({ required: false, example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
+  studentCourseId?: string;
 }
