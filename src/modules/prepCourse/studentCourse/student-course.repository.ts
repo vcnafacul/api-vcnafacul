@@ -320,6 +320,14 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .getOne();
   }
 
+  async findOneWithPartnerPrep(id: string): Promise<StudentCourse | null> {
+    return this.repository
+      .createQueryBuilder('entity')
+      .where('entity.id = :id', { id })
+      .leftJoinAndSelect('entity.partnerPrepCourse', 'partnerPrepCourse')
+      .getOne();
+  }
+
   async findEnrolledByUserId(userId: string): Promise<StudentCourse | null> {
     return this.repository.findOne({
       where: {

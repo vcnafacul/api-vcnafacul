@@ -10,9 +10,12 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import * as admin from 'firebase-admin';
+import { InscriptionCourseRepository } from 'src/modules/prepCourse/InscriptionCourse/inscription-course.repository';
 import { CollaboratorRepository } from 'src/modules/prepCourse/collaborator/collaborator.repository';
+import { StudentCourseRepository } from 'src/modules/prepCourse/studentCourse/student-course.repository';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { ConversationMetadata, SenderType } from './chat.types';
+import { OpenConversationDto } from './dtos/open-conversation.dto';
 import { FirebaseService } from './firebase/firebase.service';
 
 const COOLDOWN_MS = 15 * 60 * 1000;
@@ -34,6 +37,8 @@ export class ChatService {
     private readonly firebase: FirebaseService,
     private readonly userRepository: UserRepository,
     private readonly collaboratorRepository: CollaboratorRepository,
+    private readonly inscriptionCourseRepository: InscriptionCourseRepository,
+    private readonly studentCourseRepository: StudentCourseRepository,
   ) {}
 
   /**
@@ -55,6 +60,28 @@ export class ChatService {
       }
     }
     return { role: 'student', partnerPrepId: null };
+  }
+
+  /**
+   * Resolve o partnerPrepId a partir do contexto da inscrição.
+   * Usado por openConversation para associar a conversa ao cursinho parceiro.
+   */
+  private async resolvePartnerPrepId(
+    dto: Pick<OpenConversationDto, 'inscriptionCourseId' | 'studentCourseId'>,
+  ): Promise<string | null> {
+    if (dto.inscriptionCourseId) {
+      const inscription = await this.inscriptionCourseRepository.findOneBy({
+        id: dto.inscriptionCourseId,
+      });
+      return inscription?.partnerPrepCourse?.id ?? null;
+    }
+    if (dto.studentCourseId) {
+      const studentCourse = await this.studentCourseRepository.findOneWithPartnerPrep(
+        dto.studentCourseId,
+      );
+      return studentCourse?.partnerPrepCourse?.id ?? null;
+    }
+    return null;
   }
 
   /**
@@ -116,6 +143,7 @@ export class ChatService {
     userId: string,
     userName: string,
     metadata: ConversationMetadata,
+    context?: Pick<OpenConversationDto, 'inscriptionCourseId' | 'studentCourseId'>,
   ): Promise<{ id: string }> {
     const db = this.firebase.firestore();
     const convs = db.collection('conversations');
@@ -155,6 +183,7 @@ export class ChatService {
 
     // 3. Cria nova conversa.
     const now = admin.firestore.Timestamp.now();
+    const partnerPrepId = context ? await this.resolvePartnerPrepId(context) : null;
     // TODO: userName denormalizado fica stale se user muda nome social.
     // Aceitável MVP — Fase 2 pode considerar refresh ou query a cada listener tick.
     const created = await convs.add({
@@ -167,6 +196,7 @@ export class ChatService {
       closedBy: null,
       unreadCountStudent: 0,
       unreadCountSupport: 0,
+      partnerPrepId,
       metadata: {
         page: metadata.page,
         userAgent: metadata.userAgent,
