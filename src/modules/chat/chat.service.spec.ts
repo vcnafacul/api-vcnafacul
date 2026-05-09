@@ -18,7 +18,7 @@ describe('ChatService', () => {
   };
   const mockUserRepo = { findOneBy: jest.fn() };
   const mockCollaboratorRepository = { findOneByUserId: jest.fn() };
-  const mockInscriptionCourseRepository = { findOneBy: jest.fn() };
+  const mockInscriptionCourseRepository = { findOneWithPartnerPrep: jest.fn() };
   const mockStudentCourseRepository = { findOneWithPartnerPrep: jest.fn() };
 
   beforeEach(() => {
@@ -260,7 +260,7 @@ describe('ChatService', () => {
     it('stores partnerPrepId on conversation when inscriptionCourseId provided', async () => {
       conversationsRef.get.mockResolvedValueOnce({ empty: true, docs: [] });
       conversationsRef.get.mockResolvedValueOnce({ empty: true, docs: [] });
-      mockInscriptionCourseRepository.findOneBy.mockResolvedValue({
+      mockInscriptionCourseRepository.findOneWithPartnerPrep.mockResolvedValue({
         partnerPrepCourse: { id: 'prep-xyz' },
       });
 
@@ -707,7 +707,7 @@ describe('ChatService', () => {
 
   describe('resolvePartnerPrepId', () => {
     it('resolves partnerPrepId from inscriptionCourseId', async () => {
-      mockInscriptionCourseRepository.findOneBy.mockResolvedValue({
+      mockInscriptionCourseRepository.findOneWithPartnerPrep.mockResolvedValue({
         partnerPrepCourse: { id: 'prep-aaa' },
       });
       const id = await service['resolvePartnerPrepId']({ inscriptionCourseId: 'ic-uuid' });
@@ -728,7 +728,7 @@ describe('ChatService', () => {
     });
 
     it('returns null when inscription not found', async () => {
-      mockInscriptionCourseRepository.findOneBy.mockResolvedValue(null);
+      mockInscriptionCourseRepository.findOneWithPartnerPrep.mockResolvedValue(null);
       const id = await service['resolvePartnerPrepId']({ inscriptionCourseId: 'bad-id' });
       expect(id).toBeNull();
     });

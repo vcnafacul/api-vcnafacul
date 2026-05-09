@@ -70,9 +70,9 @@ export class ChatService {
     dto: Pick<OpenConversationDto, 'inscriptionCourseId' | 'studentCourseId'>,
   ): Promise<string | null> {
     if (dto.inscriptionCourseId) {
-      const inscription = await this.inscriptionCourseRepository.findOneBy({
-        id: dto.inscriptionCourseId,
-      });
+      const inscription = await this.inscriptionCourseRepository.findOneWithPartnerPrep(
+        dto.inscriptionCourseId,
+      );
       return inscription?.partnerPrepCourse?.id ?? null;
     }
     if (dto.studentCourseId) {

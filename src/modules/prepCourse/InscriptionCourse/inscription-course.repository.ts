@@ -186,4 +186,12 @@ export class InscriptionCourseRepository extends LinkedListRepository<
       .andWhere('ic.actived = :actived', { actived: Status.Approved })
       .getMany();
   }
+
+  async findOneWithPartnerPrep(id: string): Promise<InscriptionCourse | null> {
+    return this.repository
+      .createQueryBuilder('ic')
+      .where('ic.id = :id', { id })
+      .leftJoinAndSelect('ic.partnerPrepCourse', 'partnerPrepCourse')
+      .getOne();
+  }
 }
