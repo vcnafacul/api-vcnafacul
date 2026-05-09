@@ -494,9 +494,10 @@ export class ChatService {
     if (!user || !user.role) {
       throw new UnauthorizedException('Usuário não autenticado');
     }
-    const actorType: SenderType = user.role.supportAgent
-      ? 'support'
-      : 'student';
+    const actorType: SenderType =
+      user.role.supportAgent || user.role.partnerPrepSupportAgent
+        ? 'support'
+        : 'student';
     const displayName =
       user.useSocialName && user.socialName
         ? `${user.socialName} ${user.lastName}`
