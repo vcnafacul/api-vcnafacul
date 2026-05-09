@@ -43,7 +43,9 @@ describe('ChatRateLimitGuard', () => {
     const anonCtx = {
       switchToHttp: () => ({ getRequest: () => ({}) }),
     } as unknown as ExecutionContext;
-    await expect(guard.canActivate(anonCtx)).rejects.toThrow(ThrottlerException);
+    await expect(guard.canActivate(anonCtx)).rejects.toThrow(
+      ThrottlerException,
+    );
   });
 
   it('allows the first 3 messages then rejects the 4th (burst)', async () => {

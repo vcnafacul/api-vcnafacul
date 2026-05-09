@@ -192,6 +192,7 @@ export class InscriptionCourseRepository extends LinkedListRepository<
       .createQueryBuilder('ic')
       .where('ic.id = :id', { id })
       .leftJoinAndSelect('ic.partnerPrepCourse', 'partnerPrepCourse')
+      .leftJoinAndSelect('partnerPrepCourse.geo', 'geo')
       .getOne();
   }
 }

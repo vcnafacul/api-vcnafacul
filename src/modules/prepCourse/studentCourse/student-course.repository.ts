@@ -325,6 +325,7 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .createQueryBuilder('entity')
       .where('entity.id = :id', { id })
       .leftJoinAndSelect('entity.partnerPrepCourse', 'partnerPrepCourse')
+      .leftJoinAndSelect('partnerPrepCourse.geo', 'geo')
       .getOne();
   }
 

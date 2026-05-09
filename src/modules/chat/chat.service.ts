@@ -65,27 +65,40 @@ export class ChatService {
   }
 
   /**
-   * Resolve o partnerPrepId a partir do contexto da inscrição.
-   * Usado por openConversation para associar a conversa ao cursinho parceiro.
+   * Resolve o contexto da conversa a partir do identificador da inscrição.
+   * Retorna o partnerPrepId, o nome do cursinho e o rótulo de origem para
+   * exibição no header e lista de conversas do suporte.
    */
-  private async resolvePartnerPrepId(
+  private async resolveConversationContext(
     dto: Pick<OpenConversationDto, 'inscriptionCourseId' | 'studentCourseId'>,
-  ): Promise<string | null> {
+  ): Promise<{
+    partnerPrepId: string | null;
+    cursinhoName: string | null;
+    originLabel: string | null;
+  }> {
     if (dto.inscriptionCourseId) {
       const inscription =
         await this.inscriptionCourseRepository.findOneWithPartnerPrep(
           dto.inscriptionCourseId,
         );
-      return inscription?.partnerPrepCourse?.id ?? null;
+      return {
+        partnerPrepId: inscription?.partnerPrepCourse?.id ?? null,
+        cursinhoName: inscription?.partnerPrepCourse?.geo?.name ?? null,
+        originLabel: 'Formulário de inscrição',
+      };
     }
     if (dto.studentCourseId) {
       const studentCourse =
         await this.studentCourseRepository.findOneWithPartnerPrep(
           dto.studentCourseId,
         );
-      return studentCourse?.partnerPrepCourse?.id ?? null;
+      return {
+        partnerPrepId: studentCourse?.partnerPrepCourse?.id ?? null,
+        cursinhoName: studentCourse?.partnerPrepCourse?.geo?.name ?? null,
+        originLabel: 'Declaração de interesse',
+      };
     }
-    return null;
+    return { partnerPrepId: null, cursinhoName: null, originLabel: null };
   }
 
   /**
@@ -190,9 +203,9 @@ export class ChatService {
 
     // 3. Cria nova conversa.
     const now = admin.firestore.Timestamp.now();
-    const partnerPrepId = context
-      ? await this.resolvePartnerPrepId(context)
-      : null;
+    const { partnerPrepId, cursinhoName, originLabel } = context
+      ? await this.resolveConversationContext(context)
+      : { partnerPrepId: null, cursinhoName: null, originLabel: null };
     // TODO: userName denormalizado fica stale se user muda nome social.
     // Aceitável MVP — Fase 2 pode considerar refresh ou query a cada listener tick.
     const created = await convs.add({
@@ -206,6 +219,8 @@ export class ChatService {
       unreadCountStudent: 0,
       unreadCountSupport: 0,
       partnerPrepId,
+      cursinhoName,
+      originLabel,
       metadata: {
         page: metadata.page,
         userAgent: metadata.userAgent,

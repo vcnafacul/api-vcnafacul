@@ -9,7 +9,13 @@ import { ChatService } from './chat.service';
 import { ChatRateLimitGuard } from './guards/chat-rate-limit.guard';
 
 @Module({
-  imports: [UserModule, CacheManagerModule, CollaboratorModule, StudentCourseModule, InscriptionCourseModule],
+  imports: [
+    UserModule,
+    CacheManagerModule,
+    CollaboratorModule,
+    StudentCourseModule,
+    InscriptionCourseModule,
+  ],
   controllers: [ChatController],
   providers: [ChatService, ChatRateLimitGuard],
 })

@@ -1,9 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddPartnerPrepSupportAgentToRoles1778353354
-  implements MigrationInterface
-{
-  name = 'AddPartnerPrepSupportAgentToRoles1778353354';
+export class SupportAgentPartner1778361151940 implements MigrationInterface {
+  name = 'SupportAgentPartner1778361151940';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(

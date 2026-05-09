@@ -12,7 +12,9 @@ const validMetadata = {
 
 describe('OpenConversationDto', () => {
   it('accepts dto without inscription context', async () => {
-    const dto = plainToInstance(OpenConversationDto, { metadata: validMetadata });
+    const dto = plainToInstance(OpenConversationDto, {
+      metadata: validMetadata,
+    });
     expect(await validate(dto)).toHaveLength(0);
   });
 

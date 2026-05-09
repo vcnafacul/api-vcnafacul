@@ -534,9 +534,9 @@ describe('ChatService', () => {
 
     it('rejects when conversation not found', async () => {
       convDocRef.get.mockResolvedValue({ exists: false });
-      await expect(
-        service.markRead('c1', 'u1', 'student'),
-      ).rejects.toThrow(/não encontrada/i);
+      await expect(service.markRead('c1', 'u1', 'student')).rejects.toThrow(
+        /não encontrada/i,
+      );
     });
 
     it('resets student unread counter', async () => {
@@ -554,9 +554,9 @@ describe('ChatService', () => {
         exists: true,
         data: () => ({ userId: 'OTHER' }),
       });
-      await expect(
-        service.markRead('c1', 'u1', 'student'),
-      ).rejects.toThrow(/permissão/i);
+      await expect(service.markRead('c1', 'u1', 'student')).rejects.toThrow(
+        /permissão/i,
+      );
     });
 
     it('zera unreadCount mesmo em conversa fechada (intencional)', async () => {
@@ -705,32 +705,53 @@ describe('ChatService', () => {
     });
   });
 
-  describe('resolvePartnerPrepId', () => {
-    it('resolves partnerPrepId from inscriptionCourseId', async () => {
+  describe('resolveConversationContext', () => {
+    it('resolves context from inscriptionCourseId', async () => {
       mockInscriptionCourseRepository.findOneWithPartnerPrep.mockResolvedValue({
-        partnerPrepCourse: { id: 'prep-aaa' },
+        partnerPrepCourse: { id: 'prep-aaa', geo: { name: 'Cursinho ABC' } },
       });
-      const id = await service['resolvePartnerPrepId']({ inscriptionCourseId: 'ic-uuid' });
-      expect(id).toBe('prep-aaa');
+      const ctx = await service['resolveConversationContext']({
+        inscriptionCourseId: 'ic-uuid',
+      });
+      expect(ctx).toEqual({
+        partnerPrepId: 'prep-aaa',
+        cursinhoName: 'Cursinho ABC',
+        originLabel: 'Formulário de inscrição',
+      });
     });
 
-    it('resolves partnerPrepId from studentCourseId', async () => {
+    it('resolves context from studentCourseId', async () => {
       mockStudentCourseRepository.findOneWithPartnerPrep.mockResolvedValue({
-        partnerPrepCourse: { id: 'prep-bbb' },
+        partnerPrepCourse: { id: 'prep-bbb', geo: { name: 'Cursinho XYZ' } },
       });
-      const id = await service['resolvePartnerPrepId']({ studentCourseId: 'sc-uuid' });
-      expect(id).toBe('prep-bbb');
+      const ctx = await service['resolveConversationContext']({
+        studentCourseId: 'sc-uuid',
+      });
+      expect(ctx).toEqual({
+        partnerPrepId: 'prep-bbb',
+        cursinhoName: 'Cursinho XYZ',
+        originLabel: 'Declaração de interesse',
+      });
     });
 
-    it('returns null when no identifier provided', async () => {
-      const id = await service['resolvePartnerPrepId']({});
-      expect(id).toBeNull();
+    it('returns nulls when no identifier provided', async () => {
+      const ctx = await service['resolveConversationContext']({});
+      expect(ctx).toEqual({
+        partnerPrepId: null,
+        cursinhoName: null,
+        originLabel: null,
+      });
     });
 
-    it('returns null when inscription not found', async () => {
-      mockInscriptionCourseRepository.findOneWithPartnerPrep.mockResolvedValue(null);
-      const id = await service['resolvePartnerPrepId']({ inscriptionCourseId: 'bad-id' });
-      expect(id).toBeNull();
+    it('returns null partnerPrepId when inscription not found', async () => {
+      mockInscriptionCourseRepository.findOneWithPartnerPrep.mockResolvedValue(
+        null,
+      );
+      const ctx = await service['resolveConversationContext']({
+        inscriptionCourseId: 'bad-id',
+      });
+      expect(ctx.partnerPrepId).toBeNull();
+      expect(ctx.originLabel).toBe('Formulário de inscrição');
     });
   });
 
@@ -751,7 +772,10 @@ describe('ChatService', () => {
         id: 'user-2',
         role: { supportAgent: false, partnerPrepSupportAgent: true },
       } as any);
-      expect(claims).toEqual({ role: 'support_agent', partnerPrepId: 'prep-uuid-123' });
+      expect(claims).toEqual({
+        role: 'support_agent',
+        partnerPrepId: 'prep-uuid-123',
+      });
     });
 
     it('returns student when partnerPrepSupportAgent=true but no collaborator row', async () => {

@@ -41,11 +41,17 @@ export class OpenConversationDto {
 
   @IsOptional()
   @IsUUID()
-  @ApiProperty({ required: false, example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
+  @ApiProperty({
+    required: false,
+    example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+  })
   inscriptionCourseId?: string;
 
   @IsOptional()
   @IsUUID()
-  @ApiProperty({ required: false, example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
+  @ApiProperty({
+    required: false,
+    example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+  })
   studentCourseId?: string;
 }
