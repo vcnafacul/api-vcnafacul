@@ -29,6 +29,13 @@ export class DashboardController {
 
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.visualizarEstudantes)
+  @Get('students-enrolled')
+  async getStudentsCurrentlyEnrolled() {
+    return this.dashboardService.getStudentsCurrentlyEnrolled();
+  }
+
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarEstudantes)
   @Get('students-served')
   async getStudentsServed() {
     return this.dashboardService.getStudentsServed();
