@@ -353,6 +353,21 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .getMany();
   }
 
+  async countStudentsEffectivelyServed(): Promise<number> {
+    const { count } = await this.repository
+      .createQueryBuilder('entity')
+      .select('COUNT(DISTINCT entity.user_id)', 'count')
+      .where('entity.applicationStatus IN (:...statuses)', {
+        statuses: [
+          StatusApplication.Enrolled,
+          StatusApplication.EnrollmentCancelled,
+          StatusApplication.EnrollmentClosed,
+        ],
+      })
+      .getRawOne<{ count: string }>();
+    return parseInt(count, 10);
+  }
+
   async existsByUserId(userId: string): Promise<boolean> {
     const count = await this.repository
       .createQueryBuilder('entity')
