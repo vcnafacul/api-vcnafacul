@@ -125,6 +125,8 @@ describe('CoursePeriod (e2e)', () => {
       gerenciarTemas: false,
       revisarRedacoes: false,
       revisarTodasRedacoes: false,
+      supportAgent: false,
+      partnerPrepSupportAgent: false,
     };
     role = await roleService.create(roleDto);
 
