@@ -10,8 +10,12 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import * as admin from 'firebase-admin';
+import { InscriptionCourseRepository } from 'src/modules/prepCourse/InscriptionCourse/inscription-course.repository';
+import { CollaboratorRepository } from 'src/modules/prepCourse/collaborator/collaborator.repository';
+import { StudentCourseRepository } from 'src/modules/prepCourse/studentCourse/student-course.repository';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { ConversationMetadata, SenderType } from './chat.types';
+import { OpenConversationDto } from './dtos/open-conversation.dto';
 import { FirebaseService } from './firebase/firebase.service';
 
 const COOLDOWN_MS = 15 * 60 * 1000;
@@ -22,7 +26,7 @@ type UserLike = {
   id: string;
   name: string;
   socialName?: string | null;
-  role: { supportAgent: boolean };
+  role: { supportAgent: boolean; partnerPrepSupportAgent?: boolean };
 };
 
 @Injectable()
@@ -32,16 +36,81 @@ export class ChatService {
   constructor(
     private readonly firebase: FirebaseService,
     private readonly userRepository: UserRepository,
+    private readonly collaboratorRepository: CollaboratorRepository,
+    private readonly inscriptionCourseRepository: InscriptionCourseRepository,
+    private readonly studentCourseRepository: StudentCourseRepository,
   ) {}
 
   /**
+   * Resolve o role e partnerPrepId para as claims do Firebase custom token.
+   * Regra de segurança: partnerPrepSupportAgent=true SEM Collaborator válido
+   * → role='student', partnerPrepId=null (evita acesso global por má configuração).
+   */
+  private async resolveTokenClaims(
+    user: UserLike,
+  ): Promise<{ role: string; partnerPrepId: string | null }> {
+    if (user.role.supportAgent) {
+      return { role: 'support_agent', partnerPrepId: null };
+    }
+    if (user.role.partnerPrepSupportAgent) {
+      const collaborator = await this.collaboratorRepository.findOneByUserId(
+        user.id,
+      );
+      const partnerPrepId = collaborator?.partnerPrepCourse?.id ?? null;
+      if (partnerPrepId) {
+        return { role: 'support_agent', partnerPrepId };
+      }
+    }
+    return { role: 'student', partnerPrepId: null };
+  }
+
+  /**
+   * Resolve o contexto da conversa a partir do identificador da inscrição.
+   * Retorna o partnerPrepId, o nome do cursinho e o rótulo de origem para
+   * exibição no header e lista de conversas do suporte.
+   */
+  private async resolveConversationContext(
+    dto: Pick<OpenConversationDto, 'inscriptionCourseId' | 'studentCourseId'>,
+  ): Promise<{
+    partnerPrepId: string | null;
+    cursinhoName: string | null;
+    originLabel: string | null;
+  }> {
+    if (dto.inscriptionCourseId) {
+      const inscription =
+        await this.inscriptionCourseRepository.findOneWithPartnerPrep(
+          dto.inscriptionCourseId,
+        );
+      return {
+        partnerPrepId: inscription?.partnerPrepCourse?.id ?? null,
+        cursinhoName: inscription?.partnerPrepCourse?.geo?.name ?? null,
+        originLabel: 'Formulário de inscrição',
+      };
+    }
+    if (dto.studentCourseId) {
+      const studentCourse =
+        await this.studentCourseRepository.findOneWithPartnerPrep(
+          dto.studentCourseId,
+        );
+      return {
+        partnerPrepId: studentCourse?.partnerPrepCourse?.id ?? null,
+        cursinhoName: studentCourse?.partnerPrepCourse?.geo?.name ?? null,
+        originLabel: 'Declaração de interesse',
+      };
+    }
+    return { partnerPrepId: null, cursinhoName: null, originLabel: null };
+  }
+
+  /**
    * Gera um Firebase Custom Token para o usuário, com claims
-   * `userId`, `role` e `name` (usa nome social quando disponível).
+   * `userId`, `role`, `partnerPrepId` e `name` (usa nome social quando disponível).
    */
   private async generateCustomToken(user: UserLike): Promise<string> {
+    const { role, partnerPrepId } = await this.resolveTokenClaims(user);
     const claims = {
       userId: user.id,
-      role: user.role.supportAgent ? 'support_agent' : 'student',
+      role,
+      partnerPrepId,
       name: user.socialName ?? user.name,
     };
     return await this.firebase.auth().createCustomToken(user.id, claims);
@@ -75,7 +144,10 @@ export class ChatService {
       id: user.id,
       name: fullName,
       socialName,
-      role: { supportAgent: user.role?.supportAgent === true },
+      role: {
+        supportAgent: user.role?.supportAgent === true,
+        partnerPrepSupportAgent: user.role?.partnerPrepSupportAgent === true,
+      },
     });
   }
 
@@ -88,6 +160,10 @@ export class ChatService {
     userId: string,
     userName: string,
     metadata: ConversationMetadata,
+    context?: Pick<
+      OpenConversationDto,
+      'inscriptionCourseId' | 'studentCourseId'
+    >,
   ): Promise<{ id: string }> {
     const db = this.firebase.firestore();
     const convs = db.collection('conversations');
@@ -127,6 +203,9 @@ export class ChatService {
 
     // 3. Cria nova conversa.
     const now = admin.firestore.Timestamp.now();
+    const { partnerPrepId, cursinhoName, originLabel } = context
+      ? await this.resolveConversationContext(context)
+      : { partnerPrepId: null, cursinhoName: null, originLabel: null };
     // TODO: userName denormalizado fica stale se user muda nome social.
     // Aceitável MVP — Fase 2 pode considerar refresh ou query a cada listener tick.
     const created = await convs.add({
@@ -139,6 +218,9 @@ export class ChatService {
       closedBy: null,
       unreadCountStudent: 0,
       unreadCountSupport: 0,
+      partnerPrepId,
+      cursinhoName,
+      originLabel,
       metadata: {
         page: metadata.page,
         userAgent: metadata.userAgent,
@@ -146,9 +228,7 @@ export class ChatService {
         browser: metadata.browser,
       },
     });
-    this.logger.log(
-      `chat.conversation_opened id=${created.id} user=${userId}`,
-    );
+    this.logger.log(`chat.conversation_opened id=${created.id} user=${userId}`);
     return { id: created.id };
   }
 
@@ -418,6 +498,30 @@ export class ChatService {
     return actorType;
   }
 
+  async resolveActorForMessage(
+    userId: string,
+  ): Promise<{ actorType: SenderType; senderName: string }> {
+    const user = await this.userRepository.findOneBy({ id: userId });
+    if (!user || !user.role) {
+      throw new UnauthorizedException('Usuário não autenticado');
+    }
+    const actorType: SenderType =
+      user.role.supportAgent || user.role.partnerPrepSupportAgent
+        ? 'support'
+        : 'student';
+    const baseName =
+      user.useSocialName && user.socialName
+        ? `${user.socialName} ${user.lastName}`
+        : `${user.firstName} ${user.lastName}`;
+    const senderName = await this.buildSenderName(
+      userId,
+      baseName,
+      actorType,
+      user.role,
+    );
+    return { actorType, senderName };
+  }
+
   /**
    * Resolve actorType + displayName num único load. Usado pelos endpoints
    * que precisam dos dois (open/send) — evita 2 queries.
@@ -429,11 +533,47 @@ export class ChatService {
     if (!user || !user.role) {
       throw new UnauthorizedException('Usuário não autenticado');
     }
-    const actorType: SenderType = user.role.supportAgent ? 'support' : 'student';
+    const actorType: SenderType =
+      user.role.supportAgent || user.role.partnerPrepSupportAgent
+        ? 'support'
+        : 'student';
     const displayName =
       user.useSocialName && user.socialName
         ? `${user.socialName} ${user.lastName}`
         : `${user.firstName} ${user.lastName}`;
     return { actorType, displayName };
+  }
+
+  /**
+   * Retorna o nome do remetente com contexto entre parênteses para mensagens
+   * de suporte: "Nome (Suporte Você na Facul)" ou "Nome (Nome do Cursinho)".
+   * Estudantes recebem apenas o nome sem contexto.
+   */
+  private async buildSenderName(
+    userId: string,
+    baseName: string,
+    actorType: SenderType,
+    role: { supportAgent: boolean; partnerPrepSupportAgent?: boolean },
+  ): Promise<string> {
+    if (actorType !== 'support') return baseName;
+    if (role.supportAgent) return `${baseName} (Suporte Você na Facul)`;
+    const collaborator =
+      await this.collaboratorRepository.findOneByUserIdWithGeo(userId);
+    const cursinhoName = collaborator?.partnerPrepCourse?.geo?.name;
+    return cursinhoName ? `${baseName} (${cursinhoName})` : baseName;
+  }
+
+  /**
+   * Retorna o partnerPrepCourse.id do Collaborator vinculado ao usuário,
+   * independente de ele também ser supportAgent global.
+   * Usado pela tela /dashboard/suporte-cursinho para sempre escopar ao
+   * cursinho correto — sem depender das claims do token Firebase.
+   */
+  async getCallerPartnerPrepId(
+    userId: string,
+  ): Promise<{ partnerPrepId: string | null }> {
+    const collaborator =
+      await this.collaboratorRepository.findOneByUserId(userId);
+    return { partnerPrepId: collaborator?.partnerPrepCourse?.id ?? null };
   }
 }

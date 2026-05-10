@@ -17,9 +17,7 @@ export class NovidadesDestaqueDescription1777165085256
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`ALTER TABLE \`news\` DROP COLUMN \`destaque\``);
-    await queryRunner.query(
-      `ALTER TABLE \`news\` DROP COLUMN \`description\``,
-    );
+    await queryRunner.query(`ALTER TABLE \`news\` DROP COLUMN \`description\``);
     await queryRunner.query(
       `ALTER TABLE \`news\` ADD \`session\` varchar(255) NOT NULL DEFAULT ''`,
     );

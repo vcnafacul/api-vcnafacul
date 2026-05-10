@@ -5,21 +5,41 @@ service cloud.firestore {
     function isStudent() {
       return request.auth != null && request.auth.token.role == 'student';
     }
-    function isSupport() {
-      return request.auth != null && request.auth.token.role == 'support_agent';
+
+    // Firebase omits null claims from custom tokens — key may be absent, not explicitly null.
+    function isGlobalSupport() {
+      return request.auth != null
+          && request.auth.token.role == 'support_agent'
+          && (!('partnerPrepId' in request.auth.token) || request.auth.token.partnerPrepId == null);
     }
+
+    function isPartnerSupport(conv) {
+      return request.auth != null
+          && request.auth.token.role == 'support_agent'
+          && 'partnerPrepId' in request.auth.token
+          && request.auth.token.partnerPrepId != null
+          && request.auth.token.partnerPrepId == conv.partnerPrepId;
+    }
+
     function ownsConversation(conv) {
       return isStudent() && conv.userId == request.auth.token.userId;
     }
 
     match /conversations/{conversationId} {
-      allow read: if isSupport() || ownsConversation(resource.data);
+      allow read: if isGlobalSupport()
+                  || isPartnerSupport(resource.data)
+                  || ownsConversation(resource.data);
+      // All writes go through NestJS Admin SDK, which bypasses Security Rules.
       allow write: if false;
     }
 
     match /messages/{messageId} {
-      allow read: if isSupport()
-        || (isStudent() && resource.data.conversationUserId == request.auth.token.userId);
+      allow read: if isGlobalSupport()
+                  || isPartnerSupport(
+                       get(/databases/$(database)/documents/conversations/$(resource.data.conversationId)).data
+                     )
+                  || (isStudent() && resource.data.conversationUserId == request.auth.token.userId);
+      // All writes go through NestJS Admin SDK, which bypasses Security Rules.
       allow write: if false;
     }
   }
