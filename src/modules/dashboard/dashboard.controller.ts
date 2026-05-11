@@ -26,4 +26,18 @@ export class DashboardController {
   async getQuestoesPendentes(@Req() req: any) {
     return this.dashboardService.getQuestoesPendentes(req.user.id);
   }
+
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarEstudantes)
+  @Get('students-enrolled')
+  async getStudentsCurrentlyEnrolled() {
+    return this.dashboardService.getStudentsCurrentlyEnrolled();
+  }
+
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarEstudantes)
+  @Get('students-served')
+  async getStudentsServed() {
+    return this.dashboardService.getStudentsServed();
+  }
 }
