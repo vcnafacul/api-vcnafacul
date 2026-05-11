@@ -40,4 +40,14 @@ export class DashboardController {
   async getStudentsServed() {
     return this.dashboardService.getStudentsServed();
   }
+
+  @Get('public/students-served')
+  async getPublicStudentsServed() {
+    return this.dashboardService.getStudentsServed();
+  }
+
+  @Get('public/students-enrolled')
+  async getPublicStudentsEnrolled() {
+    return this.dashboardService.getStudentsCurrentlyEnrolled();
+  }
 }
