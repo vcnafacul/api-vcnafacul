@@ -146,10 +146,7 @@ export class UserService extends BaseService<User> {
       throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     }
     if (!userFullInfo.password) {
-      throw new HttpException(
-        'password not set, use Google login or reset password',
-        HttpStatus.UNAUTHORIZED,
-      );
+      throw new HttpException('invalid credentials', HttpStatus.UNAUTHORIZED);
     }
     if (!(await bcrypt.compare(loginInput.password, userFullInfo?.password))) {
       throw new HttpException('password invalid', HttpStatus.CONFLICT);
@@ -227,47 +224,57 @@ export class UserService extends BaseService<User> {
   }
 
   async handleGoogleCallback(googleUser: GoogleUser): Promise<string> {
-    const clientUrl = this.envService.get('CLIENT_URL');
-    try {
-      let user = await this.userRepository.findOneBy({
-        email: googleUser.email,
-      });
-
-      if (user) {
-        if (!user.googleId) {
-          user.googleId = googleUser.googleId;
-          if (user.emailConfirmSended) {
-            user.emailConfirmSended = null;
-          }
-          await this.userRepository.update(user);
-        }
-        const tokenData = await this.getAccessToken(user);
-        if (user.profileComplete === false) {
-          return `${clientUrl}/onboarding?token=${tokenData.access_token}`;
-        }
-        return `${clientUrl}/auth/callback?token=${tokenData.access_token}`;
-      }
-
-      const role = await this.roleRepository.findOneBy({ name: 'aluno' });
-      if (!role) {
-        throw new HttpException('role not found', HttpStatus.BAD_REQUEST);
-      }
-      const newUser = new User();
-      newUser.email = googleUser.email;
-      newUser.firstName = googleUser.firstName;
-      newUser.lastName = googleUser.lastName;
-      newUser.googleId = googleUser.googleId;
-      newUser.profileComplete = false;
-      newUser.emailConfirmSended = null;
-      newUser.lgpd = false;
-      newUser.role = role;
-      const created = await this.userRepository.create(newUser);
-      const tokenData = await this.getAccessToken(created);
-      return `${clientUrl}/onboarding?token=${tokenData.access_token}`;
-    } catch (error) {
-      this.logger.error(`Google OAuth callback error: ${error}`);
-      return `${clientUrl}/login?error=oauth_failed`;
+    if (!googleUser.email) {
+      throw new HttpException('invalid credentials', HttpStatus.UNAUTHORIZED);
     }
+    const clientUrl = this.envService.get('CLIENT_URL');
+
+    let user = await this.userRepository.findOneBy({
+      email: googleUser.email,
+    });
+
+    if (user) {
+      if (!user.googleId) {
+        if (user.emailConfirmSended !== null) {
+          const url = new URL(`${clientUrl}/login`);
+          url.searchParams.set('error', 'account_not_confirmed');
+          return url.toString();
+        }
+        user.googleId = googleUser.googleId;
+        await this.userRepository.update(user);
+      }
+      const tokenData = await this.getAccessToken(user);
+      if (user.profileComplete === false) {
+        const url = new URL(`${clientUrl}/onboarding`);
+        url.searchParams.set('token', tokenData.access_token);
+        return url.toString();
+      }
+      const url = new URL(`${clientUrl}/auth/callback`);
+      url.searchParams.set('token', tokenData.access_token);
+      return url.toString();
+    }
+
+    const role = await this.roleRepository.findOneBy({ name: 'aluno' });
+    if (!role) {
+      throw new HttpException(
+        'role not found',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+    const newUser = new User();
+    newUser.email = googleUser.email;
+    newUser.firstName = googleUser.firstName;
+    newUser.lastName = googleUser.lastName;
+    newUser.googleId = googleUser.googleId;
+    newUser.profileComplete = false;
+    newUser.emailConfirmSended = null;
+    newUser.lgpd = false;
+    newUser.role = role;
+    const created = await this.userRepository.create(newUser);
+    const tokenData = await this.getAccessToken(created);
+    const url = new URL(`${clientUrl}/onboarding`);
+    url.searchParams.set('token', tokenData.access_token);
+    return url.toString();
   }
 
   async completeProfile(
@@ -488,7 +495,7 @@ export class UserService extends BaseService<User> {
     }
 
     const profiles = await this.profileDetector.detect(domain.id);
-    const profileComplete = domain.profileComplete ?? null;
+    const profileComplete = domain.profileComplete === false ? false : true;
 
     // Gera o access token (15 minutos)
     const accessToken = await this.jwtService.signAsync({

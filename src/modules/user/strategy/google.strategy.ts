@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, Profile } from 'passport-google-oauth20';
 import { EnvService } from 'src/shared/modules/env/env.service';
@@ -12,7 +12,7 @@ export interface GoogleUser {
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
-  constructor(private readonly envService: EnvService) {
+  constructor(envService: EnvService) {
     super({
       clientID: envService.get('GOOGLE_CLIENT_ID'),
       clientSecret: envService.get('GOOGLE_CLIENT_SECRET'),
@@ -26,9 +26,16 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     _refreshToken: string,
     profile: Profile,
   ): Promise<GoogleUser> {
+    const email = profile.emails?.[0]?.value;
+    if (!email) {
+      throw new UnauthorizedException('Google profile sem email');
+    }
+    if (profile.emails[0].verified === false) {
+      throw new UnauthorizedException('Email Google não verificado');
+    }
     return {
       googleId: profile.id,
-      email: profile.emails?.[0]?.value,
+      email,
       firstName: profile.name?.givenName,
       lastName: profile.name?.familyName,
     };
