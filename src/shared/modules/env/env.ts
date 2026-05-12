@@ -80,12 +80,12 @@ export const envSchema = z.object({
     .default('AIzaSyCK0EJwZiLpGw46t2sC811b63L8pVvT3A'),
 
   // Google OAuth
-  GOOGLE_CLIENT_ID: z.string().default(''),
-  GOOGLE_CLIENT_SECRET: z.string().default(''),
+  GOOGLE_CLIENT_ID: z.string().default('dev-disabled'),
+  GOOGLE_CLIENT_SECRET: z.string().default('dev-disabled'),
   GOOGLE_CALLBACK_URL: z
     .string()
     .url()
-    .default('http://localhost:3333/auth/google/callback'),
+    .default('http://localhost:3333/user/auth/google/callback'),
   CLIENT_URL: z.string().url().default('http://localhost:5173'),
 
   // Essay AI
