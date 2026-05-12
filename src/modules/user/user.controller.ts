@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Get,
-  HttpCode,
   HttpStatus,
   Param,
   Patch,
@@ -14,7 +13,12 @@ import {
   SetMetadata,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiExcludeEndpoint,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { THROTTLE_CONFIG } from 'src/shared/config/email.config';
 import { Request, Response } from 'express';
@@ -140,12 +144,13 @@ export class UserController {
   }
 
   @Get('auth/google')
-  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Inicia o fluxo de autenticação com Google OAuth' })
   @UseGuards(GoogleAuthGuard)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async googleAuth(@Req() _req: Request) {}
 
   @Get('auth/google/callback')
+  @ApiExcludeEndpoint()
   @UseGuards(GoogleAuthGuard)
   async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
     const redirectUrl = await this.userService.handleGoogleCallback(
@@ -155,6 +160,7 @@ export class UserController {
   }
 
   @Patch('complete-profile')
+  @ApiOperation({ summary: 'Completa o perfil de usuário criado via Google OAuth' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async completeProfile(@Body() dto: CompleteProfileDto, @Req() req: Request) {
