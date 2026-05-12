@@ -320,6 +320,15 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .getOne();
   }
 
+  async findOneWithPartnerPrep(id: string): Promise<StudentCourse | null> {
+    return this.repository
+      .createQueryBuilder('entity')
+      .where('entity.id = :id', { id })
+      .leftJoinAndSelect('entity.partnerPrepCourse', 'partnerPrepCourse')
+      .leftJoinAndSelect('partnerPrepCourse.geo', 'geo')
+      .getOne();
+  }
+
   async findEnrolledByUserId(userId: string): Promise<StudentCourse | null> {
     return this.repository.findOne({
       where: {
@@ -342,6 +351,32 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
         status: StatusApplication.Enrolled,
       })
       .getMany();
+  }
+
+  async countStudentsCurrentlyEnrolled(): Promise<number> {
+    const { count } = await this.repository
+      .createQueryBuilder('entity')
+      .select('COUNT(DISTINCT entity.user_id)', 'count')
+      .where('entity.applicationStatus = :status', {
+        status: StatusApplication.Enrolled,
+      })
+      .getRawOne<{ count: string }>();
+    return parseInt(count, 10);
+  }
+
+  async countStudentsEffectivelyServed(): Promise<number> {
+    const { count } = await this.repository
+      .createQueryBuilder('entity')
+      .select('COUNT(DISTINCT entity.user_id)', 'count')
+      .where('entity.applicationStatus IN (:...statuses)', {
+        statuses: [
+          StatusApplication.Enrolled,
+          StatusApplication.EnrollmentCancelled,
+          StatusApplication.EnrollmentClosed,
+        ],
+      })
+      .getRawOne<{ count: string }>();
+    return parseInt(count, 10);
   }
 
   async existsByUserId(userId: string): Promise<boolean> {

@@ -1,73 +1,117 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
+# 📚 Você na Facul — API (Gateway)
 
-<p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+API principal da plataforma **Você na Facul**, organização sem fins lucrativos que democratiza o acesso ao ensino superior no Brasil.
 
-## Description
+Este serviço atua como **gateway central**: autentica usuários, expõe os recursos de cursinhos/estudantes e faz proxy HTTP para os microsserviços `ms-simulado` (motor de provas) e `vcnafacul-form` (construtor de formulários).
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+---
 
-## Installation
+## 🧩 Arquitetura
 
-```bash
-$ yarn install
+```
+client-vcnafacul  →  api-vcnafacul  →  ms-simulado       (motor de provas)
+  (React SPA)       (NestJS gateway)   (NestJS + MongoDB)
+                         ↓
+                    vcnafacul-form    (construtor de formulários)
+                    (NestJS + MongoDB)
 ```
 
-## Running the app
+| Serviço | Stack | Banco | Porta |
+|---------|-------|-------|-------|
+| **api-vcnafacul** (este) | NestJS 10 + TypeORM | MySQL 8+ | `3333` |
+| ms-simulado | NestJS 10 + Mongoose | MongoDB | `3000` |
+| vcnafacul-form | NestJS 11 + Mongoose | MongoDB | `3001` |
+| client-vcnafacul | React 19 + Vite 6 | — | `5173` |
+
+O frontend fala **apenas** com este gateway. Microsserviços não são expostos diretamente.
+
+---
+
+## 🛠 Tecnologias
+
+- **NestJS 10** (TypeScript)
+- **TypeORM** + **MySQL 8+**
+- **JWT** (15min) + refresh token em cookie httpOnly
+- **Redis / KeyV** (cache)
+- **AWS S3 / Cloudflare R2** (BlobStorage)
+- **Nodemailer + Handlebars** (e-mails transacionais)
+- **Axios** (proxy para microsserviços)
+- **Swagger** em `/api`
+- **Jest** (unit + e2e) com Docker MySQL
+
+---
+
+## ⚙️ Pré-requisitos
+
+- Node.js 20+
+- Yarn
+- Docker + Docker Compose (para banco de testes)
+- MySQL 8+ (ou container em `:3307` para `test:local`)
+
+---
+
+## 🚀 Setup
 
 ```bash
-# development
-$ yarn run start
+# Instalar dependências
+yarn
 
-# watch mode
-$ yarn run start:dev
+# Copiar .env de exemplo e preencher as 51 variáveis
+cp .env.example .env
 
-# production mode
-$ yarn run start:prod
+# Rodar migrations
+yarn migration:run
+
+# Subir em modo watch (porta 3333)
+yarn dev
 ```
 
-## Test
+Variáveis obrigatórias incluem: conexão MySQL, SMTP, credenciais AWS S3/R2, `SIMULADO_URL` (URL do `ms-simulado`), Redis, webhook do Discord e logging Grafana. Ver `.env.example`.
+
+---
+
+## 📑 Documentação da API
+
+Swagger disponível em:
+
+```
+http://localhost:3333/api
+```
+
+---
+
+## 🧪 Testes
 
 ```bash
-# Quando tiver um docker rodando
-$ yarn run test
+# e2e completo: sobe Docker MySQL, roda migrations, testa, derruba
+yarn test
 
-# Se tiver um container mysql de pé com as migration aplicadas, usar esse comando
-$ yarn run test:local
+# e2e contra MySQL local em :3307 (sem Docker)
+yarn test:local
 
-# teste de cobertura
-$ yarn run test:cov
+# cobertura
+yarn test:cov
 ```
 
-## Support
+---
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## 🗄 Migrations
 
-## Stay in touch
+```bash
+yarn migration:generate -n NomeDaMigration
+yarn migration:run
+yarn migration:revert
+```
 
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+---
 
-## License
+## 🔀 CI/CD
 
-Nest is [MIT licensed](LICENSE).
+- `ci-homol.yml` — deploy em homologação ao mergear PR em `develop`
+- `ci-prod.yml` — deploy em produção ao publicar tag `v*`
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+---
+
+## 📄 Licença
+
+MIT.

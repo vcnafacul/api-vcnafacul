@@ -71,11 +71,31 @@ export class NewsController {
     return await this.newService.create(body, file, (req.user as User).id);
   }
 
+  @Post('assets')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 201,
+    description: 'Upload de imagem para uso em corpo de novidade tipo text',
+    schema: {
+      type: 'object',
+      properties: {
+        assetId: { type: 'string' },
+      },
+    },
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.uploadNews)
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadAsset(@UploadedFile() file: Express.Multer.File) {
+    return await this.newService.uploadAsset(file);
+  }
+
   @Patch(':id')
   @ApiBearerAuth()
   @ApiResponse({
     status: 200,
-    description: 'atualizar novidade (session, title, expire_at)',
+    description:
+      'atualizar novidade (title, description, destaque, body, expire_at)',
   })
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.uploadNews)

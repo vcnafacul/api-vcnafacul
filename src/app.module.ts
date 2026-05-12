@@ -15,6 +15,7 @@ import { LokiLoggerService } from './logger/loki-logger';
 import { AuditLogModule } from './modules/audit-log/audit-log.module';
 import { FrontendErrorsModule } from './modules/frontend-errors/frontend-errors.module';
 import { GeoModule } from './modules/geo/geo.module';
+import { HomeContentModule } from './modules/home-content/home-content.module';
 import { NewsModule } from './modules/news/news.module';
 import { AbsenceJustificationModule } from './modules/prepCourse/attendance/absenceJustification/absence-justification.module';
 import { AttendanceRecordModule } from './modules/prepCourse/attendance/attendanceRecord/attendance-record.module';
@@ -39,6 +40,8 @@ import { JwtStrategy } from './shared/strategy/jwt.strategy';
 import { PlacesModule } from './modules/places/places.module';
 import { EssayModule } from './modules/essay/essay.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { ChatModule } from './modules/chat/chat.module';
+import { FirebaseModule } from './modules/chat/firebase/firebase.module';
 
 /**
  * Desabilita ThrottlerGuard em ambiente de teste para evitar erros 429
@@ -95,6 +98,7 @@ const throttlerProvider: Provider = isTestEnv
     CoursePeriodModule,
     AuditLogModule,
     FrontendErrorsModule,
+    HomeContentModule,
     NewsModule,
     StudentCourseModule,
     InscriptionCourseModule,
@@ -111,6 +115,8 @@ const throttlerProvider: Provider = isTestEnv
     PlacesModule,
     EssayModule,
     DashboardModule,
+    FirebaseModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [

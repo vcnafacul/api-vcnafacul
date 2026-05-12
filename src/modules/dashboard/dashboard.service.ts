@@ -138,6 +138,30 @@ export class DashboardService {
     await this.cache.del(`dashboard:collab:${userId}`);
   }
 
+  async getStudentsCurrentlyEnrolled(): Promise<{ total: number }> {
+    return this.cache.wrap(
+      'dashboard:students-enrolled',
+      async () => {
+        const total =
+          await this.studentCourseRepo.countStudentsCurrentlyEnrolled();
+        return { total };
+      },
+      60 * 60 * 1000, // 1h
+    );
+  }
+
+  async getStudentsServed(): Promise<{ total: number }> {
+    return this.cache.wrap(
+      'dashboard:students-served',
+      async () => {
+        const total =
+          await this.studentCourseRepo.countStudentsEffectivelyServed();
+        return { total };
+      },
+      60 * 60 * 1000, // 1h
+    );
+  }
+
   async getQuestoesPendentes(
     userId: string,
   ): Promise<QuestoesPendentesDashboardDtoOutput> {

@@ -43,6 +43,12 @@ export const envSchema = z.object({
   MAIL_PASSWORD: z.string().default('password'),
   TEMPLATE_EMAIL: z.string().default('vcnafacul'),
   TEMPLATE_EMAIL_ASSET: z.string().default('vcnafacul'),
+  USE_SMTP_FAKE: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+  SMTP_FAKE_HOST: z.string().default('mailpit'),
+  SMTP_FAKE_PORT: z.coerce.number().default(1025),
 
   //S3
   BLOB_PROVIDER: z.enum(['S3']).default('S3'),
@@ -57,6 +63,7 @@ export const envSchema = z.object({
   BUCKET_SIMULADO: z.string().default('vcnafacul-simulado'),
   BUCKET_CONTENT: z.string().default('vcnafacul-content'),
   BUCKET_NEWS: z.string().default('vcnafacul-news'),
+  BUCKET_HOME: z.string().default('vcnafacul-home'),
   BUCKET_PARTNERSHIP_DOC: z.string().default('vcnafacul-partnership-doc'),
   BUCKET_ESSAY: z.string().default('vcnafacul-essays'),
   AWS_STORAGE_CLASS: z.enum(['STANDARD']).default('STANDARD'),
@@ -97,6 +104,10 @@ export const envSchema = z.object({
   ANTHROPIC_API_KEY: z.string().default(''),
   OPENAI_API_KEY: z.string().default(''),
   ESSAY_AI_MODEL: z.string().default('gpt-4o'),
+
+  // Firebase (chat de suporte)
+  FIREBASE_PROJECT_ID: z.string().default(''),
+  FIREBASE_SERVICE_ACCOUNT_BASE64: z.string().default(''),
 });
 
 export type Env = z.infer<typeof envSchema>;

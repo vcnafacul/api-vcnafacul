@@ -35,7 +35,7 @@ export const createEnrollmentCertificate = async (
   const headerContent: any[] = [];
 
   // Monta o endereço completo
-  const address = `${data.geo.street}, ${data.geo.number}${data.geo.complement ? ', ' + data.geo.complement : ''}`;
+  const address = `${data.geo.street}${data.geo.number ? ', ' + data.geo.number : ''}${data.geo.complement ? ', ' + data.geo.complement : ''}`;
   const cityState = `${data.geo.city}/${data.geo.state} - CEP: ${data.geo.cep}`;
 
   const headerColumns: any[] = [];
