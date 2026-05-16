@@ -38,3 +38,4 @@ lerna-debug.log*
 .env.homol
 
 /test/coverage.worktrees/
+.worktrees/
