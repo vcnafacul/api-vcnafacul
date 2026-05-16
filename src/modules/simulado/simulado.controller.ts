@@ -81,10 +81,8 @@ export class SimuladoController {
   @Post('answer')
   @ApiBearerAuth()
   @ApiResponse({
-    status: 204,
-    description: 'endpoint para responder simulado',
-    type: SimuladoAnswerDTO,
-    isArray: false,
+    status: 202,
+    description: 'Simulado enfileirado para processamento assíncrono',
   })
   @UseGuards(JwtAuthGuard)
   public async answer(
@@ -93,12 +91,11 @@ export class SimuladoController {
     @Res() res: Response,
   ) {
     try {
-      await this.simuladoService.answer(answer, (req.user as User).id);
-      return res.status(204).send();
+      const result = await this.simuladoService.answer(answer, (req.user as User).id);
+      return res.status(202).json(result);
     } catch (error) {
-      // Retorna 502 ou o erro apropriado com base no erro recebido
       return res.status(error?.status || 502).json({
-        message: error?.message || 'Erro ao processar simulado',
+        message: error?.message || 'Erro ao enfileirar simulado',
       });
     }
   }
