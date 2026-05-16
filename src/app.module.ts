@@ -22,6 +22,7 @@ import { AttendanceRecordModule } from './modules/prepCourse/attendance/attendan
 import { PeriodJustificationModule } from './modules/prepCourse/attendance/periodJustification/period-justification.module';
 import { StudentAttendanceModule } from './modules/prepCourse/attendance/studentAttendance/student-attendance.module';
 import { ClassModule } from './modules/prepCourse/class/class.module';
+import { ClassAnalyticsModule } from './modules/prepCourse/class/analytics/class-analytics.module';
 import { CollaboratorModule } from './modules/prepCourse/collaborator/collaborator.module';
 import { CoursePeriodModule } from './modules/prepCourse/coursePeriod/course-period.module';
 import { InscriptionCourseModule } from './modules/prepCourse/InscriptionCourse/inscription-course.module';
@@ -106,6 +107,7 @@ const throttlerProvider: Provider = isTestEnv
     BlobModule,
     SimuladoModule,
     ClassModule,
+    ClassAnalyticsModule,
     AttendanceRecordModule,
     StudentAttendanceModule,
     AbsenceJustificationModule,
