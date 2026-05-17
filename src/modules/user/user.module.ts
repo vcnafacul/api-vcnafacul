@@ -20,6 +20,7 @@ import { RefreshTokenService } from './services/refresh-token.service';
 import { UserController } from './user.controller';
 import { UserRepository } from './user.repository';
 import { UserService } from './user.service';
+import { GoogleStrategy } from './strategy/google.strategy';
 import { EmailExistValidator } from './validator/email-exist.validator';
 import { EmailUniqueValidator } from './validator/email-unique.validator';
 import { UserExistValidator } from './validator/user-exist.validator';
@@ -44,6 +45,7 @@ import { UserExistValidator } from './validator/user-exist.validator';
     StudentCourseRepository,
     DiscordWebhook,
     ProfileDetectorService,
+    GoogleStrategy,
     {
       provide: STUDENT_COURSE_REPO_TOKEN,
       useExisting: StudentCourseRepository,
