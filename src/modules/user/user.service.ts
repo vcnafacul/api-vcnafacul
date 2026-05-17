@@ -235,6 +235,7 @@ export class UserService extends BaseService<User> {
 
     if (user) {
       if (!user.googleId) {
+        // emailConfirmSended é null quando o email foi confirmado; não-null significa pendente
         if (user.emailConfirmSended !== null) {
           const url = new URL(`${clientUrl}/login`);
           url.searchParams.set('error', 'account_not_confirmed');
