@@ -95,7 +95,10 @@ describe('DashboardService', () => {
           id: 'sc-2',
           cod_enrolled: 'MAT-002',
           partnerPrepCourse: { logo: null, geo: { name: 'Cursinho B' } },
-          class: { name: 'Turma X', coursePeriod: { name: '2º Sem', year: 2026 } },
+          class: {
+            name: 'Turma X',
+            coursePeriod: { name: '2º Sem', year: 2026 },
+          },
         },
       ]);
       mockStudentAttendanceRepo.countByStudentCourseId
@@ -148,9 +151,9 @@ describe('DashboardService', () => {
         null,
       );
 
-      await expect(
-        service.getCollaboratorDashboard('user-1'),
-      ).rejects.toThrow(HttpException);
+      await expect(service.getCollaboratorDashboard('user-1')).rejects.toThrow(
+        HttpException,
+      );
     });
 
     it('should return empty frentes list when no frentes assigned', async () => {

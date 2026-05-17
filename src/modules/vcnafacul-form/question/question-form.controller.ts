@@ -70,7 +70,10 @@ export class QuestionFormController {
   @Post()
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.gerenciarFormularioGlobal,
+    Permissions.gerenciarFormulario,
+  ])
   @ApiResponse({
     status: 200,
     description: 'cria seção do formulário',
@@ -87,7 +90,10 @@ export class QuestionFormController {
   @Patch(':id/set-active')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.gerenciarFormularioGlobal,
+    Permissions.gerenciarFormulario,
+  ])
   @ApiResponse({
     status: 200,
     description: 'ativa seção do formulário',
@@ -103,7 +109,10 @@ export class QuestionFormController {
   @Delete(':id')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.gerenciarFormularioGlobal,
+    Permissions.gerenciarFormulario,
+  ])
   @ApiResponse({
     status: 200,
     description: 'deleta seção do formulário',
@@ -119,7 +128,10 @@ export class QuestionFormController {
   @Put(':id')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.gerenciarFormularioGlobal,
+    Permissions.gerenciarFormulario,
+  ])
   @ApiResponse({
     status: 200,
     description: 'atualiza seção do formulário',

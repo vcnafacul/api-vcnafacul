@@ -105,6 +105,7 @@ export class ClassService extends BaseService<Class> {
         const students = classEntity.students.map((student) => {
           return {
             id: student.id,
+            userId: student.userId,
             name: student.user.useSocialName
               ? `${student.user.socialName?.split(' ')[0]} ${student.user.lastName}`
               : `${student.user.firstName} ${student.user.lastName}`,
@@ -248,6 +249,14 @@ export class ClassService extends BaseService<Class> {
       limit: classes.limit,
       totalItems: classes.totalItems,
     };
+  }
+
+  async findOneByIdForAnalytics(id: string): Promise<Class | null> {
+    return this.repository.findOneByIdForAnalytics(id);
+  }
+
+  async findAllWithActivePeriod(): Promise<Class[]> {
+    return this.repository.findAllWithActivePeriod();
   }
 
   async findOneByIdToAttendanceRecord(

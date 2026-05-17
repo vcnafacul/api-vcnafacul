@@ -17,6 +17,7 @@ export class GetClassByIdDtoOutput {
 
 export class StudentClass {
   id: string;
+  userId: string;
   name: string;
   email: string;
   status: StatusApplication;

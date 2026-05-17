@@ -15,12 +15,14 @@ import { LokiLoggerService } from './logger/loki-logger';
 import { AuditLogModule } from './modules/audit-log/audit-log.module';
 import { FrontendErrorsModule } from './modules/frontend-errors/frontend-errors.module';
 import { GeoModule } from './modules/geo/geo.module';
+import { HomeContentModule } from './modules/home-content/home-content.module';
 import { NewsModule } from './modules/news/news.module';
 import { AbsenceJustificationModule } from './modules/prepCourse/attendance/absenceJustification/absence-justification.module';
 import { AttendanceRecordModule } from './modules/prepCourse/attendance/attendanceRecord/attendance-record.module';
 import { PeriodJustificationModule } from './modules/prepCourse/attendance/periodJustification/period-justification.module';
 import { StudentAttendanceModule } from './modules/prepCourse/attendance/studentAttendance/student-attendance.module';
 import { ClassModule } from './modules/prepCourse/class/class.module';
+import { ClassAnalyticsModule } from './modules/prepCourse/class/analytics/class-analytics.module';
 import { CollaboratorModule } from './modules/prepCourse/collaborator/collaborator.module';
 import { CoursePeriodModule } from './modules/prepCourse/coursePeriod/course-period.module';
 import { InscriptionCourseModule } from './modules/prepCourse/InscriptionCourse/inscription-course.module';
@@ -39,6 +41,8 @@ import { JwtStrategy } from './shared/strategy/jwt.strategy';
 import { PlacesModule } from './modules/places/places.module';
 import { EssayModule } from './modules/essay/essay.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { ChatModule } from './modules/chat/chat.module';
+import { FirebaseModule } from './modules/chat/firebase/firebase.module';
 
 /**
  * Desabilita ThrottlerGuard em ambiente de teste para evitar erros 429
@@ -95,6 +99,7 @@ const throttlerProvider: Provider = isTestEnv
     CoursePeriodModule,
     AuditLogModule,
     FrontendErrorsModule,
+    HomeContentModule,
     NewsModule,
     StudentCourseModule,
     InscriptionCourseModule,
@@ -102,6 +107,7 @@ const throttlerProvider: Provider = isTestEnv
     BlobModule,
     SimuladoModule,
     ClassModule,
+    ClassAnalyticsModule,
     AttendanceRecordModule,
     StudentAttendanceModule,
     AbsenceJustificationModule,
@@ -111,6 +117,8 @@ const throttlerProvider: Provider = isTestEnv
     PlacesModule,
     EssayModule,
     DashboardModule,
+    FirebaseModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [

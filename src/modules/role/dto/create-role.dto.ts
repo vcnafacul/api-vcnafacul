@@ -80,6 +80,9 @@ export class CreateRoleDtoInput {
   gerenciarFormularioGlobal: boolean;
 
   @IsBoolean()
+  gerenciarFormulario: boolean;
+
+  @IsBoolean()
   gerenciarTemas: boolean;
 
   @IsBoolean()
@@ -87,4 +90,10 @@ export class CreateRoleDtoInput {
 
   @IsBoolean()
   revisarTodasRedacoes: boolean;
+
+  @IsBoolean()
+  supportAgent: boolean;
+
+  @IsBoolean()
+  partnerPrepSupportAgent: boolean;
 }

@@ -81,9 +81,12 @@ describe('Role e2e', () => {
         visualizarEstudantes: false,
         visualizarMinhasInscricoes: false,
         gerenciarFormularioGlobal: false,
+        gerenciarFormulario: false,
         gerenciarTemas: false,
         revisarRedacoes: false,
         revisarTodasRedacoes: false,
+        supportAgent: false,
+        partnerPrepSupportAgent: false,
       };
 
       const baseRoleResponse = await request(app.getHttpServer())
@@ -128,9 +131,12 @@ describe('Role e2e', () => {
         visualizarEstudantes: false,
         visualizarMinhasInscricoes: false,
         gerenciarFormularioGlobal: false,
+        gerenciarFormulario: false,
         gerenciarTemas: false,
         revisarRedacoes: false,
         revisarTodasRedacoes: false,
+        supportAgent: false,
+        partnerPrepSupportAgent: false,
       };
 
       const childRoleResponse = await request(app.getHttpServer())
@@ -259,9 +265,12 @@ describe('Role e2e', () => {
         visualizarEstudantes: false,
         visualizarMinhasInscricoes: false,
         gerenciarFormularioGlobal: false,
+        gerenciarFormulario: false,
         gerenciarTemas: false,
         revisarRedacoes: false,
         revisarTodasRedacoes: false,
+        supportAgent: false,
+        partnerPrepSupportAgent: false,
       };
 
       const baseRoleResponse = await request(app.getHttpServer())
@@ -298,9 +307,12 @@ describe('Role e2e', () => {
         visualizarEstudantes: false,
         visualizarMinhasInscricoes: false,
         gerenciarFormularioGlobal: false,
+        gerenciarFormulario: false,
         gerenciarTemas: false,
         revisarRedacoes: false,
         revisarTodasRedacoes: false,
+        supportAgent: false,
+        partnerPrepSupportAgent: false,
       };
 
       const childRoleResponse = await request(app.getHttpServer())

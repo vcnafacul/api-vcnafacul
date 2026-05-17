@@ -51,4 +51,21 @@ export class NewsRepository extends BaseRepository<News> {
       .where('entity.deletedAt IS NULL')
       .getCount();
   }
+
+  async unsetAllDestaqueExcept(
+    excludeId: string | null,
+    manager: EntityManager,
+  ): Promise<void> {
+    const qb = manager
+      .createQueryBuilder()
+      .update(News)
+      .set({ destaque: false })
+      .where('destaque = :flag', { flag: true });
+
+    if (excludeId) {
+      qb.andWhere('id != :id', { id: excludeId });
+    }
+
+    await qb.execute();
+  }
 }
