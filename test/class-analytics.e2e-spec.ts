@@ -317,9 +317,9 @@ describe('ClassAnalytics (e2e)', () => {
       .expect(404);
   }, 30000);
 
-  // ─── Cenário 4: 202 refresh current ───────────────────────────────────────
+  // ─── Cenário 4: 202 refresh current (enfileiramento) ──────────────────────
 
-  it('should return 202 and call calculateUserGroupAggregate once for current month refresh', async () => {
+  it('should return 202 and enqueue exactly one job for current month refresh', async () => {
     const { user } = await createPartnerWithAnalyticsRole();
     const token = await jwtService.signAsync(
       { user: { id: user.id } },
@@ -328,23 +328,20 @@ describe('ClassAnalytics (e2e)', () => {
 
     const { classId } = await createClassWithActivePeriod(user.id);
 
-    simuladoHttpMock.calculateUserGroupAggregate.mockResolvedValue({});
-
     const response = await request(app.getHttpServer())
       .post(`/class/${classId}/analytics/simulado/refresh`)
       .set({ Authorization: `Bearer ${token}` })
       .expect(202);
 
-    expect(simuladoHttpMock.calculateUserGroupAggregate).toHaveBeenCalledTimes(
-      1,
-    );
     expect(response.body.enqueued).toHaveLength(1);
     expect(response.body.enqueued[0].classId).toBe(classId);
+    expect(response.body.enqueued[0].month).toMatch(/^\d{4}-\d{2}$/);
+    expect(response.body.estimatedSeconds).toBe(2);
   }, 30000);
 
-  // ─── Cenário 5: 202 refresh all ───────────────────────────────────────────
+  // ─── Cenário 5: 202 refresh all (enfileiramento múltiplo) ─────────────────
 
-  it('should return 202 and call calculateUserGroupAggregate N times for refresh?all=true', async () => {
+  it('should return 202 and enqueue N jobs for refresh?all=true', async () => {
     const { user } = await createPartnerWithAnalyticsRole();
     const token = await jwtService.signAsync(
       { user: { id: user.id } },
@@ -352,11 +349,7 @@ describe('ClassAnalytics (e2e)', () => {
     );
 
     // Period starts 3 months ago → at least 3 months available
-    const { classId, coursePeriod } = await createClassWithActivePeriod(
-      user.id,
-    );
-
-    simuladoHttpMock.calculateUserGroupAggregate.mockResolvedValue({});
+    const { classId } = await createClassWithActivePeriod(user.id);
 
     const response = await request(app.getHttpServer())
       .post(`/class/${classId}/analytics/simulado/refresh?all=true`)
@@ -365,9 +358,7 @@ describe('ClassAnalytics (e2e)', () => {
 
     const expectedMonths = response.body.enqueued.length;
     expect(expectedMonths).toBeGreaterThan(1);
-    expect(simuladoHttpMock.calculateUserGroupAggregate).toHaveBeenCalledTimes(
-      expectedMonths,
-    );
+    expect(response.body.estimatedSeconds).toBe(expectedMonths * 2);
     response.body.enqueued.forEach((entry: { classId: string; month: string }) => {
       expect(entry.classId).toBe(classId);
       expect(entry.month).toMatch(/^\d{4}-\d{2}$/);
