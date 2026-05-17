@@ -94,3 +94,20 @@ jobs:
           script: |
             chmod +x ~/subir_api.sh
             ~/subir_api.sh
+
+  DEPLOY_FIRESTORE_INDEXES:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.base_ref == 'develop'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: develop
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 20.x
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+      - name: Deploy Firestore indexes
+        run: firebase deploy --only firestore:indexes
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}

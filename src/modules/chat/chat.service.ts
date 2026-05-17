@@ -178,13 +178,21 @@ export class ChatService {
       return { id: openSnap.docs[0].id };
     }
 
-    // 2. Cooldown: 15min após última conversa fechada.
-    const lastClosedSnap = await convs
+    // Resolve contexto antes do cooldown para escopar por cursinho.
+    const { partnerPrepId, cursinhoName, originLabel } = context
+      ? await this.resolveConversationContext(context)
+      : { partnerPrepId: null, cursinhoName: null, originLabel: null };
+
+    // 2. Cooldown: 15min após última conversa fechada no mesmo escopo (userId +
+    // partnerPrepId). Cursinhos distintos não bloqueiam entre si.
+    let cooldownQuery = convs
       .where('userId', '==', userId)
       .where('status', '==', 'closed')
+      .where('partnerPrepId', '==', partnerPrepId)
       .orderBy('closedAt', 'desc')
-      .limit(1)
-      .get();
+      .limit(1);
+
+    const lastClosedSnap = await cooldownQuery.get();
     if (!lastClosedSnap.empty) {
       const closedAt = lastClosedSnap.docs[0].data().closedAt?.toDate();
       if (closedAt) {
@@ -203,9 +211,6 @@ export class ChatService {
 
     // 3. Cria nova conversa.
     const now = admin.firestore.Timestamp.now();
-    const { partnerPrepId, cursinhoName, originLabel } = context
-      ? await this.resolveConversationContext(context)
-      : { partnerPrepId: null, cursinhoName: null, originLabel: null };
     // TODO: userName denormalizado fica stale se user muda nome social.
     // Aceitável MVP — Fase 2 pode considerar refresh ou query a cada listener tick.
     const created = await convs.add({
