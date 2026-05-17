@@ -1,9 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ClassService } from '../class.service';
 import { SimuladoHttpService } from 'src/shared/services/simulado-http.service';
-import { StatusApplication } from '../../studentCourse/enums/stastusApplication';
+import { AnalyticsQueueService } from './queue/analytics-queue.service';
 import {
-  computeMonthWindow,
   isActivePeriod,
   listMonthsInPeriod,
 } from './utils/month-window';
@@ -13,6 +12,7 @@ export class ClassAnalyticsService {
   constructor(
     private readonly classService: ClassService,
     private readonly simuladoHttp: SimuladoHttpService,
+    private readonly queue: AnalyticsQueueService,
   ) {}
 
   async listMonths(classId: string, requesterId: string) {
@@ -88,24 +88,13 @@ export class ClassAnalyticsService {
     const monthsToRefresh =
       scope === 'all' ? allMonths : [allMonths[allMonths.length - 1]];
 
-    const enrolledUserIds = (klass.students ?? [])
-      .filter((s) => s.status === StatusApplication.Enrolled)
-      .map((s) => s.userId);
-
-    for (const month of monthsToRefresh) {
-      const { monthStart, monthEnd } = computeMonthWindow(month, period);
-      await this.simuladoHttp.calculateUserGroupAggregate({
-        groupId: classId,
-        month,
-        monthStart,
-        monthEnd,
-        userIds: enrolledUserIds,
-      });
-    }
+    await this.queue.enqueueMany(
+      monthsToRefresh.map((m) => ({ classId, month: m })),
+    );
 
     return {
       enqueued: monthsToRefresh.map((m) => ({ classId, month: m })),
-      estimatedSeconds: monthsToRefresh.length,
+      estimatedSeconds: monthsToRefresh.length * 2,
     };
   }
 }

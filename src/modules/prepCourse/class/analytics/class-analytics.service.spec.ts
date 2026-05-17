@@ -4,6 +4,7 @@ import { StatusApplication } from '../../studentCourse/enums/stastusApplication'
 import { ClassAnalyticsService } from './class-analytics.service';
 import { ClassService } from '../class.service';
 import { SimuladoHttpService } from 'src/shared/services/simulado-http.service';
+import { AnalyticsQueueService } from './queue/analytics-queue.service';
 
 const ACTIVE_START = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30 days ago
 const ACTIVE_END = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
@@ -35,6 +36,7 @@ describe('ClassAnalyticsService', () => {
   let service: ClassAnalyticsService;
   let classService: jest.Mocked<ClassService>;
   let simuladoHttp: jest.Mocked<SimuladoHttpService>;
+  let queue: jest.Mocked<AnalyticsQueueService>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -54,12 +56,20 @@ describe('ClassAnalyticsService', () => {
             calculateUserGroupAggregate: jest.fn(),
           },
         },
+        {
+          provide: AnalyticsQueueService,
+          useValue: {
+            enqueue: jest.fn().mockResolvedValue('id-1'),
+            enqueueMany: jest.fn().mockResolvedValue(['id-1']),
+          },
+        },
       ],
     }).compile();
 
     service = module.get(ClassAnalyticsService);
     classService = module.get(ClassService) as jest.Mocked<ClassService>;
     simuladoHttp = module.get(SimuladoHttpService) as jest.Mocked<SimuladoHttpService>;
+    queue = module.get(AnalyticsQueueService) as jest.Mocked<AnalyticsQueueService>;
   });
 
   // ── listMonths ──────────────────────────────────────────────────────────────
@@ -152,15 +162,18 @@ describe('ClassAnalyticsService', () => {
   // ── refresh ─────────────────────────────────────────────────────────────────
 
   describe('refresh', () => {
-    it('with scope=current calls calculateUserGroupAggregate exactly once', async () => {
+    it('with scope=current enqueues exactly one message', async () => {
       classService.findOneById.mockResolvedValue(makeClass());
-      simuladoHttp.calculateUserGroupAggregate.mockResolvedValue({});
 
       const result = await service.refresh('class-1', 'current', 'requester-1');
 
-      expect(simuladoHttp.calculateUserGroupAggregate).toHaveBeenCalledTimes(1);
+      expect(queue.enqueueMany).toHaveBeenCalledTimes(1);
+      const items = queue.enqueueMany.mock.calls[0][0];
+      expect(items).toHaveLength(1);
+      expect(items[0].classId).toBe('class-1');
+      expect(simuladoHttp.calculateUserGroupAggregate).not.toHaveBeenCalled();
       expect(result.enqueued).toHaveLength(1);
-      expect(result.estimatedSeconds).toBe(1);
+      expect(result.estimatedSeconds).toBe(2);
     });
 
     it('throws BadRequestException when class period has ended', async () => {
@@ -175,19 +188,22 @@ describe('ClassAnalyticsService', () => {
         service.refresh('class-1', 'current', 'requester-1'),
       ).rejects.toThrow(BadRequestException);
 
-      expect(simuladoHttp.calculateUserGroupAggregate).not.toHaveBeenCalled();
+      expect(queue.enqueueMany).not.toHaveBeenCalled();
     });
 
-    it('only includes userIds of students with status Enrolled', async () => {
-      classService.findOneById.mockResolvedValue(makeClass());
-      simuladoHttp.calculateUserGroupAggregate.mockResolvedValue({});
+    it('with scope=all enqueues one message per month of the period', async () => {
+      classService.findOneById.mockResolvedValue(
+        makeClass({
+          coursePeriodStartDate: new Date('2026-01-01'),
+          coursePeriodEndDate: new Date('2026-12-31'),
+        }),
+      );
 
-      await service.refresh('class-1', 'current', 'requester-1');
+      await service.refresh('class-1', 'all', 'requester-1');
 
-      const callArgs = simuladoHttp.calculateUserGroupAggregate.mock.calls[0][0];
-      // Only user-1 is Enrolled; user-2 is UnderReview
-      expect(callArgs.userIds).toEqual(['user-1']);
-      expect(callArgs.userIds).not.toContain('user-2');
+      const items = queue.enqueueMany.mock.calls[0][0];
+      expect(items.length).toBeGreaterThanOrEqual(1);
+      expect(items.every((i) => i.classId === 'class-1')).toBe(true);
     });
   });
 });
