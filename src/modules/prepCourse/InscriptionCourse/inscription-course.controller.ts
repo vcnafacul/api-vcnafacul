@@ -31,6 +31,7 @@ import { GetSubscribersDtoOutput } from './dtos/get-subscribers.dto.output';
 import { UpdateInscriptionCourseDTOInput } from './dtos/update-inscription-course.dto.input';
 import { InscriptionCourse } from './inscription-course.entity';
 import { InscriptionCourseService } from './inscription-course.service';
+import { AggregatePeriodDtoInput } from 'src/shared/dtos/aggregate-period.dto.input';
 
 @ApiTags('InscriptionCourse')
 @Controller('inscription-course')
@@ -123,6 +124,11 @@ export class InscriptionCourseController {
   @Get('summary')
   async getSummary() {
     return await this.service.getSummary();
+  }
+
+  @Get('aggregate')
+  async aggregate(@Query() query: AggregatePeriodDtoInput) {
+    return await this.service.aggregateInscriptionCourseByPeriod(query);
   }
 
   @UseGuards(JwtAuthGuard)

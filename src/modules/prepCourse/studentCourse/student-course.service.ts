@@ -80,6 +80,8 @@ import { StudentCourseRepository } from './student-course.repository';
 import { EnrollmentCertificate } from './types/enrollment-certificate';
 import { SocioeconomicAnswer } from './types/student-course-full';
 import { createEnrollmentCertificate } from './utils/create-enrollment-certificate';
+import { AggregatePeriodDtoInput } from 'src/shared/dtos/aggregate-period.dto.input';
+import { AggregateStudentCoursePeriodDtoOutput } from './dtos/aggregate-student-course-period.dto.output';
 
 @Injectable()
 export class StudentCourseService extends BaseService<StudentCourse> {
@@ -1464,7 +1466,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     );
     const studentEnrolled = await this.cache.wrap<number>(
       'student:enrolled',
-      async () => this.repository.entityByStatus(StatusApplication.Enrolled),
+      async () => this.repository.getTotalEnrolled(),
     );
 
     return {
@@ -1786,5 +1788,16 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         endDate: student.class.coursePeriod.endDate,
       },
     };
+  }
+
+  async aggregateStudentCourseByPeriod({
+    groupBy,
+  }: AggregatePeriodDtoInput): Promise<
+    AggregateStudentCoursePeriodDtoOutput[]
+  > {
+    return await this.cache.wrap<AggregateStudentCoursePeriodDtoOutput[]>(
+      `aggregateStudentCourseByPeriod:${groupBy}`,
+      async () => await this.repository.aggregateStudentCourseByPeriod(groupBy),
+    );
   }
 }
