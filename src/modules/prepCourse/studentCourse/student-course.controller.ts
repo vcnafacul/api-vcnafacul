@@ -47,6 +47,7 @@ import { ConfirmDeclarationDtoInput } from './dtos/confirm-declaration.dto.input
 import { SubmitSurveyDtoInput } from './dtos/submit-survey.dto.input';
 import { StudentCourseService } from './student-course.service';
 import { GetSubscribersDtoOutput } from '../InscriptionCourse/dtos/get-subscribers.dto.output';
+import { AggregatePeriodDtoInput } from 'src/shared/dtos/aggregate-period.dto.input';
 
 @ApiTags('StudentCourse')
 @Controller('student-course')
@@ -85,6 +86,11 @@ export class StudentCourseController {
     @Param('classId') classId: string,
   ): Promise<void> {
     return await this.service.confirmEnrolled(id, classId);
+  }
+
+  @Get('aggregate')
+  async aggregate(@Query() query: AggregatePeriodDtoInput) {
+    return await this.service.aggregateStudentCourseByPeriod(query);
   }
 
   @Get(':id/declared-interest')
