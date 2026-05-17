@@ -64,6 +64,21 @@ jobs:
             chmod +x ~/subir_api.sh
             ~/subir_api.sh
 
+  DEPLOY_FIRESTORE_INDEXES:
+    needs: BUILD_AND_PUSH
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+      - name: Deploy Firestore indexes
+        run: firebase deploy --only firestore:indexes
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
   CREATE_RELEASE:
     needs: DEPLOY_PROD
     runs-on: ubuntu-latest
