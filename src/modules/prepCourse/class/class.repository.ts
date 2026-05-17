@@ -122,6 +122,32 @@ export class ClassRepository extends BaseRepository<Class> {
       .getOne();
   }
 
+  async findOneByIdForAnalytics(id: string): Promise<Class | null> {
+    return this.repository
+      .createQueryBuilder('entity')
+      .leftJoin('entity.students', 'student_course')
+      .addSelect([
+        'student_course.id',
+        'student_course.userId',
+        'student_course.applicationStatus',
+      ])
+      .leftJoinAndSelect('entity.coursePeriod', 'course_period')
+      .where('entity.id = :id', { id })
+      .andWhere('entity.deletedAt IS NULL')
+      .getOne();
+  }
+
+  async findAllWithActivePeriod(): Promise<Class[]> {
+    const today = new Date();
+    return this.repository
+      .createQueryBuilder('entity')
+      .innerJoinAndSelect('entity.coursePeriod', 'course_period')
+      .where('entity.deletedAt IS NULL')
+      .andWhere('course_period.startDate <= :today', { today })
+      .andWhere('course_period.endDate >= :today', { today })
+      .getMany();
+  }
+
   async findOneByIdWithPartner(id: string): Promise<Class> {
     return this.repository
       .createQueryBuilder('entity')
