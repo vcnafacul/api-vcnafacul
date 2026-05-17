@@ -78,6 +78,9 @@ export const envSchema = z.object({
   REDIS_PORT: z.coerce.number().default(6379),
   REDIS_HOST: z.string().default('localhost'),
 
+  //Queue
+  QUEUE_DRIVER: z.enum(['redis', 'memory']).default('memory'),
+
   // Form Service
   ADMIN_FORM_SECRET: z.string().default('dev-secret'),
 
