@@ -23,7 +23,9 @@ export class RoleEstudanteSeedService {
       }
 
       if (!role) {
-        this.logger.warn('Falha ao criar role estudante, pulando atualização de permissões');
+        this.logger.warn(
+          'Falha ao criar role estudante, pulando atualização de permissões',
+        );
         return;
       }
 
@@ -31,7 +33,9 @@ export class RoleEstudanteSeedService {
         visualizarMinhasInscricoes: true,
       });
 
-      this.logger.log('Role estudante atualizada com permissão visualizarMinhasInscricoes');
+      this.logger.log(
+        'Role estudante atualizada com permissão visualizarMinhasInscricoes',
+      );
     } catch (error) {
       this.logger.error('Erro ao processar role estudante:', error.message);
       throw error;

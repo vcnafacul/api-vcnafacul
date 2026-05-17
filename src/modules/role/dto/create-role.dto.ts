@@ -90,4 +90,10 @@ export class CreateRoleDtoInput {
 
   @IsBoolean()
   revisarTodasRedacoes: boolean;
+
+  @IsBoolean()
+  supportAgent: boolean;
+
+  @IsBoolean()
+  partnerPrepSupportAgent: boolean;
 }

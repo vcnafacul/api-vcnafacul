@@ -194,10 +194,10 @@ export class QuestaoService {
   }
 
   public async getPendingByMateria(materiaIds?: string[]) {
-    const params = materiaIds?.length ? `?materias=${materiaIds.join(',')}` : '';
-    return await this.axios.get<any>(
-      `v1/questao/pending-by-materia${params}`,
-    );
+    const params = materiaIds?.length
+      ? `?materias=${materiaIds.join(',')}`
+      : '';
+    return await this.axios.get<any>(`v1/questao/pending-by-materia${params}`);
   }
 
   public async updateClassificacao(id: string, body: unknown) {

@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   ForbiddenException,
+  Get,
   Param,
   Post,
   Req,
@@ -43,6 +44,17 @@ export class ChatController {
 
   // Sem ChatRateLimitGuard: cooldown 15min embutido em ChatService já protege
   // contra abuse de open/close em loop.
+  @Get('chat/my-partner-prep')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  async getMyPartnerPrepId(
+    @Req() req: Request,
+  ): Promise<{ partnerPrepId: string | null }> {
+    const user = getReqUser(req);
+    if (!user?.id) throw new ForbiddenException();
+    return this.chatService.getCallerPartnerPrepId(user.id);
+  }
+
   @Post('chat/conversation/open')
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
@@ -62,6 +74,10 @@ export class ChatController {
       user.id,
       displayName,
       body.metadata,
+      {
+        inscriptionCourseId: body.inscriptionCourseId,
+        studentCourseId: body.studentCourseId,
+      },
     );
   }
 
@@ -88,12 +104,11 @@ export class ChatController {
   ): Promise<{ id: string }> {
     const user = getReqUser(req);
     if (!user?.id) throw new ForbiddenException();
-    const { actorType, displayName } = await this.chatService.resolveActor(
-      user.id,
-    );
+    const { actorType, senderName } =
+      await this.chatService.resolveActorForMessage(user.id);
     return this.chatService.sendMessage({
       senderId: user.id,
-      senderName: displayName,
+      senderName,
       senderType: actorType,
       conversationId: body.conversationId,
       content: body.content,

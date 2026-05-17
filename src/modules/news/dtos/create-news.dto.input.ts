@@ -36,7 +36,8 @@ export class CreateNewsDtoInput {
   @IsOptional()
   @IsIn(['file', 'text'])
   @ApiProperty({
-    description: 'Tipo de conteúdo: file (upload) ou text (markdown). Default: file.',
+    description:
+      'Tipo de conteúdo: file (upload) ou text (markdown). Default: file.',
     required: false,
     enum: ['file', 'text'],
     default: 'file',
@@ -47,7 +48,8 @@ export class CreateNewsDtoInput {
   @IsString()
   @MaxLength(50000)
   @ApiProperty({
-    description: 'Markdown da novidade (obrigatório quando contentType=text, máx 50000 chars)',
+    description:
+      'Markdown da novidade (obrigatório quando contentType=text, máx 50000 chars)',
     required: false,
   })
   body?: string;

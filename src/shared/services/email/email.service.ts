@@ -24,24 +24,27 @@ export class EmailService {
   private readonly logger = new Logger(EmailService.name);
 
   constructor(private envService: EnvService) {
-  const isProd = this.envService.get('NODE_ENV') === 'production';
-  const useFakeSmtp = !isProd && this.envService.get('USE_SMTP_FAKE') === true;
+    const isProd = this.envService.get('NODE_ENV') === 'production';
+    const useFakeSmtp =
+      !isProd && this.envService.get('USE_SMTP_FAKE') === true;
 
-  this.transporter = nodemailer.createTransport({
-    host: useFakeSmtp
-      ? this.envService.get('SMTP_FAKE_HOST')
-      : this.envService.get('SMTP_HOST'),
-    port: useFakeSmtp
-      ? Number(this.envService.get('SMTP_FAKE_PORT'))
-      : Number(this.envService.get('SMTP_PORT')),
-    secure: !useFakeSmtp,
-    ...(useFakeSmtp ? {} : {
-      auth: {
-        user: this.envService.get('SMTP_USERNAME'),
-        pass: this.envService.get('SMTP_PASSWORD'),
-      },
-    }),
-  });
+    this.transporter = nodemailer.createTransport({
+      host: useFakeSmtp
+        ? this.envService.get('SMTP_FAKE_HOST')
+        : this.envService.get('SMTP_HOST'),
+      port: useFakeSmtp
+        ? Number(this.envService.get('SMTP_FAKE_PORT'))
+        : Number(this.envService.get('SMTP_PORT')),
+      secure: !useFakeSmtp,
+      ...(useFakeSmtp
+        ? {}
+        : {
+            auth: {
+              user: this.envService.get('SMTP_USERNAME'),
+              pass: this.envService.get('SMTP_PASSWORD'),
+            },
+          }),
+    });
 
     if (useFakeSmtp) {
       this.logger.warn('SMTP_FAKE ativo: usando fake SMTP sem autenticação');

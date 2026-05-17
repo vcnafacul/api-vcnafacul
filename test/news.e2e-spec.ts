@@ -54,12 +54,10 @@ describe('News destaque mutex (e2e)', () => {
     jest
       .spyOn(blobService, 'uploadFile')
       .mockImplementation(async () => `news-fake-key-${++counter}`);
-    jest
-      .spyOn(blobService, 'getFile')
-      .mockImplementation(async () => ({
-        buffer: '',
-        contentType: 'application/octet-stream',
-      }));
+    jest.spyOn(blobService, 'getFile').mockImplementation(async () => ({
+      buffer: '',
+      contentType: 'application/octet-stream',
+    }));
     jest.spyOn(blobService, 'deleteFile').mockImplementation(async () => {});
 
     await app.init();
@@ -169,13 +167,11 @@ describe('News destaque mutex (e2e)', () => {
 
   describe('rich text content (text type)', () => {
     it('cria news tipo text com body', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/news')
-        .send({
-          title: 'TextNews',
-          contentType: 'text',
-          body: '# Hello\n\nworld',
-        });
+      const res = await request(app.getHttpServer()).post('/news').send({
+        title: 'TextNews',
+        contentType: 'text',
+        body: '# Hello\n\nworld',
+      });
       expect(res.status).toBe(201);
       expect(res.body.contentType).toBe('text');
       expect(res.body.body).toContain('Hello');
@@ -183,12 +179,10 @@ describe('News destaque mutex (e2e)', () => {
     });
 
     it('rejeita text sem body', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/news')
-        .send({
-          title: 'NoBody',
-          contentType: 'text',
-        });
+      const res = await request(app.getHttpServer()).post('/news').send({
+        title: 'NoBody',
+        contentType: 'text',
+      });
       expect(res.status).toBe(400);
     });
 
@@ -204,13 +198,11 @@ describe('News destaque mutex (e2e)', () => {
     });
 
     it('PATCH ignora contentType e mantém o tipo original', async () => {
-      const created = await request(app.getHttpServer())
-        .post('/news')
-        .send({
-          title: 'Locked',
-          contentType: 'text',
-          body: 'content',
-        });
+      const created = await request(app.getHttpServer()).post('/news').send({
+        title: 'Locked',
+        contentType: 'text',
+        body: 'content',
+      });
       const id = created.body.id;
       const patch = await request(app.getHttpServer())
         .patch(`/news/${id}`)
@@ -230,13 +222,11 @@ describe('News destaque mutex (e2e)', () => {
     });
 
     it('PATCH atualiza body em news tipo text', async () => {
-      const created = await request(app.getHttpServer())
-        .post('/news')
-        .send({
-          title: 'EditableText',
-          contentType: 'text',
-          body: 'v1',
-        });
+      const created = await request(app.getHttpServer()).post('/news').send({
+        title: 'EditableText',
+        contentType: 'text',
+        body: 'v1',
+      });
       const id = created.body.id;
       const patch = await request(app.getHttpServer())
         .patch(`/news/${id}`)
@@ -259,13 +249,11 @@ describe('News destaque mutex (e2e)', () => {
       const deleteSpy = jest.spyOn(blobService, 'deleteFile');
       deleteSpy.mockClear();
 
-      const created = await request(app.getHttpServer())
-        .post('/news')
-        .send({
-          title: 'WithAssets',
-          contentType: 'text',
-          body: 'before ![](asset://abc) middle ![](asset://def) end',
-        });
+      const created = await request(app.getHttpServer()).post('/news').send({
+        title: 'WithAssets',
+        contentType: 'text',
+        body: 'before ![](asset://abc) middle ![](asset://def) end',
+      });
       const id = created.body.id;
 
       await request(app.getHttpServer()).delete(`/news/${id}`);
@@ -279,13 +267,11 @@ describe('News destaque mutex (e2e)', () => {
       const deleteSpy = jest.spyOn(blobService, 'deleteFile');
       deleteSpy.mockClear();
 
-      const created = await request(app.getHttpServer())
-        .post('/news')
-        .send({
-          title: 'Diffed',
-          contentType: 'text',
-          body: 'a ![](asset://aaa) b ![](asset://bbb)',
-        });
+      const created = await request(app.getHttpServer()).post('/news').send({
+        title: 'Diffed',
+        contentType: 'text',
+        body: 'a ![](asset://aaa) b ![](asset://bbb)',
+      });
       const id = created.body.id;
 
       await request(app.getHttpServer())

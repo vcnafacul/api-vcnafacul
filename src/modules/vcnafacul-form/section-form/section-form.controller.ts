@@ -49,7 +49,10 @@ export class SectionFormController {
   @Get()
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, [Permissions.gerenciarFormularioGlobal, Permissions.gerenciarFormulario])
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.gerenciarFormularioGlobal,
+    Permissions.gerenciarFormulario,
+  ])
   @ApiResponse({
     status: 200,
     description: 'busca todas as seções do formulário do parceiro',
@@ -76,7 +79,10 @@ export class SectionFormController {
   @Post()
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, [Permissions.gerenciarFormularioGlobal, Permissions.gerenciarFormulario])
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.gerenciarFormularioGlobal,
+    Permissions.gerenciarFormulario,
+  ])
   @ApiResponse({
     status: 200,
     description: 'cria seção do formulário',
@@ -92,7 +98,10 @@ export class SectionFormController {
   @Patch(':id/set-active')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, [Permissions.gerenciarFormularioGlobal, Permissions.gerenciarFormulario])
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.gerenciarFormularioGlobal,
+    Permissions.gerenciarFormulario,
+  ])
   @ApiResponse({
     status: 200,
     description: 'ativa seção do formulário',
@@ -108,7 +117,10 @@ export class SectionFormController {
   @Delete(':id')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, [Permissions.gerenciarFormularioGlobal, Permissions.gerenciarFormulario])
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.gerenciarFormularioGlobal,
+    Permissions.gerenciarFormulario,
+  ])
   @ApiResponse({
     status: 200,
     description: 'deleta seção do formulário',
@@ -121,7 +133,10 @@ export class SectionFormController {
   @Patch(':id')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, [Permissions.gerenciarFormularioGlobal, Permissions.gerenciarFormulario])
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.gerenciarFormularioGlobal,
+    Permissions.gerenciarFormulario,
+  ])
   @ApiResponse({
     status: 200,
     description: 'atualiza seção do formulário',
@@ -138,7 +153,10 @@ export class SectionFormController {
   @Patch(':id/reorder')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, [Permissions.gerenciarFormularioGlobal, Permissions.gerenciarFormulario])
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.gerenciarFormularioGlobal,
+    Permissions.gerenciarFormulario,
+  ])
   @ApiResponse({
     status: 200,
     description: 'atualiza ordem das questões da seção',
@@ -155,7 +173,10 @@ export class SectionFormController {
   @Post(':id/duplicate')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, [Permissions.gerenciarFormularioGlobal, Permissions.gerenciarFormulario])
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.gerenciarFormularioGlobal,
+    Permissions.gerenciarFormulario,
+  ])
   @ApiResponse({
     status: 200,
     description: 'duplica seção do formulário',

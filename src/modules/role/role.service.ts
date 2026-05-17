@@ -119,6 +119,11 @@ export class RoleService extends BaseService<Role> {
     role.gerenciarFormularioGlobal = roleDto.gerenciarFormularioGlobal;
     role.gerenciarFormulario = roleDto.gerenciarFormulario;
     role.gerenciarTemas = roleDto.gerenciarTemas;
+    role.revisarRedacoes = roleDto.revisarRedacoes;
+    role.revisarTodasRedacoes =
+      roleBase?.revisarTodasRedacoes || roleDto.revisarTodasRedacoes;
+    role.supportAgent = roleBase?.supportAgent || roleDto.supportAgent;
+    role.partnerPrepSupportAgent = roleDto.partnerPrepSupportAgent;
 
     if (partnerPrepCourse) {
       role.partnerPrepCourse = partnerPrepCourse;
@@ -186,6 +191,10 @@ export class RoleService extends BaseService<Role> {
     role.gerenciarFormularioGlobal = roleDto.gerenciarFormularioGlobal;
     role.gerenciarFormulario = roleDto.gerenciarFormulario;
     role.gerenciarTemas = roleDto.gerenciarTemas;
+    role.revisarRedacoes = roleDto.revisarRedacoes;
+    role.revisarTodasRedacoes = roleDto.revisarTodasRedacoes;
+    role.supportAgent = roleDto.supportAgent;
+    role.partnerPrepSupportAgent = roleDto.partnerPrepSupportAgent;
 
     // Atualiza permissões das filhas
     if (role.children?.length > 0) {
@@ -208,6 +217,8 @@ export class RoleService extends BaseService<Role> {
           child.gerenciarFormularioGlobal = role.gerenciarFormularioGlobal;
           child.gerenciarFormulario = role.gerenciarFormulario;
           child.gerenciarTemas = role.gerenciarTemas;
+          child.revisarTodasRedacoes = role.revisarTodasRedacoes;
+          child.supportAgent = role.supportAgent;
           await this.roleRepository.update(child);
         }),
       );

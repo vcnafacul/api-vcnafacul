@@ -127,5 +127,4 @@ describe('Collaborator admin photo upload (e2e)', () => {
 
     expect(response.status).toBe(404);
   });
-
 });
