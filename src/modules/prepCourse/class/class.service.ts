@@ -251,6 +251,14 @@ export class ClassService extends BaseService<Class> {
     };
   }
 
+  async findOneByIdForAnalytics(id: string): Promise<Class | null> {
+    return this.repository.findOneByIdForAnalytics(id);
+  }
+
+  async findAllWithActivePeriod(): Promise<Class[]> {
+    return this.repository.findAllWithActivePeriod();
+  }
+
   async findOneByIdToAttendanceRecord(
     id: string,
   ): Promise<GetClassByIdAttendanceDtoOutput> {
