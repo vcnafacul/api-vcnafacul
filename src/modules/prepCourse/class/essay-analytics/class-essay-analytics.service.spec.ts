@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { StatusApplication } from '../../studentCourse/enums/stastusApplication';
+import { AnalyticsQueueService } from '../analytics/queue/analytics-queue.service';
 import { ClassService } from '../class.service';
 import { ClassEssayAnalyticsRepository } from './class-essay-analytics.repository';
 import { ClassEssayAnalyticsService } from './class-essay-analytics.service';
@@ -60,6 +61,7 @@ describe('ClassEssayAnalyticsService', () => {
   let service: ClassEssayAnalyticsService;
   let classService: jest.Mocked<ClassService>;
   let repository: jest.Mocked<ClassEssayAnalyticsRepository>;
+  let analyticsQueue: jest.Mocked<AnalyticsQueueService>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -80,6 +82,13 @@ describe('ClassEssayAnalyticsService', () => {
             aggregateMonth: jest.fn(),
           },
         },
+        {
+          provide: AnalyticsQueueService,
+          useValue: {
+            enqueue: jest.fn().mockResolvedValue('id-1'),
+            enqueueMany: jest.fn().mockResolvedValue(['id-1']),
+          },
+        },
       ],
     }).compile();
 
@@ -88,6 +97,9 @@ describe('ClassEssayAnalyticsService', () => {
     repository = module.get(
       ClassEssayAnalyticsRepository,
     ) as jest.Mocked<ClassEssayAnalyticsRepository>;
+    analyticsQueue = module.get(
+      AnalyticsQueueService,
+    ) as jest.Mocked<AnalyticsQueueService>;
   });
 
   // ── listMonths ──────────────────────────────────────────────────────────────
@@ -182,61 +194,50 @@ describe('ClassEssayAnalyticsService', () => {
   // ── refresh ─────────────────────────────────────────────────────────────────
 
   describe('refresh', () => {
-    it('with scope=current invokes aggregateMonth and upsert exactly once', async () => {
+    it('with scope=current enqueues exactly one essay job and never touches the repository', async () => {
       classService.findOneById.mockResolvedValue(makeClass());
-      repository.aggregateMonth.mockResolvedValue({
-        geral: 600,
-        competencias: { c1: 120, c2: 120, c3: 120, c4: 120, c5: 120 },
-        studentsWithAtLeastOneHumanReview: 1,
-        essaysReviewedByHuman: 1,
-        essaysSubmittedTotal: 1,
-        humanReviewRate: 1,
-      });
-      repository.upsert.mockResolvedValue(makeSnap());
 
       const result = await service.refresh('class-1', 'current', 'requester-1');
 
-      expect(repository.aggregateMonth).toHaveBeenCalledTimes(1);
-      expect(repository.upsert).toHaveBeenCalledTimes(1);
+      expect(analyticsQueue.enqueueMany).toHaveBeenCalledTimes(1);
+      const items = analyticsQueue.enqueueMany.mock.calls[0][0];
+      expect(items).toHaveLength(1);
+      expect(items[0].classId).toBe('class-1');
+      expect(items[0].type).toBe('essay');
+
+      expect(repository.aggregateMonth).not.toHaveBeenCalled();
+      expect(repository.upsert).not.toHaveBeenCalled();
+
       expect(result.enqueued).toHaveLength(1);
       expect(result.enqueued[0].classId).toBe('class-1');
       expect(result.enqueued[0].type).toBe('essay');
-      expect(result.estimatedSeconds).toBe(1);
-      const upsertArg = (repository.upsert as jest.Mock).mock.calls[0][0];
-      expect(upsertArg.userIds).toEqual(['user-1']);
-      expect(upsertArg.userIds).not.toContain('user-2');
+      expect(result.estimatedSeconds).toBe(2);
     });
 
-    it('with scope=all invokes upsert >= 1 times all with the same classId', async () => {
+    it('with scope=all enqueues one essay job per month', async () => {
       classService.findOneById.mockResolvedValue(
         makeClass({
           coursePeriodStartDate: new Date('2026-01-01'),
           coursePeriodEndDate: new Date('2026-12-31'),
         }),
       );
-      repository.aggregateMonth.mockResolvedValue({
-        geral: 0,
-        competencias: { c1: 0, c2: 0, c3: 0, c4: 0, c5: 0 },
-        studentsWithAtLeastOneHumanReview: 0,
-        essaysReviewedByHuman: 0,
-        essaysSubmittedTotal: 0,
-        humanReviewRate: 0,
-      });
-      repository.upsert.mockResolvedValue(makeSnap());
 
       const result = await service.refresh('class-1', 'all', 'requester-1');
 
-      expect(repository.upsert).toHaveBeenCalled();
-      const calls = repository.upsert.mock.calls;
-      expect(calls.length).toBeGreaterThanOrEqual(1);
-      expect(
-        calls.every((args) => (args[0] as any).classId === 'class-1'),
-      ).toBe(true);
+      expect(analyticsQueue.enqueueMany).toHaveBeenCalledTimes(1);
+      const items = analyticsQueue.enqueueMany.mock.calls[0][0];
+      expect(items.length).toBeGreaterThanOrEqual(1);
+      expect(items.every((i) => i.classId === 'class-1')).toBe(true);
+      expect(items.every((i) => i.type === 'essay')).toBe(true);
+
+      expect(repository.aggregateMonth).not.toHaveBeenCalled();
+      expect(repository.upsert).not.toHaveBeenCalled();
+
       expect(result.enqueued.every((i) => i.type === 'essay')).toBe(true);
-      expect(result.estimatedSeconds).toBe(result.enqueued.length * 1);
+      expect(result.estimatedSeconds).toBe(result.enqueued.length * 2);
     });
 
-    it('throws BadRequestException when period has ended', async () => {
+    it('throws BadRequestException when period has ended (does not enqueue)', async () => {
       classService.findOneById.mockResolvedValue(
         makeClass({
           coursePeriodStartDate: new Date('2020-01-01'),
@@ -248,11 +249,10 @@ describe('ClassEssayAnalyticsService', () => {
         service.refresh('class-1', 'current', 'requester-1'),
       ).rejects.toThrow(BadRequestException);
 
-      expect(repository.aggregateMonth).not.toHaveBeenCalled();
-      expect(repository.upsert).not.toHaveBeenCalled();
+      expect(analyticsQueue.enqueueMany).not.toHaveBeenCalled();
     });
 
-    it('throws BadRequestException when class has no coursePeriodStartDate', async () => {
+    it('throws BadRequestException when class has no coursePeriodStartDate (does not enqueue)', async () => {
       classService.findOneById.mockResolvedValue(
         makeClass({ coursePeriodStartDate: null }),
       );
@@ -260,13 +260,15 @@ describe('ClassEssayAnalyticsService', () => {
       await expect(
         service.refresh('class-1', 'current', 'requester-1'),
       ).rejects.toThrow(BadRequestException);
+
+      expect(analyticsQueue.enqueueMany).not.toHaveBeenCalled();
     });
   });
 
   // ── refreshOneMonthInternal ─────────────────────────────────────────────────
 
   describe('refreshOneMonthInternal', () => {
-    it('calls aggregateMonth then upsert with the right payload, never touching classService', async () => {
+    it('calls aggregateMonth then upsert with the right payload, never touching classService or queue', async () => {
       const payload = {
         geral: 700,
         competencias: { c1: 140, c2: 140, c3: 140, c4: 140, c5: 140 },
@@ -290,6 +292,7 @@ describe('ClassEssayAnalyticsService', () => {
       });
 
       expect(classService.findOneById).not.toHaveBeenCalled();
+      expect(analyticsQueue.enqueueMany).not.toHaveBeenCalled();
       expect(repository.aggregateMonth).toHaveBeenCalledWith({
         classId: 'class-1',
         monthStart,

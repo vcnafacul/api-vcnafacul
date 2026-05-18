@@ -434,6 +434,26 @@ describe('ClassEssayAnalytics (e2e)', () => {
 
   const currentMonth = () => new Date().toISOString().slice(0, 7);
 
+  /**
+   * Phase B: refresh enqueues; the in-memory worker processes the message on a
+   * future tick. Poll the snapshot row until it appears (or fail after timeout).
+   */
+  const waitForSnapshot = async (
+    classId: string,
+    month: string,
+    timeoutMs = 5000,
+  ): Promise<ClassEssaySnapshot> => {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      const snap = await snapshotRepo.findOne({ where: { classId, month } });
+      if (snap) return snap;
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    throw new Error(
+      `Timed out waiting for snapshot ${classId}/${month} after ${timeoutMs}ms`,
+    );
+  };
+
   // ────────────────────────────────────────────────────────────────────────────
   // Scenario 1: 403 without token / 403 without visualizarTurmas
   // ────────────────────────────────────────────────────────────────────────────
@@ -573,7 +593,7 @@ describe('ClassEssayAnalytics (e2e)', () => {
     const ePending = await createReviewedEssay(userIdPending, themeD.id);
     await createReview(ePending.id, ReviewType.HUMAN, 1000);
 
-    // Trigger refresh (synchronous in Phase A)
+    // Trigger refresh (Phase B: enqueues; worker processes async)
     const refreshResp = await request(app.getHttpServer())
       .post(`/class/${classId}/analytics/redacao/refresh`)
       .set({ Authorization: `Bearer ${token}` })
@@ -585,6 +605,9 @@ describe('ClassEssayAnalytics (e2e)', () => {
     const month = refreshResp.body.enqueued[0].month as string;
     expect(month).toMatch(/^\d{4}-\d{2}$/);
     expect(month).toBe(currentMonth());
+
+    // Wait for the in-memory worker to materialize the snapshot
+    await waitForSnapshot(classId, month);
 
     // Fetch the produced snapshot
     const getResp = await request(app.getHttpServer())
@@ -630,19 +653,29 @@ describe('ClassEssayAnalytics (e2e)', () => {
     const e1 = await createReviewedEssay(s1.userId, theme.id);
     await createReview(e1.id, ReviewType.HUMAN, 500);
 
-    // First refresh
-    await request(app.getHttpServer())
-      .post(`/class/${classId}/analytics/redacao/refresh`)
-      .set({ Authorization: `Bearer ${token}` })
-      .expect(202);
-
-    // Second refresh on the same month should not duplicate the row
-    await request(app.getHttpServer())
-      .post(`/class/${classId}/analytics/redacao/refresh`)
-      .set({ Authorization: `Bearer ${token}` })
-      .expect(202);
-
     const month = currentMonth();
+
+    // First refresh — enqueues and worker writes the snapshot
+    await request(app.getHttpServer())
+      .post(`/class/${classId}/analytics/redacao/refresh`)
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(202);
+    const first = await waitForSnapshot(classId, month);
+
+    // Second refresh on the same month should upsert (not duplicate)
+    await request(app.getHttpServer())
+      .post(`/class/${classId}/analytics/redacao/refresh`)
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(202);
+
+    // Wait until the worker re-runs (generatedAt advances)
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < 5000) {
+      const row = await snapshotRepo.findOne({ where: { classId, month } });
+      if (row && row.generatedAt.getTime() > first.generatedAt.getTime()) break;
+      await new Promise((r) => setTimeout(r, 50));
+    }
+
     const rows = await snapshotRepo.find({ where: { classId, month } });
     expect(rows).toHaveLength(1);
 
