@@ -4,10 +4,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
-  computeMonthWindow,
   isActivePeriod,
   listMonthsInPeriod,
 } from '../analytics/utils/month-window';
+import { AnalyticsQueueService } from '../analytics/queue/analytics-queue.service';
 import { ClassService } from '../class.service';
 import { StatusApplication } from '../../studentCourse/enums/stastusApplication';
 import { ClassEssayAnalyticsRepository } from './class-essay-analytics.repository';
@@ -32,6 +32,7 @@ export class ClassEssayAnalyticsService {
   constructor(
     private readonly classService: ClassService,
     private readonly repository: ClassEssayAnalyticsRepository,
+    private readonly analyticsQueue: AnalyticsQueueService,
   ) {}
 
   async listMonths(
@@ -102,29 +103,16 @@ export class ClassEssayAnalyticsService {
     const months =
       scope === 'all' ? allMonths : [allMonths[allMonths.length - 1]];
 
-    const userIds = (klass.students ?? [])
-      .filter((s) => s.status === StatusApplication.Enrolled)
-      .map((s) => s.userId);
-
-    // Phase A: synchronous. Phase B will swap this for queue.enqueueMany.
-    for (const month of months) {
-      const { monthStart, monthEnd } = computeMonthWindow(month, period);
-      await this.refreshOneMonthInternal({
-        classId,
-        month,
-        monthStart,
-        monthEnd,
-        userIds,
-      });
-    }
+    const items = months.map((m) => ({
+      classId,
+      month: m,
+      type: 'essay' as const,
+    }));
+    await this.analyticsQueue.enqueueMany(items);
 
     return {
-      enqueued: months.map((m) => ({
-        classId,
-        month: m,
-        type: 'essay' as const,
-      })),
-      estimatedSeconds: months.length,
+      enqueued: items,
+      estimatedSeconds: months.length * 2,
     };
   }
 
