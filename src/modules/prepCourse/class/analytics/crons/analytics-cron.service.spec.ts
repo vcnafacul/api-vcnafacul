@@ -9,7 +9,10 @@ describe('AnalyticsCronService', () => {
 
   beforeEach(() => {
     classService = { findAllWithActivePeriod: jest.fn() } as any;
-    queue = { enqueue: jest.fn().mockResolvedValue('id'), enqueueMany: jest.fn() } as any;
+    queue = {
+      enqueue: jest.fn().mockResolvedValue('id'),
+      enqueueMany: jest.fn().mockResolvedValue([]),
+    } as any;
     cron = new AnalyticsCronService(classService, queue);
   });
 
@@ -22,7 +25,7 @@ describe('AnalyticsCronService', () => {
       },
     }) as any;
 
-  it('weekly cron enqueues current month for each active class', async () => {
+  it('weekly cron enqueues 2 jobs (simulado+essay) per active class for current month', async () => {
     classService.findAllWithActivePeriod.mockResolvedValue([
       klass('c1', '2026-01-01', '2026-12-31'),
       klass('c2', '2026-01-01', '2026-12-31'),
@@ -30,31 +33,54 @@ describe('AnalyticsCronService', () => {
 
     await cron.weeklyRefreshCurrentMonth();
 
-    expect(queue.enqueue).toHaveBeenCalledTimes(2);
-    // Both classes get the same current month (last month of period or today)
-    const months = queue.enqueue.mock.calls.map((c) => c[1]);
-    expect(new Set(months).size).toBe(1);
+    expect(queue.enqueueMany).toHaveBeenCalledTimes(1);
+    const items = queue.enqueueMany.mock.calls[0][0];
+    expect(items).toHaveLength(4);
+
+    const byClass = items.reduce(
+      (acc: Record<string, string[]>, item) => {
+        acc[item.classId] = (acc[item.classId] ?? []).concat(item.type);
+        return acc;
+      },
+      {},
+    );
+    expect(byClass.c1.sort()).toEqual(['essay', 'simulado']);
+    expect(byClass.c2.sort()).toEqual(['essay', 'simulado']);
+
+    const months = new Set(items.map((i) => i.month));
+    expect(months.size).toBe(1);
   });
 
-  it('monthly cron enqueues all months for each active class', async () => {
+  it('monthly cron enqueues 2 jobs (simulado+essay) per month for each active class', async () => {
     classService.findAllWithActivePeriod.mockResolvedValue([
       klass('c1', '2026-01-01', '2026-03-31'),
     ]);
 
     await cron.monthlyRefreshAllMonths();
 
-    // Period covers Jan, Feb, Mar — 3 months for 1 class
-    expect(queue.enqueue.mock.calls.length).toBeGreaterThanOrEqual(1);
-    const calls = queue.enqueue.mock.calls;
-    expect(calls.every((c) => c[0] === 'c1')).toBe(true);
+    expect(queue.enqueueMany).toHaveBeenCalledTimes(1);
+    const items = queue.enqueueMany.mock.calls[0][0];
+
+    expect(items.every((i) => i.classId === 'c1')).toBe(true);
+
+    const uniqueMonths = new Set(items.map((i) => i.month));
+    expect(items.length).toBe(uniqueMonths.size * 2);
+
+    for (const month of uniqueMonths) {
+      const typesForMonth = items
+        .filter((i) => i.month === month)
+        .map((i) => i.type)
+        .sort();
+      expect(typesForMonth).toEqual(['essay', 'simulado']);
+    }
   });
 
-  it('skips classes without coursePeriod', async () => {
+  it('skips classes without coursePeriod and never calls enqueueMany when nothing remains', async () => {
     classService.findAllWithActivePeriod.mockResolvedValue([
       { id: 'c1', coursePeriod: null } as any,
     ]);
 
     await cron.weeklyRefreshCurrentMonth();
-    expect(queue.enqueue).not.toHaveBeenCalled();
+    expect(queue.enqueueMany).not.toHaveBeenCalled();
   });
 });
