@@ -127,6 +127,7 @@ export class ClassEssayAnalyticsService {
         snap.payload.studentsWithAtLeastOneHumanReview,
       essaysReviewedByHuman: snap.payload.essaysReviewedByHuman,
       essaysSubmittedTotal: snap.payload.essaysSubmittedTotal,
+      studentsSubmittedTotal: snap.payload.studentsSubmittedTotal ?? null,
       humanReviewRate: snap.payload.humanReviewRate,
       generatedAt: snap.generatedAt.toISOString(),
     };

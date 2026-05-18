@@ -149,10 +149,14 @@ export class ClassEssayAnalyticsRepository {
     const essaysReviewedByHuman = new Set(rows.map((r) => r.essayId)).size;
     const studentsWithAtLeastOneHumanReview = byUser.size;
 
-    const submittedTotalRow: Array<{ total: number | string }> =
-      await this.dataSource.query(
-        `
-          SELECT COUNT(*) AS total
+    const submittedTotalRow: Array<{
+      total: number | string;
+      distinctUsers: number | string;
+    }> = await this.dataSource.query(
+      `
+          SELECT
+            COUNT(*) AS total,
+            COUNT(DISTINCT e.user_id) AS distinctUsers
           FROM essays e
           INNER JOIN student_course sc ON sc.user_id = e.user_id
           WHERE sc.classId = ?
@@ -160,9 +164,12 @@ export class ClassEssayAnalyticsRepository {
             AND e.submitted_at BETWEEN ? AND ?
             AND e.status IN ('SUBMITTED', 'REVIEWED')
         `,
-        [classId, StatusApplication.Enrolled, monthStart, monthEnd],
-      );
+      [classId, StatusApplication.Enrolled, monthStart, monthEnd],
+    );
     const essaysSubmittedTotal = Number(submittedTotalRow[0]?.total ?? 0);
+    const studentsSubmittedTotal = Number(
+      submittedTotalRow[0]?.distinctUsers ?? 0,
+    );
 
     const humanReviewRate =
       essaysSubmittedTotal === 0
@@ -175,6 +182,7 @@ export class ClassEssayAnalyticsRepository {
       studentsWithAtLeastOneHumanReview,
       essaysReviewedByHuman,
       essaysSubmittedTotal,
+      studentsSubmittedTotal,
       humanReviewRate,
     };
   }

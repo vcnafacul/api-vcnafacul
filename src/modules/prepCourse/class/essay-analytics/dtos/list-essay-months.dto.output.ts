@@ -40,6 +40,13 @@ export class EssayMonthSummary {
   @ApiProperty() studentsWithAtLeastOneHumanReview: number;
   @ApiProperty() essaysReviewedByHuman: number;
   @ApiProperty() essaysSubmittedTotal: number;
+  @ApiProperty({
+    nullable: true,
+    description:
+      'Alunos distintos que submeteram pelo menos uma redação no mês. ' +
+      'Pode ser null em snapshots gerados antes da introdução do campo.',
+  })
+  studentsSubmittedTotal: number | null;
   @ApiProperty() humanReviewRate: number;
   @ApiProperty({
     type: String,
