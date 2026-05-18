@@ -620,6 +620,7 @@ describe('ClassEssayAnalytics (e2e)', () => {
     expect(getResp.body.studentsWithAtLeastOneHumanReview).toBe(2);
     expect(getResp.body.essaysReviewedByHuman).toBe(2);
     expect(getResp.body.essaysSubmittedTotal).toBe(3);
+    expect(getResp.body.studentsSubmittedTotal).toBe(3);
     expect(getResp.body.humanReviewRate).toBeCloseTo(2 / 3, 5);
 
     // Competencias: each comp gets totalScore/5 floor — verify they reflect the

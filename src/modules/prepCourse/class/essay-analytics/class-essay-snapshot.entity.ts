@@ -14,6 +14,8 @@ export interface ClassEssayPayload {
   studentsWithAtLeastOneHumanReview: number;
   essaysReviewedByHuman: number;
   essaysSubmittedTotal: number;
+  /** Distinct user_ids who submitted at least one essay in the month. */
+  studentsSubmittedTotal?: number;
   humanReviewRate: number; // 0..1
 }
 

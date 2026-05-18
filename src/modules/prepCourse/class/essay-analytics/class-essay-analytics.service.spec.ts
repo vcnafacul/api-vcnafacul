@@ -49,6 +49,7 @@ function makeSnap(
       studentsWithAtLeastOneHumanReview: 1,
       essaysReviewedByHuman: 1,
       essaysSubmittedTotal: 1,
+      studentsSubmittedTotal: 1,
       humanReviewRate: 1,
     },
     generatedAt: new Date('2026-05-18T12:00:00.000Z'),
@@ -138,8 +139,20 @@ describe('ClassEssayAnalyticsService', () => {
       expect(m.studentsWithAtLeastOneHumanReview).toBe(1);
       expect(m.essaysReviewedByHuman).toBe(1);
       expect(m.essaysSubmittedTotal).toBe(1);
+      expect(m.studentsSubmittedTotal).toBe(1);
       expect(m.humanReviewRate).toBe(1);
       expect(m.generatedAt).toBe(snap.generatedAt.toISOString());
+    });
+
+    it('maps studentsSubmittedTotal=null when payload is from an old snapshot without the field', async () => {
+      const snap = makeSnap();
+      delete (snap.payload as any).studentsSubmittedTotal;
+      classService.findOneById.mockResolvedValue(makeClass());
+      repository.listByClass.mockResolvedValue([snap]);
+
+      const result = await service.listMonths('class-1', 'requester-1');
+
+      expect(result.months[0].studentsSubmittedTotal).toBeNull();
     });
 
     it('throws BadRequestException when class has no coursePeriodStartDate', async () => {
@@ -186,6 +199,7 @@ describe('ClassEssayAnalyticsService', () => {
       expect(result.studentsWithAtLeastOneHumanReview).toBe(1);
       expect(result.essaysReviewedByHuman).toBe(1);
       expect(result.essaysSubmittedTotal).toBe(1);
+      expect(result.studentsSubmittedTotal).toBe(1);
       expect(result.humanReviewRate).toBe(1);
       expect(result.generatedAt).toBe(snap.generatedAt.toISOString());
     });
@@ -275,6 +289,7 @@ describe('ClassEssayAnalyticsService', () => {
         studentsWithAtLeastOneHumanReview: 2,
         essaysReviewedByHuman: 3,
         essaysSubmittedTotal: 4,
+        studentsSubmittedTotal: 3,
         humanReviewRate: 0.75,
       };
       repository.aggregateMonth.mockResolvedValue(payload);
