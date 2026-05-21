@@ -556,6 +556,17 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     if (!class_) {
       throw new HttpException('Turma não encontrada', HttpStatus.NOT_FOUND);
     }
+
+    const inscriptionCourse = await this.inscriptionCourseService.getById(
+      student.inscriptionCourse?.id,
+    );
+    if (inscriptionCourse?.isTest) {
+      throw new HttpException(
+        'Não é possível matricular o estudante em um processo seletivo marcado como teste',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     if (
       class_.coursePeriod?.endDate &&
       class_.coursePeriod.endDate < new Date()

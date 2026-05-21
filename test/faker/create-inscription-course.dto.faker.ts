@@ -11,5 +11,6 @@ export function CreateInscriptionCourseDTOInputFaker(): CreateInscriptionCourseI
     endDate: endDate,
     expectedOpening: faker.number.int({ min: 1, max: 100 }),
     requestDocuments: false,
+    isTest: false,
   };
 }
