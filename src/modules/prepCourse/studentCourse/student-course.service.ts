@@ -256,7 +256,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     );
     await this.cache.set(
       `profile:photo:${fileKey}`,
-      file,
+      { buffer: file.buffer.toString('base64'), contentType: file.mimetype },
       60 * 60 * 24 * 1000 * 7,
     );
     student.photo = fileKey;
