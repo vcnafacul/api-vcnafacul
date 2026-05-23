@@ -170,11 +170,6 @@ export class StudentCourseController {
   ) {
     const { buffer, contentType } = await this.service.getDocument(fileKey);
 
-    res.set({
-      'Content-Type': contentType,
-      'Content-Disposition': `inline; filename="${fileKey}"`,
-    });
-
     return res.status(HttpStatus.OK).json({
       buffer: buffer,
       contentType,
@@ -197,11 +192,6 @@ export class StudentCourseController {
     @Res() res: Response,
   ) {
     const { buffer, contentType } = await this.service.getProfilePhoto(fileKey);
-
-    res.set({
-      'Content-Type': contentType,
-      'Content-Disposition': `inline; filename="${fileKey}"`,
-    });
 
     return res.status(HttpStatus.OK).json({
       buffer: buffer,
