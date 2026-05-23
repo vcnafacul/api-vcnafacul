@@ -34,8 +34,8 @@ export class SimuladoService {
     return await this.axios.post<SimuladoDTO>('v1/simulado', dto);
   }
 
-  async getAll() {
-    return await this.axios.get<SimuladoDTO[]>('v1/simulado');
+  async getAll(page: number = 1, limit: number = 500) {
+    return await this.axios.get<SimuladoDTO[]>(`v1/simulado?page=${page}&limit=${limit}`);
   }
 
   async getTipos() {
