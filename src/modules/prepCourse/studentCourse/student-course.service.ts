@@ -252,11 +252,6 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       file,
       this.envService.get('BUCKET_PROFILE'),
     );
-    await this.cache.set(
-      `profile:photo:${fileKey}`,
-      file,
-      60 * 60 * 24 * 1000 * 7,
-    );
     student.photo = fileKey;
 
     const log = new LogStudent();
