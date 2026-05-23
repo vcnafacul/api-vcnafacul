@@ -17,6 +17,7 @@ import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { Permissions } from '../role/role.entity';
 import { User } from '../user/user.entity';
+import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 import { AnswerSimulado } from './dtos/answer-simulado.dto.input';
 import { AvailableSimuladoDTOoutput } from './dtos/available-simulado.dto.output';
 import { CreateSimuladoDTOInput } from './dtos/create-simulado.dto.input';
@@ -51,8 +52,8 @@ export class SimuladoController {
     type: SimuladoDTO,
     isArray: true,
   })
-  async getAdd(): Promise<SimuladoDTO[]> {
-    return await this.simuladoService.getAll();
+  async getAdd(@Query() query: GetAllDtoInput): Promise<SimuladoDTO[]> {
+    return await this.simuladoService.getAll(query.page, query.limit);
   }
 
   @Get('tipos')
