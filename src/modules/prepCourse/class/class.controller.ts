@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
-import { Permissions } from 'src/modules/role/role.entity';
+import { Permissions } from 'src/modules/role/permissions/permissions';
 import { User } from 'src/modules/user/user.entity';
 import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
-import { Permissions } from 'src/modules/role/role.entity';
+import { Permissions } from 'src/modules/role/permissions/permissions';
 import { BaseRepository } from 'src/shared/modules/base/base.repository';
 import { GetAllWhereInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';

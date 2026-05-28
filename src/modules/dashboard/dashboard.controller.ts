@@ -1,7 +1,7 @@
 import { Controller, Get, Req, SetMetadata, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../shared/guards/permission.guard';
-import { Permissions } from '../role/role.entity';
+import { Permissions } from '../role/permissions/permissions';
 import { DashboardService } from './dashboard.service';
 
 @Controller('dashboard')

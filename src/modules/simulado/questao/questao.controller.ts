@@ -16,7 +16,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
-import { Permissions } from 'src/modules/role/role.entity';
+import { Permissions } from 'src/modules/role/permissions/permissions';
 import { User } from 'src/modules/user/user.entity';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { QuestaoDTOInput } from '../dtos/questao.dto.input';

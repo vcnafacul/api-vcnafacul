@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Permissions, Role } from 'src/modules/role/role.entity';
+import { Role } from 'src/modules/role/role.entity';
+import { Permissions } from 'src/modules/role/permissions/permissions';
 import { RoleRepository } from 'src/modules/role/role.repository';
 
 const ManagerPartner = {

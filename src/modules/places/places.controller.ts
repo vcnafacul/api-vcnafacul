@@ -10,7 +10,7 @@ import { PlacesService } from './places.service';
 import { GetGoogleApiDetailsDTOInput } from './dto/get-google-api-info.dto.input';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
-import { Permissions } from '../role/role.entity';
+import { Permissions } from '../role/permissions/permissions';
 import { GetGoogleApiDetailsDTOOutput } from './dto/get-google-api-details.dto.output';
 
 @Controller('places')

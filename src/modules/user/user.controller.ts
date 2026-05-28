@@ -21,7 +21,7 @@ import { AggregatePeriodDtoInput } from 'src/shared/dtos/aggregate-period.dto.in
 import { GetAllDtoOutput } from 'src/shared/dtos/get-all.dto.output';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
-import { Permissions } from '../role/role.entity';
+import { Permissions } from '../role/permissions/permissions';
 import { CreateUserDtoInput } from './dto/create.dto.input';
 import { ForgotPasswordDtoInput } from './dto/forgot-password.dto.input';
 import { GetUserDtoInput } from './dto/get-user.dto.input';

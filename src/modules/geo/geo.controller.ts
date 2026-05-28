@@ -16,7 +16,7 @@ import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { GetAllDtoOutput } from 'src/shared/dtos/get-all.dto.output';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
-import { Permissions } from '../role/role.entity';
+import { Permissions } from '../role/permissions/permissions';
 import { User } from '../user/user.entity';
 import { CreateGeoDTOInput } from './dto/create-geo.dto.input';
 import { GeoStatusChangeDTOInput } from './dto/geo-status.dto.input';

@@ -18,7 +18,7 @@ import { FileInterceptor } from '@nestjs/platform-express/multer';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
-import { Permissions } from '../role/role.entity';
+import { Permissions } from '../role/permissions/permissions';
 import { User } from '../user/user.entity';
 import { CreateNewsDtoInput } from './dtos/create-news.dto.input';
 import { GetAllNewsDtoInput } from './dtos/get-all-news';

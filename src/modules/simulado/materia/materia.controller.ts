@@ -11,7 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { Permissions } from 'src/modules/role/role.entity';
+import { Permissions } from 'src/modules/role/permissions/permissions';
 import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { MateriaProxyService } from './materia.service';

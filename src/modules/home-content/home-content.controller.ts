@@ -19,7 +19,7 @@ import { FileInterceptor } from '@nestjs/platform-express/multer';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
-import { Permissions } from '../role/role.entity';
+import { Permissions } from '../role/permissions/permissions';
 import { CreateHomeFeatureDto } from './dtos/create-home-feature.dto';
 import { CreateHomeSupporterDto } from './dtos/create-home-supporter.dto';
 import { ReorderItemsDto } from './dtos/reorder-items.dto';
