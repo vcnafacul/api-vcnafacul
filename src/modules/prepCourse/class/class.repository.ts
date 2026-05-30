@@ -76,6 +76,8 @@ export class ClassRepository extends BaseRepository<Class> {
       ])
       .leftJoinAndSelect('entity.admins', 'admins')
       .leftJoinAndSelect('entity.coursePeriod', 'course_period')
+      .leftJoin('entity.partnerPrepCourse', 'partner_prep_course')
+      .addSelect(['partner_prep_course.id'])
       .where('entity.id = :id', { id })
       .getOne();
   }
