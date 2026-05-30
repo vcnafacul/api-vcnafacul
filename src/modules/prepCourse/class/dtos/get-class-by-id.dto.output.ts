@@ -5,6 +5,7 @@ export class GetClassByIdDtoOutput {
   id: string;
   name: string;
   description?: string;
+  partnerId: string;
   coursePeriodId: string;
   coursePeriodName: string;
   coursePeriodYear: number;
