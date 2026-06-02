@@ -149,7 +149,7 @@ export const PERMISSION_HIERARCHY: PermissionGroup[] = [
     permissions: [
       {
         key: Permissions.criarSimulado,
-        label: 'Criar simulado',
+        label: 'Visualizar simulado',
         type: PermissionType.project,
       },
     ],

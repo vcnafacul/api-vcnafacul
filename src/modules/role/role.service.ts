@@ -11,6 +11,9 @@ import { Role } from './role.entity';
 import { RoleRepository } from './role.repository';
 import { Permissions } from './permissions/permissions';
 import { resolveImpliedPermissions } from './permissions/permission-resolver';
+import { PERMISSION_FIELD_MAP } from './permissions/permission-field-map';
+import { PERMISSION_HIERARCHY } from './permissions/permission-hierarchy';
+import { PermissionGroupResponseDto } from './dto/permission-group-response.dto';
 
 @Injectable()
 export class RoleService extends BaseService<Role> {
@@ -115,8 +118,9 @@ export class RoleService extends BaseService<Role> {
     role.roleBase = roleBase;
 
     // Assign all resolved permissions
-    for (const [key, value] of Object.entries(resolved)) {
-      role[key] = value ?? false;
+    for (const [enumKey, value] of Object.entries(resolved)) {
+      const field = PERMISSION_FIELD_MAP[enumKey as Permissions];
+      if (field) role[field] = value ?? false;
     }
 
     // gerenciarPermissoesCursinho special case: falls back to alterarPermissao
@@ -176,8 +180,9 @@ export class RoleService extends BaseService<Role> {
 
     role.name = roleDto.name;
 
-    for (const [key, value] of Object.entries(resolved)) {
-      role[key] = value ?? false;
+    for (const [enumKey, value] of Object.entries(resolved)) {
+      const field = PERMISSION_FIELD_MAP[enumKey as Permissions];
+      if (field) role[field] = value ?? false;
     }
 
     // gerenciarPermissoesCursinho special case: falls back to alterarPermissao
@@ -213,7 +218,10 @@ export class RoleService extends BaseService<Role> {
       await Promise.all(
         role.children.map(async (child) => {
           for (const permission of BASE_PERMISSIONS) {
-            child[permission] = role[permission];
+            const field = PERMISSION_FIELD_MAP[permission];
+            if (field) {
+              child[field] = role[field];
+            }
           }
           await this.roleRepository.update(child);
         }),
@@ -234,5 +242,28 @@ export class RoleService extends BaseService<Role> {
 
   async findOneByIdWithPartner(id: string) {
     return await this.roleRepository.findOneByIdWithPartner(id);
+  }
+
+  async findOneByIdWithPermissions(
+    id: string,
+  ): Promise<PermissionGroupResponseDto[]> {
+    const role = await this.roleRepository.findOneBy({ id });
+    if (!role) {
+      throw new HttpException('Role not found', HttpStatus.NOT_FOUND);
+    }
+
+    return PERMISSION_HIERARCHY.map((group) => ({
+      key: group.key,
+      label: group.label,
+      permissions: group.permissions.map((node) => {
+        const field = PERMISSION_FIELD_MAP[node.key];
+        return {
+          key: node.key,
+          label: node.label,
+          type: node.type,
+          value: field ? (role[field] ?? false) : false,
+        };
+      }),
+    }));
   }
 }
