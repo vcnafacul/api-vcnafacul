@@ -96,4 +96,7 @@ export class CreateRoleDtoInput {
 
   @IsBoolean()
   partnerPrepSupportAgent: boolean;
+
+  @IsBoolean()
+  editarMateriasFrentes: boolean;
 }

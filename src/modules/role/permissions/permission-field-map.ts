@@ -29,4 +29,5 @@ export const PERMISSION_FIELD_MAP: Record<Permissions, string> = {
   [Permissions.revisarTodasRedacoes]: 'revisarTodasRedacoes',
   [Permissions.supportAgent]: 'supportAgent',
   [Permissions.partnerPrepSupportAgent]: 'partnerPrepSupportAgent',
+  [Permissions.editarMateriasFrentes]: 'editarMateriasFrentes',
 };

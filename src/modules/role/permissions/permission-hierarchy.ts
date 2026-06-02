@@ -71,6 +71,7 @@ export const PERMISSION_HIERARCHY: PermissionGroup[] = [
           Permissions.uploadDemanda,
           Permissions.validarDemanda,
           Permissions.visualizarDemanda,
+          Permissions.editarMateriasFrentes,
         ],
       },
       {
@@ -88,6 +89,11 @@ export const PERMISSION_HIERARCHY: PermissionGroup[] = [
       {
         key: Permissions.visualizarDemanda,
         label: 'Visualizar demanda',
+        type: PermissionType.project,
+      },
+      {
+        key: Permissions.editarMateriasFrentes,
+        label: 'Editar matérias e frentes',
         type: PermissionType.project,
       },
     ],

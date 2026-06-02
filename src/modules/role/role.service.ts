@@ -110,6 +110,7 @@ export class RoleService extends BaseService<Role> {
       [Permissions.gerenciarTemas]: roleDto.gerenciarTemas,
       [Permissions.revisarRedacoes]: roleDto.revisarRedacoes,
       [Permissions.partnerPrepSupportAgent]: roleDto.partnerPrepSupportAgent,
+      [Permissions.editarMateriasFrentes]: roleDto.editarMateriasFrentes,
     });
 
     const role = new Role();
@@ -176,6 +177,7 @@ export class RoleService extends BaseService<Role> {
       [Permissions.revisarTodasRedacoes]: roleDto.revisarTodasRedacoes,
       [Permissions.supportAgent]: roleDto.supportAgent,
       [Permissions.partnerPrepSupportAgent]: roleDto.partnerPrepSupportAgent,
+      [Permissions.editarMateriasFrentes]: roleDto.editarMateriasFrentes,
     });
 
     role.name = roleDto.name;
@@ -213,6 +215,7 @@ export class RoleService extends BaseService<Role> {
         Permissions.gerenciarTemas,
         Permissions.revisarTodasRedacoes,
         Permissions.supportAgent,
+        Permissions.editarMateriasFrentes,
       ];
 
       await Promise.all(

@@ -117,6 +117,9 @@ export class Role extends BaseEntity {
   @Column({ name: Permissions.partnerPrepSupportAgent, default: false })
   partnerPrepSupportAgent: boolean;
 
+  @Column({ name: Permissions.editarMateriasFrentes, default: false })
+  editarMateriasFrentes: boolean;
+
   @OneToMany(() => User, (user) => user.role)
   users: User[];
 

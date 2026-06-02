@@ -87,6 +87,7 @@ describe('Role e2e', () => {
         revisarTodasRedacoes: false,
         supportAgent: false,
         partnerPrepSupportAgent: false,
+        editarMateriasFrentes: false,
       };
 
       const baseRoleResponse = await request(app.getHttpServer())
@@ -137,6 +138,7 @@ describe('Role e2e', () => {
         revisarTodasRedacoes: false,
         supportAgent: false,
         partnerPrepSupportAgent: false,
+        editarMateriasFrentes: false,
       };
 
       const childRoleResponse = await request(app.getHttpServer())
@@ -271,6 +273,7 @@ describe('Role e2e', () => {
         revisarTodasRedacoes: false,
         supportAgent: false,
         partnerPrepSupportAgent: false,
+        editarMateriasFrentes: false,
       };
 
       const baseRoleResponse = await request(app.getHttpServer())
@@ -313,6 +316,7 @@ describe('Role e2e', () => {
         revisarTodasRedacoes: false,
         supportAgent: false,
         partnerPrepSupportAgent: false,
+        editarMateriasFrentes: false,
       };
 
       const childRoleResponse = await request(app.getHttpServer())

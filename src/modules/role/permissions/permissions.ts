@@ -27,4 +27,5 @@ export enum Permissions {
   revisarTodasRedacoes = 'revisar_todas_redacoes',
   supportAgent = 'support_agent',
   partnerPrepSupportAgent = 'partner_prep_support_agent',
+  editarMateriasFrentes = 'editar_materias_frentes',
 }
