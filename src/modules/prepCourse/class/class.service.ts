@@ -131,6 +131,7 @@ export class ClassService extends BaseService<Class> {
         });
         const result = {
           ...classEntity,
+          partnerId: classEntity.partnerPrepCourse?.id || '',
           coursePeriodId: classEntity.coursePeriod?.id || '',
           coursePeriodName: classEntity.coursePeriod?.name || '',
           coursePeriodYear: classEntity.coursePeriod?.year || 0,
