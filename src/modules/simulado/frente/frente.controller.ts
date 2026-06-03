@@ -26,7 +26,7 @@ export class FrenteProxyController {
 
   @Post()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
+  @SetMetadata(PermissionsGuard.name, Permissions.editarMateriasFrentes)
   async create(@Body() dto: CreateFrenteProxyDtoInput) {
     return await this.frenteService.create(dto);
   }
@@ -53,7 +53,7 @@ export class FrenteProxyController {
 
   @Patch()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
+  @SetMetadata(PermissionsGuard.name, Permissions.editarMateriasFrentes)
   async updateFromBody(@Body() dto: UpdateFrenteProxyDtoInput) {
     const { id, ...rest } = dto;
     return await this.frenteService.update(id, rest);
@@ -61,7 +61,7 @@ export class FrenteProxyController {
 
   @Delete(':id')
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
+  @SetMetadata(PermissionsGuard.name, Permissions.editarMateriasFrentes)
   async delete(@Param('id') id: string) {
     return await this.frenteService.delete(id);
   }

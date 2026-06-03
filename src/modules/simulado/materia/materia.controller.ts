@@ -23,7 +23,7 @@ export class MateriaProxyController {
 
   @Post()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
+  @SetMetadata(PermissionsGuard.name, Permissions.editarMateriasFrentes)
   async create(@Body() body: Record<string, unknown>) {
     return await this.materiaService.create(body);
   }
@@ -49,14 +49,14 @@ export class MateriaProxyController {
 
   @Patch(':id')
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
+  @SetMetadata(PermissionsGuard.name, Permissions.editarMateriasFrentes)
   async update(@Param('id') id: string, @Body() body: Record<string, unknown>) {
     return await this.materiaService.update(id, body);
   }
 
   @Delete(':id')
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
+  @SetMetadata(PermissionsGuard.name, Permissions.editarMateriasFrentes)
   async delete(@Param('id') id: string) {
     return await this.materiaService.delete(id);
   }

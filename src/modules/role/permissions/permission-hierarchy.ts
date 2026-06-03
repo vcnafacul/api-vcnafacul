@@ -64,6 +64,12 @@ export const PERMISSION_HIERARCHY: PermissionGroup[] = [
     label: 'Demanda',
     permissions: [
       {
+        key: Permissions.editarMateriasFrentes,
+        label: 'Editar matérias e frentes',
+        type: PermissionType.project,
+        implies: [Permissions.gerenciadorDemanda],
+      },
+      {
         key: Permissions.gerenciadorDemanda,
         label: 'Gerenciar demanda',
         type: PermissionType.project,
@@ -71,7 +77,6 @@ export const PERMISSION_HIERARCHY: PermissionGroup[] = [
           Permissions.uploadDemanda,
           Permissions.validarDemanda,
           Permissions.visualizarDemanda,
-          Permissions.editarMateriasFrentes,
         ],
       },
       {
@@ -89,11 +94,6 @@ export const PERMISSION_HIERARCHY: PermissionGroup[] = [
       {
         key: Permissions.visualizarDemanda,
         label: 'Visualizar demanda',
-        type: PermissionType.project,
-      },
-      {
-        key: Permissions.editarMateriasFrentes,
-        label: 'Editar matérias e frentes',
         type: PermissionType.project,
       },
     ],
