@@ -9,6 +9,11 @@ import { GetAllRoleDto } from './dto/get-all-role.dto';
 import { UpdateRoleDtoInput } from './dto/update.role.dto';
 import { Role } from './role.entity';
 import { RoleRepository } from './role.repository';
+import { Permissions } from './permissions/permissions';
+import { resolveImpliedPermissions } from './permissions/permission-resolver';
+import { PERMISSION_FIELD_MAP } from './permissions/permission-field-map';
+import { PERMISSION_HIERARCHY } from './permissions/permission-hierarchy';
+import { PermissionGroupResponseDto } from './dto/permission-group-response.dto';
 
 @Injectable()
 export class RoleService extends BaseService<Role> {
@@ -56,175 +61,178 @@ export class RoleService extends BaseService<Role> {
     if (roleDto.roleBase && !roleBase) {
       throw new HttpException('Role Base not found', HttpStatus.NOT_FOUND);
     }
-    const role = new Role();
 
+    const resolved = resolveImpliedPermissions({
+      [Permissions.validarCursinho]:
+        roleBase?.validarCursinho || roleDto.validarCursinho,
+      [Permissions.criarSimulado]:
+        roleBase?.criarSimulado || roleDto.criarSimulado,
+      [Permissions.criarQuestao]:
+        roleBase?.criarQuestao || roleDto.criarQuestao,
+      [Permissions.validarQuestao]:
+        roleBase?.validarQuestao || roleDto.validarQuestao,
+      [Permissions.visualizarQuestao]:
+        roleBase?.visualizarQuestao || roleDto.visualizarQuestao,
+      [Permissions.uploadNews]: roleBase?.uploadNews || roleDto.uploadNews,
+      [Permissions.cadastrarProvas]:
+        roleBase?.cadastrarProvas || roleDto.cadastrarProvas,
+      [Permissions.visualizarProvas]:
+        roleBase?.visualizarProvas || roleDto.visualizarProvas,
+      [Permissions.gerenciadorDemanda]:
+        roleBase?.gerenciadorDemanda || roleDto.gerenciadorDemanda,
+      [Permissions.uploadDemanda]:
+        roleBase?.uploadDemanda || roleDto.uploadDemanda,
+      [Permissions.validarDemanda]:
+        roleBase?.validarDemanda || roleDto.validarDemanda,
+      [Permissions.visualizarDemanda]:
+        roleBase?.visualizarDemanda || roleDto.visualizarDemanda,
+      [Permissions.alterarPermissao]:
+        roleBase?.alterarPermissao || roleDto.alterarPermissao,
+      [Permissions.revisarTodasRedacoes]:
+        roleBase?.revisarTodasRedacoes || roleDto.revisarTodasRedacoes,
+      [Permissions.supportAgent]:
+        roleBase?.supportAgent || roleDto.supportAgent,
+      // Non-base permissions: dto only
+      [Permissions.gerenciarProcessoSeletivo]:
+        roleDto.gerenciarProcessoSeletivo,
+      [Permissions.gerenciarColaboradores]: roleDto.gerenciarColaboradores,
+      [Permissions.gerenciarTurmas]: roleDto.gerenciarTurmas,
+      [Permissions.visualizarTurmas]: roleDto.visualizarTurmas,
+      [Permissions.gerenciarEstudantes]: roleDto.gerenciarEstudantes,
+      [Permissions.visualizarEstudantes]: roleDto.visualizarEstudantes,
+      [Permissions.gerenciarPermissoesCursinho]:
+        roleDto.gerenciarPermissoesCursinho,
+      [Permissions.visualizarMinhasInscricoes]:
+        roleDto.visualizarMinhasInscricoes,
+      [Permissions.gerenciarFormularioGlobal]:
+        roleDto.gerenciarFormularioGlobal,
+      [Permissions.gerenciarFormulario]: roleDto.gerenciarFormulario,
+      [Permissions.gerenciarTemas]: roleDto.gerenciarTemas,
+      [Permissions.revisarRedacoes]: roleDto.revisarRedacoes,
+      [Permissions.partnerPrepSupportAgent]: roleDto.partnerPrepSupportAgent,
+      [Permissions.editarMateriasFrentes]: roleDto.editarMateriasFrentes,
+    });
+
+    const role = new Role();
     role.name = roleDto.name;
     role.base = roleDto.base;
-    role.validarCursinho = roleBase?.validarCursinho || roleDto.validarCursinho;
-    role.criarSimulado = roleBase?.criarSimulado || roleDto.criarSimulado;
-    role.criarQuestao = roleBase?.criarQuestao || roleDto.criarQuestao;
-    role.validarQuestao = roleBase?.validarQuestao || roleDto.validarQuestao;
-    role.visualizarQuestao =
-      roleBase?.visualizarQuestao ||
-      roleDto.validarQuestao ||
-      roleDto.criarQuestao
-        ? true
-        : roleDto.visualizarQuestao;
+    role.roleBase = roleBase;
 
-    role.uploadNews = roleBase?.uploadNews || roleDto.uploadNews;
-    role.cadastrarProvas = roleBase?.cadastrarProvas || roleDto.cadastrarProvas;
-    role.visualizarProvas =
-      roleBase?.visualizarProvas || roleDto.cadastrarProvas
-        ? true
-        : roleDto.visualizarProvas;
+    // Assign all resolved permissions
+    for (const [enumKey, value] of Object.entries(resolved)) {
+      const field = PERMISSION_FIELD_MAP[enumKey as Permissions];
+      if (field) role[field] = value ?? false;
+    }
 
-    role.gerenciadorDemanda =
-      roleBase?.gerenciadorDemanda || roleDto.gerenciadorDemanda;
-    role.uploadDemanda =
-      roleBase?.uploadDemanda || roleDto.gerenciadorDemanda
-        ? true
-        : roleDto.uploadDemanda;
-    role.validarDemanda =
-      roleBase?.validarDemanda || roleDto.gerenciadorDemanda
-        ? true
-        : roleDto.validarDemanda;
-    role.visualizarDemanda =
-      roleBase?.visualizarDemanda ||
-      roleDto.uploadDemanda ||
-      roleDto.validarDemanda ||
-      roleDto.gerenciadorDemanda
-        ? true
-        : roleDto.visualizarDemanda;
-
-    role.alterarPermissao =
-      roleBase?.alterarPermissao || roleDto.alterarPermissao;
-
-    // Não são permissões base
-    role.gerenciarProcessoSeletivo = roleDto.gerenciarProcessoSeletivo;
-    role.gerenciarColaboradores = roleDto.gerenciarColaboradores;
-    role.gerenciarTurmas = roleDto.gerenciarTurmas;
-    role.visualizarTurmas = roleDto.gerenciarTurmas
-      ? true
-      : roleDto.visualizarTurmas;
-    role.gerenciarEstudantes = roleDto.gerenciarEstudantes;
-    role.visualizarEstudantes = roleDto.gerenciarEstudantes
-      ? true
-      : roleDto.visualizarEstudantes;
-    role.gerenciarPermissoesCursinho = !roleDto.gerenciarPermissoesCursinho
-      ? role.alterarPermissao
-        ? true
-        : false
-      : true;
-    role.visualizarMinhasInscricoes = roleDto.visualizarMinhasInscricoes;
-    role.gerenciarFormularioGlobal = roleDto.gerenciarFormularioGlobal;
-    role.gerenciarFormulario = roleDto.gerenciarFormulario;
-    role.gerenciarTemas = roleDto.gerenciarTemas;
-    role.revisarRedacoes = roleDto.revisarRedacoes;
-    role.revisarTodasRedacoes =
-      roleBase?.revisarTodasRedacoes || roleDto.revisarTodasRedacoes;
-    role.supportAgent = roleBase?.supportAgent || roleDto.supportAgent;
-    role.partnerPrepSupportAgent = roleDto.partnerPrepSupportAgent;
+    // gerenciarPermissoesCursinho special case: falls back to alterarPermissao
+    if (!roleDto.gerenciarPermissoesCursinho) {
+      role.gerenciarPermissoesCursinho =
+        resolved[Permissions.alterarPermissao] ?? false;
+    }
 
     if (partnerPrepCourse) {
       role.partnerPrepCourse = partnerPrepCourse;
       role.base = false;
     }
 
-    role.roleBase = roleBase;
     return await this.roleRepository.create(role);
   }
 
   async update(roleDto: UpdateRoleDtoInput) {
-    const role = await this.roleRepository.findOneBy({
-      id: roleDto.id,
-    });
+    const role = await this.roleRepository.findOneBy({ id: roleDto.id });
     if (!role) {
       throw new Error('Role not found');
     }
 
+    const resolved = resolveImpliedPermissions({
+      [Permissions.validarCursinho]: roleDto.validarCursinho,
+      [Permissions.criarSimulado]: roleDto.criarSimulado,
+      [Permissions.criarQuestao]: roleDto.criarQuestao,
+      [Permissions.validarQuestao]: roleDto.validarQuestao,
+      [Permissions.visualizarQuestao]: roleDto.visualizarQuestao,
+      [Permissions.uploadNews]: roleDto.uploadNews,
+      [Permissions.cadastrarProvas]: roleDto.cadastrarProvas,
+      [Permissions.visualizarProvas]: roleDto.visualizarProvas,
+      [Permissions.gerenciadorDemanda]: roleDto.gerenciadorDemanda,
+      [Permissions.uploadDemanda]: roleDto.uploadDemanda,
+      [Permissions.validarDemanda]: roleDto.validarDemanda,
+      [Permissions.visualizarDemanda]: roleDto.visualizarDemanda,
+      [Permissions.alterarPermissao]: roleDto.alterarPermissao,
+      [Permissions.gerenciarProcessoSeletivo]:
+        roleDto.gerenciarProcessoSeletivo,
+      [Permissions.gerenciarColaboradores]: roleDto.gerenciarColaboradores,
+      [Permissions.gerenciarTurmas]: roleDto.gerenciarTurmas,
+      [Permissions.visualizarTurmas]: roleDto.visualizarTurmas,
+      [Permissions.gerenciarEstudantes]: roleDto.gerenciarEstudantes,
+      [Permissions.visualizarEstudantes]: roleDto.visualizarEstudantes,
+      [Permissions.gerenciarPermissoesCursinho]:
+        roleDto.gerenciarPermissoesCursinho,
+      [Permissions.visualizarMinhasInscricoes]:
+        roleDto.visualizarMinhasInscricoes,
+      [Permissions.gerenciarFormularioGlobal]:
+        roleDto.gerenciarFormularioGlobal,
+      [Permissions.gerenciarFormulario]: roleDto.gerenciarFormulario,
+      [Permissions.gerenciarTemas]: roleDto.gerenciarTemas,
+      [Permissions.revisarRedacoes]: roleDto.revisarRedacoes,
+      [Permissions.revisarTodasRedacoes]: roleDto.revisarTodasRedacoes,
+      [Permissions.supportAgent]: roleDto.supportAgent,
+      [Permissions.partnerPrepSupportAgent]: roleDto.partnerPrepSupportAgent,
+      [Permissions.editarMateriasFrentes]: roleDto.editarMateriasFrentes,
+    });
+
     role.name = roleDto.name;
-    role.validarCursinho = roleDto.validarCursinho;
-    role.criarSimulado = roleDto.criarSimulado;
-    role.criarQuestao = roleDto.criarQuestao;
-    role.validarQuestao = roleDto.validarQuestao;
-    role.visualizarQuestao =
-      roleDto.validarQuestao || roleDto.criarQuestao
-        ? true
-        : roleDto.visualizarQuestao;
 
-    role.uploadNews = roleDto.uploadNews;
-    role.cadastrarProvas = roleDto.cadastrarProvas;
-    role.visualizarProvas = roleDto.cadastrarProvas
-      ? true
-      : roleDto.visualizarProvas;
+    for (const [enumKey, value] of Object.entries(resolved)) {
+      const field = PERMISSION_FIELD_MAP[enumKey as Permissions];
+      if (field) role[field] = value ?? false;
+    }
 
-    role.gerenciadorDemanda = roleDto.gerenciadorDemanda;
-    role.uploadDemanda = roleDto.gerenciadorDemanda
-      ? true
-      : roleDto.uploadDemanda;
-    role.validarDemanda = roleDto.gerenciadorDemanda
-      ? true
-      : roleDto.validarDemanda;
-    role.visualizarDemanda =
-      roleDto.uploadDemanda ||
-      roleDto.validarDemanda ||
-      roleDto.gerenciadorDemanda
-        ? true
-        : roleDto.visualizarDemanda;
-    role.gerenciarProcessoSeletivo = roleDto.gerenciarProcessoSeletivo;
-    role.gerenciarColaboradores = roleDto.gerenciarColaboradores;
-    role.gerenciarTurmas = roleDto.gerenciarTurmas;
-    role.visualizarTurmas = roleDto.gerenciarTurmas
-      ? true
-      : roleDto.visualizarTurmas;
-    role.gerenciarEstudantes = roleDto.gerenciarEstudantes;
-    role.visualizarEstudantes = roleDto.gerenciarEstudantes
-      ? true
-      : roleDto.visualizarEstudantes;
-    role.alterarPermissao = roleDto.alterarPermissao;
-    role.gerenciarPermissoesCursinho = !roleDto.gerenciarPermissoesCursinho
-      ? role.alterarPermissao
-        ? true
-        : false
-      : true;
-    role.visualizarMinhasInscricoes = roleDto.visualizarMinhasInscricoes;
-    role.gerenciarFormularioGlobal = roleDto.gerenciarFormularioGlobal;
-    role.gerenciarFormulario = roleDto.gerenciarFormulario;
-    role.gerenciarTemas = roleDto.gerenciarTemas;
-    role.revisarRedacoes = roleDto.revisarRedacoes;
-    role.revisarTodasRedacoes = roleDto.revisarTodasRedacoes;
-    role.supportAgent = roleDto.supportAgent;
-    role.partnerPrepSupportAgent = roleDto.partnerPrepSupportAgent;
+    // gerenciarPermissoesCursinho special case: falls back to alterarPermissao
+    if (!roleDto.gerenciarPermissoesCursinho) {
+      role.gerenciarPermissoesCursinho =
+        resolved[Permissions.alterarPermissao] ?? false;
+    }
 
-    // Atualiza permissões das filhas
+    // Propagate base permissions down to children
     if (role.children?.length > 0) {
+      const BASE_PERMISSIONS: Permissions[] = [
+        Permissions.validarCursinho,
+        Permissions.criarSimulado,
+        Permissions.criarQuestao,
+        Permissions.validarQuestao,
+        Permissions.visualizarQuestao,
+        Permissions.uploadNews,
+        Permissions.cadastrarProvas,
+        Permissions.visualizarProvas,
+        Permissions.gerenciadorDemanda,
+        Permissions.uploadDemanda,
+        Permissions.validarDemanda,
+        Permissions.visualizarDemanda,
+        Permissions.alterarPermissao,
+        Permissions.visualizarMinhasInscricoes,
+        Permissions.gerenciarFormularioGlobal,
+        Permissions.gerenciarFormulario,
+        Permissions.gerenciarTemas,
+        Permissions.revisarTodasRedacoes,
+        Permissions.supportAgent,
+        Permissions.editarMateriasFrentes,
+      ];
+
       await Promise.all(
         role.children.map(async (child) => {
-          child.validarCursinho = role.validarCursinho;
-          child.criarSimulado = role.criarSimulado;
-          child.criarQuestao = role.criarQuestao;
-          child.validarQuestao = role.validarQuestao;
-          child.visualizarQuestao = role.visualizarQuestao;
-          child.uploadNews = role.uploadNews;
-          child.cadastrarProvas = role.cadastrarProvas;
-          child.visualizarProvas = role.visualizarProvas;
-          child.gerenciadorDemanda = role.gerenciadorDemanda;
-          child.uploadDemanda = role.uploadDemanda;
-          child.validarDemanda = role.validarDemanda;
-          child.visualizarDemanda = role.visualizarDemanda;
-          child.alterarPermissao = role.alterarPermissao;
-          child.visualizarMinhasInscricoes = role.visualizarMinhasInscricoes;
-          child.gerenciarFormularioGlobal = role.gerenciarFormularioGlobal;
-          child.gerenciarFormulario = role.gerenciarFormulario;
-          child.gerenciarTemas = role.gerenciarTemas;
-          child.revisarTodasRedacoes = role.revisarTodasRedacoes;
-          child.supportAgent = role.supportAgent;
+          for (const permission of BASE_PERMISSIONS) {
+            const field = PERMISSION_FIELD_MAP[permission];
+            if (field) {
+              child[field] = role[field];
+            }
+          }
           await this.roleRepository.update(child);
         }),
       );
     }
-    // só atualiza role.base se não é base ou se é base mas não tem filhos
-    if (!role.base || (role.base && role.children?.length === 0)) {
+
+    // Only update base flag if role has no children
+    if (!role.base || role.children?.length === 0) {
       role.base = roleDto.base;
     }
 
@@ -237,5 +245,28 @@ export class RoleService extends BaseService<Role> {
 
   async findOneByIdWithPartner(id: string) {
     return await this.roleRepository.findOneByIdWithPartner(id);
+  }
+
+  async findOneByIdWithPermissions(
+    id: string,
+  ): Promise<PermissionGroupResponseDto[]> {
+    const role = await this.roleRepository.findOneBy({ id });
+    if (!role) {
+      throw new HttpException('Role not found', HttpStatus.NOT_FOUND);
+    }
+
+    return PERMISSION_HIERARCHY.map((group) => ({
+      key: group.key,
+      label: group.label,
+      permissions: group.permissions.map((node) => {
+        const field = PERMISSION_FIELD_MAP[node.key];
+        return {
+          key: node.key,
+          label: node.label,
+          type: node.type,
+          value: field ? (role[field] ?? false) : false,
+        };
+      }),
+    }));
   }
 }

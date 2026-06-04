@@ -14,7 +14,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Permissions } from 'src/modules/role/role.entity';
+import { Permissions } from 'src/modules/role/permissions/permissions';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
 import { ProvaService } from './prova.service';

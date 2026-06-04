@@ -15,7 +15,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { THROTTLE_CONFIG } from 'src/shared/config/email.config';
 import { Request } from 'express';
-import { Permissions } from 'src/modules/role/role.entity';
+import { Permissions } from 'src/modules/role/permissions/permissions';
 import { User } from 'src/modules/user/user.entity';
 import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';

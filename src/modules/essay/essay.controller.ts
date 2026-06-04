@@ -20,7 +20,7 @@ import { Response } from 'express';
 import { ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../shared/guards/permission.guard';
-import { Permissions } from '../role/role.entity';
+import { Permissions } from '../role/permissions/permissions';
 import { EssayThemeService } from './essay-theme.service';
 import { EssayService } from './essay.service';
 import { EssaySettingsService } from './essay-settings.service';

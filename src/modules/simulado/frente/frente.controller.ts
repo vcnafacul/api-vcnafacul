@@ -11,7 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { Permissions } from 'src/modules/role/role.entity';
+import { Permissions } from 'src/modules/role/permissions/permissions';
 import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
@@ -26,7 +26,7 @@ export class FrenteProxyController {
 
   @Post()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
+  @SetMetadata(PermissionsGuard.name, Permissions.editarMateriasFrentes)
   async create(@Body() dto: CreateFrenteProxyDtoInput) {
     return await this.frenteService.create(dto);
   }
@@ -53,7 +53,7 @@ export class FrenteProxyController {
 
   @Patch()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
+  @SetMetadata(PermissionsGuard.name, Permissions.editarMateriasFrentes)
   async updateFromBody(@Body() dto: UpdateFrenteProxyDtoInput) {
     const { id, ...rest } = dto;
     return await this.frenteService.update(id, rest);
@@ -61,7 +61,7 @@ export class FrenteProxyController {
 
   @Delete(':id')
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
+  @SetMetadata(PermissionsGuard.name, Permissions.editarMateriasFrentes)
   async delete(@Param('id') id: string) {
     return await this.frenteService.delete(id);
   }

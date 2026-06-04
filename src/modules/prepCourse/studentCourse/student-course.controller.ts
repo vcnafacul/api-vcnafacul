@@ -25,7 +25,7 @@ import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { THROTTLE_CONFIG } from 'src/shared/config/email.config';
 import { Request, Response } from 'express';
-import { Permissions } from 'src/modules/role/role.entity';
+import { Permissions } from 'src/modules/role/permissions/permissions';
 import { CreateUserDtoInput } from 'src/modules/user/dto/create.dto.input';
 import { UserDtoOutput } from 'src/modules/user/dto/user.dto.output';
 import { User } from 'src/modules/user/user.entity';

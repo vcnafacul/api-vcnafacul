@@ -6,7 +6,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Permissions } from 'src/modules/role/role.entity';
+import { Permissions } from 'src/modules/role/permissions/permissions';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { ApplyJusticationDtoInput } from './dtos/apply-justication.dto.input';
 import { UpdateAttendanceDtoInput } from './dtos/update-attendance.dto.input';

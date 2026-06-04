@@ -15,7 +15,7 @@ import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
-import { Permissions } from '../role/role.entity';
+import { Permissions } from '../role/permissions/permissions';
 import { User } from '../user/user.entity';
 import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 import { AnswerSimulado } from './dtos/answer-simulado.dto.input';
@@ -92,7 +92,10 @@ export class SimuladoController {
     @Res() res: Response,
   ) {
     try {
-      const result = await this.simuladoService.answer(answer, (req.user as User).id);
+      const result = await this.simuladoService.answer(
+        answer,
+        (req.user as User).id,
+      );
       return res.status(202).json(result);
     } catch (error) {
       return res.status(error?.status || 502).json({

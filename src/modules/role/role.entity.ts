@@ -2,37 +2,7 @@ import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../shared/modules/base/entity.base';
 import { PartnerPrepCourse } from '../prepCourse/partnerPrepCourse/partner-prep-course.entity';
 import { User } from '../user/user.entity';
-
-export enum Permissions {
-  validarCursinho = 'validar_cursinho',
-  alterarPermissao = 'alterar_permissao',
-  criarSimulado = 'criar_simulado',
-  criarQuestao = 'criar_questao',
-  visualizarQuestao = 'visualizar_questao',
-  validarQuestao = 'validar_questao',
-  uploadNews = 'upload_news',
-  visualizarProvas = 'visualizar_provas',
-  cadastrarProvas = 'cadastrar_provas',
-  visualizarDemanda = 'visualizar_demanda',
-  uploadDemanda = 'upload_demanda',
-  validarDemanda = 'validar_demanda',
-  gerenciadorDemanda = 'gerenciador_demanda',
-  gerenciarProcessoSeletivo = 'gerenciar_processo_seletivo',
-  gerenciarColaboradores = 'gerenciar_colaboradores',
-  gerenciarTurmas = 'gerenciar_turmas',
-  visualizarTurmas = 'visualizar_turmas',
-  gerenciarEstudantes = 'gerenciar_estudantes',
-  visualizarEstudantes = 'visualizar_estudantes',
-  gerenciarPermissoesCursinho = 'gerenciar_permissoes_cursinho',
-  visualizarMinhasInscricoes = 'visualizar_minhas_inscricoes',
-  gerenciarFormularioGlobal = 'gerenciar_formulario_global',
-  gerenciarFormulario = 'gerenciar_formulario',
-  gerenciarTemas = 'gerenciar_temas',
-  revisarRedacoes = 'revisar_redacoes',
-  revisarTodasRedacoes = 'revisar_todas_redacoes',
-  supportAgent = 'support_agent',
-  partnerPrepSupportAgent = 'partner_prep_support_agent',
-}
+import { Permissions } from './permissions/permissions';
 
 @Entity('roles')
 export class Role extends BaseEntity {
@@ -146,6 +116,9 @@ export class Role extends BaseEntity {
 
   @Column({ name: Permissions.partnerPrepSupportAgent, default: false })
   partnerPrepSupportAgent: boolean;
+
+  @Column({ name: Permissions.editarMateriasFrentes, default: false })
+  editarMateriasFrentes: boolean;
 
   @OneToMany(() => User, (user) => user.role)
   users: User[];
