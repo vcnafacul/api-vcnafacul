@@ -67,7 +67,12 @@ export const PERMISSION_HIERARCHY: PermissionGroup[] = [
         key: Permissions.editarMateriasFrentes,
         label: 'Editar matérias e frentes',
         type: PermissionType.project,
-        implies: [Permissions.gerenciadorDemanda],
+        implies: [
+          Permissions.gerenciadorDemanda,
+          Permissions.uploadDemanda,
+          Permissions.validarDemanda,
+          Permissions.visualizarDemanda,
+        ],
       },
       {
         key: Permissions.gerenciadorDemanda,
