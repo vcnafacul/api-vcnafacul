@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsOptional,
   IsString,
   IsUrl,
@@ -26,4 +27,9 @@ export class UpdateHomeSupporterDto {
   @MaxLength(280)
   @ApiProperty({ required: false, nullable: true })
   description?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  @ApiProperty({ required: false })
+  active?: boolean;
 }

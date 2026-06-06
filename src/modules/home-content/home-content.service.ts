@@ -219,6 +219,10 @@ export class HomeContentService {
     );
   }
 
+  async getAllSupporters(): Promise<HomeSupporter[]> {
+    return this.supporterRepo.findAllWithInactive();
+  }
+
   async createSupporter(dto: CreateHomeSupporterDto): Promise<HomeSupporter> {
     const entity = new HomeSupporter();
     entity.name = dto.name;
@@ -243,6 +247,7 @@ export class HomeContentService {
     if (dto.description !== undefined) {
       entity.description = dto.description;
     }
+    if (dto.active !== undefined) entity.active = dto.active;
     const saved = await this.supporterRepo.save(entity);
     await this.cache.del(CACHE_KEYS.supporters);
     return saved;

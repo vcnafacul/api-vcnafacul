@@ -105,6 +105,14 @@ export class HomeContentController {
     return this.service.getSupporters();
   }
 
+  @Get('supporters/all')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
+  getAllSupporters() {
+    return this.service.getAllSupporters();
+  }
+
   @Post('supporters')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)

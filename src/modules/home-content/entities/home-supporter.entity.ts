@@ -23,6 +23,9 @@ export class HomeSupporter {
   @Column({ type: 'varchar', length: 280, nullable: true })
   description: string | null;
 
+  @Column({ type: 'boolean', default: true })
+  active: boolean;
+
   @Column({ type: 'int', default: 0 })
   order: number;
 
