@@ -37,6 +37,7 @@ describe('HomeContentService', () => {
     };
     supporterRepo = {
       findAllOrdered: jest.fn(),
+      findAllWithInactive: jest.fn(),
       findById: jest.fn(),
       save: jest.fn(async (e) => e),
       delete: jest.fn(),
@@ -351,6 +352,7 @@ describe('HomeContentService', () => {
       s.link = 'https://acme.com';
       s.logoUrl = null;
       s.order = 0;
+      s.active = true;
       return s;
     };
 
@@ -426,6 +428,61 @@ describe('HomeContentService', () => {
             link: 'https://acme.com',
             description: null,
           }),
+        );
+      });
+    });
+
+    describe('getAllSupporters', () => {
+      it('retorna todos os apoiadores incluindo inativos sem usar cache', async () => {
+        const inativo = supporter(2);
+        inativo.active = false;
+        supporterRepo.findAllWithInactive.mockResolvedValue([supporter(1), inativo]);
+
+        const result = await service.getAllSupporters();
+
+        expect(result).toHaveLength(2);
+        expect(supporterRepo.findAllWithInactive).toHaveBeenCalled();
+        expect(cache.wrap).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('updateSupporter — active flag', () => {
+      it('inativa apoiador quando active=false e invalida cache', async () => {
+        const existing = supporter();
+        supporterRepo.findById.mockResolvedValue(existing);
+
+        const saved = await service.updateSupporter(1, { active: false });
+
+        expect(saved.active).toBe(false);
+        expect(supporterRepo.save).toHaveBeenCalledWith(
+          expect.objectContaining({ active: false }),
+        );
+        expect(cache.del).toHaveBeenCalledWith(CACHE_KEYS.supporters);
+      });
+
+      it('ativa apoiador quando active=true e invalida cache', async () => {
+        const existing = supporter();
+        existing.active = false;
+        supporterRepo.findById.mockResolvedValue(existing);
+
+        const saved = await service.updateSupporter(1, { active: true });
+
+        expect(saved.active).toBe(true);
+        expect(supporterRepo.save).toHaveBeenCalledWith(
+          expect.objectContaining({ active: true }),
+        );
+        expect(cache.del).toHaveBeenCalledWith(CACHE_KEYS.supporters);
+      });
+
+      it('não altera active quando campo ausente no dto', async () => {
+        const existing = supporter();
+        supporterRepo.findById.mockResolvedValue(existing);
+
+        const saved = await service.updateSupporter(1, { name: 'Novo' });
+
+        expect(saved.active).toBe(true);
+        expect(supporterRepo.save).toHaveBeenCalledWith(
+          expect.objectContaining({ active: true }),
         );
       });
     });
