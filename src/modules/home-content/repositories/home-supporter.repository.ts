@@ -12,7 +12,16 @@ export class HomeSupporterRepository {
   }
 
   findAllOrdered(): Promise<HomeSupporter[]> {
-    return this.repository.find({ order: { order: 'ASC', id: 'ASC' } });
+    return this.repository.find({
+      where: { active: true },
+      order: { order: 'ASC', id: 'ASC' },
+    });
+  }
+
+  findAllWithInactive(): Promise<HomeSupporter[]> {
+    return this.repository.find({
+      order: { active: 'DESC', order: 'ASC', id: 'ASC' },
+    });
   }
 
   findById(id: number): Promise<HomeSupporter | null> {
