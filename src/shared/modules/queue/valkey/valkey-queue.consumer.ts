@@ -60,6 +60,10 @@ export class ValkeyQueueConsumer
 
   private async poll() {
     while (this.running) {
+      if (this.registrations.length === 0) {
+        await new Promise((r) => setTimeout(r, 100));
+        continue;
+      }
       for (const reg of this.registrations) {
         await this.readAndProcess(reg);
         await this.reclaimStale(reg);
