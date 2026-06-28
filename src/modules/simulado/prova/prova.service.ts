@@ -44,10 +44,9 @@ export class ProvaService {
     }
     const request = new CreateProvaDTORequest();
     request.edicao = prova.edicao;
-    request.exame = prova.exame;
     request.ano = parseInt(prova.ano as unknown as string);
     request.aplicacao = parseInt(prova.aplicacao as unknown as string);
-    request.tipo = prova.tipo;
+    request.categoria = prova.categoria;
     request.filename = fileName;
     request.gabarito = gabaritoName;
     return await this.axios.post(`v1/prova`, request);

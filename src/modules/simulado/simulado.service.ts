@@ -11,7 +11,7 @@ import { AvailableSimuladoDTOoutput } from './dtos/available-simulado.dto.output
 import { CreateSimuladoDTOInput } from './dtos/create-simulado.dto.input';
 import { ReportDTO } from './dtos/report.dto.input';
 import { SimuladoDTO } from './dtos/simulado.dto.output';
-import { TipoSimuladoDTO } from './dtos/tipo-simulado.dto.output';
+import { CategoriaDTO } from './dtos/categoria.dto.output';
 import { ReportEntity } from './enum/report.enum';
 import { Status } from './enum/status.enum';
 
@@ -38,8 +38,8 @@ export class SimuladoService {
     return await this.axios.get<SimuladoDTO[]>(`v1/simulado?page=${page}&limit=${limit}`);
   }
 
-  async getTipos() {
-    return await this.axios.get<TipoSimuladoDTO[]>('v1/tipo-simulado');
+  async getCategorias() {
+    return await this.axios.get<CategoriaDTO[]>('v1/categoria');
   }
 
   async getToAnswer(id: string) {
