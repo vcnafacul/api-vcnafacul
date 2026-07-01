@@ -7,7 +7,7 @@
     "assets": [
       {
         "include": "fonts/**/*",
-        "outDir": "dist"
+        "outDir": "dist/src"
       }
     ]
   }
