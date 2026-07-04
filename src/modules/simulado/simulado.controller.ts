@@ -24,7 +24,6 @@ import { CreateSimuladoDTOInput } from './dtos/create-simulado.dto.input';
 import { ReportDTO } from './dtos/report.dto.input';
 import { SimuladoAnswerDTO } from './dtos/simulado-answer.dto.output';
 import { SimuladoDTO } from './dtos/simulado.dto.output';
-import { TipoSimuladoDTO } from './dtos/tipo-simulado.dto.output';
 import { SimuladoService } from './simulado.service';
 
 @ApiTags('Simulado')
@@ -54,17 +53,6 @@ export class SimuladoController {
   })
   async getAdd(@Query() query: GetAllDtoInput): Promise<SimuladoDTO[]> {
     return await this.simuladoService.getAll(query.page, query.limit);
-  }
-
-  @Get('tipos')
-  @ApiResponse({
-    status: 200,
-    description: 'busca todos os tipos de simulados',
-    type: SimuladoDTO,
-    isArray: true,
-  })
-  async getTipos(): Promise<TipoSimuladoDTO[]> {
-    return await this.simuladoService.getTipos();
   }
 
   @Get('toanswer/:id')

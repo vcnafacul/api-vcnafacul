@@ -7,6 +7,7 @@ import { BlobModule } from 'src/shared/services/blob/blob.module';
 import { AuditLogModule } from '../audit-log/audit-log.module';
 import { CollaboratorFrenteRepository } from '../prepCourse/collaborator/collaborator-frente.repository';
 import { UserModule } from '../user/user.module';
+import { CategoriaProxyController } from './categoria/categoria.controller';
 import { ContentProxyController } from './content/content.controller';
 import { ContentProxyService } from './content/content.service';
 import { FrenteProxyController } from './frente/frente.controller';
@@ -42,6 +43,7 @@ import { SubjectProxyService } from './subject/subject.service';
     FrenteProxyController,
     SubjectProxyController,
     ContentProxyController,
+    CategoriaProxyController,
   ],
   providers: [
     SimuladoService,

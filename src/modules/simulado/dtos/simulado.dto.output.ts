@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { TipoSimuladoDTO } from './tipo-simulado.dto.output';
+import { CategoriaDTO } from './categoria.dto.output';
 import { QuestaoDTO } from './questao.dto.output';
 
 export class SimuladoDTO {
@@ -12,8 +12,8 @@ export class SimuladoDTO {
   @ApiProperty()
   descricao: string;
 
-  @ApiProperty()
-  tipo: TipoSimuladoDTO;
+  @ApiProperty({ type: CategoriaDTO })
+  categoria: CategoriaDTO;
 
   @ApiProperty({ type: QuestaoDTO, isArray: true })
   questoes: QuestaoDTO[];

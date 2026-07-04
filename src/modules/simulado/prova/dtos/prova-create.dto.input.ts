@@ -23,9 +23,5 @@ export class CreateProvaDTOInput {
 
   @ApiProperty()
   @IsString()
-  public exame: string;
-
-  @ApiProperty()
-  @IsString()
-  tipo: string;
+  categoria: string;
 }
