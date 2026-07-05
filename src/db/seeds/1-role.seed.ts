@@ -8,7 +8,6 @@ const RoleData = [
     name: 'admin',
     validarCursinho: true,
     alterarPermissao: true,
-    criarSimulado: true,
   },
 ];
 

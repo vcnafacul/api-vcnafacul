@@ -18,9 +18,6 @@ export class Role extends BaseEntity {
   @Column({ name: Permissions.alterarPermissao, default: false })
   alterarPermissao: boolean;
 
-  @Column({ name: Permissions.criarSimulado, default: false })
-  criarSimulado: boolean;
-
   @Column({ name: Permissions.criarQuestao, default: false })
   criarQuestao: boolean;
 

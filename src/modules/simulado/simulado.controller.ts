@@ -20,7 +20,6 @@ import { User } from '../user/user.entity';
 import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 import { AnswerSimulado } from './dtos/answer-simulado.dto.input';
 import { AvailableSimuladoDTOoutput } from './dtos/available-simulado.dto.output';
-import { CreateSimuladoDTOInput } from './dtos/create-simulado.dto.input';
 import { ReportDTO } from './dtos/report.dto.input';
 import { SimuladoAnswerDTO } from './dtos/simulado-answer.dto.output';
 import { SimuladoDTO } from './dtos/simulado.dto.output';
@@ -30,19 +29,6 @@ import { SimuladoService } from './simulado.service';
 @Controller('mssimulado/simulado')
 export class SimuladoController {
   constructor(private readonly simuladoService: SimuladoService) {}
-
-  @Post()
-  @ApiResponse({
-    status: 200,
-    description: 'cria simulado',
-    type: SimuladoDTO,
-    isArray: false,
-  })
-  @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.criarSimulado)
-  async create(@Body() dto: CreateSimuladoDTOInput): Promise<SimuladoDTO> {
-    return await this.simuladoService.create(dto);
-  }
 
   @Get()
   @ApiResponse({
@@ -133,7 +119,7 @@ export class SimuladoController {
       },
     },
   })
-  @SetMetadata(PermissionsGuard.name, Permissions.criarSimulado)
+  @SetMetadata(PermissionsGuard.name, Permissions.cadastrarProvas)
   public async delete(@Param('id') id: string): Promise<void> {
     await this.simuladoService.delete(id);
   }

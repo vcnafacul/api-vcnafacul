@@ -61,7 +61,6 @@ describe('Role e2e', () => {
         base: true,
         validarCursinho: true,
         alterarPermissao: false,
-        criarSimulado: true,
         visualizarQuestao: true,
         criarQuestao: false,
         validarQuestao: false,
@@ -100,7 +99,6 @@ describe('Role e2e', () => {
       expect(baseRole.name).toBe(baseRoleData.name);
       expect(baseRole.base).toBe(true);
       expect(baseRole.validarCursinho).toBe(true);
-      expect(baseRole.criarSimulado).toBe(true);
       expect(baseRole.uploadNews).toBe(true);
       expect(baseRole.gerenciarProcessoSeletivo).toBe(true);
       expect(baseRole.gerenciarTurmas).toBe(true);
@@ -112,7 +110,6 @@ describe('Role e2e', () => {
         roleBase: baseRole.id,
         validarCursinho: false, // This should be inherited from base role
         alterarPermissao: false,
-        criarSimulado: false, // This should be inherited from base role
         visualizarQuestao: false,
         criarQuestao: true, // New permission not in base
         validarQuestao: false,
@@ -154,7 +151,6 @@ describe('Role e2e', () => {
 
       // Verify inheritance: child role should inherit permissions from base role
       expect(childRole.validarCursinho).toBe(true); // Inherited from base
-      expect(childRole.criarSimulado).toBe(true); // Inherited from base
       expect(childRole.uploadNews).toBe(true); // Inherited from base
       expect(childRole.gerenciarProcessoSeletivo).toBe(false); // It is not a base permission
       expect(childRole.gerenciarTurmas).toBe(false); // It is not a base permission
@@ -171,7 +167,6 @@ describe('Role e2e', () => {
         base: true,
         validarCursinho: false, // Changed from true to false
         alterarPermissao: true, // New permission
-        criarSimulado: true, // Keep same
         visualizarQuestao: true, // New permission
         criarQuestao: true, // New permission
         validarQuestao: true, // New permission
@@ -247,7 +242,6 @@ describe('Role e2e', () => {
         base: true,
         validarCursinho: false,
         alterarPermissao: false,
-        criarSimulado: false,
         visualizarQuestao: false,
         criarQuestao: false,
         validarQuestao: false,
@@ -290,7 +284,6 @@ describe('Role e2e', () => {
         roleBase: baseRole.id,
         validarCursinho: false,
         alterarPermissao: false,
-        criarSimulado: false,
         visualizarQuestao: false,
         criarQuestao: true, // This should automatically enable visualizarQuestao
         validarQuestao: false,

@@ -1,9 +1,9 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class PreserveVisualizarProvasFromCriarSimulado1783296001000
+export class PreserveVisualizarProvasFromCriarSimulado1783225907857
   implements MigrationInterface
 {
-  name = 'PreserveVisualizarProvasFromCriarSimulado1783296001000';
+  name = 'PreserveVisualizarProvasFromCriarSimulado1783225907857';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(

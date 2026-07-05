@@ -65,8 +65,6 @@ export class RoleService extends BaseService<Role> {
     const resolved = resolveImpliedPermissions({
       [Permissions.validarCursinho]:
         roleBase?.validarCursinho || roleDto.validarCursinho,
-      [Permissions.criarSimulado]:
-        roleBase?.criarSimulado || roleDto.criarSimulado,
       [Permissions.criarQuestao]:
         roleBase?.criarQuestao || roleDto.criarQuestao,
       [Permissions.validarQuestao]:
@@ -146,7 +144,6 @@ export class RoleService extends BaseService<Role> {
 
     const resolved = resolveImpliedPermissions({
       [Permissions.validarCursinho]: roleDto.validarCursinho,
-      [Permissions.criarSimulado]: roleDto.criarSimulado,
       [Permissions.criarQuestao]: roleDto.criarQuestao,
       [Permissions.validarQuestao]: roleDto.validarQuestao,
       [Permissions.visualizarQuestao]: roleDto.visualizarQuestao,
@@ -197,7 +194,6 @@ export class RoleService extends BaseService<Role> {
     if (role.children?.length > 0) {
       const BASE_PERMISSIONS: Permissions[] = [
         Permissions.validarCursinho,
-        Permissions.criarSimulado,
         Permissions.criarQuestao,
         Permissions.validarQuestao,
         Permissions.visualizarQuestao,

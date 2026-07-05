@@ -3,7 +3,6 @@ import { Permissions } from './permissions';
 export const PERMISSION_FIELD_MAP: Record<Permissions, string> = {
   [Permissions.validarCursinho]: 'validarCursinho',
   [Permissions.alterarPermissao]: 'alterarPermissao',
-  [Permissions.criarSimulado]: 'criarSimulado',
   [Permissions.criarQuestao]: 'criarQuestao',
   [Permissions.visualizarQuestao]: 'visualizarQuestao',
   [Permissions.validarQuestao]: 'validarQuestao',

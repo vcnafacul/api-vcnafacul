@@ -20,9 +20,6 @@ export class CreateRoleDtoInput {
   alterarPermissao: boolean;
 
   @IsBoolean()
-  criarSimulado: boolean;
-
-  @IsBoolean()
   visualizarQuestao: boolean;
 
   @IsBoolean()
