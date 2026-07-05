@@ -23,7 +23,6 @@ export class RoleUpdateAdminSeedService {
       await this.roleRepository.updateRole('admin', {
         validarCursinho: true,
         alterarPermissao: true,
-        criarSimulado: true,
         criarQuestao: true,
         visualizarQuestao: true,
         validarQuestao: true,

@@ -1,7 +1,6 @@
 export enum Permissions {
   validarCursinho = 'validar_cursinho',
   alterarPermissao = 'alterar_permissao',
-  criarSimulado = 'criar_simulado',
   criarQuestao = 'criar_questao',
   visualizarQuestao = 'visualizar_questao',
   validarQuestao = 'validar_questao',

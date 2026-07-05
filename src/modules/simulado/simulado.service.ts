@@ -8,7 +8,6 @@ import {
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AnswerSimulado } from './dtos/answer-simulado.dto.input';
 import { AvailableSimuladoDTOoutput } from './dtos/available-simulado.dto.output';
-import { CreateSimuladoDTOInput } from './dtos/create-simulado.dto.input';
 import { ReportDTO } from './dtos/report.dto.input';
 import { SimuladoDTO } from './dtos/simulado.dto.output';
 import { CategoriaDTO } from './dtos/categoria.dto.output';
@@ -30,12 +29,10 @@ export class SimuladoService {
     );
   }
 
-  async create(dto: CreateSimuladoDTOInput) {
-    return await this.axios.post<SimuladoDTO>('v1/simulado', dto);
-  }
-
   async getAll(page: number = 1, limit: number = 500) {
-    return await this.axios.get<SimuladoDTO[]>(`v1/simulado?page=${page}&limit=${limit}`);
+    return await this.axios.get<SimuladoDTO[]>(
+      `v1/simulado?page=${page}&limit=${limit}`,
+    );
   }
 
   async getCategorias() {
