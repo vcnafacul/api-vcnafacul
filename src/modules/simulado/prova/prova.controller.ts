@@ -7,15 +7,18 @@ import {
   Param,
   Patch,
   Post,
+  Req,
   SetMetadata,
-  UploadedFile,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Request } from 'express';
 import { Permissions } from 'src/modules/role/permissions/permissions';
+import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
+import { User } from 'src/modules/user/user.entity';
 import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
 import { ProvaService } from './prova.service';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
@@ -105,7 +108,7 @@ export class ProvaController {
     status: 200,
     description: 'cadastrar provas',
   })
-  @UseGuards(PermissionsGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.cadastrarProvas)
   @UseInterceptors(
     FileFieldsInterceptor([
@@ -115,13 +118,18 @@ export class ProvaController {
   )
   public async createProvas(
     @Body() dto: CreateProvaDTOInput,
-    @UploadedFile()
-    files: { file: Express.Multer.File[]; gabarito?: Express.Multer.File[] },
+    @UploadedFiles()
+    files: { file?: Express.Multer.File[]; gabarito?: Express.Multer.File[] },
+    @Req() req: Request,
   ) {
+    // criadorId vem do JWT — nunca do cliente (segurança). cursinhoId é
+    // injetado como null pelo service no fluxo admin atual.
+    const criadorId = (req.user as User).id;
     return await this.provaService.createProva(
       dto,
-      files.file[0],
-      files.gabarito[0],
+      files?.file?.[0],
+      files?.gabarito?.[0],
+      criadorId,
     );
   }
 

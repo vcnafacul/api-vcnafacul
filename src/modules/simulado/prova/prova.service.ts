@@ -28,20 +28,32 @@ export class ProvaService {
     prova: CreateProvaDTOInput,
     file: any,
     gabarito: any,
+    criadorId: string,
   ) {
-    const fileName = await this.blobService.uploadFile(
-      file,
-      this.envService.get('BUCKET_SIMULADO'),
-    );
+    // Arquivos são opcionais (provas custom podem não ter PDF). Só sobe o que veio.
+    let fileName: string | undefined;
+    let gabaritoName: string | undefined;
 
-    const gabaritoName = await this.blobService.uploadFile(
-      gabarito,
-      this.envService.get('BUCKET_SIMULADO'),
-    );
-
-    if (!fileName || !gabaritoName) {
-      throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);
+    if (file) {
+      fileName = await this.blobService.uploadFile(
+        file,
+        this.envService.get('BUCKET_SIMULADO'),
+      );
+      if (!fileName) {
+        throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);
+      }
     }
+
+    if (gabarito) {
+      gabaritoName = await this.blobService.uploadFile(
+        gabarito,
+        this.envService.get('BUCKET_SIMULADO'),
+      );
+      if (!gabaritoName) {
+        throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);
+      }
+    }
+
     const request = new CreateProvaDTORequest();
     request.edicao = prova.edicao;
     request.ano = parseInt(prova.ano as unknown as string);
@@ -49,6 +61,13 @@ export class ProvaService {
     request.categoria = prova.categoria;
     request.filename = fileName;
     request.gabarito = gabaritoName;
+    request.nome = prova.nome;
+    request.nomeSimulado = prova.nomeSimulado;
+    // Injeção pelo backend: criadorId vem do JWT; cursinhoId sempre null no
+    // fluxo admin atual (etapa 6 popula no fluxo cursinho). Ignora o que o
+    // cliente eventualmente enviar.
+    request.criadorId = criadorId;
+    request.cursinhoId = null;
     return await this.axios.post(`v1/prova`, request);
   }
 
