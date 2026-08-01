@@ -26,4 +26,10 @@ export class SimuladoDTO {
 
   @ApiProperty()
   bloqueado?: boolean;
+
+  @ApiProperty({ required: false, nullable: true })
+  disponivelDe?: string | null;
+
+  @ApiProperty({ required: false, nullable: true })
+  disponivelAte?: string | null;
 }
