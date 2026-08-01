@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -23,6 +24,7 @@ import { AvailableSimuladoDTOoutput } from './dtos/available-simulado.dto.output
 import { ReportDTO } from './dtos/report.dto.input';
 import { SimuladoAnswerDTO } from './dtos/simulado-answer.dto.output';
 import { SimuladoDTO } from './dtos/simulado.dto.output';
+import { UpdateDisponibilidadeDTO } from './dtos/update-disponibilidade.dto.input';
 import { SimuladoService } from './simulado.service';
 
 @ApiTags('Simulado')
@@ -122,6 +124,23 @@ export class SimuladoController {
   @SetMetadata(PermissionsGuard.name, Permissions.cadastrarProvas)
   public async delete(@Param('id') id: string): Promise<void> {
     await this.simuladoService.delete(id);
+  }
+
+  @Patch(':id/disponibilidade')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'atualiza a janela de disponibilidade do simulado',
+    type: SimuladoDTO,
+    isArray: false,
+  })
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.cadastrarProvas)
+  public async updateDisponibilidade(
+    @Param('id') id: string,
+    @Body() dto: UpdateDisponibilidadeDTO,
+  ) {
+    return await this.simuladoService.updateDisponibilidade(id, dto);
   }
 
   @Post('report')
