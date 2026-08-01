@@ -275,8 +275,9 @@ export class EssayController {
   }
 
   @Get(':id')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.revisarRedacoes)
+  // Aluno visualiza a própria redação (findById filtra por dono);
+  // revisor/admin são autorizados por validateReviewerScope no service
+  @UseGuards(JwtAuthGuard)
   async getEssay(@Param('id') id: string, @Req() req: any) {
     try {
       return await this.essayService.findById(id, req.user.id);
