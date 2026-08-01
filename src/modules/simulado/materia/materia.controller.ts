@@ -13,6 +13,7 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import { Permissions } from 'src/modules/role/permissions/permissions';
 import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
+import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { MateriaProxyService } from './materia.service';
 
@@ -29,8 +30,8 @@ export class MateriaProxyController {
   }
 
   @Get()
-  @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarDemanda)
+  // Listagem de matérias consumida por alunos na página de estudo: exige apenas autenticação
+  @UseGuards(JwtAuthGuard)
   async getAll(@Query() query: GetAllDtoInput) {
     return await this.materiaService.getAll(query.page, query.limit);
   }
