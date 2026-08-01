@@ -29,6 +29,7 @@ export class ProvaService {
     file: any,
     gabarito: any,
     criadorId: string,
+    cursinhoId: string | null = null,
   ) {
     // Arquivos são opcionais (provas custom podem não ter PDF). Só sobe o que veio.
     let fileName: string | undefined;
@@ -63,11 +64,11 @@ export class ProvaService {
     request.gabarito = gabaritoName;
     request.nome = prova.nome;
     request.nomeSimulado = prova.nomeSimulado;
-    // Injeção pelo backend: criadorId vem do JWT; cursinhoId sempre null no
-    // fluxo admin atual (etapa 6 popula no fluxo cursinho). Ignora o que o
-    // cliente eventualmente enviar.
+    // Injeção pelo backend: criadorId vem do JWT; cursinhoId é null no fluxo
+    // admin e populado no fluxo cursinho (etapa 6). Ignora o que o cliente
+    // eventualmente enviar.
     request.criadorId = criadorId;
-    request.cursinhoId = null;
+    request.cursinhoId = cursinhoId;
     return await this.axios.post(`v1/prova`, request);
   }
 
@@ -77,6 +78,20 @@ export class ProvaService {
 
   public async getProvasAll() {
     return await this.axios.get(`v1/prova`);
+  }
+
+  public async getAllByCursinho(
+    cursinhoId: string,
+    page?: string,
+    limit?: string,
+  ) {
+    const params = new URLSearchParams();
+    if (page) params.set('page', page);
+    if (limit) params.set('limit', limit);
+    const qs = params.toString();
+    return await this.axios.get(
+      `v1/prova/cursinho/${cursinhoId}${qs ? `?${qs}` : ''}`,
+    );
   }
 
   public async getMissingNumbers(id: string) {
