@@ -29,4 +29,6 @@ export const PERMISSION_FIELD_MAP: Record<Permissions, string> = {
   [Permissions.supportAgent]: 'supportAgent',
   [Permissions.partnerPrepSupportAgent]: 'partnerPrepSupportAgent',
   [Permissions.editarMateriasFrentes]: 'editarMateriasFrentes',
+  [Permissions.visualizarProvasCursinho]: 'visualizarProvasCursinho',
+  [Permissions.cadastrarProvasCursinho]: 'cadastrarProvasCursinho',
 };
