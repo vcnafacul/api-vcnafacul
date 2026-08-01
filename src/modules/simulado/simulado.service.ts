@@ -55,8 +55,11 @@ export class SimuladoService {
   public async updateDisponibilidade(
     id: string,
     dto: UpdateDisponibilidadeDTO,
-  ) {
-    return await this.axios.patch(`v1/simulado/${id}/disponibilidade`, dto);
+  ): Promise<SimuladoDTO> {
+    return await this.axios.patch<SimuladoDTO>(
+      `v1/simulado/${id}/disponibilidade`,
+      dto,
+    );
   }
 
   public async answer(dto: AnswerSimulado, userId: string) {
