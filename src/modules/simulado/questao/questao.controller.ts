@@ -18,6 +18,7 @@ import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { Permissions } from 'src/modules/role/permissions/permissions';
 import { User } from 'src/modules/user/user.entity';
+import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { QuestaoDTOInput } from '../dtos/questao.dto.input';
 import { UpdateImageAlternativaDTOInput } from '../dtos/update-image-alternativa.dto.input';
@@ -245,8 +246,8 @@ export class QuestaoController {
     status: 200,
     description: 'busca imagem de questão',
   })
-  @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
+  // Recurso consumido por alunos durante o simulado: exige apenas autenticação
+  @UseGuards(JwtAuthGuard)
   public async getImage(@Param('id') id: string) {
     return await this.questaoService.getImage(id);
   }
