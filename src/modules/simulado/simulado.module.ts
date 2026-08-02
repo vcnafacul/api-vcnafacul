@@ -6,6 +6,7 @@ import { HttpServiceAxiosFactory } from 'src/shared/services/axios/http-service-
 import { BlobModule } from 'src/shared/services/blob/blob.module';
 import { AuditLogModule } from '../audit-log/audit-log.module';
 import { CollaboratorFrenteRepository } from '../prepCourse/collaborator/collaborator-frente.repository';
+import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
 import { UserModule } from '../user/user.module';
 import { CategoriaProxyController } from './categoria/categoria.controller';
 import { CategoriaProxyService } from './categoria/categoria.service';
@@ -17,6 +18,8 @@ import { MateriaProxyController } from './materia/materia.controller';
 import { MateriaProxyService } from './materia/materia.service';
 import { HistoricoController } from './historico/historico.controller';
 import { HistoricoService } from './historico/historico.service';
+import { CursinhoProvaController } from './prova/cursinho/cursinho-prova.controller';
+import { CursinhoResolverService } from './prova/cursinho/cursinho-resolver.service';
 import { ProvaController } from './prova/prova.controller';
 import { ProvaService } from './prova/prova.service';
 import { QuestaoController } from './questao/questao.controller';
@@ -38,6 +41,7 @@ import { SubjectProxyService } from './subject/subject.service';
   controllers: [
     SimuladoController,
     ProvaController,
+    CursinhoProvaController,
     QuestaoController,
     HistoricoController,
     MateriaProxyController,
@@ -58,6 +62,8 @@ import { SubjectProxyService } from './subject/subject.service';
     ContentProxyService,
     CategoriaProxyService,
     CollaboratorFrenteRepository,
+    CollaboratorRepository,
+    CursinhoResolverService,
   ],
   exports: [FrenteProxyService, MateriaProxyService, QuestaoService],
 })

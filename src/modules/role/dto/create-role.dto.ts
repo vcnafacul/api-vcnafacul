@@ -96,4 +96,12 @@ export class CreateRoleDtoInput {
 
   @IsBoolean()
   editarMateriasFrentes: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  visualizarProvasCursinho?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  cadastrarProvasCursinho?: boolean;
 }

@@ -27,4 +27,6 @@ export enum Permissions {
   supportAgent = 'support_agent',
   partnerPrepSupportAgent = 'partner_prep_support_agent',
   editarMateriasFrentes = 'editar_materias_frentes',
+  visualizarProvasCursinho = 'visualizar_provas_cursinho',
+  cadastrarProvasCursinho = 'cadastrar_provas_cursinho',
 }
