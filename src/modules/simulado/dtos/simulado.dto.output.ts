@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { CategoriaDTO } from './categoria.dto.output';
 import { QuestaoDTO } from './questao.dto.output';
+import { QuestaoNaContainerDTO } from './questao-na-container.dto';
 
 export class SimuladoDTO {
   @ApiProperty()
@@ -17,6 +18,9 @@ export class SimuladoDTO {
 
   @ApiProperty({ type: QuestaoDTO, isArray: true })
   questoes: QuestaoDTO[];
+
+  @ApiProperty({ type: QuestaoNaContainerDTO, isArray: true, required: false })
+  questoesNovo?: QuestaoNaContainerDTO[];
 
   @ApiProperty()
   aproveitamento?: number;
