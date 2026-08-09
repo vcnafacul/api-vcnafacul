@@ -77,4 +77,11 @@ export class QuestaoDTO {
 
   @ApiProperty()
   public reported: boolean;
+
+  @ApiProperty({
+    required: false,
+    isArray: true,
+    example: [{ provaId: '...', provaNome: 'ENEM 2020 Dia 1', numero: 4 }],
+  })
+  public provasContendo?: { provaId: string; provaNome: string; numero: number }[];
 }
