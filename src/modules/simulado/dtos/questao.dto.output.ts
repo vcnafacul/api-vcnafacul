@@ -84,4 +84,7 @@ export class QuestaoDTO {
     example: [{ provaId: '...', provaNome: 'ENEM 2020 Dia 1', numero: 4 }],
   })
   public provasContendo?: { provaId: string; provaNome: string; numero: number }[];
+
+  @ApiProperty({ required: false, nullable: true })
+  public provaBase?: string | null;
 }
