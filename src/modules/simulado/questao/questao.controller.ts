@@ -173,6 +173,45 @@ export class QuestaoController {
     return await this.questaoService.uploadImage(id, file);
   }
 
+  @Post(':id/provas')
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'adiciona questão a uma prova' })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  public async adicionarEmProva(
+    @Param('id') id: string,
+    @Body() body: { provaId: string; numero: number },
+    @Req() req: Request,
+  ) {
+    return await this.questaoService.adicionarEmProva(id, body, req.user as User);
+  }
+
+  @Delete(':id/provas/:provaId')
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'remove questão de uma prova' })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  public async removerDeProva(
+    @Param('id') id: string,
+    @Param('provaId') provaId: string,
+    @Req() req: Request,
+  ) {
+    return await this.questaoService.removerDeProva(id, provaId, req.user as User);
+  }
+
+  @Patch(':id/prova-base')
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'define a provaBase da questão' })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  public async definirProvaBase(
+    @Param('id') id: string,
+    @Body() body: { provaId: string },
+    @Req() req: Request,
+  ) {
+    return await this.questaoService.definirProvaBase(id, body, req.user as User);
+  }
+
   @Patch(':id/:status')
   @ApiBearerAuth()
   @ApiResponse({

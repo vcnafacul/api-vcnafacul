@@ -200,6 +200,32 @@ export class QuestaoService {
     return await this.axios.get<any>(`v1/questao/pending-by-materia${params}`);
   }
 
+  public async adicionarEmProva(
+    id: string,
+    body: { provaId: string; numero: number },
+    user: User,
+  ) {
+    return await this.axios.post(`v1/questao/${id}/provas`, {
+      ...body,
+      userId: user.id,
+    });
+  }
+
+  public async removerDeProva(id: string, provaId: string, _user: User) {
+    return await this.axios.delete(`v1/questao/${id}/provas/${provaId}`);
+  }
+
+  public async definirProvaBase(
+    id: string,
+    body: { provaId: string },
+    user: User,
+  ) {
+    return await this.axios.patch(`v1/questao/${id}/prova-base`, {
+      ...body,
+      userId: user.id,
+    });
+  }
+
   public async updateClassificacao(id: string, body: unknown) {
     return await this.axios.patch<any>(`v1/questao/${id}/classification`, body);
   }
