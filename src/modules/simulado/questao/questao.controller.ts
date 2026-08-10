@@ -177,7 +177,10 @@ export class QuestaoController {
   @ApiBearerAuth()
   @ApiResponse({ status: 200, description: 'adiciona questão a uma prova' })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.criarQuestao,
+    Permissions.validarQuestao,
+  ])
   public async adicionarEmProva(
     @Param('id') id: string,
     @Body() body: { provaId: string; numero: number },
@@ -190,7 +193,10 @@ export class QuestaoController {
   @ApiBearerAuth()
   @ApiResponse({ status: 200, description: 'remove questão de uma prova' })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.criarQuestao,
+    Permissions.validarQuestao,
+  ])
   public async removerDeProva(
     @Param('id') id: string,
     @Param('provaId') provaId: string,
@@ -203,7 +209,10 @@ export class QuestaoController {
   @ApiBearerAuth()
   @ApiResponse({ status: 200, description: 'define a provaBase da questão' })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.criarQuestao,
+    Permissions.validarQuestao,
+  ])
   public async definirProvaBase(
     @Param('id') id: string,
     @Body() body: { provaId: string },

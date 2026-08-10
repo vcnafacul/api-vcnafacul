@@ -211,8 +211,10 @@ export class QuestaoService {
     });
   }
 
-  public async removerDeProva(id: string, provaId: string, _user: User) {
-    return await this.axios.delete(`v1/questao/${id}/provas/${provaId}`);
+  public async removerDeProva(id: string, provaId: string, user: User) {
+    return await this.axios.delete(
+      `v1/questao/${id}/provas/${provaId}?userId=${user.id}`,
+    );
   }
 
   public async definirProvaBase(
