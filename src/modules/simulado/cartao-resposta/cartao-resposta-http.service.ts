@@ -23,4 +23,12 @@ export class CartaoRespostaHttpService {
   ): Promise<{ buffer: Buffer; contentType: string }> {
     return this.axios.getBinary(`v1/cartao-resposta/${simuladoId}`);
   }
+
+  async criarHistorico(payload: {
+    usuario: string;
+    imageKey: string;
+    cartaoCode: string;
+  }): Promise<{ historicoId: string }> {
+    return this.axios.post('v1/cartao-resposta/historico', payload);
+  }
 }
