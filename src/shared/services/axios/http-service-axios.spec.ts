@@ -145,6 +145,24 @@ describe('HttpServiceAxios', () => {
       expect(result).toEqual({ replaced: true });
     });
   });
+
+  describe('getBinary', () => {
+    it('busca arraybuffer e devolve {buffer, contentType}', async () => {
+      mockAxiosInstance.get.mockResolvedValue({
+        data: Buffer.from('PDF'),
+        headers: { 'content-type': 'application/pdf' },
+      });
+
+      const r = await service.getBinary('v1/cartao-resposta/1');
+
+      expect(r.contentType).toBe('application/pdf');
+      expect(r.buffer.toString()).toBe('PDF');
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
+        'http://localhost:3000/v1/cartao-resposta/1',
+        { responseType: 'arraybuffer', headers: undefined },
+      );
+    });
+  });
 });
 
 describe('HttpServiceAxiosFactory', () => {

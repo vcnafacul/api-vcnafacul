@@ -108,6 +108,23 @@ export class HttpServiceAxios {
     );
   }
 
+  public async getBinary(
+    url: string,
+    headers?: Record<string, string>,
+  ): Promise<{ buffer: Buffer; contentType: string }> {
+    const fullURL = this.getFullURL(url);
+    return this.requestWrapper(
+      this.axiosInstance
+        .get(fullURL, { responseType: 'arraybuffer', headers })
+        .then((response) => ({
+          buffer: Buffer.from(response.data),
+          contentType:
+            (response.headers['content-type'] as string) ??
+            'application/octet-stream',
+        })),
+    );
+  }
+
   // Método para debug - mostra a baseURL configurada
   public getBaseURL(): string {
     return this.baseURL;
