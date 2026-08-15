@@ -12,6 +12,8 @@ import { UserModule } from '../user/user.module';
 import { CartaoRespostaController } from './cartao-resposta/cartao-resposta.controller';
 import { CartaoRespostaHttpService } from './cartao-resposta/cartao-resposta-http.service';
 import { CartaoRespostaResultadosService } from './cartao-resposta/cartao-resposta-resultados.service';
+import { CartaoUploadService } from './cartao-resposta/cartao-upload.service';
+import { OmrCacheService } from './cartao-resposta/omr-cache.service';
 import { CategoriaProxyController } from './categoria/categoria.controller';
 import { CategoriaProxyService } from './categoria/categoria.service';
 import { ContentProxyController } from './content/content.controller';
@@ -72,6 +74,8 @@ import { SubjectProxyService } from './subject/subject.service';
     CursinhoResolverService,
     CartaoRespostaHttpService,
     CartaoRespostaResultadosService,
+    OmrCacheService,
+    CartaoUploadService,
   ],
   exports: [FrenteProxyService, MateriaProxyService, QuestaoService],
 })

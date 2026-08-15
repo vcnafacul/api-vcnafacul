@@ -9,9 +9,11 @@ it('GET :simuladoId seta Content-Type e envia o buffer', async () => {
   };
   const res: any = { setHeader: jest.fn(), send: jest.fn() };
   const resultadosService = { buscarPorMatricula: jest.fn() };
+  const uploadService = { processar: jest.fn() };
   const controller = new CartaoRespostaController(
     service as any,
     resultadosService as any,
+    uploadService as any,
   );
   await controller.baixarCartao('665abc', res);
   expect(service.baixarCartao).toHaveBeenCalledWith('665abc');
@@ -26,9 +28,11 @@ it('GET resultados delega ao service com userId + matricula', async () => {
       .fn()
       .mockResolvedValue({ estudante: {}, historicos: [] }),
   };
+  const uploadService = { processar: jest.fn() };
   const controller = new CartaoRespostaController(
     httpServiceMock as any,
     resultadosService as any,
+    uploadService as any,
   );
   const req: any = { user: { id: 'u-colab' } };
   const r = await controller.resultadosPorMatricula('MAT1', req);
@@ -37,4 +41,21 @@ it('GET resultados delega ao service com userId + matricula', async () => {
     'MAT1',
   );
   expect(r).toEqual({ estudante: {}, historicos: [] });
+});
+
+it('POST upload delega ao CartaoUploadService', async () => {
+  const httpServiceMock = { baixarCartao: jest.fn() };
+  const resultadosMock = { buscarPorMatricula: jest.fn() };
+  const uploadService = {
+    processar: jest.fn().mockResolvedValue({ historicoId: 'h1' }),
+  };
+  const controller = new CartaoRespostaController(
+    httpServiceMock as any,
+    resultadosMock as any,
+    uploadService as any,
+  );
+  const file: any = { buffer: Buffer.from('IMG'), mimetype: 'image/jpeg' };
+  const r = await controller.upload(file, 'u-aluno');
+  expect(uploadService.processar).toHaveBeenCalledWith('u-aluno', file);
+  expect(r).toEqual({ historicoId: 'h1' });
 });
