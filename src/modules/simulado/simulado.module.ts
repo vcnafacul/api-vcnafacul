@@ -7,9 +7,11 @@ import { BlobModule } from 'src/shared/services/blob/blob.module';
 import { AuditLogModule } from '../audit-log/audit-log.module';
 import { CollaboratorFrenteRepository } from '../prepCourse/collaborator/collaborator-frente.repository';
 import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
+import { StudentCourseRepository } from '../prepCourse/studentCourse/student-course.repository';
 import { UserModule } from '../user/user.module';
 import { CartaoRespostaController } from './cartao-resposta/cartao-resposta.controller';
 import { CartaoRespostaHttpService } from './cartao-resposta/cartao-resposta-http.service';
+import { CartaoRespostaResultadosService } from './cartao-resposta/cartao-resposta-resultados.service';
 import { CategoriaProxyController } from './categoria/categoria.controller';
 import { CategoriaProxyService } from './categoria/categoria.service';
 import { ContentProxyController } from './content/content.controller';
@@ -66,8 +68,10 @@ import { SubjectProxyService } from './subject/subject.service';
     CategoriaProxyService,
     CollaboratorFrenteRepository,
     CollaboratorRepository,
+    StudentCourseRepository,
     CursinhoResolverService,
     CartaoRespostaHttpService,
+    CartaoRespostaResultadosService,
   ],
   exports: [FrenteProxyService, MateriaProxyService, QuestaoService],
 })

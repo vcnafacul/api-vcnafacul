@@ -2,20 +2,46 @@ import {
   Controller,
   Get,
   Param,
+  Query,
+  Req,
   Res,
   SetMetadata,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { Permissions } from 'src/modules/role/permissions/permissions';
+import { User } from 'src/modules/user/user.entity';
+import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { CartaoRespostaHttpService } from './cartao-resposta-http.service';
+import { CartaoRespostaResultadosService } from './cartao-resposta-resultados.service';
 
 @ApiTags('Simulado - Cartão Resposta')
 @Controller('mssimulado/cartao-resposta')
 export class CartaoRespostaController {
-  constructor(private readonly service: CartaoRespostaHttpService) {}
+  constructor(
+    private readonly service: CartaoRespostaHttpService,
+    private readonly resultadosService: CartaoRespostaResultadosService,
+  ) {}
+
+  @Get('resultados')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'resultados do aluno por matrícula (escopo cursinho)',
+  })
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarEstudantes)
+  async resultadosPorMatricula(
+    @Query('matricula') matricula: string,
+    @Req() req: Request,
+  ) {
+    return this.resultadosService.buscarPorMatricula(
+      (req.user as User).id,
+      matricula,
+    );
+  }
 
   @Get(':simuladoId')
   @ApiBearerAuth()
