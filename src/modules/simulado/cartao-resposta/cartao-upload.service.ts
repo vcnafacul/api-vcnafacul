@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { EnvService } from 'src/shared/modules/env/env.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
@@ -20,6 +20,9 @@ export class CartaoUploadService {
     usuario: string,
     file: Express.Multer.File,
   ): Promise<{ historicoId: string }> {
+    if (!file?.buffer) {
+      throw new BadRequestException('arquivo do cartão é obrigatório');
+    }
     const { simuladoId, cartaoCode } = await decodeCartaoQr(file.buffer);
     const imageKey = `cartoes/${simuladoId}/${uuidv4()}.jpg`;
 

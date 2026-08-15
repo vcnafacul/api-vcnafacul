@@ -1,5 +1,6 @@
 jest.mock('./qr-decoder');
 jest.mock('uuid', () => ({ v4: () => 'IMGID' }));
+import { BadRequestException } from '@nestjs/common';
 import { decodeCartaoQr } from './qr-decoder';
 import { CartaoUploadService } from './cartao-upload.service';
 
@@ -53,6 +54,15 @@ it('QR ilegível: não sobe nem chama A3', async () => {
   await expect(
     svc.processar('u', { buffer: Buffer.from('X') } as any),
   ).rejects.toThrow();
+  expect(blob.putObjectAtKey).not.toHaveBeenCalled();
+  expect(cartaoHttp.criarHistorico).not.toHaveBeenCalled();
+});
+
+it('sem arquivo: 400 sem decodificar/subir', async () => {
+  const { svc, blob, cartaoHttp } = setup();
+  await expect(svc.processar('u', undefined as any)).rejects.toBeInstanceOf(
+    BadRequestException,
+  );
   expect(blob.putObjectAtKey).not.toHaveBeenCalled();
   expect(cartaoHttp.criarHistorico).not.toHaveBeenCalled();
 });
