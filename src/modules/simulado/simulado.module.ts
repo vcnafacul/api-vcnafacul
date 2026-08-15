@@ -8,6 +8,8 @@ import { AuditLogModule } from '../audit-log/audit-log.module';
 import { CollaboratorFrenteRepository } from '../prepCourse/collaborator/collaborator-frente.repository';
 import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
 import { UserModule } from '../user/user.module';
+import { CartaoRespostaController } from './cartao-resposta/cartao-resposta.controller';
+import { CartaoRespostaHttpService } from './cartao-resposta/cartao-resposta-http.service';
 import { CategoriaProxyController } from './categoria/categoria.controller';
 import { CategoriaProxyService } from './categoria/categoria.service';
 import { ContentProxyController } from './content/content.controller';
@@ -49,6 +51,7 @@ import { SubjectProxyService } from './subject/subject.service';
     SubjectProxyController,
     ContentProxyController,
     CategoriaProxyController,
+    CartaoRespostaController,
   ],
   providers: [
     SimuladoService,
@@ -64,6 +67,7 @@ import { SubjectProxyService } from './subject/subject.service';
     CollaboratorFrenteRepository,
     CollaboratorRepository,
     CursinhoResolverService,
+    CartaoRespostaHttpService,
   ],
   exports: [FrenteProxyService, MateriaProxyService, QuestaoService],
 })
