@@ -1,8 +1,11 @@
 import { BadRequestException } from '@nestjs/common';
 import jsQR from 'jsqr';
-// sharp usa `export =` (module.exports = sharp) e o tsconfig do api não tem esModuleInterop;
-// `import sharp from 'sharp'` viraria sharp_1.default (undefined). require-import mantém a tipagem.
-import sharp = require('sharp');
+// sharp usa `export =` (module.exports = sharp). A resolução de TIPOS do sharp diverge entre
+// ambientes (local: lib/index.d.ts callable; CI: dist/index sem call signature) → `import sharp =
+// require('sharp')` dá TS2349 no CI. `require` puro compila em qualquer layout (any é sempre
+// callable; o projeto tem no-explicit-any off) e no runtime module.exports já é a função.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const sharp = require('sharp');
 
 export interface CartaoQr {
   simuladoId: string;
