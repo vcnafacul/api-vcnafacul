@@ -1,6 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
 import jsQR from 'jsqr';
-import sharp from 'sharp';
+// sharp usa `export =` (module.exports = sharp) e o tsconfig do api não tem esModuleInterop;
+// `import sharp from 'sharp'` viraria sharp_1.default (undefined). require-import mantém a tipagem.
+import sharp = require('sharp');
 
 export interface CartaoQr {
   simuladoId: string;
