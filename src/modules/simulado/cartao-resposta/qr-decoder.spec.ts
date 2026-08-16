@@ -1,9 +1,12 @@
-jest.mock('sharp', () => ({ __esModule: true, default: jest.fn() }));
+jest.mock('sharp', () => jest.fn());
 jest.mock('jsqr', () => ({ __esModule: true, default: jest.fn() }));
 import { BadRequestException } from '@nestjs/common';
-import sharp from 'sharp';
 import jsQR from 'jsqr';
 import { decodeCartaoQr } from './qr-decoder';
+
+// sharp é consumido via require() no qr-decoder → o mock é a própria função (module.exports).
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const sharp = require('sharp') as jest.Mock;
 
 function mockSharp() {
   const chain: any = {
@@ -15,7 +18,7 @@ function mockSharp() {
         info: { width: 2, height: 2 },
       }),
   };
-  (sharp as unknown as jest.Mock).mockReturnValue(chain);
+  sharp.mockReturnValue(chain);
 }
 
 beforeEach(() => {
