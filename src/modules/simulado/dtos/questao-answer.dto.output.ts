@@ -19,8 +19,8 @@ export class QuestaoAnswerDTO {
   @ApiProperty()
   public materia: MateriaDTO;
 
-  @ApiProperty()
-  public numero: number;
+  @ApiProperty({ nullable: true })
+  public numero: number | null;
 
   @ApiProperty()
   public imageId: string;
