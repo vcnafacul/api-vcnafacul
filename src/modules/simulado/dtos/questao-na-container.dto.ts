@@ -5,6 +5,6 @@ export class QuestaoNaContainerDTO {
   @ApiProperty({ type: QuestaoDTO })
   public questao: QuestaoDTO;
 
-  @ApiProperty()
-  public numero: number;
+  @ApiProperty({ nullable: true })
+  public numero: number | null;
 }
