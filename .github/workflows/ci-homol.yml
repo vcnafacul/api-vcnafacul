@@ -85,12 +85,12 @@ jobs:
     needs: PUSH
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy em Homolog (Oracle VPS)
+      - name: Deploy em Homolog (Hostinger)
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.DEPLOY_HOST_HOMOL }}
           username: ${{ secrets.DEPLOY_USER_HOMOL }}
-          key: ${{ secrets.DEPLOY_KEY_HOMOL }}
+          password: ${{ secrets.DEPLOY_PASS_HOMOL }}
           script: |
             chmod +x ~/subir_api.sh
             ~/subir_api.sh
