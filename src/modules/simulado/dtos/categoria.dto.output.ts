@@ -26,4 +26,10 @@ export class CategoriaDTO {
 
   @ApiProperty()
   public descricao: string;
+
+  @ApiProperty()
+  public simuladosCount: number;
+
+  @ApiProperty()
+  public provasCount: number;
 }
