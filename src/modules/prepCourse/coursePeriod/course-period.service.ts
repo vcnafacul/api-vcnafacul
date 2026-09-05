@@ -217,6 +217,22 @@ export class CoursePeriodService extends BaseService<CoursePeriod> {
     };
   }
 
+  async getYears(userId: string): Promise<number[]> {
+    const partnerPrepCourse =
+      await this.partnerRepository.findOneByUserId(userId);
+
+    if (!partnerPrepCourse) {
+      throw new HttpException(
+        'Partner prep course not found',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    return await this.repository.findDistinctYearsByPartner(
+      partnerPrepCourse.id,
+    );
+  }
+
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
     timeZone: 'America/Sao_Paulo',
   })

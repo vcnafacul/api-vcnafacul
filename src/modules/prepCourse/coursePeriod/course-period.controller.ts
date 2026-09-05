@@ -8,12 +8,15 @@ import {
   Post,
   Query,
   Req,
+  SetMetadata,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
+import { Permissions } from 'src/modules/role/permissions/permissions';
 import { User } from 'src/modules/user/user.entity';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
+import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { CoursePeriodService } from './course-period.service';
 import { CreateCoursePeriodDtoInput } from './dtos/create-course-period.dto.input';
 import { UpdateCoursePeriodDtoInput } from './dtos/update-course-period.dto.input';
@@ -45,6 +48,20 @@ export class CoursePeriodController {
     @Req() req: Request,
   ) {
     return await this.service.getAll(page, limit, (req.user as User).id);
+  }
+
+  @Get('years')
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.visualizarEstudantes,
+    Permissions.gerenciarEstudantes,
+  ])
+  @ApiResponse({
+    status: 200,
+    description: 'Anos letivos distintos do cursinho, em ordem decrescente',
+  })
+  async getYears(@Req() req: Request): Promise<number[]> {
+    return await this.service.getYears((req.user as User).id);
   }
 
   @Get(':id')

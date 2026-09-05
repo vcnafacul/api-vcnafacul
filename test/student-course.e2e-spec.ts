@@ -2925,4 +2925,27 @@ describe('StudentCourse (e2e)', () => {
     expect(response.body.students.data.length).toBe(1);
     expect(response.body.students.data[0].id).toBe(ids[1]);
   }, 100000);
+
+  it('deve retornar os anos letivos distintos do cursinho em ordem decrescente', async () => {
+    const { representative } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+
+    const anos = [2024, 2026, 2024, 2025];
+    for (const ano of anos) {
+      const dto = CreateCoursePeriodDtoInputFaker();
+      dto.name = `Período ${ano}`;
+      dto.startDate = new Date(`${ano}-02-01`);
+      dto.endDate = new Date(`${ano}-11-30`);
+      await coursePeriodService.create(dto, representative.id);
+    }
+
+    const response = await request(app.getHttpServer())
+      .get('/course-period/years')
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+
+    expect(response.body).toEqual([2026, 2025, 2024]);
+  }, 100000);
 });
