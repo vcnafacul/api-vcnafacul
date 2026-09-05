@@ -33,7 +33,10 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
     where,
     orderBy,
     filters,
-  }: GetAllWhereInput): Promise<GetAllOutput<StudentCourse>> {
+    year,
+  }: GetAllWhereInput & {
+    year?: number;
+  }): Promise<GetAllOutput<StudentCourse>> {
     let queryBuilder = this.repository
       .createQueryBuilder('entity')
       .skip((page - 1) * limit)
@@ -62,6 +65,16 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .innerJoin('entity.user', 'users')
       .addSelect(['users.birthday'])
       .where({ ...where });
+
+    if (year !== undefined && year !== null) {
+      queryBuilder = queryBuilder.andWhere('course_period.year = :year', {
+        year,
+      });
+      queryBuilderCount = queryBuilderCount.andWhere(
+        'course_period.year = :year',
+        { year },
+      );
+    }
 
     if (orderBy) {
       queryBuilder = queryBuilder.orderBy(

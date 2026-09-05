@@ -1172,6 +1172,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       page,
       orderBy: sort,
       filters: filter ? [filter] : [],
+      year,
     });
 
     const user = await this.userService.findUserById(userId);

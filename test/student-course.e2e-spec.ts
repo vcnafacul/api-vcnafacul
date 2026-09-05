@@ -2826,4 +2826,38 @@ describe('StudentCourse (e2e)', () => {
       .set({ Authorization: `Bearer ${token}` })
       .expect(400);
   }, 100000);
+
+  it('deve filtrar estudantes por ano letivo da turma', async () => {
+    const { representative } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+
+    const inscription = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      representative.id,
+    );
+
+    const { id: studentId } = await createStudent(inscription.id);
+    const student = await studentCourseService.findOneBy({ id: studentId });
+    student.applicationStatus = StatusApplication.DeclaredInterest;
+    await studentCourseRepository.update(student);
+    await confirmEnrollmentWithClass(student.id, representative.id);
+
+    const enrolled = await studentCourseService.findOneBy({ id: studentId });
+    const year = enrolled.class.coursePeriod.year;
+
+    const doAno = await request(app.getHttpServer())
+      .get(`/student-course/enrolled?year=${year}`)
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    expect(doAno.body.students.totalItems).toBe(1);
+
+    const outroAno = await request(app.getHttpServer())
+      .get(`/student-course/enrolled?year=${year + 50}`)
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    expect(outroAno.body.students.totalItems).toBe(0);
+    expect(outroAno.body.students.data.length).toBe(0);
+  }, 100000);
 });
