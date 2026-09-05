@@ -25,9 +25,6 @@ export class QuestaoDTO {
   public materia: MateriaDTO;
 
   @ApiProperty()
-  public numero: number;
-
-  @ApiProperty()
   public textoQuestao: string;
 
   @ApiProperty()
@@ -80,4 +77,17 @@ export class QuestaoDTO {
 
   @ApiProperty()
   public reported: boolean;
+
+  @ApiProperty({
+    isArray: true,
+    example: [{ provaId: '...', provaNome: 'ENEM 2020 Dia 1', numero: 4 }],
+  })
+  public provasContendo: {
+    provaId: string;
+    provaNome: string;
+    numero: number | null;
+  }[];
+
+  @ApiProperty({ required: false, nullable: true })
+  public provaBase?: string | null;
 }

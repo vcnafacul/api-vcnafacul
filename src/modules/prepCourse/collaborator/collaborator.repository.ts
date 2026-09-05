@@ -100,6 +100,18 @@ export class CollaboratorRepository extends BaseRepository<Collaborator> {
     });
   }
 
+  async findActiveByUserIdWithPrep(
+    userId: string,
+  ): Promise<Collaborator | null> {
+    return this.repository
+      .createQueryBuilder('entity')
+      .innerJoin('entity.user', 'user')
+      .leftJoinAndSelect('entity.partnerPrepCourse', 'prep')
+      .where('user.id = :userId', { userId })
+      .andWhere('entity.actived = true')
+      .getOne();
+  }
+
   async findActiveByUserIdWithDetails(
     userId: string,
   ): Promise<Collaborator | null> {

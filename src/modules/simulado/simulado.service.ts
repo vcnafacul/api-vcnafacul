@@ -10,6 +10,7 @@ import { AnswerSimulado } from './dtos/answer-simulado.dto.input';
 import { AvailableSimuladoDTOoutput } from './dtos/available-simulado.dto.output';
 import { ReportDTO } from './dtos/report.dto.input';
 import { SimuladoDTO } from './dtos/simulado.dto.output';
+import { UpdateDisponibilidadeDTO } from './dtos/update-disponibilidade.dto.input';
 import { CategoriaDTO } from './dtos/categoria.dto.output';
 import { ReportEntity } from './enum/report.enum';
 import { Status } from './enum/status.enum';
@@ -49,6 +50,16 @@ export class SimuladoService {
 
   public async delete(id: string): Promise<void> {
     await this.axios.delete(`v1/simulado/${id}`);
+  }
+
+  public async updateDisponibilidade(
+    id: string,
+    dto: UpdateDisponibilidadeDTO,
+  ): Promise<SimuladoDTO> {
+    return await this.axios.patch<SimuladoDTO>(
+      `v1/simulado/${id}/disponibilidade`,
+      dto,
+    );
   }
 
   public async answer(dto: AnswerSimulado, userId: string) {

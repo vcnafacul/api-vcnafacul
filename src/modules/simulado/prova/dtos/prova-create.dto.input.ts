@@ -24,4 +24,14 @@ export class CreateProvaDTOInput {
   @ApiProperty()
   @IsString()
   categoria: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  nome?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  nomeSimulado?: string;
 }

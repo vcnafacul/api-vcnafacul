@@ -28,20 +28,33 @@ export class ProvaService {
     prova: CreateProvaDTOInput,
     file: any,
     gabarito: any,
+    criadorId: string,
+    cursinhoId: string | null = null,
   ) {
-    const fileName = await this.blobService.uploadFile(
-      file,
-      this.envService.get('BUCKET_SIMULADO'),
-    );
+    // Arquivos são opcionais (provas custom podem não ter PDF). Só sobe o que veio.
+    let fileName: string | undefined;
+    let gabaritoName: string | undefined;
 
-    const gabaritoName = await this.blobService.uploadFile(
-      gabarito,
-      this.envService.get('BUCKET_SIMULADO'),
-    );
-
-    if (!fileName || !gabaritoName) {
-      throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);
+    if (file) {
+      fileName = await this.blobService.uploadFile(
+        file,
+        this.envService.get('BUCKET_SIMULADO'),
+      );
+      if (!fileName) {
+        throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);
+      }
     }
+
+    if (gabarito) {
+      gabaritoName = await this.blobService.uploadFile(
+        gabarito,
+        this.envService.get('BUCKET_SIMULADO'),
+      );
+      if (!gabaritoName) {
+        throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);
+      }
+    }
+
     const request = new CreateProvaDTORequest();
     request.edicao = prova.edicao;
     request.ano = parseInt(prova.ano as unknown as string);
@@ -49,6 +62,13 @@ export class ProvaService {
     request.categoria = prova.categoria;
     request.filename = fileName;
     request.gabarito = gabaritoName;
+    request.nome = prova.nome;
+    request.nomeSimulado = prova.nomeSimulado;
+    // Injeção pelo backend: criadorId vem do JWT; cursinhoId é null no fluxo
+    // admin e populado no fluxo cursinho (etapa 6). Ignora o que o cliente
+    // eventualmente enviar.
+    request.criadorId = criadorId;
+    request.cursinhoId = cursinhoId;
     return await this.axios.post(`v1/prova`, request);
   }
 
@@ -58,6 +78,20 @@ export class ProvaService {
 
   public async getProvasAll() {
     return await this.axios.get(`v1/prova`);
+  }
+
+  public async getAllByCursinho(
+    cursinhoId: string,
+    page?: string,
+    limit?: string,
+  ) {
+    const params = new URLSearchParams();
+    if (page) params.set('page', page);
+    if (limit) params.set('limit', limit);
+    const qs = params.toString();
+    return await this.axios.get(
+      `v1/prova/cursinho/${cursinhoId}${qs ? `?${qs}` : ''}`,
+    );
   }
 
   public async getMissingNumbers(id: string) {

@@ -60,6 +60,23 @@ export const PERMISSION_HIERARCHY: PermissionGroup[] = [
     ],
   },
   {
+    key: 'provas_cursinho',
+    label: 'Provas (Cursinho)',
+    permissions: [
+      {
+        key: Permissions.cadastrarProvasCursinho,
+        label: 'Cadastrar provas (cursinho)',
+        type: PermissionType.prepCourse,
+        implies: [Permissions.visualizarProvasCursinho],
+      },
+      {
+        key: Permissions.visualizarProvasCursinho,
+        label: 'Visualizar provas (cursinho)',
+        type: PermissionType.prepCourse,
+      },
+    ],
+  },
+  {
     key: 'demanda',
     label: 'Demanda',
     permissions: [
