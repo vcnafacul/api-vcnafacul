@@ -2860,4 +2860,34 @@ describe('StudentCourse (e2e)', () => {
     expect(outroAno.body.students.totalItems).toBe(0);
     expect(outroAno.body.students.data.length).toBe(0);
   }, 100000);
+
+  it('deve retornar o processo seletivo do estudante e o id do cursinho', async () => {
+    const { representative } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+
+    const dtoInscription = CreateInscriptionCourseDTOInputFaker();
+    const inscription = await inscriptionCourseService.create(
+      dtoInscription,
+      representative.id,
+    );
+
+    const { id: studentId } = await createStudent(inscription.id);
+    const student = await studentCourseService.findOneBy({ id: studentId });
+    student.applicationStatus = StatusApplication.DeclaredInterest;
+    await studentCourseRepository.update(student);
+    await confirmEnrollmentWithClass(student.id, representative.id);
+
+    const response = await request(app.getHttpServer())
+      .get('/student-course/enrolled')
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+
+    const row = response.body.students.data[0];
+    expect(row.inscriptionCourse).toBeDefined();
+    expect(row.inscriptionCourse.id).toBe(inscription.id);
+    expect(row.inscriptionCourse.name).toBe(dtoInscription.name);
+    expect(response.body.partnerId).toBeDefined();
+  }, 100000);
 });

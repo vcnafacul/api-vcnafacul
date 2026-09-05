@@ -43,6 +43,7 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .take(limit)
       .leftJoinAndSelect('entity.class', 'class')
       .leftJoinAndSelect('class.coursePeriod', 'course_period')
+      .leftJoinAndSelect('entity.inscriptionCourse', 'inscription_course')
       .innerJoin('entity.user', 'users')
       .addSelect([
         'users.id',
@@ -62,6 +63,7 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .createQueryBuilder('entity')
       .leftJoinAndSelect('entity.class', 'class')
       .leftJoinAndSelect('class.coursePeriod', 'course_period')
+      .leftJoinAndSelect('entity.inscriptionCourse', 'inscription_course')
       .innerJoin('entity.user', 'users')
       .addSelect(['users.birthday'])
       .where({ ...where });

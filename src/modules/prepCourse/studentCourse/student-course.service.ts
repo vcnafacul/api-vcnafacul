@@ -1182,6 +1182,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
     return {
       name: partnerPrepCourse.geo.name,
+      partnerId: partnerPrepCourse.id,
       students: {
         data: result.data.map(
           (student) =>
@@ -1210,6 +1211,10 @@ export class StudentCourseService extends BaseService<StudentCourse> {
                 name: student.class?.name,
                 year: student.class?.coursePeriod?.year || 0,
                 endDate: student.class?.coursePeriod?.endDate,
+              },
+              inscriptionCourse: {
+                id: student.inscriptionCourse?.id,
+                name: student.inscriptionCourse?.name,
               },
             }) as unknown as StudentsDtoOutput,
         ),

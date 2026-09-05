@@ -4,6 +4,7 @@ import { LogStudent } from '../log-student/log-student.entity';
 
 export class GetEnrolledDtoOutput {
   name: string;
+  partnerId: string;
   students: GetAllOutput<StudentsDtoOutput>;
 }
 
@@ -21,6 +22,10 @@ export class StudentsDtoOutput {
     name: string;
     year: string;
     endDate: Date;
+  };
+  inscriptionCourse?: {
+    id: string;
+    name: string;
   };
   photo: string;
   logs: LogStudent[];
