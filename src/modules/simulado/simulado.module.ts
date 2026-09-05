@@ -7,7 +7,13 @@ import { BlobModule } from 'src/shared/services/blob/blob.module';
 import { AuditLogModule } from '../audit-log/audit-log.module';
 import { CollaboratorFrenteRepository } from '../prepCourse/collaborator/collaborator-frente.repository';
 import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
+import { StudentCourseRepository } from '../prepCourse/studentCourse/student-course.repository';
 import { UserModule } from '../user/user.module';
+import { CartaoRespostaController } from './cartao-resposta/cartao-resposta.controller';
+import { CartaoRespostaHttpService } from './cartao-resposta/cartao-resposta-http.service';
+import { CartaoRespostaResultadosService } from './cartao-resposta/cartao-resposta-resultados.service';
+import { CartaoUploadService } from './cartao-resposta/cartao-upload.service';
+import { OmrCacheService } from './cartao-resposta/omr-cache.service';
 import { CategoriaProxyController } from './categoria/categoria.controller';
 import { CategoriaProxyService } from './categoria/categoria.service';
 import { ContentProxyController } from './content/content.controller';
@@ -49,6 +55,7 @@ import { SubjectProxyService } from './subject/subject.service';
     SubjectProxyController,
     ContentProxyController,
     CategoriaProxyController,
+    CartaoRespostaController,
   ],
   providers: [
     SimuladoService,
@@ -63,7 +70,12 @@ import { SubjectProxyService } from './subject/subject.service';
     CategoriaProxyService,
     CollaboratorFrenteRepository,
     CollaboratorRepository,
+    StudentCourseRepository,
     CursinhoResolverService,
+    CartaoRespostaHttpService,
+    CartaoRespostaResultadosService,
+    OmrCacheService,
+    CartaoUploadService,
   ],
   exports: [FrenteProxyService, MateriaProxyService, QuestaoService],
 })

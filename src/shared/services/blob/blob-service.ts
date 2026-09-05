@@ -10,4 +10,10 @@ export interface BlobService {
     bucketName: string,
   ): Promise<{ buffer: string; contentType: string } | any>;
   deleteFile(fileKey: string, bucketName: string): Promise<void>;
+  putObjectAtKey(
+    buffer: Buffer,
+    bucketName: string,
+    key: string,
+    contentType: string,
+  ): Promise<void>;
 }
