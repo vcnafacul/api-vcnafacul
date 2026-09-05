@@ -2196,6 +2196,64 @@ describe('StudentCourse (e2e)', () => {
     },
   );
 
+  it('deve rejeitar filtro com campo fora da whitelist', async () => {
+    const { representative } = await createPartnerPrepCourse();
+
+    const inscription = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      representative.id,
+    );
+
+    const { id: studentId } = await createStudent(inscription.id);
+    const student = await studentCourseService.findOneBy({ id: studentId });
+    student.applicationStatus = StatusApplication.DeclaredInterest;
+    await studentCourseRepository.update(student);
+    await confirmEnrollmentWithClass(student.id, representative.id);
+
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+
+    const payload = encodeURIComponent('id" OR "1"="1');
+
+    await request(app.getHttpServer())
+      .get(
+        `/student-course/enrolled?filter[field]=${payload}&filter[value]=x&inscriptionId=${inscription.id}`,
+      )
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(400);
+  }, 100000);
+
+  it('deve tratar valor de filtro com aspas como texto literal, sem quebrar a query', async () => {
+    const { representative } = await createPartnerPrepCourse();
+
+    const inscription = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      representative.id,
+    );
+
+    const { id: studentId } = await createStudent(inscription.id);
+    const student = await studentCourseService.findOneBy({ id: studentId });
+    student.applicationStatus = StatusApplication.DeclaredInterest;
+    await studentCourseRepository.update(student);
+    await confirmEnrollmentWithClass(student.id, representative.id);
+
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+
+    const payload = encodeURIComponent('%" OR "1"="1');
+
+    const response = await request(app.getHttpServer())
+      .get(
+        `/student-course/enrolled?filter[field]=cpf&filter[value]=${payload}&inscriptionId=${inscription.id}`,
+      )
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+
+    expect(response.body.students.data.length).toBe(0);
+  }, 100000);
+
   // ========================
   // Testes de declaração por etapa
   // ========================
