@@ -1,10 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsEnum, IsInt, IsOptional } from 'class-validator';
 import {
   Filter,
   GetAllInput,
   Sort,
 } from 'src/shared/modules/base/interfaces/get-all.input';
+import { StatusApplication } from '../enums/stastusApplication';
 
 export class GetEnrolleds implements GetAllInput {
   @ApiProperty({ default: 1, required: false })
@@ -26,4 +28,23 @@ export class GetEnrolleds implements GetAllInput {
   @ApiProperty({ required: false })
   @IsOptional()
   inscriptionId?: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'Ano letivo do período da turma do estudante',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  year?: number;
+
+  @ApiProperty({
+    required: false,
+    enum: StatusApplication,
+    description:
+      'Status da matrícula. Dentro deste universo apenas Matriculado, Matrícula Cancelada e Matrícula Encerrada ocorrem.',
+  })
+  @IsOptional()
+  @IsEnum(StatusApplication)
+  applicationStatus?: StatusApplication;
 }

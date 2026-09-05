@@ -2748,4 +2748,82 @@ describe('StudentCourse (e2e)', () => {
     expect(response.body.students.totalItems).toBe(2);
     expect(response.body.students.data.length).toBe(2);
   }, 100000);
+
+  it('deve filtrar estudantes por status de matrícula', async () => {
+    const { representative } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+
+    const inscription = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      representative.id,
+    );
+
+    const ids: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      const { id } = await createStudent(inscription.id);
+      const student = await studentCourseService.findOneBy({ id });
+      student.applicationStatus = StatusApplication.DeclaredInterest;
+      await studentCourseRepository.update(student);
+      await confirmEnrollmentWithClass(student.id, representative.id);
+      ids.push(student.id);
+    }
+
+    const cancelled = await studentCourseService.findOneBy({ id: ids[0] });
+    cancelled.applicationStatus = StatusApplication.EnrollmentCancelled;
+    await studentCourseRepository.update(cancelled);
+
+    const closed = await studentCourseService.findOneBy({ id: ids[1] });
+    closed.applicationStatus = StatusApplication.EnrollmentClosed;
+    await studentCourseRepository.update(closed);
+
+    const todos = await request(app.getHttpServer())
+      .get('/student-course/enrolled')
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    expect(todos.body.students.totalItems).toBe(3);
+
+    const matriculados = await request(app.getHttpServer())
+      .get(
+        `/student-course/enrolled?applicationStatus=${encodeURIComponent(
+          StatusApplication.Enrolled,
+        )}`,
+      )
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    expect(matriculados.body.students.totalItems).toBe(1);
+
+    const canceladas = await request(app.getHttpServer())
+      .get(
+        `/student-course/enrolled?applicationStatus=${encodeURIComponent(
+          StatusApplication.EnrollmentCancelled,
+        )}`,
+      )
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    expect(canceladas.body.students.totalItems).toBe(1);
+
+    const encerradas = await request(app.getHttpServer())
+      .get(
+        `/student-course/enrolled?applicationStatus=${encodeURIComponent(
+          StatusApplication.EnrollmentClosed,
+        )}`,
+      )
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    expect(encerradas.body.students.totalItems).toBe(1);
+  }, 100000);
+
+  it('deve rejeitar status de matrícula inválido', async () => {
+    const { representative } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+
+    await request(app.getHttpServer())
+      .get('/student-course/enrolled?applicationStatus=Inexistente')
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(400);
+  }, 100000);
 });

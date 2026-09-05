@@ -1124,11 +1124,15 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     filter,
     sort,
     inscriptionCourseId,
+    year,
+    applicationStatus,
   }: GetAllInput & {
     userId: string;
     filter?: Filter;
     sort: Sort;
     inscriptionCourseId?: string;
+    year?: number;
+    applicationStatus?: StatusApplication;
   }): Promise<GetEnrolledDtoOutput> {
     const partnerPrepCourse =
       await this.partnerPrepCourseService.getByUserId(userId);
@@ -1156,6 +1160,10 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         );
       }
       where.inscriptionCourse = inscriptionCourse;
+    }
+
+    if (applicationStatus) {
+      where.applicationStatus = applicationStatus;
     }
 
     const result = await this.repository.findAllBy({
