@@ -2890,4 +2890,39 @@ describe('StudentCourse (e2e)', () => {
     expect(row.inscriptionCourse.name).toBe(dtoInscription.name);
     expect(response.body.partnerId).toBeDefined();
   }, 100000);
+
+  it('não deve listar estudantes com deletedAt preenchido', async () => {
+    const { representative } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+
+    const inscription = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      representative.id,
+    );
+
+    const ids: string[] = [];
+    for (let i = 0; i < 2; i++) {
+      const { id } = await createStudent(inscription.id);
+      const student = await studentCourseService.findOneBy({ id });
+      student.applicationStatus = StatusApplication.DeclaredInterest;
+      await studentCourseRepository.update(student);
+      await confirmEnrollmentWithClass(student.id, representative.id);
+      ids.push(student.id);
+    }
+
+    const deleted = await studentCourseService.findOneBy({ id: ids[0] });
+    deleted.deletedAt = new Date();
+    await studentCourseRepository.update(deleted);
+
+    const response = await request(app.getHttpServer())
+      .get('/student-course/enrolled')
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+
+    expect(response.body.students.totalItems).toBe(1);
+    expect(response.body.students.data.length).toBe(1);
+    expect(response.body.students.data[0].id).toBe(ids[1]);
+  }, 100000);
 });

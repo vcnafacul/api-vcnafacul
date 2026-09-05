@@ -57,7 +57,8 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
         'users.birthday',
         'users.useSocialName',
       ])
-      .where({ ...where });
+      .where({ ...where })
+      .andWhere('entity.deletedAt IS NULL');
 
     let queryBuilderCount = this.repository
       .createQueryBuilder('entity')
@@ -66,7 +67,8 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .leftJoinAndSelect('entity.inscriptionCourse', 'inscription_course')
       .innerJoin('entity.user', 'users')
       .addSelect(['users.birthday'])
-      .where({ ...where });
+      .where({ ...where })
+      .andWhere('entity.deletedAt IS NULL');
 
     if (year !== undefined && year !== null) {
       queryBuilder = queryBuilder.andWhere('course_period.year = :year', {
