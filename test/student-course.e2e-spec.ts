@@ -2783,6 +2783,7 @@ describe('StudentCourse (e2e)', () => {
       .set({ Authorization: `Bearer ${token}` })
       .expect(200);
     expect(todos.body.students.totalItems).toBe(3);
+    expect(todos.body.students.data.length).toBe(3);
 
     const matriculados = await request(app.getHttpServer())
       .get(
@@ -2793,6 +2794,7 @@ describe('StudentCourse (e2e)', () => {
       .set({ Authorization: `Bearer ${token}` })
       .expect(200);
     expect(matriculados.body.students.totalItems).toBe(1);
+    expect(matriculados.body.students.data.length).toBe(1);
 
     const canceladas = await request(app.getHttpServer())
       .get(
@@ -2803,6 +2805,7 @@ describe('StudentCourse (e2e)', () => {
       .set({ Authorization: `Bearer ${token}` })
       .expect(200);
     expect(canceladas.body.students.totalItems).toBe(1);
+    expect(canceladas.body.students.data.length).toBe(1);
 
     const encerradas = await request(app.getHttpServer())
       .get(
@@ -2813,6 +2816,7 @@ describe('StudentCourse (e2e)', () => {
       .set({ Authorization: `Bearer ${token}` })
       .expect(200);
     expect(encerradas.body.students.totalItems).toBe(1);
+    expect(encerradas.body.students.data.length).toBe(1);
   }, 100000);
 
   it('deve rejeitar status de matrícula inválido', async () => {
@@ -2862,7 +2866,8 @@ describe('StudentCourse (e2e)', () => {
   }, 100000);
 
   it('deve retornar o processo seletivo do estudante e o id do cursinho', async () => {
-    const { representative } = await createPartnerPrepCourse();
+    const { representative, partnerPrepCourse } =
+      await createPartnerPrepCourse();
     const token = await jwtService.signAsync({
       user: { id: representative.id },
     });
@@ -2888,7 +2893,7 @@ describe('StudentCourse (e2e)', () => {
     expect(row.inscriptionCourse).toBeDefined();
     expect(row.inscriptionCourse.id).toBe(inscription.id);
     expect(row.inscriptionCourse.name).toBe(dtoInscription.name);
-    expect(response.body.partnerId).toBeDefined();
+    expect(response.body.partnerId).toBe(partnerPrepCourse.id);
   }, 100000);
 
   it('não deve listar estudantes com deletedAt preenchido', async () => {
@@ -2947,5 +2952,208 @@ describe('StudentCourse (e2e)', () => {
       .expect(200);
 
     expect(response.body).toEqual([2026, 2025, 2024]);
+  }, 100000);
+  it('deve listar matriculados e discrimina por processo seletivo', async () => {
+    const { representative } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+
+    const inscriptionA = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      representative.id,
+    );
+    const inscriptionB = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      representative.id,
+    );
+
+    const idsPorInscricao: Record<string, string> = {};
+    for (const inscription of [inscriptionA, inscriptionB]) {
+      const { id } = await createStudent(inscription.id);
+      const student = await studentCourseService.findOneBy({ id });
+      student.applicationStatus = StatusApplication.DeclaredInterest;
+      await studentCourseRepository.update(student);
+      await confirmEnrollmentWithClass(student.id, representative.id);
+      idsPorInscricao[inscription.id] = student.id;
+    }
+
+    const todos = await request(app.getHttpServer())
+      .get('/student-course/enrolled')
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    expect(todos.body.students.totalItems).toBe(2);
+    expect(todos.body.students.data.length).toBe(2);
+
+    const somenteA = await request(app.getHttpServer())
+      .get(`/student-course/enrolled?inscriptionId=${inscriptionA.id}`)
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    expect(somenteA.body.students.totalItems).toBe(1);
+    expect(somenteA.body.students.data.length).toBe(1);
+    expect(somenteA.body.students.data[0].id).toBe(
+      idsPorInscricao[inscriptionA.id],
+    );
+    expect(somenteA.body.students.data[0].inscriptionCourse.id).toBe(
+      inscriptionA.id,
+    );
+
+    const somenteB = await request(app.getHttpServer())
+      .get(`/student-course/enrolled?inscriptionId=${inscriptionB.id}`)
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    expect(somenteB.body.students.totalItems).toBe(1);
+    expect(somenteB.body.students.data.length).toBe(1);
+    expect(somenteB.body.students.data[0].id).toBe(
+      idsPorInscricao[inscriptionB.id],
+    );
+    expect(somenteB.body.students.data[0].inscriptionCourse.id).toBe(
+      inscriptionB.id,
+    );
+  }, 100000);
+
+  it('deve retornar 404 para processo seletivo inexistente', async () => {
+    const { representative } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+
+    await request(app.getHttpServer())
+      .get(
+        '/student-course/enrolled?inscriptionId=00000000-0000-0000-0000-000000000000',
+      )
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(404)
+      .expect((res) => {
+        expect(res.body.message).toBe('Processo Seletivo não encontrado');
+      });
+  }, 100000);
+
+  it('deve aplicar os filtros combinados de processo seletivo, ano letivo e status', async () => {
+    const { representative } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+
+    const inscription = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      representative.id,
+    );
+
+    const ids: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      const { id } = await createStudent(inscription.id);
+      const student = await studentCourseService.findOneBy({ id });
+      student.applicationStatus = StatusApplication.DeclaredInterest;
+      await studentCourseRepository.update(student);
+      await confirmEnrollmentWithClass(student.id, representative.id);
+      ids.push(student.id);
+    }
+
+    const cancelled = await studentCourseService.findOneBy({ id: ids[0] });
+    cancelled.applicationStatus = StatusApplication.EnrollmentCancelled;
+    await studentCourseRepository.update(cancelled);
+
+    const closed = await studentCourseService.findOneBy({ id: ids[1] });
+    closed.applicationStatus = StatusApplication.EnrollmentClosed;
+    await studentCourseRepository.update(closed);
+
+    // ids[2] segue como Matriculado
+    const matriculado = await studentCourseService.findOneBy({ id: ids[2] });
+    expect(matriculado.applicationStatus).toBe(StatusApplication.Enrolled);
+    const year = matriculado.class.coursePeriod.year;
+
+    const combinado = await request(app.getHttpServer())
+      .get(
+        `/student-course/enrolled?inscriptionId=${inscription.id}&year=${year}` +
+          `&applicationStatus=${encodeURIComponent(StatusApplication.Enrolled)}`,
+      )
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    expect(combinado.body.students.totalItems).toBe(1);
+    expect(combinado.body.students.data.length).toBe(1);
+    expect(combinado.body.students.data[0].id).toBe(ids[2]);
+    expect(combinado.body.students.data[0].inscriptionCourse.id).toBe(
+      inscription.id,
+    );
+
+    const anoErrado = await request(app.getHttpServer())
+      .get(
+        `/student-course/enrolled?inscriptionId=${inscription.id}&year=${year + 50}` +
+          `&applicationStatus=${encodeURIComponent(StatusApplication.Enrolled)}`,
+      )
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    expect(anoErrado.body.students.totalItems).toBe(0);
+    expect(anoErrado.body.students.data.length).toBe(0);
+  }, 100000);
+
+  it('não deve listar estudante sem turma quando um ano letivo é selecionado', async () => {
+    const { representative } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+
+    const inscription = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      representative.id,
+    );
+
+    // Mesma turma para os dois primeiros, garantindo o mesmo ano letivo
+    const classEntity = await createClass(representative.id);
+
+    const comTurma: string[] = [];
+    for (let i = 0; i < 2; i++) {
+      const { id } = await createStudent(inscription.id);
+      const student = await studentCourseService.findOneBy({ id });
+      student.applicationStatus = StatusApplication.DeclaredInterest;
+      await studentCourseRepository.update(student);
+      await studentCourseService.confirmEnrolled(student.id, classEntity.id);
+      comTurma.push(student.id);
+    }
+
+    // Terceiro estudante fica com cod_enrolled preenchido, porém sem turma
+    const { id: semTurmaId } = await createStudent(inscription.id);
+    const semTurma = await studentCourseService.findOneBy({ id: semTurmaId });
+    semTurma.applicationStatus = StatusApplication.DeclaredInterest;
+    await studentCourseRepository.update(semTurma);
+    await studentCourseService.confirmEnrolled(semTurma.id, classEntity.id);
+
+    const paraDesvincular = await studentCourseService.findOneBy({
+      id: semTurmaId,
+    });
+    paraDesvincular.class = null;
+    await studentCourseRepository.update(paraDesvincular);
+
+    const desvinculado = await studentCourseService.findOneBy({
+      id: semTurmaId,
+    });
+    expect(desvinculado.class).toBeNull();
+    expect(desvinculado.cod_enrolled).not.toBeNull();
+
+    const comTurmaCarregado = await studentCourseService.findOneBy({
+      id: comTurma[0],
+    });
+    const year = comTurmaCarregado.class.coursePeriod.year;
+
+    const semFiltro = await request(app.getHttpServer())
+      .get('/student-course/enrolled')
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    expect(semFiltro.body.students.totalItems).toBe(3);
+    expect(semFiltro.body.students.data.length).toBe(3);
+    expect(
+      semFiltro.body.students.data.map((student) => student.id).sort(),
+    ).toEqual([...comTurma, semTurmaId].sort());
+
+    const comAno = await request(app.getHttpServer())
+      .get(`/student-course/enrolled?year=${year}`)
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    expect(comAno.body.students.totalItems).toBe(2);
+    expect(comAno.body.students.data.length).toBe(2);
+    expect(
+      comAno.body.students.data.map((student) => student.id).sort(),
+    ).toEqual([...comTurma].sort());
   }, 100000);
 });
