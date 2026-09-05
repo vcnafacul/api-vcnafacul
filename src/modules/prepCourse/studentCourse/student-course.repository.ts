@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { GetAllWhereInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
@@ -12,6 +12,14 @@ import { buildFullSeries } from './handler/build-full-series';
 
 @Injectable()
 export class StudentCourseRepository extends NodeRepository<StudentCourse> {
+  private static readonly FILTERABLE_FIELDS: Record<string, string> = {
+    cod_enrolled: 'entity.cod_enrolled',
+    cpf: 'entity.cpf',
+    email: 'entity.email',
+    whatsapp: 'entity.whatsapp',
+    applicationStatus: 'entity.applicationStatus',
+  };
+
   constructor(
     @InjectEntityManager()
     protected readonly _entityManager: EntityManager,
@@ -67,9 +75,10 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
     if (filters && filters.length > 0) {
       filters.forEach((filter) => {
         if (filter.field === 'class') {
-          const query = `class.name LIKE "%${filter.value}%"`;
-          queryBuilder = queryBuilder.andWhere(query);
-          queryBuilderCount = queryBuilderCount.andWhere(query);
+          const query = 'class.name LIKE :filterValue';
+          const params = { filterValue: `%${filter.value}%` };
+          queryBuilder = queryBuilder.andWhere(query, params);
+          queryBuilderCount = queryBuilderCount.andWhere(query, params);
         } else if (filter.field === 'birthday') {
           const dateValue = new Date(filter.value).toISOString().slice(0, 10); // "YYYY-MM-DD"
           if (filter.operator === 'is') {
@@ -101,9 +110,18 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
             );
           }
         } else {
-          const query = `entity.${filter.field} LIKE "%${filter.value}%"`;
-          queryBuilder = queryBuilder.andWhere(query);
-          queryBuilderCount = queryBuilderCount.andWhere(query);
+          const column =
+            StudentCourseRepository.FILTERABLE_FIELDS[filter.field];
+          if (!column) {
+            throw new HttpException(
+              `Filtro não suportado: ${filter.field}`,
+              HttpStatus.BAD_REQUEST,
+            );
+          }
+          const query = `${column} LIKE :filterValue`;
+          const params = { filterValue: `%${filter.value}%` };
+          queryBuilder = queryBuilder.andWhere(query, params);
+          queryBuilderCount = queryBuilderCount.andWhere(query, params);
         }
       });
     }
