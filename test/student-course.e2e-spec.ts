@@ -2254,6 +2254,47 @@ describe('StudentCourse (e2e)', () => {
     expect(response.body.students.data.length).toBe(0);
   }, 100000);
 
+  it('deve filtrar por CPF corretamente (caso positivo do ramo da whitelist)', async () => {
+    const { representative } = await createPartnerPrepCourse();
+
+    const inscription = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      representative.id,
+    );
+
+    const { id: studentId } = await createStudent(inscription.id);
+    const student = await studentCourseService.findOneBy({ id: studentId });
+    student.applicationStatus = StatusApplication.DeclaredInterest;
+    await studentCourseRepository.update(student);
+    await confirmEnrollmentWithClass(student.id, representative.id);
+
+    const { id: studentId2 } = await createStudent(inscription.id);
+    const student2 = await studentCourseService.findOneBy({ id: studentId2 });
+    student2.applicationStatus = StatusApplication.DeclaredInterest;
+    await studentCourseRepository.update(student2);
+    await confirmEnrollmentWithClass(student2.id, representative.id);
+
+    const firstStudent = await studentCourseService.findOneBy({
+      id: studentId,
+    });
+
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+
+    const payload = encodeURIComponent(firstStudent.cpf);
+
+    const response = await request(app.getHttpServer())
+      .get(
+        `/student-course/enrolled?filter[field]=cpf&filter[value]=${payload}&inscriptionId=${inscription.id}`,
+      )
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+
+    expect(response.body.students.data.length).toBe(1);
+    expect(response.body.students.data[0].id).toBe(firstStudent.id);
+  }, 100000);
+
   // ========================
   // Testes de declaração por etapa
   // ========================
