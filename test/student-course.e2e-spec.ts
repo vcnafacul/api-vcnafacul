@@ -2716,4 +2716,36 @@ describe('StudentCourse (e2e)', () => {
     expect(updated.photoDone).toBe(true);
     expect(updated.surveyDone).toBe(true);
   }, 60000);
+
+  it('deve listar todos os estudantes do cursinho sem inscriptionId', async () => {
+    const { representative } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+
+    const inscriptionA = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      representative.id,
+    );
+    const inscriptionB = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      representative.id,
+    );
+
+    for (const inscription of [inscriptionA, inscriptionB]) {
+      const { id } = await createStudent(inscription.id);
+      const student = await studentCourseService.findOneBy({ id });
+      student.applicationStatus = StatusApplication.DeclaredInterest;
+      await studentCourseRepository.update(student);
+      await confirmEnrollmentWithClass(student.id, representative.id);
+    }
+
+    const response = await request(app.getHttpServer())
+      .get('/student-course/enrolled')
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+
+    expect(response.body.students.totalItems).toBe(2);
+    expect(response.body.students.data.length).toBe(2);
+  }, 100000);
 });

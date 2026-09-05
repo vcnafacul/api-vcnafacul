@@ -1140,21 +1140,23 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       );
     }
 
-    const inscriptionCourse = await this.inscriptionCourseService.findOneBy({
-      id: inscriptionCourseId,
-    });
-    if (!inscriptionCourse) {
-      throw new HttpException(
-        'Processo Seletivo não encontrado',
-        HttpStatus.NOT_FOUND,
-      );
-    }
-
-    const where = {
+    const where: Record<string, unknown> = {
       partnerPrepCourse,
       cod_enrolled: Not(IsNull()),
-      inscriptionCourse,
     };
+
+    if (inscriptionCourseId) {
+      const inscriptionCourse = await this.inscriptionCourseService.findOneBy({
+        id: inscriptionCourseId,
+      });
+      if (!inscriptionCourse) {
+        throw new HttpException(
+          'Processo Seletivo não encontrado',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+      where.inscriptionCourse = inscriptionCourse;
+    }
 
     const result = await this.repository.findAllBy({
       where,
