@@ -9,6 +9,8 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import * as ExcelJS from 'exceljs';
+import { Response } from 'express';
 import * as dayjs from 'dayjs';
 import { Permissions } from 'src/modules/role/permissions/permissions';
 import { RoleService } from 'src/modules/role/role.service';
@@ -1125,23 +1127,20 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     await this.logStudentRepository.create(log);
   }
 
-  async getEnrolled({
-    page,
-    limit,
+  /**
+   * Escopo da listagem de matriculados: cursinho do requisitante + processo
+   * seletivo + status. Compartilhado com a exportacao — se cada fluxo montasse
+   * o seu, a planilha deixaria de bater com a tela.
+   */
+  private async buildEnrolledWhere({
     userId,
-    filter,
-    sort,
     inscriptionCourseId,
-    year,
     applicationStatus,
-  }: GetAllInput & {
+  }: {
     userId: string;
-    filter?: Filter;
-    sort: Sort;
     inscriptionCourseId?: string;
-    year?: number;
     applicationStatus?: StatusApplication;
-  }): Promise<GetEnrolledDtoOutput> {
+  }) {
     const partnerPrepCourse =
       await this.partnerPrepCourseService.getByUserId(userId);
 
@@ -1173,6 +1172,32 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     if (applicationStatus) {
       where.applicationStatus = applicationStatus;
     }
+
+    return { partnerPrepCourse, where };
+  }
+
+  async getEnrolled({
+    page,
+    limit,
+    userId,
+    filter,
+    sort,
+    inscriptionCourseId,
+    year,
+    applicationStatus,
+  }: GetAllInput & {
+    userId: string;
+    filter?: Filter;
+    sort: Sort;
+    inscriptionCourseId?: string;
+    year?: number;
+    applicationStatus?: StatusApplication;
+  }): Promise<GetEnrolledDtoOutput> {
+    const { partnerPrepCourse, where } = await this.buildEnrolledWhere({
+      userId,
+      inscriptionCourseId,
+      applicationStatus,
+    });
 
     const result = await this.repository.findAllBy({
       where,
@@ -1231,6 +1256,141 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         limit: limit,
       },
     };
+  }
+
+  /** Lote da leitura em blocos da exportacao. */
+  private static readonly EXPORT_BATCH_SIZE = 500;
+
+  /**
+   * Exporta a listagem de matriculados em XLSX, respeitando os mesmos filtros
+   * e ordenacao da tela.
+   *
+   * Le em lotes e escreve direto no workbook, em vez de carregar tudo em
+   * memoria. Os lookups de cursinho, usuario e papel ficam fora do laco: em
+   * exportacao paginada pelo front eles se repetiriam a cada requisicao.
+   */
+  async exportEnrolledToExcel(
+    {
+      userId,
+      filter,
+      sort,
+      inscriptionCourseId,
+      year,
+      applicationStatus,
+    }: {
+      userId: string;
+      filter?: Filter;
+      sort?: Sort;
+      inscriptionCourseId?: string;
+      year?: number;
+      applicationStatus?: StatusApplication;
+    },
+    res: Response,
+  ): Promise<void> {
+    const { partnerPrepCourse, where } = await this.buildEnrolledWhere({
+      userId,
+      inscriptionCourseId,
+      applicationStatus,
+    });
+
+    const user = await this.userService.findUserById(userId);
+    const role = await this.roleService.findOneById(user.role.id);
+    const manager = role.gerenciarEstudantes;
+    const admin = role.gerenciarProcessoSeletivo;
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Estudantes');
+    sheet.addRow([
+      'Nº de matrícula',
+      'Nome',
+      'Ano Letivo',
+      'Processo Seletivo',
+      'Turma',
+      'Status',
+      'Email',
+      'Telefone',
+      'CPF',
+      'Nascimento',
+      'Idade',
+    ]);
+    sheet.getRow(1).font = { bold: true };
+
+    let offset = 0;
+    for (;;) {
+      const batch = await this.repository.findEnrolledBatchForExport({
+        where,
+        orderBy: sort,
+        filters: filter ? [filter] : [],
+        year,
+        offset,
+        limit: StudentCourseService.EXPORT_BATCH_SIZE,
+      });
+
+      if (batch.length === 0) break;
+
+      batch.forEach((student) => {
+        sheet.addRow([
+          student.cod_enrolled,
+          student.user.useSocialName
+            ? `${student.user.socialName?.split(' ')[0]} ${student.user.lastName}`
+            : `${student.user.firstName} ${student.user.lastName}`,
+          student.class?.coursePeriod?.year ?? '',
+          student.inscriptionCourse?.name ?? '',
+          student.class?.name ?? '',
+          student.applicationStatus,
+          // As mesmas regras de mascara da listagem. Divergir aqui trocaria uma
+          // melhoria de conveniencia por vazamento de dado pessoal — em
+          // arquivo, que circula muito mais facil que uma tela.
+          manager ? student.user.email : maskEmail(student.user.email),
+          manager ? student.whatsapp : maskPhone(student.whatsapp),
+          admin ? student.cpf : maskCpf(student.cpf),
+          student.user.birthday
+            ? new Date(student.user.birthday).toLocaleDateString('pt-BR')
+            : '',
+          StudentCourseService.calcularIdade(student.user.birthday),
+        ]);
+      });
+
+      if (batch.length < StudentCourseService.EXPORT_BATCH_SIZE) break;
+      offset += StudentCourseService.EXPORT_BATCH_SIZE;
+    }
+
+    const partes = [
+      'estudantes',
+      partnerPrepCourse.geo?.name,
+      year ? String(year) : null,
+      new Date().toISOString().slice(0, 10),
+    ].filter(Boolean);
+    const fileName = `${partes
+      .join('-')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9-]+/g, '-')
+      .toLowerCase()}.xlsx`;
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${encodeURIComponent(fileName)}"`,
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
+  }
+
+  private static calcularIdade(birthday?: Date | string): number | string {
+    if (!birthday) return '';
+    const nascimento = new Date(birthday);
+    const hoje = new Date();
+    let idade = hoje.getFullYear() - nascimento.getFullYear();
+    const mes = hoje.getMonth() - nascimento.getMonth();
+    if (mes < 0 || (mes === 0 && hoje.getDate() < nascimento.getDate())) {
+      idade--;
+    }
+    return idade;
   }
 
   async cancelEnrolled(studentId: string, reason: string) {

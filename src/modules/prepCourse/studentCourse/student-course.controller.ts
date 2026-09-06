@@ -313,6 +313,38 @@ export class StudentCourseController {
     });
   }
 
+  @Get('enrolled/export')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarEstudantes)
+  @Throttle({
+    default: {
+      ttl: THROTTLE_CONFIG.EXPORT_STUDENTS.ttl,
+      limit: THROTTLE_CONFIG.EXPORT_STUDENTS.limit,
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'exporta a listagem de matriculados em xlsx',
+  })
+  async exportEnrolled(
+    @Query() query: GetEnrolleds,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    return await this.service.exportEnrolledToExcel(
+      {
+        userId: (req.user as User).id,
+        filter: query.filter,
+        sort: query.sort,
+        inscriptionCourseId: query.inscriptionId,
+        year: query.year,
+        applicationStatus: query.applicationStatus,
+      },
+      res,
+    );
+  }
+
   @Patch('enrollment-cancelled')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)

@@ -68,6 +68,16 @@ export const THROTTLE_CONFIG = {
   },
 
   /**
+   * Rate limiting para exportacao da lista de estudantes
+   * 5 requisicoes a cada 5 minutos — protege o servidor de clique repetido
+   * sem impedir quem legitimamente quer dois recortes diferentes
+   */
+  EXPORT_STUDENTS: {
+    ttl: 300000, // 5 minutos
+    limit: 5,
+  },
+
+  /**
    * Rate limiting para lista de espera
    * 2 requisições a cada 10 minutos
    */
