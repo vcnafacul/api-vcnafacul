@@ -61,25 +61,37 @@ export class ClassRepository extends BaseRepository<Class> {
   }
 
   async findOneById(id: string): Promise<Class> {
-    return this.repository
-      .createQueryBuilder('entity')
-      .leftJoinAndSelect('entity.students', 'student_course')
-      .leftJoin('student_course.user', 'user')
-      .addSelect([
-        'user.id',
-        'user.firstName',
-        'user.lastName',
-        'user.socialName',
-        'user.email',
-        'user.birthday',
-        'user.useSocialName',
-      ])
-      .leftJoinAndSelect('entity.admins', 'admins')
-      .leftJoinAndSelect('entity.coursePeriod', 'course_period')
-      .leftJoin('entity.partnerPrepCourse', 'partner_prep_course')
-      .addSelect(['partner_prep_course.id'])
-      .where('entity.id = :id', { id })
-      .getOne();
+    return (
+      this.repository
+        .createQueryBuilder('entity')
+        // O filtro vai na clausula do JOIN, e nao num andWhere: uma condicao
+        // sobre a tabela juntada no WHERE transformaria o LEFT JOIN em INNER
+        // JOIN, e uma turma sem nenhum aluno ativo deixaria de ser retornada —
+        // 404 na tela, e o confirmEnrolled (que usa este metodo) nao conseguiria
+        // matricular o primeiro aluno de uma turma nova.
+        .leftJoinAndSelect(
+          'entity.students',
+          'student_course',
+          'student_course.applicationStatus = :status',
+          { status: StatusApplication.Enrolled },
+        )
+        .leftJoin('student_course.user', 'user')
+        .addSelect([
+          'user.id',
+          'user.firstName',
+          'user.lastName',
+          'user.socialName',
+          'user.email',
+          'user.birthday',
+          'user.useSocialName',
+        ])
+        .leftJoinAndSelect('entity.admins', 'admins')
+        .leftJoinAndSelect('entity.coursePeriod', 'course_period')
+        .leftJoin('entity.partnerPrepCourse', 'partner_prep_course')
+        .addSelect(['partner_prep_course.id'])
+        .where('entity.id = :id', { id })
+        .getOne()
+    );
   }
 
   async findOneByIdToAttendanceRecord(id: string): Promise<Class> {
