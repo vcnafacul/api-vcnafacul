@@ -60,10 +60,20 @@ export class ClassRepository extends BaseRepository<Class> {
     };
   }
 
+  // O filtro de status vai na clausula do JOIN, e nao num andWhere: uma
+  // condicao sobre a tabela juntada no WHERE transformaria o LEFT JOIN em
+  // INNER JOIN, e uma turma sem nenhum aluno ativo deixaria de ser retornada —
+  // 404 na tela, e o confirmEnrolled (que usa este metodo) nao conseguiria
+  // matricular o primeiro aluno de uma turma nova.
   async findOneById(id: string): Promise<Class> {
     return this.repository
       .createQueryBuilder('entity')
-      .leftJoinAndSelect('entity.students', 'student_course')
+      .leftJoinAndSelect(
+        'entity.students',
+        'student_course',
+        'student_course.applicationStatus = :status',
+        { status: StatusApplication.Enrolled },
+      )
       .leftJoin('student_course.user', 'user')
       .addSelect([
         'user.id',
