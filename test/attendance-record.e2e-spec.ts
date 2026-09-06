@@ -462,4 +462,129 @@ describe('AttendanceRecord (e2e)', () => {
     expect(idxDia).toBe(10);
     expect(linha[idxDia]).toBe('P');
   }, 100000);
+  async function registrarFrequencia(
+    token: string,
+    classId: string,
+    date: string,
+    period: AttendancePeriod,
+    studentIds: string[],
+  ) {
+    await request(app.getHttpServer())
+      .post('/attendance-record')
+      .send({ classId, date, period, studentIds })
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(201);
+  }
+
+  // Cria 5 registros numa ordem de insercao deliberadamente embaralhada, para
+  // que a ordem retornada nao possa vir "de graca" da ordem de gravacao.
+  async function criarTurmaComVariosRegistros() {
+    const { token, student, classEntity } = await criarTurmaComAlunoEFrequencia(
+      {
+        whatsapp: null,
+        urgencyPhone: null,
+      },
+    );
+
+    // o fixture ja registrou 2026-03-10 MANHA
+    await registrarFrequencia(
+      token,
+      classEntity.id,
+      '2026-03-12',
+      AttendancePeriod.TARDE,
+      [student.id],
+    );
+    await registrarFrequencia(
+      token,
+      classEntity.id,
+      '2026-03-08',
+      AttendancePeriod.NOITE,
+      [student.id],
+    );
+    await registrarFrequencia(
+      token,
+      classEntity.id,
+      '2026-03-12',
+      AttendancePeriod.MANHA,
+      [student.id],
+    );
+    await registrarFrequencia(
+      token,
+      classEntity.id,
+      '2026-03-11',
+      AttendancePeriod.MANHA,
+      [student.id],
+    );
+
+    return { token, student, classEntity };
+  }
+
+  const ORDEM_PERIODO = [
+    AttendancePeriod.MANHA,
+    AttendancePeriod.TARDE,
+    AttendancePeriod.NOITE,
+  ];
+
+  it('student deve retornar os registros ordenados por registeredAt DESC com period como desempate', async () => {
+    const { token, student } = await criarTurmaComVariosRegistros();
+
+    const response = await request(app.getHttpServer())
+      .get(`/attendance-record/student?studentId=${student.id}&page=1&limit=10`)
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+
+    const data = response.body.data;
+    expect(data).toHaveLength(5);
+
+    // Comparacoes relativas (e nao datas absolutas) para nao depender do
+    // timezone com que o MySQL devolve a coluna datetime.
+    for (let i = 1; i < data.length; i++) {
+      const anterior = new Date(data[i - 1].registeredAt).getTime();
+      const atual = new Date(data[i].registeredAt).getTime();
+      expect(atual).toBeLessThanOrEqual(anterior);
+
+      if (atual === anterior) {
+        expect(ORDEM_PERIODO.indexOf(data[i].period)).toBeGreaterThan(
+          ORDEM_PERIODO.indexOf(data[i - 1].period),
+        );
+      }
+    }
+
+    // o unico dia com dois registros e o 2026-03-12: MANHA tem que vir antes
+    // de TARDE, que e o desempate que o ORDER BY precisa garantir.
+    const empatados = data.filter(
+      (r) =>
+        new Date(r.registeredAt).getTime() ===
+        new Date(data[0].registeredAt).getTime(),
+    );
+    expect(empatados.map((r) => r.period)).toEqual([
+      AttendancePeriod.MANHA,
+      AttendancePeriod.TARDE,
+    ]);
+  }, 100000);
+
+  it('student deve paginar de forma deterministica, sem repetir nem omitir registros', async () => {
+    const { token, student } = await criarTurmaComVariosRegistros();
+
+    const buscarPagina = async (page: number, limit: number) => {
+      const response = await request(app.getHttpServer())
+        .get(
+          `/attendance-record/student?studentId=${student.id}&page=${page}&limit=${limit}`,
+        )
+        .set({ Authorization: `Bearer ${token}` })
+        .expect(200);
+      return response.body.data as { id: string }[];
+    };
+
+    const completo = await buscarPagina(1, 10);
+    const paginado = [
+      ...(await buscarPagina(1, 2)),
+      ...(await buscarPagina(2, 2)),
+      ...(await buscarPagina(3, 2)),
+    ];
+
+    const idsPaginados = paginado.map((r) => r.id);
+    expect(idsPaginados).toEqual(completo.map((r) => r.id));
+    expect(new Set(idsPaginados).size).toBe(5);
+  }, 100000);
 });
