@@ -3270,4 +3270,57 @@ describe('StudentCourse (e2e)', () => {
     const { rows } = await baixarExportacao(token);
     expect(rows).toHaveLength(2);
   }, 100000);
+  function resetar(token: string, studentId: string) {
+    return request(app.getHttpServer())
+      .patch('/student-course/reset-student')
+      .send({ studentId })
+      .set({ Authorization: `Bearer ${token}` });
+  }
+
+  it('reset-student deve bloquear quem ja tem codigo de matricula', async () => {
+    const { representative, inscription } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+    const [studentId] = await matricularEstudantes(
+      representative.id,
+      inscription.id,
+      1,
+    );
+
+    // matriculado: ja era bloqueado antes
+    await resetar(token, studentId).expect(400);
+
+    // cancelada e encerrada passavam pelo guard antigo e produziam um
+    // registro com codigo de matricula e status de candidato
+    await studentCourseService.cancelEnrolled(studentId, 'Rotina');
+    await resetar(token, studentId).expect(400);
+
+    const cancelado = await studentCourseService.findOneBy({ id: studentId });
+    cancelado.applicationStatus = StatusApplication.EnrollmentClosed;
+    await studentCourseRepository.update(cancelado);
+    await resetar(token, studentId).expect(400);
+
+    const final = await studentCourseService.findOneBy({ id: studentId });
+    expect(final.applicationStatus).toBe(StatusApplication.EnrollmentClosed);
+    expect(final.cod_enrolled).toBeTruthy();
+  }, 100000);
+
+  it('reset-student deve continuar liberado para candidato sem codigo de matricula', async () => {
+    const { representative, inscription } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+
+    const { id } = await createStudent(inscription.id);
+    const student = await studentCourseService.findOneBy({ id });
+    student.applicationStatus = StatusApplication.DeclaredInterest;
+    await studentCourseRepository.update(student);
+
+    await resetar(token, id).expect(200);
+
+    const resetado = await studentCourseService.findOneBy({ id });
+    expect(resetado.applicationStatus).toBe(StatusApplication.UnderReview);
+    expect(resetado.cod_enrolled).toBeFalsy();
+  }, 100000);
 });
