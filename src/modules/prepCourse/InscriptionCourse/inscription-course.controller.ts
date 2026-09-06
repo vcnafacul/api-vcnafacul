@@ -25,7 +25,6 @@ import { HasInscriptionActiveDtoOutput } from '../partnerPrepCourse/dtos/has-ins
 import { CreateInscriptionCourseInput } from './dtos/create-inscription-course.dto.input';
 import { ExtendInscriptionCourseDtoInput } from './dtos/extend-inscription-course.dto.input';
 import { InscriptionCourseDtoOutput } from './dtos/get-all-inscription.dto.output';
-import { GetAllWithNameDtoInput } from './dtos/get-all-with-name.dto.input';
 import { GetAllWithNameDtoOutput } from './dtos/get-all-with-name';
 import { OpenInscriptionDtoOutput } from './dtos/open-inscription.dto.output';
 import { GetSubscribersDtoOutput } from './dtos/get-subscribers.dto.output';
@@ -73,10 +72,9 @@ export class InscriptionCourseController {
     Permissions.gerenciarEstudantes,
   ])
   async getAllWithName(
-    @Query() query: GetAllWithNameDtoInput,
     @Req() req: Request,
   ): Promise<GetAllWithNameDtoOutput[]> {
-    return await this.service.getAllWithName((req.user as User).id, query.year);
+    return await this.service.getAllWithName((req.user as User).id);
   }
 
   @Get('subscribers/:id')
