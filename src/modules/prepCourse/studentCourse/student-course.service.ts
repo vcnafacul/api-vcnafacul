@@ -607,6 +607,22 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         HttpStatus.BAD_REQUEST,
       );
     }
+    // O codigo de matricula e o fato irreversivel: e atribuido junto com o
+    // status Matriculado e nunca e limpo em lugar nenhum do codigo. Checar so
+    // o status deixava passar Matricula Cancelada e Matricula Encerrada,
+    // produzindo um registro contraditorio — com codigo de matricula e status
+    // de candidato — que aparece na listagem de estudantes e nao casa com
+    // nenhuma das opcoes do filtro de status.
+    //
+    // As duas checagens coexistem: no fluxo real status e codigo andam juntos,
+    // mas um registro marcado como Matriculado sem codigo (estado que so se
+    // alcanca escrevendo direto no banco) tambem nao deve ser resetado.
+    if (student.cod_enrolled) {
+      throw new HttpException(
+        'Não é possível resetar estudante que já possui matrícula',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     student.applicationStatus = StatusApplication.UnderReview;
     student.selectEnrolled = false;
     student.isFree = true;
@@ -1851,11 +1867,38 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     return partnerLogoFile;
   }
 
-  async getStudentDetails(studentId: string): Promise<GetSubscribersDtoOutput> {
+  /**
+   * Detalhes completos do estudante.
+   *
+   * Responde 404 (e nao 403) quando o estudante e de outro cursinho, para nao
+   * confirmar que o registro existe. As mascaras seguem as mesmas regras do
+   * `getEnrolled`: contatos por `gerenciarEstudantes`, documentos por
+   * `gerenciarProcessoSeletivo`.
+   */
+  async getStudentDetails(
+    studentId: string,
+    userId: string,
+  ): Promise<GetSubscribersDtoOutput> {
+    const naoEncontrado = new HttpException(
+      'Estudante não encontrado',
+      HttpStatus.NOT_FOUND,
+    );
+
+    const partnerPrepCourse =
+      await this.partnerPrepCourseService.getByUserId(userId);
+
     const student = await this.repository.findOneWithFullDetails(studentId);
     if (!student) {
-      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+      throw naoEncontrado;
     }
+    if (student.partnerPrepCourse?.id !== partnerPrepCourse.id) {
+      throw naoEncontrado;
+    }
+
+    const user = await this.userService.findUserById(userId);
+    const role = await this.roleService.findOneById(user.role.id);
+    const manager = role.gerenciarEstudantes;
+    const admin = role.gerenciarProcessoSeletivo;
 
     return Object.assign(new GetSubscribersDtoOutput(), {
       id: student.id,
@@ -1868,13 +1911,15 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         : null,
       lista_de_espera: student.waitingList ? 'Sim' : 'Não',
       status: student.applicationStatus,
-      email: student.user.email,
-      cpf: student.cpf,
-      rg: student.rg,
+      email: manager ? student.user.email : maskEmail(student.user.email),
+      cpf: admin ? student.cpf : maskCpf(student.cpf),
+      rg: admin ? student.rg : maskRg(student.rg),
       uf: student.uf,
-      telefone_emergencia: student.urgencyPhone,
+      telefone_emergencia: manager
+        ? student.urgencyPhone
+        : maskPhone(student.urgencyPhone),
       socioeconomic: student.socioeconomic,
-      whatsapp: student.whatsapp,
+      whatsapp: manager ? student.whatsapp : maskPhone(student.whatsapp),
       nome: student.user.firstName,
       sobrenome: student.user.lastName,
       nome_social: student.user.socialName,
@@ -1886,7 +1931,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
           : student.user.gender === Gender.Female
             ? 'Feminino'
             : 'Outro',
-      telefone: student.user.phone,
+      telefone: manager ? student.user.phone : maskPhone(student.user.phone),
       bairro: student.user.neighborhood,
       rua: student.user.street,
       numero: student.user.number,
