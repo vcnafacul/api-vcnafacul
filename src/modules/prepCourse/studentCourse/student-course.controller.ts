@@ -497,14 +497,17 @@ export class StudentCourseController {
   }
 
   @Get(':id/details')
-  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarEstudantes)
   @ApiResponse({
     status: 200,
     description: 'Retorna detalhes completos de um estudante',
   })
   async getStudentDetails(
     @Param('id') id: string,
+    @Req() req: Request,
   ): Promise<GetSubscribersDtoOutput> {
-    return await this.service.getStudentDetails(id);
+    return await this.service.getStudentDetails(id, (req.user as User).id);
   }
 }
