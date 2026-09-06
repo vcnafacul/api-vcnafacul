@@ -67,7 +67,10 @@ export class InscriptionCourseController {
   @Get('all-with-name')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.visualizarEstudantes,
+    Permissions.gerenciarEstudantes,
+  ])
   async getAllWithName(
     @Req() req: Request,
   ): Promise<GetAllWithNameDtoOutput[]> {

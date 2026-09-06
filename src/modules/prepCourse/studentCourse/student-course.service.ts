@@ -1124,11 +1124,15 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     filter,
     sort,
     inscriptionCourseId,
+    year,
+    applicationStatus,
   }: GetAllInput & {
     userId: string;
     filter?: Filter;
     sort: Sort;
     inscriptionCourseId?: string;
+    year?: number;
+    applicationStatus?: StatusApplication;
   }): Promise<GetEnrolledDtoOutput> {
     const partnerPrepCourse =
       await this.partnerPrepCourseService.getByUserId(userId);
@@ -1140,21 +1144,27 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       );
     }
 
-    const inscriptionCourse = await this.inscriptionCourseService.findOneBy({
-      id: inscriptionCourseId,
-    });
-    if (!inscriptionCourse) {
-      throw new HttpException(
-        'Processo Seletivo não encontrado',
-        HttpStatus.NOT_FOUND,
-      );
-    }
-
-    const where = {
+    const where: Record<string, unknown> = {
       partnerPrepCourse,
       cod_enrolled: Not(IsNull()),
-      inscriptionCourse,
     };
+
+    if (inscriptionCourseId) {
+      const inscriptionCourse = await this.inscriptionCourseService.findOneBy({
+        id: inscriptionCourseId,
+      });
+      if (!inscriptionCourse) {
+        throw new HttpException(
+          'Processo Seletivo não encontrado',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+      where.inscriptionCourse = inscriptionCourse;
+    }
+
+    if (applicationStatus) {
+      where.applicationStatus = applicationStatus;
+    }
 
     const result = await this.repository.findAllBy({
       where,
@@ -1162,6 +1172,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       page,
       orderBy: sort,
       filters: filter ? [filter] : [],
+      year,
     });
 
     const user = await this.userService.findUserById(userId);
@@ -1171,6 +1182,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
     return {
       name: partnerPrepCourse.geo.name,
+      partnerId: partnerPrepCourse.id,
       students: {
         data: result.data.map(
           (student) =>
@@ -1199,6 +1211,10 @@ export class StudentCourseService extends BaseService<StudentCourse> {
                 name: student.class?.name,
                 year: student.class?.coursePeriod?.year || 0,
                 endDate: student.class?.coursePeriod?.endDate,
+              },
+              inscriptionCourse: {
+                id: student.inscriptionCourse?.id,
+                name: student.inscriptionCourse?.name,
               },
             }) as unknown as StudentsDtoOutput,
         ),

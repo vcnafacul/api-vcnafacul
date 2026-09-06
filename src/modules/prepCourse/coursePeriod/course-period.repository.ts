@@ -108,6 +108,23 @@ export class CoursePeriodRepository extends BaseRepository<CoursePeriod> {
     };
   }
 
+  async findDistinctYearsByPartner(
+    partnerPrepCourseId: string,
+  ): Promise<number[]> {
+    const rows = await this.repository
+      .createQueryBuilder('course_period')
+      .select('DISTINCT course_period.year', 'year')
+      .innerJoin('course_period.partnerPrepCourse', 'partner_prep_course')
+      .where('partner_prep_course.id = :partnerPrepCourseId', {
+        partnerPrepCourseId,
+      })
+      .andWhere('course_period.deletedAt IS NULL')
+      .orderBy('year', 'DESC')
+      .getRawMany<{ year: number }>();
+
+    return rows.map((row) => Number(row.year));
+  }
+
   async findExpiredPeriods(): Promise<CoursePeriod[]> {
     const today = new Date();
     today.setHours(23, 59, 59, 999); // Final do dia atual

@@ -308,6 +308,8 @@ export class StudentCourseController {
       filter: query.filter,
       sort: query.sort,
       inscriptionCourseId: query.inscriptionId,
+      year: query.year,
+      applicationStatus: query.applicationStatus,
     });
   }
 

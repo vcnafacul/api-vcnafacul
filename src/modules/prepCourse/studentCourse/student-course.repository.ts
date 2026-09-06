@@ -33,13 +33,17 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
     where,
     orderBy,
     filters,
-  }: GetAllWhereInput): Promise<GetAllOutput<StudentCourse>> {
+    year,
+  }: GetAllWhereInput & {
+    year?: number;
+  }): Promise<GetAllOutput<StudentCourse>> {
     let queryBuilder = this.repository
       .createQueryBuilder('entity')
       .skip((page - 1) * limit)
       .take(limit)
       .leftJoinAndSelect('entity.class', 'class')
       .leftJoinAndSelect('class.coursePeriod', 'course_period')
+      .leftJoinAndSelect('entity.inscriptionCourse', 'inscription_course')
       .innerJoin('entity.user', 'users')
       .addSelect([
         'users.id',
@@ -53,15 +57,28 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
         'users.birthday',
         'users.useSocialName',
       ])
-      .where({ ...where });
+      .where({ ...where })
+      .andWhere('entity.deletedAt IS NULL');
 
     let queryBuilderCount = this.repository
       .createQueryBuilder('entity')
       .leftJoinAndSelect('entity.class', 'class')
       .leftJoinAndSelect('class.coursePeriod', 'course_period')
+      .leftJoinAndSelect('entity.inscriptionCourse', 'inscription_course')
       .innerJoin('entity.user', 'users')
       .addSelect(['users.birthday'])
-      .where({ ...where });
+      .where({ ...where })
+      .andWhere('entity.deletedAt IS NULL');
+
+    if (year !== undefined && year !== null) {
+      queryBuilder = queryBuilder.andWhere('course_period.year = :year', {
+        year,
+      });
+      queryBuilderCount = queryBuilderCount.andWhere(
+        'course_period.year = :year',
+        { year },
+      );
+    }
 
     if (orderBy) {
       queryBuilder = queryBuilder.orderBy(
