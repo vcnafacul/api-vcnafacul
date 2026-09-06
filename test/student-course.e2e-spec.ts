@@ -31,6 +31,7 @@ import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
 import * as ExcelJS from 'exceljs';
+import { DataSource } from 'typeorm';
 import * as request from 'supertest';
 import CreateClassDtoInputFaker from './faker/create-class.dto.input.faker';
 import { CreateCoursePeriodDtoInputFaker } from './faker/create-course-period.dto.input.faker';
@@ -55,6 +56,7 @@ describe('StudentCourse (e2e)', () => {
   let roleUpdateAdminSeedService: RoleUpdateAdminSeedService;
   let studentCourseService: StudentCourseService;
   let studentCourseRepository: StudentCourseRepository;
+  let dataSource: DataSource;
   let partnerPrepCourseService: PartnerPrepCourseService;
   let geoService: GeoService;
   let inscriptionCourseService: InscriptionCourseService;
@@ -106,6 +108,7 @@ describe('StudentCourse (e2e)', () => {
     studentCourseRepository = moduleFixture.get<StudentCourseRepository>(
       StudentCourseRepository,
     );
+    dataSource = moduleFixture.get<DataSource>(DataSource);
     partnerPrepCourseService = moduleFixture.get<PartnerPrepCourseService>(
       PartnerPrepCourseService,
     );
@@ -3226,9 +3229,16 @@ describe('StudentCourse (e2e)', () => {
     const tokenAdmin = await jwtService.signAsync({
       user: { id: representative.id },
     });
+    // localiza pelo cabecalho, e nao por indice fixo: a ordem das colunas
+    // passou a vir do agrupamento do catalogo e pode mudar
+    const valor = (
+      resultado: { header: string[]; rows: string[][] },
+      rotulo: string,
+    ) => resultado.rows[0][resultado.header.indexOf(rotulo)];
+
     const comAdmin = await baixarExportacao(tokenAdmin);
-    expect(comAdmin.rows[0][7]).not.toContain('*');
-    expect(comAdmin.rows[0][9]).not.toContain('*');
+    expect(valor(comAdmin, 'Email (conta)')).not.toContain('*');
+    expect(valor(comAdmin, 'CPF')).not.toContain('*');
 
     // mesmo usuario, papel reduzido a visualizarEstudantes
     const papelRestrito = new CreateRoleDtoInput();
@@ -3241,12 +3251,12 @@ describe('StudentCourse (e2e)', () => {
     const tokenRestrito = await jwtService.signAsync({
       user: { id: representative.id },
     });
-    const { rows } = await baixarExportacao(tokenRestrito);
+    const comRestrito = await baixarExportacao(tokenRestrito);
 
     // email, telefone e cpf mascarados — o vazamento aqui seria em arquivo
-    expect(rows[0][7]).toContain('*');
-    expect(rows[0][8]).toContain('*');
-    expect(rows[0][9]).toContain('*');
+    expect(valor(comRestrito, 'Email (conta)')).toContain('*');
+    expect(valor(comRestrito, 'WhatsApp')).toContain('*');
+    expect(valor(comRestrito, 'CPF')).toContain('*');
   }, 100000);
 
   it('export nao deve trazer estudante de outro cursinho', async () => {
@@ -3472,5 +3482,122 @@ describe('StudentCourse (e2e)', () => {
     expect(mascarado.body.email).toContain('*');
     expect(mascarado.body.cpf).toContain('*');
     expect(mascarado.body.telefone).toContain('*');
+  }, 100000);
+  it('export sem columns deve manter as 11 colunas fixas de antes', async () => {
+    const { representative, inscription } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+    await matricularEstudantes(representative.id, inscription.id, 1);
+
+    const { header } = await baixarExportacao(token);
+    // values do exceljs e 1-indexed.
+    // Mesmas 11 colunas de antes, mas agora na ordem dos grupos do catalogo
+    // (Identificacao, Contato, Documentos, Matricula) e nao na ordem antiga.
+    expect(header.slice(1)).toEqual([
+      'Nº de matrícula',
+      'Nome',
+      'Nascimento',
+      'Idade',
+      'Email (conta)',
+      'WhatsApp',
+      'CPF',
+      'Ano Letivo',
+      'Processo Seletivo',
+      'Turma',
+      'Status',
+    ]);
+  }, 100000);
+
+  it('export deve trazer so as colunas pedidas, na ordem do catalogo', async () => {
+    const { representative, inscription } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+    await matricularEstudantes(representative.id, inscription.id, 1);
+
+    // pedidas fora de ordem de proposito: a planilha deve sair na ordem do
+    // catalogo, senao cada download teria um layout diferente
+    const { header } = await baixarExportacao(
+      token,
+      '?columns=cpf,name,cod_enrolled',
+    );
+    expect(header.slice(1)).toEqual(['Nº de matrícula', 'Nome', 'CPF']);
+  }, 100000);
+
+  it('export com coluna desconhecida deve responder 400', async () => {
+    const { representative, inscription } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+    await matricularEstudantes(representative.id, inscription.id, 1);
+
+    await request(app.getHttpServer())
+      .get('/student-course/enrolled/export?columns=name,password')
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(400);
+  }, 100000);
+
+  it('export deve recusar coluna acima do papel, mesmo fora da UI', async () => {
+    const { representative, inscription } = await createPartnerPrepCourse();
+    await matricularEstudantes(representative.id, inscription.id, 1);
+
+    const papelRestrito = new CreateRoleDtoInput();
+    papelRestrito.name = `export_colunas_${Date.now()}`;
+    papelRestrito.visualizarEstudantes = true;
+    representative.role = await roleService.create(papelRestrito);
+    await userRepository.update(representative);
+
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+
+    // endereco exige gerenciarEstudantes para ser oferecido
+    await request(app.getHttpServer())
+      .get('/student-course/enrolled/export?columns=name,street')
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(403);
+
+    // e o catalogo nem oferece a coluna
+    const catalogo = await request(app.getHttpServer())
+      .get('/student-course/enrolled/export/columns')
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    const chaves = catalogo.body.map((c: { key: string }) => c.key);
+    expect(chaves).not.toContain('street');
+    expect(chaves).toContain('cpf');
+    // cpf e oferecido, mas marcado como mascarado
+    const cpf = catalogo.body.find((c: { key: string }) => c.key === 'cpf');
+    expect(cpf.masked).toBe(true);
+  }, 100000);
+
+  it('export deve trazer a justificativa do cancelamento mais recente', async () => {
+    const { representative, inscription } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+    const [studentId] = await matricularEstudantes(
+      representative.id,
+      inscription.id,
+      1,
+    );
+
+    await studentCourseService.cancelEnrolled(studentId, 'Rotina');
+    await dataSource.query(
+      'UPDATE log_student SET created_at = DATE_SUB(created_at, INTERVAL 1 HOUR) WHERE student_id = ? AND applicationStatus = ?',
+      [studentId, StatusApplication.EnrollmentCancelled],
+    );
+    await studentCourseService.activeEnrolled(studentId);
+    await studentCourseService.cancelEnrolled(studentId, 'Transporte');
+
+    const { header, rows } = await baixarExportacao(
+      token,
+      '?columns=cod_enrolled,cancelJustification',
+    );
+    expect(header.slice(1)).toEqual([
+      'Nº de matrícula',
+      'Justificativa do cancelamento',
+    ]);
+    expect(rows[0][2]).toBe('Transporte');
   }, 100000);
 });

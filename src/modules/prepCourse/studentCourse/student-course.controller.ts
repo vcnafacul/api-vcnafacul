@@ -340,9 +340,29 @@ export class StudentCourseController {
         inscriptionCourseId: query.inscriptionId,
         year: query.year,
         applicationStatus: query.applicationStatus,
+        // sem `columns`, o servico cai na selecao padrao — que sao as mesmas
+        // colunas fixas de antes deste recurso
+        columns: query.columns
+          ? query.columns
+              .split(',')
+              .map((coluna) => coluna.trim())
+              .filter(Boolean)
+          : undefined,
       },
       res,
     );
+  }
+
+  @Get('enrolled/export/columns')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarEstudantes)
+  @ApiResponse({
+    status: 200,
+    description: 'colunas que o usuario pode exportar, conforme o papel dele',
+  })
+  async getExportColumns(@Req() req: Request) {
+    return await this.service.getExportColumns((req.user as User).id);
   }
 
   @Patch('enrollment-cancelled')

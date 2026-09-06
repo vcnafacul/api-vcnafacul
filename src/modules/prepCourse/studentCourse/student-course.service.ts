@@ -10,6 +10,13 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import * as ExcelJS from 'exceljs';
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  EXPORT_COLUMNS_BY_KEY,
+  ExportColumn,
+  ExportJoin,
+} from './export-columns';
 import { Response } from 'express';
 import * as dayjs from 'dayjs';
 import { Permissions } from 'src/modules/role/permissions/permissions';
@@ -1285,6 +1292,69 @@ export class StudentCourseService extends BaseService<StudentCourse> {
    * memoria. Os lookups de cursinho, usuario e papel ficam fora do laco: em
    * exportacao paginada pelo front eles se repetiriam a cada requisicao.
    */
+  /**
+   * Colunas que o usuario pode escolher, ja filtradas pelo papel dele.
+   *
+   * O modal do front consome isto em vez de manter a propria lista: duas
+   * listas divergiriam sem erro de compilacao, e a de permissao tem que valer
+   * no servidor de qualquer forma.
+   */
+  async getExportColumns(userId: string) {
+    const { manager, admin } = await this.resolveExportPermissions(userId);
+
+    return EXPORT_COLUMNS.filter((column) =>
+      this.podeOferecer(column, { manager, admin }),
+    ).map((column) => ({
+      key: column.key,
+      label: column.label,
+      group: column.group,
+      // o front avisa no modal que o valor vira mascarado
+      masked: !this.podeVerEmClaro(column, { manager, admin }),
+      default: DEFAULT_EXPORT_COLUMNS.includes(column.key),
+    }));
+  }
+
+  private async resolveExportPermissions(userId: string) {
+    const user = await this.userService.findUserById(userId);
+    const role = await this.roleService.findOneById(user.role.id);
+    return {
+      manager: role.gerenciarEstudantes,
+      admin: role.gerenciarProcessoSeletivo,
+    };
+  }
+
+  private podeOferecer(
+    column: ExportColumn,
+    { manager, admin }: { manager: boolean; admin: boolean },
+  ) {
+    if (!column.requires) return true;
+    if (column.requires === Permissions.gerenciarEstudantes) return manager;
+    if (column.requires === Permissions.gerenciarProcessoSeletivo) return admin;
+    return true;
+  }
+
+  private podeVerEmClaro(
+    column: ExportColumn,
+    { manager, admin }: { manager: boolean; admin: boolean },
+  ) {
+    if (!column.clearRequires) return true;
+    if (column.clearRequires === Permissions.gerenciarEstudantes) {
+      return manager;
+    }
+    if (column.clearRequires === Permissions.gerenciarProcessoSeletivo) {
+      return admin;
+    }
+    return true;
+  }
+
+  /**
+   * Exporta a listagem de matriculados em XLSX, respeitando os mesmos filtros
+   * e ordenacao da tela e apenas as colunas pedidas.
+   *
+   * Le em lotes e escreve direto no workbook, em vez de carregar tudo em
+   * memoria. Os lookups de cursinho, usuario e papel ficam fora do laco: em
+   * exportacao paginada pelo front eles se repetiriam a cada requisicao.
+   */
   async exportEnrolledToExcel(
     {
       userId,
@@ -1293,6 +1363,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       inscriptionCourseId,
       year,
       applicationStatus,
+      columns,
     }: {
       userId: string;
       filter?: Filter;
@@ -1300,6 +1371,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       inscriptionCourseId?: string;
       year?: number;
       applicationStatus?: StatusApplication;
+      columns?: string[];
     },
     res: Response,
   ): Promise<void> {
@@ -1309,26 +1381,16 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       applicationStatus,
     });
 
-    const user = await this.userService.findUserById(userId);
-    const role = await this.roleService.findOneById(user.role.id);
-    const manager = role.gerenciarEstudantes;
-    const admin = role.gerenciarProcessoSeletivo;
+    const { manager, admin } = await this.resolveExportPermissions(userId);
+    const selecionadas = this.resolveExportColumns(columns, { manager, admin });
+
+    const joins = new Set<ExportJoin>(
+      selecionadas.flatMap((column) => (column.join ? [column.join] : [])),
+    );
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Estudantes');
-    sheet.addRow([
-      'Nº de matrícula',
-      'Nome',
-      'Ano Letivo',
-      'Processo Seletivo',
-      'Turma',
-      'Status',
-      'Email',
-      'Telefone',
-      'CPF',
-      'Nascimento',
-      'Idade',
-    ]);
+    sheet.addRow(selecionadas.map((column) => column.label));
     sheet.getRow(1).font = { bold: true };
 
     let offset = 0;
@@ -1340,31 +1402,17 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         year,
         offset,
         limit: StudentCourseService.EXPORT_BATCH_SIZE,
+        joins,
       });
 
       if (batch.length === 0) break;
 
       batch.forEach((student) => {
-        sheet.addRow([
-          student.cod_enrolled,
-          student.user.useSocialName
-            ? `${student.user.socialName?.split(' ')[0]} ${student.user.lastName}`
-            : `${student.user.firstName} ${student.user.lastName}`,
-          student.class?.coursePeriod?.year ?? '',
-          student.inscriptionCourse?.name ?? '',
-          student.class?.name ?? '',
-          student.applicationStatus,
-          // As mesmas regras de mascara da listagem. Divergir aqui trocaria uma
-          // melhoria de conveniencia por vazamento de dado pessoal — em
-          // arquivo, que circula muito mais facil que uma tela.
-          manager ? student.user.email : maskEmail(student.user.email),
-          manager ? student.whatsapp : maskPhone(student.whatsapp),
-          admin ? student.cpf : maskCpf(student.cpf),
-          student.user.birthday
-            ? new Date(student.user.birthday).toLocaleDateString('pt-BR')
-            : '',
-          StudentCourseService.calcularIdade(student.user.birthday),
-        ]);
+        sheet.addRow(
+          selecionadas.map((column) =>
+            this.valorDaColuna(column, student, { manager, admin }),
+          ),
+        );
       });
 
       if (batch.length < StudentCourseService.EXPORT_BATCH_SIZE) break;
@@ -1395,6 +1443,195 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
     await workbook.xlsx.write(res);
     res.end();
+  }
+
+  /**
+   * Traduz o `columns` da requisicao em colunas do catalogo, preservando a
+   * ordem do catalogo — e nao a ordem em que o usuario clicou, que produziria
+   * planilhas com layouts diferentes a cada download.
+   */
+  private resolveExportColumns(
+    columns: string[] | undefined,
+    permissoes: { manager: boolean; admin: boolean },
+  ): ExportColumn[] {
+    const pedidas = columns?.length ? columns : DEFAULT_EXPORT_COLUMNS;
+
+    const desconhecidas = pedidas.filter(
+      (key) => !EXPORT_COLUMNS_BY_KEY.has(key),
+    );
+    if (desconhecidas.length) {
+      throw new HttpException(
+        `Coluna não suportada: ${desconhecidas.join(', ')}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const semPermissao = pedidas
+      .map((key) => EXPORT_COLUMNS_BY_KEY.get(key))
+      .filter((column) => !this.podeOferecer(column, permissoes));
+    if (semPermissao.length) {
+      throw new HttpException(
+        `Sem permissão para exportar: ${semPermissao
+          .map((column) => column.label)
+          .join(', ')}`,
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    const escolhidas = new Set(pedidas);
+    return EXPORT_COLUMNS.filter((column) => escolhidas.has(column.key));
+  }
+
+  private valorDaColuna(
+    column: ExportColumn,
+    student: StudentCourse,
+    permissoes: { manager: boolean; admin: boolean },
+  ): string | number | Date {
+    const claro = this.podeVerEmClaro(column, permissoes);
+    const user = student.user;
+
+    switch (column.key) {
+      case 'cod_enrolled':
+        return student.cod_enrolled ?? '';
+      case 'name':
+        return user.useSocialName
+          ? `${user.socialName?.split(' ')[0]} ${user.lastName}`
+          : `${user.firstName} ${user.lastName}`;
+      case 'socialName':
+        return user.socialName ?? '';
+      case 'birthday':
+        return user.birthday
+          ? new Date(user.birthday).toLocaleDateString('pt-BR')
+          : '';
+      case 'age':
+        return StudentCourseService.calcularIdade(user.birthday);
+      case 'gender':
+        return user.gender ?? '';
+
+      // As mesmas regras de mascara da listagem. Divergir aqui trocaria uma
+      // melhoria de conveniencia por vazamento de dado pessoal — em arquivo,
+      // que circula muito mais facil que uma tela.
+      case 'email':
+        return claro ? user.email : maskEmail(user.email);
+      case 'emailInscricao':
+        return claro ? (student.email ?? '') : maskEmail(student.email);
+      case 'whatsapp':
+        return claro ? (student.whatsapp ?? '') : maskPhone(student.whatsapp);
+      case 'phone':
+        return claro ? (user.phone ?? '') : maskPhone(user.phone);
+      case 'urgencyPhone':
+        return claro
+          ? (student.urgencyPhone ?? '')
+          : maskPhone(student.urgencyPhone);
+      case 'cpf':
+        return claro ? student.cpf : maskCpf(student.cpf);
+      case 'rg':
+        return claro ? (student.rg ?? '') : maskRg(student.rg);
+      case 'uf':
+        return student.uf ?? '';
+
+      case 'street':
+        return user.street ?? '';
+      case 'number':
+        return user.number ?? '';
+      case 'complement':
+        return user.complement ?? '';
+      case 'neighborhood':
+        return user.neighborhood ?? '';
+      case 'postalCode':
+        return user.postalCode ?? '';
+      case 'city':
+        return user.city ?? '';
+      case 'state':
+        return user.state ?? '';
+
+      case 'schoolYear':
+        return student.class?.coursePeriod?.year ?? '';
+      case 'inscriptionCourse':
+        return student.inscriptionCourse?.name ?? '';
+      case 'class':
+        return student.class?.name ?? '';
+      case 'applicationStatus':
+        return student.applicationStatus;
+      case 'createdAt':
+        return student.createdAt
+          ? new Date(student.createdAt).toLocaleDateString('pt-BR')
+          : '';
+      case 'isFree':
+        return student.isFree ? 'Sim' : 'Não';
+      case 'waitingList':
+        return student.waitingList ? 'Sim' : 'Não';
+      case 'selectEnrolledAt':
+        return student.selectEnrolledAt
+          ? new Date(student.selectEnrolledAt).toLocaleDateString('pt-BR')
+          : '';
+      case 'limitEnrolledAt':
+        return student.limitEnrolledAt
+          ? new Date(student.limitEnrolledAt).toLocaleDateString('pt-BR')
+          : '';
+      case 'cancelledAt': {
+        const log = StudentCourseService.ultimoCancelamento(student);
+        return log ? new Date(log.createdAt).toLocaleDateString('pt-BR') : '';
+      }
+      case 'cancelJustification':
+        return (
+          StudentCourseService.ultimoCancelamento(student)?.description ?? ''
+        );
+
+      case 'documentsDone':
+        return student.documentsDone ? 'Sim' : 'Não';
+      case 'photoDone':
+        return student.photoDone ? 'Sim' : 'Não';
+      case 'surveyDone':
+        return student.surveyDone ? 'Sim' : 'Não';
+      case 'lastAccess':
+        return user.lastAccess
+          ? new Date(user.lastAccess).toLocaleDateString('pt-BR')
+          : '';
+
+      case 'guardianName':
+        return student.legalGuardian?.fullName ?? '';
+      case 'guardianRelationship':
+        return student.legalGuardian?.family_relationship ?? '';
+      case 'guardianPhone':
+        return claro
+          ? (student.legalGuardian?.phone ?? '')
+          : maskPhone(student.legalGuardian?.phone);
+
+      case 'areaInterest':
+        return StudentCourseService.listaJson(student.areaInterest);
+      case 'selectedCourses':
+        return StudentCourseService.listaJson(student.selectedCourses);
+
+      default:
+        return '';
+    }
+  }
+
+  /**
+   * O fluxo permite cancelar → reativar → cancelar, entao pode haver mais de
+   * um log. A ordenacao e feita aqui, e nao no SQL, para nao depender da ordem
+   * em que o TypeORM hidrata a colecao.
+   */
+  private static ultimoCancelamento(student: StudentCourse) {
+    return [...(student.logs ?? [])]
+      .filter(
+        (log) =>
+          log.applicationStatus === StatusApplication.EnrollmentCancelled,
+      )
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+  }
+
+  private static listaJson(valor?: string): string {
+    if (!valor) return '';
+    try {
+      const parsed = JSON.parse(valor);
+      return Array.isArray(parsed) ? parsed.join(', ') : String(parsed ?? '');
+    } catch {
+      // o campo e `text` livre: se nao for JSON, vale mais devolver cru do que
+      // derrubar a exportacao inteira
+      return valor;
+    }
   }
 
   private static calcularIdade(birthday?: Date | string): number | string {
