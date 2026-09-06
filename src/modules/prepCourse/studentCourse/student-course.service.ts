@@ -1107,8 +1107,12 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     if (class_.coursePeriod.endDate < new Date()) {
       throw new HttpException('Turma já encerrada', HttpStatus.BAD_REQUEST);
     }
+    // Lida antes da atribuicao: so invalidar o destino deixaria a turma de
+    // origem exibindo um aluno que ja saiu.
+    const turmaDeOrigemId = student.class?.id;
     student.class = class_;
     await this.repository.update(student);
+    await this.invalidateClassCache(turmaDeOrigemId, class_.id);
 
     const log = new LogStudent();
     log.studentId = student.id;
@@ -1238,6 +1242,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     }
     student.applicationStatus = StatusApplication.EnrollmentCancelled;
     await this.repository.update(student);
+    await this.invalidateClassCache(student.class?.id);
 
     const log = new LogStudent();
     log.studentId = student.id;
@@ -1259,12 +1264,29 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     }
     student.applicationStatus = StatusApplication.Enrolled;
     await this.repository.update(student);
+    await this.invalidateClassCache(student.class?.id);
 
     const log = new LogStudent();
     log.studentId = student.id;
     log.applicationStatus = StatusApplication.Enrolled;
     log.description = 'Matrícula reativada';
     await this.logStudentRepository.create(log);
+  }
+
+  /**
+   * O cache da tela de Turma (`ClassService.findOneById`) guarda o payload da
+   * turma com a lista de estudantes dentro, e so e invalidado pelas operacoes
+   * de frequencia. Cancelar, reativar ou transferir uma matricula tambem muda
+   * essa lista, entao precisa derrubar a chave — senao a tela serve dados
+   * defasados ate o TTL, que hoje e de 7 dias.
+   *
+   * Aceita ids indefinidos porque o estudante pode nao ter turma.
+   */
+  private async invalidateClassCache(...classIds: (string | undefined)[]) {
+    const ids = new Set(classIds.filter((id): id is string => !!id));
+    await Promise.all(
+      [...ids].map((id) => this.cache.del(`presence_by_class_id_${id}`)),
+    );
   }
 
   private async generateEnrolledCode() {
