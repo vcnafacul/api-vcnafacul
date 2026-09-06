@@ -6,8 +6,12 @@ export class AttendanceRecordByStudentDtoOutput {
   startDate: Date;
   endDate: Date;
   report: {
-    studentName: string;
+    name: string;
+    socialName: string;
+    useSocialName: boolean;
     codEnrolled: string;
+    whatsapp?: string;
+    urgencyPhone?: string;
     totalClassRecords: number;
     studentRecords: number;
     presencePercentage: number;
