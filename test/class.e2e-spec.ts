@@ -610,4 +610,19 @@ describe('Class (e2e)', () => {
       .set({ Authorization: `Bearer ${token}` })
       .expect(404);
   }, 60000);
+  it('cancelled-students deve refletir o cancelamento sem esperar o cache expirar', async () => {
+    const { token, classId, estudantes } = await criarTurmaComEstudantes(1);
+
+    // primeira leitura popula a chave cancelled_students_by_class_id_<id>
+    expect(await getCancelados(token, classId)).toHaveLength(0);
+
+    await studentCourseService.cancelEnrolled(
+      estudantes[0].studentId,
+      'Rotina',
+    );
+    expect(await getCancelados(token, classId)).toHaveLength(1);
+
+    await studentCourseService.activeEnrolled(estudantes[0].studentId);
+    expect(await getCancelados(token, classId)).toHaveLength(0);
+  }, 60000);
 });

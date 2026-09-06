@@ -17,6 +17,10 @@ import { ClassRepository } from './class.repository';
 import { ClassDtoOutput } from './dtos/class.dto.output';
 import { CreateClassDtoInput } from './dtos/create-class.dto.input';
 import { GetClassByIdAttendanceDtoOutput } from './dtos/get-class-by-id-attendance.dto.output';
+import {
+  cancelledStudentsByClassIdKey,
+  presenceByClassIdKey,
+} from './class-cache-keys';
 import { CancelledStudentDtoOutput } from './dtos/get-cancelled-students.dto.output';
 import { GetClassByIdDtoOutput } from './dtos/get-class-by-id.dto.output';
 import { UpdateClassDTOInput } from './dtos/update-class.dto.input';
@@ -68,7 +72,7 @@ export class ClassService extends BaseService<Class> {
   ): Promise<GetClassByIdDtoOutput> {
     // adicionar a consulta em cache usando wrap
     const cachedData = await this.cache.wrap<GetClassByIdDtoOutput>(
-      `presence_by_class_id_${id}`,
+      presenceByClassIdKey(id),
       async () => {
         const classEntity = await this.repository.findOneById(id);
 
@@ -159,8 +163,9 @@ export class ClassService extends BaseService<Class> {
    * 404 (e nao 403) quando a turma e de outro cursinho, para nao confirmar que
    * ela existe.
    *
-   * Nao e cacheado de proposito: e consulta pontual, de volume pequeno, e
-   * evita mais uma chave para invalidar.
+   * Cacheado com TTL curto e invalidacao nas operacoes que mudam a composicao
+   * da turma, para que alternar o toggle na tela nao vire uma consulta por
+   * clique.
    */
   async getCancelledStudents(
     id: string,
@@ -189,6 +194,32 @@ export class ClassService extends BaseService<Class> {
     const role = await this.roleService.findOneById(user.role.id);
     const manager = role.gerenciarEstudantes;
 
+    // O cache guarda o dado BRUTO, com o email aberto, e a mascara e aplicada
+    // na saida. Se a mascara entrasse no cache, o payload gerado por quem tem
+    // gerenciarEstudantes seria servido para quem nao tem — a chave nao
+    // depende do usuario.
+    const cached = await this.cache.wrap<CancelledStudentDtoOutput[]>(
+      cancelledStudentsByClassIdKey(id),
+      () => this.buildCancelledStudents(id),
+      ClassService.CANCELLED_STUDENTS_TTL_MS,
+    );
+
+    return cached.map((student) => ({
+      ...student,
+      email: manager ? student.email : maskEmail(student.email),
+    }));
+  }
+
+  /**
+   * TTL curto de proposito. As tres operacoes que mudam a composicao da turma
+   * ja derrubam a chave (ver `invalidateClassCache` no StudentCourseService);
+   * o TTL e so a rede de seguranca para o que escapar disso.
+   */
+  private static readonly CANCELLED_STUDENTS_TTL_MS = 5 * 60 * 1000;
+
+  private async buildCancelledStudents(
+    id: string,
+  ): Promise<CancelledStudentDtoOutput[]> {
     const students = await this.repository.findCancelledStudentsByClassId(id);
 
     return students
@@ -205,7 +236,8 @@ export class ClassService extends BaseService<Class> {
           name: student.user.useSocialName
             ? `${student.user.socialName?.split(' ')[0]} ${student.user.lastName}`
             : `${student.user.firstName} ${student.user.lastName}`,
-          email: manager ? student.user.email : maskEmail(student.user.email),
+          // cru: a mascara e aplicada depois do cache
+          email: student.user.email,
           cod_enrolled: student.cod_enrolled,
           cancelledAt: ultimoCancelamento?.createdAt ?? null,
           justification: ultimoCancelamento?.description ?? null,

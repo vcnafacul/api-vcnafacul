@@ -28,6 +28,10 @@ import {
   Sort,
 } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import {
+  cancelledStudentsByClassIdKey,
+  presenceByClassIdKey,
+} from '../class/class-cache-keys';
 import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
@@ -1274,18 +1278,21 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   }
 
   /**
-   * O cache da tela de Turma (`ClassService.findOneById`) guarda o payload da
-   * turma com a lista de estudantes dentro, e so e invalidado pelas operacoes
-   * de frequencia. Cancelar, reativar ou transferir uma matricula tambem muda
-   * essa lista, entao precisa derrubar a chave — senao a tela serve dados
-   * defasados ate o TTL, que hoje e de 7 dias.
+   * Derruba as duas chaves da tela de Turma: a dos estudantes ativos (com as
+   * metricas de presenca) e a dos cancelados. As duas guardam listas de
+   * estudantes, e cancelar, reativar ou transferir uma matricula move o
+   * estudante de uma para a outra — sem isso a tela serve dados defasados ate
+   * o TTL, e o aluno some de uma visao sem aparecer na outra.
    *
    * Aceita ids indefinidos porque o estudante pode nao ter turma.
    */
   private async invalidateClassCache(...classIds: (string | undefined)[]) {
     const ids = new Set(classIds.filter((id): id is string => !!id));
     await Promise.all(
-      [...ids].map((id) => this.cache.del(`presence_by_class_id_${id}`)),
+      [...ids].flatMap((id) => [
+        this.cache.del(presenceByClassIdKey(id)),
+        this.cache.del(cancelledStudentsByClassIdKey(id)),
+      ]),
     );
   }
 
