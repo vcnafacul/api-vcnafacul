@@ -3156,4 +3156,85 @@ describe('StudentCourse (e2e)', () => {
       comAno.body.students.data.map((student) => student.id).sort(),
     ).toEqual([...comTurma].sort());
   }, 100000);
+
+  async function createClassWithYear(userId: string, year: number) {
+    const coursePeriod = await coursePeriodService.create(
+      {
+        name: `Período ${year}`,
+        startDate: new Date(year, 0, 15),
+        endDate: new Date(new Date().getFullYear() + 5, 11, 31),
+      },
+      userId,
+    );
+
+    const classDto = CreateClassDtoInputFaker();
+    classDto.coursePeriodId = coursePeriod.id;
+
+    return await classService.create(classDto, userId);
+  }
+
+  async function enrollStudentInYear(
+    inscriptionId: string,
+    representativeId: string,
+    year: number,
+  ) {
+    const { id } = await createStudent(inscriptionId);
+    const student = await studentCourseService.findOneBy({ id });
+    student.applicationStatus = StatusApplication.DeclaredInterest;
+    await studentCourseRepository.update(student);
+
+    const classEntity = await createClassWithYear(representativeId, year);
+    await studentCourseService.confirmEnrolled(id, classEntity.id);
+
+    return id;
+  }
+
+  it('all-with-name deve filtrar processos seletivos pelo ano letivo da turma', async () => {
+    const {
+      representative,
+      inscription: inscriptionA,
+      token,
+    } = await createPartnerPrepCourse();
+
+    const inscriptionB = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      representative.id,
+    );
+
+    const anoA = 2021;
+    const anoB = 2022;
+
+    await enrollStudentInYear(inscriptionA.id, representative.id, anoA);
+    await enrollStudentInYear(inscriptionB.id, representative.id, anoB);
+
+    const semAno = await request(app.getHttpServer())
+      .get('/inscription-course/all-with-name')
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    expect(semAno.body.map((inscription) => inscription.id).sort()).toEqual(
+      [inscriptionA.id, inscriptionB.id].sort(),
+    );
+
+    const comAnoA = await request(app.getHttpServer())
+      .get(`/inscription-course/all-with-name?year=${anoA}`)
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    expect(comAnoA.body.map((inscription) => inscription.id)).toEqual([
+      inscriptionA.id,
+    ]);
+
+    const comAnoB = await request(app.getHttpServer())
+      .get(`/inscription-course/all-with-name?year=${anoB}`)
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    expect(comAnoB.body.map((inscription) => inscription.id)).toEqual([
+      inscriptionB.id,
+    ]);
+
+    const anoInexistente = await request(app.getHttpServer())
+      .get('/inscription-course/all-with-name?year=1999')
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    expect(anoInexistente.body).toEqual([]);
+  }, 100000);
 });
