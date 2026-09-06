@@ -316,7 +316,9 @@ export class StudentCourseController {
   @Get('enrolled/export')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarEstudantes)
+  // Exportar exige mais que ver a tela: a planilha leva contato e documento
+  // para fora, num arquivo que circula muito mais facil.
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
   @Throttle({
     default: {
       ttl: THROTTLE_CONFIG.EXPORT_STUDENTS.ttl,
@@ -340,9 +342,29 @@ export class StudentCourseController {
         inscriptionCourseId: query.inscriptionId,
         year: query.year,
         applicationStatus: query.applicationStatus,
+        // sem `columns`, o servico cai na selecao padrao — que sao as mesmas
+        // colunas fixas de antes deste recurso
+        columns: query.columns
+          ? query.columns
+              .split(',')
+              .map((coluna) => coluna.trim())
+              .filter(Boolean)
+          : undefined,
       },
       res,
     );
+  }
+
+  @Get('enrolled/export/columns')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
+  @ApiResponse({
+    status: 200,
+    description: 'colunas que o usuario pode exportar, conforme o papel dele',
+  })
+  async getExportColumns(@Req() req: Request) {
+    return await this.service.getExportColumns((req.user as User).id);
   }
 
   @Patch('enrollment-cancelled')
