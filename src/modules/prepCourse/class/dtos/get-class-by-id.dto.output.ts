@@ -26,8 +26,11 @@ export class StudentClass {
   photo: string;
   logs: LogStudent[];
   birthday: Date;
-  createdAt: Date;
-  updatedAt: Date;
+  // O servico monta o objeto com created_at/updated_at; o DTO declarava
+  // camelCase e o cast `as unknown as GetClassByIdDtoOutput` escondia a
+  // divergencia, o que induziu o front a ler os nomes errados.
+  created_at: Date;
+  updated_at: Date;
   socioeconomic: string;
   isFree: string;
   areaInterest: string;
