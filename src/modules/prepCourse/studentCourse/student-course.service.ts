@@ -601,12 +601,22 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     if (!student) {
       throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }
-    // O guard e sobre o codigo de matricula, e nao sobre o status: o codigo e
-    // atribuido junto com o status Matriculado e nunca e limpo, entao ele e o
-    // fato irreversivel. Checar so o status deixava passar Matricula Cancelada
-    // e Matricula Encerrada, produzindo um registro contraditorio — com codigo
-    // de matricula e status de candidato — que aparece na listagem e nao casa
-    // com nenhum filtro de status.
+    if (student.applicationStatus === StatusApplication.Enrolled) {
+      throw new HttpException(
+        'Não é possivel resetar estudante matriculado',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    // O codigo de matricula e o fato irreversivel: e atribuido junto com o
+    // status Matriculado e nunca e limpo em lugar nenhum do codigo. Checar so
+    // o status deixava passar Matricula Cancelada e Matricula Encerrada,
+    // produzindo um registro contraditorio — com codigo de matricula e status
+    // de candidato — que aparece na listagem de estudantes e nao casa com
+    // nenhuma das opcoes do filtro de status.
+    //
+    // As duas checagens coexistem: no fluxo real status e codigo andam juntos,
+    // mas um registro marcado como Matriculado sem codigo (estado que so se
+    // alcanca escrevendo direto no banco) tambem nao deve ser resetado.
     if (student.cod_enrolled) {
       throw new HttpException(
         'Não é possível resetar estudante que já possui matrícula',
