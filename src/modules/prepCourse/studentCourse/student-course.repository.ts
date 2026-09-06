@@ -4,6 +4,7 @@ import {
   Filter,
   GetAllWhereInput,
 } from 'src/shared/modules/base/interfaces/get-all.input';
+import { ExportJoin } from './export-columns';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { NodeRepository } from 'src/shared/modules/node/node.repository';
 import { EntityManager, SelectQueryBuilder } from 'typeorm';
@@ -248,6 +249,7 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
     year,
     offset,
     limit,
+    joins,
   }: {
     where: object;
     orderBy?: { field: string; sort: 'ASC' | 'DESC' };
@@ -255,6 +257,7 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
     year?: number;
     offset: number;
     limit: number;
+    joins?: Set<ExportJoin>;
   }): Promise<StudentCourse[]> {
     let queryBuilder = this.repository
       .createQueryBuilder('entity')
@@ -262,17 +265,46 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .leftJoinAndSelect('class.coursePeriod', 'course_period')
       .leftJoinAndSelect('entity.inscriptionCourse', 'inscription_course')
       .innerJoin('entity.user', 'users')
+      // Campos listados um a um de proposito: `leftJoinAndSelect` traria a
+      // coluna de senha junto.
       .addSelect([
         'users.id',
         'users.firstName',
         'users.lastName',
         'users.socialName',
-        'users.email',
-        'users.birthday',
         'users.useSocialName',
+        'users.email',
+        'users.phone',
+        'users.gender',
+        'users.birthday',
+        'users.street',
+        'users.number',
+        'users.complement',
+        'users.neighborhood',
+        'users.postalCode',
+        'users.city',
+        'users.state',
+        'users.lastAccess',
       ])
       .where({ ...where })
       .andWhere('entity.deletedAt IS NULL');
+
+    // Os joins entram so quando alguma coluna pedida precisa deles: puxa-los
+    // sempre encareceria a exportacao de quem nao os selecionou.
+    if (joins?.has('legalGuardian')) {
+      queryBuilder = queryBuilder.leftJoinAndSelect(
+        'entity.legalGuardian',
+        'legalGuardian',
+      );
+    }
+    if (joins?.has('cancellationLog')) {
+      queryBuilder = queryBuilder.leftJoinAndSelect(
+        'entity.logs',
+        'log',
+        'log.applicationStatus = :logCancelado',
+        { logCancelado: StatusApplication.EnrollmentCancelled },
+      );
+    }
 
     queryBuilder = this.applyEnrolledFilters(queryBuilder, { year, filters });
 

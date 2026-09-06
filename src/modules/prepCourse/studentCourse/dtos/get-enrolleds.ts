@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
 import {
   Filter,
   GetAllInput,
@@ -47,4 +47,13 @@ export class GetEnrolleds implements GetAllInput {
   @IsOptional()
   @IsEnum(StatusApplication)
   applicationStatus?: StatusApplication;
+
+  @ApiProperty({
+    required: false,
+    description:
+      'Colunas da exportacao, separadas por virgula. Usado apenas em /enrolled/export; sem ele a exportacao usa a selecao padrao. Coluna fora do catalogo responde 400.',
+  })
+  @IsOptional()
+  @IsString()
+  columns?: string;
 }
