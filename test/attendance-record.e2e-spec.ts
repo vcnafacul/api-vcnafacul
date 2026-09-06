@@ -26,6 +26,7 @@ import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
+import * as ExcelJS from 'exceljs';
 import * as request from 'supertest';
 import CreateClassDtoInputFaker from './faker/create-class.dto.input.faker';
 import { CreateCoursePeriodDtoInputFaker } from './faker/create-course-period.dto.input.faker';
@@ -353,5 +354,60 @@ describe('AttendanceRecord (e2e)', () => {
     expect(response.body.report).toHaveLength(1);
     expect(response.body.report[0].whatsapp ?? null).toBeNull();
     expect(response.body.report[0].urgencyPhone ?? null).toBeNull();
+  }, 100000);
+
+  it('export deve trazer as colunas de contato alinhadas com os dias', async () => {
+    const { token, classEntity, dia } = await criarTurmaComAlunoEFrequencia({
+      whatsapp: '11999998888',
+      urgencyPhone: '11977776666',
+    });
+
+    const response = await request(app.getHttpServer())
+      .get(
+        `/attendance-record/export?classId=${classEntity.id}&startDate=${dia}&endDate=${dia}&maxAbsencePercent=25`,
+      )
+      .set({ Authorization: `Bearer ${token}` })
+      .buffer()
+      .parse((res, callback) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+        res.on('end', () => callback(null, Buffer.concat(chunks)));
+      })
+      .expect(200);
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(response.body);
+    const sheet = workbook.worksheets[0];
+
+    // a planilha tem linhas de preambulo (turma/periodo/limite) antes do
+    // cabecalho: localiza a linha de cabecalho pela primeira coluna
+    let headerRowNumber = 0;
+    sheet.eachRow((row, rowNumber) => {
+      if (!headerRowNumber && (row.values as string[])[1] === 'Matrícula') {
+        headerRowNumber = rowNumber;
+      }
+    });
+    expect(headerRowNumber).toBeGreaterThan(0);
+
+    const header = sheet.getRow(headerRowNumber).values as string[];
+    const linha = sheet.getRow(headerRowNumber + 1).values as string[];
+
+    // values do exceljs e 1-indexed: a posicao 0 vem vazia
+    expect(header[4]).toBe('Contato (WhatsApp)');
+    expect(header[5]).toBe('Contato de Referência');
+    expect(linha[4]).toBe('11999998888');
+    expect(linha[5]).toBe('11977776666');
+
+    // as colunas de percentual foram empurradas duas posicoes: se o header e a
+    // linha nao tiverem sido alterados juntos, isto quebra
+    expect(header[6]).toBe('% Presença');
+    expect(linha[6]).toBe('100%'); // 1 registro, 1 presenca
+
+    // as colunas de dia vem depois das fixas; header e linha tem que casar
+    const idxDia = header.findIndex(
+      (h) => typeof h === 'string' && h.includes('/'),
+    );
+    expect(idxDia).toBeGreaterThan(7);
+    expect(linha[idxDia]).toBe('P');
   }, 100000);
 });
