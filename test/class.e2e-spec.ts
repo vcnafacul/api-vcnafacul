@@ -625,4 +625,74 @@ describe('Class (e2e)', () => {
     await studentCourseService.activeEnrolled(estudantes[0].studentId);
     expect(await getCancelados(token, classId)).toHaveLength(0);
   }, 60000);
+  it('getById de turma de outro cursinho deve responder 404', async () => {
+    const { token } = await criarTurmaComEstudantes(1);
+
+    const { user: outroUser } = await createPartnerFaker();
+    const outroToken = await jwtService.signAsync(
+      { user: { id: outroUser.id } },
+      { expiresIn: '2h' },
+    );
+    const turmaDeOutroCursinho = await criarTurma(
+      outroUser.id,
+      outroToken,
+      'turma de outro cursinho',
+    );
+
+    // o dono abre normalmente
+    await request(app.getHttpServer())
+      .get(`/class/${turmaDeOutroCursinho}`)
+      .set({ Authorization: `Bearer ${outroToken}` })
+      .expect(200);
+
+    // quem e de outro cursinho, nao — 404 e nao 403, para nao confirmar que
+    // a turma existe
+    await request(app.getHttpServer())
+      .get(`/class/${turmaDeOutroCursinho}`)
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(404);
+  }, 60000);
+
+  it('o cache do getById nao deve servir email aberto para quem nao pode ver', async () => {
+    const { user } = await createPartnerFaker();
+    const tokenBase = await jwtService.signAsync(
+      { user: { id: user.id } },
+      { expiresIn: '2h' },
+    );
+    const classId = await criarTurma(user.id, tokenBase, 'turma cache email');
+    const inscription = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      user.id,
+    );
+    await matricularEstudanteNaTurma(user.id, inscription.id, classId);
+
+    // papel que enxerga o email em claro popula o cache primeiro
+    const papelGerente = new CreateRoleDtoInput();
+    papelGerente.name = `class_gerente_${Date.now()}`;
+    papelGerente.gerenciarTurmas = true;
+    papelGerente.gerenciarEstudantes = true;
+    user.role = await roleService.create(papelGerente);
+    await userRepository.update(user);
+
+    const tokenGerente = await jwtService.signAsync(
+      { user: { id: user.id } },
+      { expiresIn: '2h' },
+    );
+    const comGerente = await getTurma(tokenGerente, classId);
+    expect(comGerente.students[0].email).not.toContain('*');
+
+    // mesmo usuario, papel sem gerenciarEstudantes: le do cache ja populado
+    const papelRestrito = new CreateRoleDtoInput();
+    papelRestrito.name = `class_restrito_${Date.now()}`;
+    papelRestrito.gerenciarTurmas = true;
+    user.role = await roleService.create(papelRestrito);
+    await userRepository.update(user);
+
+    const tokenRestrito = await jwtService.signAsync(
+      { user: { id: user.id } },
+      { expiresIn: '2h' },
+    );
+    const comRestrito = await getTurma(tokenRestrito, classId);
+    expect(comRestrito.students[0].email).toContain('*');
+  }, 60000);
 });

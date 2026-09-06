@@ -66,102 +66,139 @@ export class ClassService extends BaseService<Class> {
     return entity;
   }
 
+  /**
+   * Turma com os estudantes ativos e as metricas de presenca.
+   *
+   * A verificacao de cursinho fica FORA do cache: dentro dele, a segunda
+   * requisicao serviria o payload sem passar pela checagem. Responde 404, e
+   * nao 403, para nao confirmar que a turma existe.
+   *
+   * O cache guarda o email aberto e a mascara e aplicada na saida. A chave nao
+   * inclui o usuario, entao mascarar antes de cachear faria o payload gerado
+   * por quem tem gerenciarEstudantes ser servido para quem nao tem.
+   */
   async findOneById(
     id: string,
     userId: string,
   ): Promise<GetClassByIdDtoOutput> {
-    // adicionar a consulta em cache usando wrap
-    const cachedData = await this.cache.wrap<GetClassByIdDtoOutput>(
-      presenceByClassIdKey(id),
-      async () => {
-        const classEntity = await this.repository.findOneById(id);
-
-        if (!classEntity) {
-          throw new NotFoundException(`Class with id ${id} not found`);
-        }
-
-        const user = await this.userService.findUserById(userId);
-        const role = await this.roleService.findOneById(user.role.id);
-        const manager = role.gerenciarEstudantes;
-
-        // Buscar contagem de registros e % de presença em paralelo
-        const totalAttendanceRecords =
-          await this.repository.countAttendanceRecords(id);
-
-        let presenceMap = new Map<
-          string,
-          {
-            presencePercentage: number;
-            absencePercentage: number;
-            justifiedAbsencePercentage: number;
-          }
-        >();
-        if (
-          classEntity.coursePeriod?.startDate &&
-          classEntity.coursePeriod?.endDate
-        ) {
-          presenceMap = await this.repository.getPresenceByClassId(
-            id,
-            classEntity.coursePeriod.startDate,
-            classEntity.coursePeriod.endDate,
-          );
-        }
-
-        const students = classEntity.students.map((student) => {
-          return {
-            id: student.id,
-            userId: student.userId,
-            name: student.user.useSocialName
-              ? `${student.user.socialName?.split(' ')[0]} ${student.user.lastName}`
-              : `${student.user.firstName} ${student.user.lastName}`,
-            email: manager ? student.user.email : maskEmail(student.user.email),
-            status: student.applicationStatus,
-            cod_enrolled: student.cod_enrolled,
-            created_at: student.createdAt,
-            updated_at: student.updatedAt,
-            photo: student.photo,
-            logs: student.logs,
-            birthday: student.user.birthday,
-            socioeconomic: student.socioeconomic,
-            areaInterest: student.areaInterest,
-            selectedCourses: student.selectedCourses,
-            isFree: student.isFree,
-            presencePercentage:
-              presenceMap.get(student.id)?.presencePercentage ?? null,
-            absencePercentage:
-              presenceMap.get(student.id)?.absencePercentage ?? null,
-            justifiedAbsencePercentage:
-              presenceMap.get(student.id)?.justifiedAbsencePercentage ?? null,
-          };
-        });
-        const result = {
-          ...classEntity,
-          partnerId: classEntity.partnerPrepCourse?.id || '',
-          coursePeriodId: classEntity.coursePeriod?.id || '',
-          coursePeriodName: classEntity.coursePeriod?.name || '',
-          coursePeriodYear: classEntity.coursePeriod?.year || 0,
-          coursePeriodStartDate:
-            classEntity.coursePeriod?.startDate || new Date(),
-          coursePeriodEndDate: classEntity.coursePeriod?.endDate || new Date(),
-          totalAttendanceRecords,
-          students,
-        };
-        return result as unknown as GetClassByIdDtoOutput;
-      },
-      60 * 60 * 24 * 1000 * 7,
+    const naoEncontrada = new NotFoundException(
+      `Class with id ${id} not found`,
     );
 
-    return cachedData;
+    const partnerPrepCourse =
+      await this.partnerRepository.findOneByUserId(userId);
+    if (!partnerPrepCourse) {
+      throw naoEncontrada;
+    }
+
+    const doCursinho = await this.repository.findOneByIdWithPartner(id);
+    if (
+      !doCursinho ||
+      doCursinho.partnerPrepCourse?.id !== partnerPrepCourse.id
+    ) {
+      throw naoEncontrada;
+    }
+
+    const user = await this.userService.findUserById(userId);
+    const role = await this.roleService.findOneById(user.role.id);
+    const manager = role.gerenciarEstudantes;
+
+    const cachedData = await this.cache.wrap<GetClassByIdDtoOutput>(
+      presenceByClassIdKey(id),
+      () => this.buildClassById(id),
+      ClassService.CLASS_BY_ID_TTL_MS,
+    );
+
+    return {
+      ...cachedData,
+      students: cachedData.students.map((student) => ({
+        ...student,
+        email: manager ? student.email : maskEmail(student.email),
+      })),
+    };
+  }
+
+  private static readonly CLASS_BY_ID_TTL_MS = 60 * 60 * 24 * 1000 * 7;
+
+  private async buildClassById(id: string): Promise<GetClassByIdDtoOutput> {
+    const classEntity = await this.repository.findOneById(id);
+
+    if (!classEntity) {
+      throw new NotFoundException(`Class with id ${id} not found`);
+    }
+
+    // Buscar contagem de registros e % de presença em paralelo
+    const totalAttendanceRecords =
+      await this.repository.countAttendanceRecords(id);
+
+    let presenceMap = new Map<
+      string,
+      {
+        presencePercentage: number;
+        absencePercentage: number;
+        justifiedAbsencePercentage: number;
+      }
+    >();
+    if (
+      classEntity.coursePeriod?.startDate &&
+      classEntity.coursePeriod?.endDate
+    ) {
+      presenceMap = await this.repository.getPresenceByClassId(
+        id,
+        classEntity.coursePeriod.startDate,
+        classEntity.coursePeriod.endDate,
+      );
+    }
+
+    const students = classEntity.students.map((student) => {
+      return {
+        id: student.id,
+        userId: student.userId,
+        name: student.user.useSocialName
+          ? `${student.user.socialName?.split(' ')[0]} ${student.user.lastName}`
+          : `${student.user.firstName} ${student.user.lastName}`,
+        // cru: a mascara e aplicada depois do cache
+        email: student.user.email,
+        status: student.applicationStatus,
+        cod_enrolled: student.cod_enrolled,
+        created_at: student.createdAt,
+        updated_at: student.updatedAt,
+        photo: student.photo,
+        logs: student.logs,
+        birthday: student.user.birthday,
+        socioeconomic: student.socioeconomic,
+        areaInterest: student.areaInterest,
+        selectedCourses: student.selectedCourses,
+        isFree: student.isFree,
+        presencePercentage:
+          presenceMap.get(student.id)?.presencePercentage ?? null,
+        absencePercentage:
+          presenceMap.get(student.id)?.absencePercentage ?? null,
+        justifiedAbsencePercentage:
+          presenceMap.get(student.id)?.justifiedAbsencePercentage ?? null,
+      };
+    });
+    const result = {
+      ...classEntity,
+      partnerId: classEntity.partnerPrepCourse?.id || '',
+      coursePeriodId: classEntity.coursePeriod?.id || '',
+      coursePeriodName: classEntity.coursePeriod?.name || '',
+      coursePeriodYear: classEntity.coursePeriod?.year || 0,
+      coursePeriodStartDate: classEntity.coursePeriod?.startDate || new Date(),
+      coursePeriodEndDate: classEntity.coursePeriod?.endDate || new Date(),
+      totalAttendanceRecords,
+      students,
+    };
+    return result as unknown as GetClassByIdDtoOutput;
   }
 
   /**
    * Estudantes da turma com a matricula cancelada, com a justificativa e a
    * data do cancelamento mais recente.
    *
-   * Diferente do `findOneById`, este endpoint confere que a turma pertence ao
-   * cursinho do requisitante — mesmo escopo que o `getAll` ja aplica. Responde
-   * 404 (e nao 403) quando a turma e de outro cursinho, para nao confirmar que
-   * ela existe.
+   * Como o `findOneById`, confere que a turma pertence ao cursinho do
+   * requisitante e responde 404 (e nao 403) quando nao pertence, para nao
+   * confirmar que ela existe.
    *
    * Cacheado com TTL curto e invalidacao nas operacoes que mudam a composicao
    * da turma, para que alternar o toggle na tela nao vire uma consulta por
