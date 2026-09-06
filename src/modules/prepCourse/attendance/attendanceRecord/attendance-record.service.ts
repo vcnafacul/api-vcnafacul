@@ -400,7 +400,14 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
     // Build unique student list from records (includes user data via joins)
     const studentMap = new Map<
       string,
-      { id: string; codEnrolled: string; name: string; email: string }
+      {
+        id: string;
+        codEnrolled: string;
+        name: string;
+        email: string;
+        whatsapp: string;
+        urgencyPhone: string;
+      }
     >();
     for (const record of records) {
       for (const sa of record.studentAttendance) {
@@ -415,6 +422,8 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
             codEnrolled: sa.studentCourse.cod_enrolled,
             name,
             email: user.email,
+            whatsapp: sa.studentCourse.whatsapp ?? '',
+            urgencyPhone: sa.studentCourse.urgencyPhone ?? '',
           });
         }
       }
@@ -457,6 +466,8 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
       'Matrícula',
       'Nome Completo',
       'Email',
+      'Contato (WhatsApp)',
+      'Contato de Referência',
       '% Presença',
       '% Faltas',
       '% Faltas Justif.',
@@ -517,6 +528,8 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
         student.codEnrolled,
         student.name,
         student.email,
+        student.whatsapp,
+        student.urgencyPhone,
         `${presencePercent}%`,
         `${absencePercent}%`,
         `${justifiedPercent}%`,

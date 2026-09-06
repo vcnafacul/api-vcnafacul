@@ -234,9 +234,12 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
       socialName: string;
       useSocialName: boolean;
       codEnrolled: string;
+      whatsapp: string | null;
+      urgencyPhone: string | null;
       totalClassRecords: number;
-      studentRecords: number;
-      presencePercentage: number;
+      // SUM/ROUND do MySQL voltam como DECIMAL e o mysql2 entrega string
+      studentRecords: string;
+      presencePercentage: string;
     }[]
   > {
     const endDateCopy = new Date(endDate);
@@ -267,6 +270,8 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
       .addSelect('user.socialName', 'socialName')
       .addSelect('user.useSocialName', 'useSocialName')
       .addSelect('studentCourse.cod_enrolled', 'codEnrolled')
+      .addSelect('studentCourse.whatsapp', 'whatsapp')
+      .addSelect('studentCourse.urgencyPhone', 'urgencyPhone')
       .addSelect('COUNT(studentAttendance.id)', 'totalClassRecords')
       .addSelect(
         `SUM(CASE WHEN studentAttendance.present = true THEN 1 ELSE 0 END)`,
@@ -283,6 +288,8 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
       .addGroupBy('user.socialName')
       .addGroupBy('user.useSocialName')
       .addGroupBy('studentCourse.cod_enrolled')
+      .addGroupBy('studentCourse.whatsapp')
+      .addGroupBy('studentCourse.urgencyPhone')
       .addGroupBy('studentCourse.id')
       .orderBy('presencePercentage', 'DESC')
       .getRawMany();
@@ -292,6 +299,8 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
       socialName: item.socialName,
       useSocialName: item.useSocialName,
       codEnrolled: item.codEnrolled,
+      whatsapp: item.whatsapp,
+      urgencyPhone: item.urgencyPhone,
       totalClassRecords: item.totalClassRecords,
       studentRecords: item.studentRecords,
       presencePercentage: item.presencePercentage,

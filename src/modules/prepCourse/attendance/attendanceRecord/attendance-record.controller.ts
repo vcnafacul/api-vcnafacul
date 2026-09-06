@@ -76,6 +76,11 @@ export class AttendanceRecordController {
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
+  @ApiResponse({
+    status: 200,
+    description: 'relatório de presença por estudante',
+    type: AttendanceRecordByStudentDtoOutput,
+  })
   async summaryByStudent(
     @Query() dto: AttendanceRecordByClassInput,
   ): Promise<AttendanceRecordByStudentDtoOutput> {
