@@ -142,13 +142,10 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     };
   }
 
-  async getAllWithName(
-    userId: string,
-    year?: number,
-  ): Promise<GetAllWithNameDtoOutput[]> {
+  async getAllWithName(userId: string): Promise<GetAllWithNameDtoOutput[]> {
     const partner = await this.partnerPrepCourseService.getByUserId(userId);
 
-    const inscription = await this.repository.findAllWithName(partner.id, year);
+    const inscription = await this.repository.findAllWithName(partner.id);
 
     return inscription
       .filter(

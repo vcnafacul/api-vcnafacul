@@ -51,34 +51,17 @@ export class InscriptionCourseRepository extends LinkedListRepository<
 
   async findAllWithName(
     partnerPrepCourseId: string,
-    year?: number,
   ): Promise<InscriptionCourse[]> {
     //andwehere there are students
-    const queryBuilder = this.repository
+    return await this.repository
       .createQueryBuilder('inscription_course')
       .where(
         'inscription_course.partner_prep_course_id = :partnerPrepCourseId',
         { partnerPrepCourseId: partnerPrepCourseId },
       )
       .leftJoinAndSelect('inscription_course.students', 'students')
-      .addSelect(['students.id']);
-
-    if (year !== undefined && year !== null) {
-      // Não existe vínculo direto entre inscription_course e course_period.
-      // O ano letivo é derivado pelo caminho students -> class -> coursePeriod.
-      // A condição do ano fica na cláusula do JOIN (e não em um andWhere) para
-      // deixar explícito que ela restringe os estudantes considerados.
-      queryBuilder
-        .innerJoin('students.class', 'class')
-        .innerJoin(
-          'class.coursePeriod',
-          'course_period',
-          'course_period.year = :year',
-          { year },
-        );
-    }
-
-    return await queryBuilder.getMany();
+      .addSelect(['students.id'])
+      .getMany();
   }
 
   override async findAllBy({
