@@ -31,12 +31,20 @@ export interface ExportColumn {
   /**
    * Permissao necessaria para a coluna sequer ser oferecida. Sem ela, a coluna
    * nao aparece no modal e e rejeitada se vier na requisicao.
+   *
+   * ⚠️ Hoje os dois endpoints de exportacao ja exigem `gerenciarEstudantes`,
+   * entao um `requires` com esse mesmo valor nao chega a barrar ninguem — fica
+   * como defesa em profundidade e como registro da intencao. Se o piso do
+   * endpoint mudar, ele volta a valer.
    */
   requires?: Permissions;
   /**
    * Permissao necessaria para ver o valor em claro. Sem ela a coluna ainda e
    * oferecida, mas o valor sai mascarado — mesmo comportamento que a listagem
    * e a exportacao de colunas fixas ja tinham.
+   *
+   * Com o piso de `gerenciarEstudantes` no endpoint, na pratica so o
+   * `gerenciarProcessoSeletivo` (documentos) ainda mascara alguma coisa.
    */
   clearRequires?: Permissions;
   join?: ExportJoin;

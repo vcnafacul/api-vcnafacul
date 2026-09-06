@@ -3240,10 +3240,11 @@ describe('StudentCourse (e2e)', () => {
     expect(valor(comAdmin, 'Email (conta)')).not.toContain('*');
     expect(valor(comAdmin, 'CPF')).not.toContain('*');
 
-    // mesmo usuario, papel reduzido a visualizarEstudantes
+    // Papel com gerenciarEstudantes (o minimo para exportar) mas sem
+    // gerenciarProcessoSeletivo: ve contato em claro e documento mascarado.
     const papelRestrito = new CreateRoleDtoInput();
-    papelRestrito.name = `export_visualizar_${Date.now()}`;
-    papelRestrito.visualizarEstudantes = true;
+    papelRestrito.name = `export_gerenciar_${Date.now()}`;
+    papelRestrito.gerenciarEstudantes = true;
     const role = await roleService.create(papelRestrito);
     representative.role = role;
     await userRepository.update(representative);
@@ -3253,10 +3254,9 @@ describe('StudentCourse (e2e)', () => {
     });
     const comRestrito = await baixarExportacao(tokenRestrito);
 
-    // email, telefone e cpf mascarados — o vazamento aqui seria em arquivo
-    expect(valor(comRestrito, 'Email (conta)')).toContain('*');
-    expect(valor(comRestrito, 'WhatsApp')).toContain('*');
+    // o vazamento aqui seria em arquivo, que circula mais facil que uma tela
     expect(valor(comRestrito, 'CPF')).toContain('*');
+    expect(valor(comRestrito, 'Email (conta)')).not.toContain('*');
   }, 100000);
 
   it('export nao deve trazer estudante de outro cursinho', async () => {
@@ -3538,37 +3538,66 @@ describe('StudentCourse (e2e)', () => {
       .expect(400);
   }, 100000);
 
-  it('export deve recusar coluna acima do papel, mesmo fora da UI', async () => {
+  it('exportar deve exigir gerenciarEstudantes, e nao so visualizar', async () => {
     const { representative, inscription } = await createPartnerPrepCourse();
     await matricularEstudantes(representative.id, inscription.id, 1);
 
-    const papelRestrito = new CreateRoleDtoInput();
-    papelRestrito.name = `export_colunas_${Date.now()}`;
-    papelRestrito.visualizarEstudantes = true;
-    representative.role = await roleService.create(papelRestrito);
+    const papelSoVisualiza = new CreateRoleDtoInput();
+    papelSoVisualiza.name = `export_so_visualiza_${Date.now()}`;
+    papelSoVisualiza.visualizarEstudantes = true;
+    representative.role = await roleService.create(papelSoVisualiza);
     await userRepository.update(representative);
 
     const token = await jwtService.signAsync({
       user: { id: representative.id },
     });
 
-    // endereco exige gerenciarEstudantes para ser oferecido
+    // a listagem continua acessivel
     await request(app.getHttpServer())
-      .get('/student-course/enrolled/export?columns=name,street')
+      .get('/student-course/enrolled')
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+
+    // a exportacao e o catalogo, nao
+    await request(app.getHttpServer())
+      .get('/student-course/enrolled/export')
       .set({ Authorization: `Bearer ${token}` })
       .expect(403);
+    await request(app.getHttpServer())
+      .get('/student-course/enrolled/export/columns')
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(403);
+  }, 100000);
 
-    // e o catalogo nem oferece a coluna
+  it('catalogo deve marcar como mascarada a coluna que o papel nao ve em claro', async () => {
+    const { representative, inscription } = await createPartnerPrepCourse();
+    await matricularEstudantes(representative.id, inscription.id, 1);
+
+    const papelGerente = new CreateRoleDtoInput();
+    papelGerente.name = `export_colunas_${Date.now()}`;
+    papelGerente.gerenciarEstudantes = true;
+    representative.role = await roleService.create(papelGerente);
+    await userRepository.update(representative);
+
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+
     const catalogo = await request(app.getHttpServer())
       .get('/student-course/enrolled/export/columns')
       .set({ Authorization: `Bearer ${token}` })
       .expect(200);
-    const chaves = catalogo.body.map((c: { key: string }) => c.key);
-    expect(chaves).not.toContain('street');
-    expect(chaves).toContain('cpf');
-    // cpf e oferecido, mas marcado como mascarado
-    const cpf = catalogo.body.find((c: { key: string }) => c.key === 'cpf');
-    expect(cpf.masked).toBe(true);
+
+    const porChave = new Map(
+      catalogo.body.map((c: { key: string; masked: boolean }) => [
+        c.key,
+        c.masked,
+      ]),
+    );
+    // sem gerenciarProcessoSeletivo o documento sai mascarado, o contato nao
+    expect(porChave.get('cpf')).toBe(true);
+    expect(porChave.get('email')).toBe(false);
+    expect(porChave.has('street')).toBe(true);
   }, 100000);
 
   it('export deve trazer a justificativa do cancelamento mais recente', async () => {
