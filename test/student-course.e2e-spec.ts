@@ -29,6 +29,8 @@ import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
+import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
+import * as ExcelJS from 'exceljs';
 import * as request from 'supertest';
 import CreateClassDtoInputFaker from './faker/create-class.dto.input.faker';
 import { CreateCoursePeriodDtoInputFaker } from './faker/create-course-period.dto.input.faker';
@@ -3155,5 +3157,117 @@ describe('StudentCourse (e2e)', () => {
     expect(
       comAno.body.students.data.map((student) => student.id).sort(),
     ).toEqual([...comTurma].sort());
+  }, 100000);
+  async function baixarExportacao(token: string, query = '') {
+    const response = await request(app.getHttpServer())
+      .get(`/student-course/enrolled/export${query}`)
+      .set({ Authorization: `Bearer ${token}` })
+      .buffer()
+      .parse((res, callback) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+        res.on('end', () => callback(null, Buffer.concat(chunks)));
+      })
+      .expect(200);
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(response.body);
+    const sheet = workbook.worksheets[0];
+
+    const linhas: string[][] = [];
+    sheet.eachRow((row) => linhas.push(row.values as string[]));
+    return { header: linhas[0], rows: linhas.slice(1) };
+  }
+
+  async function matricularEstudantes(
+    representativeId: string,
+    inscriptionId: string,
+    quantidade: number,
+  ) {
+    const ids: string[] = [];
+    for (let i = 0; i < quantidade; i++) {
+      const { id } = await createStudent(inscriptionId);
+      const student = await studentCourseService.findOneBy({ id });
+      student.applicationStatus = StatusApplication.DeclaredInterest;
+      await studentCourseRepository.update(student);
+      await confirmEnrollmentWithClass(student.id, representativeId);
+      ids.push(student.id);
+    }
+    return ids;
+  }
+
+  it('export deve trazer todos os estudantes filtrados, e nao so a primeira pagina', async () => {
+    const { representative, inscription } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+
+    await matricularEstudantes(representative.id, inscription.id, 3);
+
+    // limit=1 na listagem para deixar explicito que a exportacao ignora a
+    // paginacao da tela
+    const listagem = await request(app.getHttpServer())
+      .get('/student-course/enrolled?page=1&limit=1')
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    expect(listagem.body.students.data).toHaveLength(1);
+    expect(listagem.body.students.totalItems).toBe(3);
+
+    const { header, rows } = await baixarExportacao(token);
+    expect(header[1]).toBe('Nº de matrícula');
+    expect(rows).toHaveLength(3);
+  }, 100000);
+
+  it('export deve respeitar a mascara de email, telefone e cpf do papel', async () => {
+    const { representative, inscription } = await createPartnerPrepCourse();
+    await matricularEstudantes(representative.id, inscription.id, 1);
+
+    // o representante do fixture usa o papel admin, que ve tudo em claro
+    const tokenAdmin = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+    const comAdmin = await baixarExportacao(tokenAdmin);
+    expect(comAdmin.rows[0][7]).not.toContain('*');
+    expect(comAdmin.rows[0][9]).not.toContain('*');
+
+    // mesmo usuario, papel reduzido a visualizarEstudantes
+    const papelRestrito = new CreateRoleDtoInput();
+    papelRestrito.name = `export_visualizar_${Date.now()}`;
+    papelRestrito.visualizarEstudantes = true;
+    const role = await roleService.create(papelRestrito);
+    representative.role = role;
+    await userRepository.update(representative);
+
+    const tokenRestrito = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+    const { rows } = await baixarExportacao(tokenRestrito);
+
+    // email, telefone e cpf mascarados — o vazamento aqui seria em arquivo
+    expect(rows[0][7]).toContain('*');
+    expect(rows[0][8]).toContain('*');
+    expect(rows[0][9]).toContain('*');
+  }, 100000);
+
+  it('export nao deve trazer estudante de outro cursinho', async () => {
+    const cursinhoA = await createPartnerPrepCourse();
+    const cursinhoB = await createPartnerPrepCourse();
+
+    await matricularEstudantes(
+      cursinhoA.representative.id,
+      cursinhoA.inscription.id,
+      2,
+    );
+    await matricularEstudantes(
+      cursinhoB.representative.id,
+      cursinhoB.inscription.id,
+      3,
+    );
+
+    const token = await jwtService.signAsync({
+      user: { id: cursinhoA.representative.id },
+    });
+    const { rows } = await baixarExportacao(token);
+    expect(rows).toHaveLength(2);
   }, 100000);
 });
