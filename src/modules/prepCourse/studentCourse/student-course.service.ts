@@ -1857,11 +1857,38 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     return partnerLogoFile;
   }
 
-  async getStudentDetails(studentId: string): Promise<GetSubscribersDtoOutput> {
+  /**
+   * Detalhes completos do estudante.
+   *
+   * Responde 404 (e nao 403) quando o estudante e de outro cursinho, para nao
+   * confirmar que o registro existe. As mascaras seguem as mesmas regras do
+   * `getEnrolled`: contatos por `gerenciarEstudantes`, documentos por
+   * `gerenciarProcessoSeletivo`.
+   */
+  async getStudentDetails(
+    studentId: string,
+    userId: string,
+  ): Promise<GetSubscribersDtoOutput> {
+    const naoEncontrado = new HttpException(
+      'Estudante não encontrado',
+      HttpStatus.NOT_FOUND,
+    );
+
+    const partnerPrepCourse =
+      await this.partnerPrepCourseService.getByUserId(userId);
+
     const student = await this.repository.findOneWithFullDetails(studentId);
     if (!student) {
-      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+      throw naoEncontrado;
     }
+    if (student.partnerPrepCourse?.id !== partnerPrepCourse.id) {
+      throw naoEncontrado;
+    }
+
+    const user = await this.userService.findUserById(userId);
+    const role = await this.roleService.findOneById(user.role.id);
+    const manager = role.gerenciarEstudantes;
+    const admin = role.gerenciarProcessoSeletivo;
 
     return Object.assign(new GetSubscribersDtoOutput(), {
       id: student.id,
@@ -1874,13 +1901,15 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         : null,
       lista_de_espera: student.waitingList ? 'Sim' : 'Não',
       status: student.applicationStatus,
-      email: student.user.email,
-      cpf: student.cpf,
-      rg: student.rg,
+      email: manager ? student.user.email : maskEmail(student.user.email),
+      cpf: admin ? student.cpf : maskCpf(student.cpf),
+      rg: admin ? student.rg : maskRg(student.rg),
       uf: student.uf,
-      telefone_emergencia: student.urgencyPhone,
+      telefone_emergencia: manager
+        ? student.urgencyPhone
+        : maskPhone(student.urgencyPhone),
       socioeconomic: student.socioeconomic,
-      whatsapp: student.whatsapp,
+      whatsapp: manager ? student.whatsapp : maskPhone(student.whatsapp),
       nome: student.user.firstName,
       sobrenome: student.user.lastName,
       nome_social: student.user.socialName,
@@ -1892,7 +1921,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
           : student.user.gender === Gender.Female
             ? 'Feminino'
             : 'Outro',
-      telefone: student.user.phone,
+      telefone: manager ? student.user.phone : maskPhone(student.user.phone),
       bairro: student.user.neighborhood,
       rua: student.user.street,
       numero: student.user.number,

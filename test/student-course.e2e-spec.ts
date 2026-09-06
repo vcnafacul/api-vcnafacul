@@ -3393,4 +3393,84 @@ describe('StudentCourse (e2e)', () => {
     );
     expect(nomes).toEqual(['A-turma', 'Z-turma']);
   }, 100000);
+  it('details deve exigir visualizarEstudantes', async () => {
+    const { representative, inscription } = await createPartnerPrepCourse();
+    const [studentId] = await matricularEstudantes(
+      representative.id,
+      inscription.id,
+      1,
+    );
+
+    const papelSemNada = new CreateRoleDtoInput();
+    papelSemNada.name = `details_sem_permissao_${Date.now()}`;
+    representative.role = await roleService.create(papelSemNada);
+    await userRepository.update(representative);
+
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+
+    // antes: o endpoint tinha so JwtAuthGuard e qualquer autenticado passava
+    await request(app.getHttpServer())
+      .get(`/student-course/${studentId}/details`)
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(403);
+  }, 100000);
+
+  it('details de estudante de outro cursinho deve responder 404', async () => {
+    const cursinhoA = await createPartnerPrepCourse();
+    const cursinhoB = await createPartnerPrepCourse();
+    const [studentB] = await matricularEstudantes(
+      cursinhoB.representative.id,
+      cursinhoB.inscription.id,
+      1,
+    );
+
+    const tokenA = await jwtService.signAsync({
+      user: { id: cursinhoA.representative.id },
+    });
+
+    await request(app.getHttpServer())
+      .get(`/student-course/${studentB}/details`)
+      .set({ Authorization: `Bearer ${tokenA}` })
+      .expect(404);
+  }, 100000);
+
+  it('details deve mascarar contatos e documentos conforme o papel', async () => {
+    const { representative, inscription } = await createPartnerPrepCourse();
+    const [studentId] = await matricularEstudantes(
+      representative.id,
+      inscription.id,
+      1,
+    );
+
+    // papel admin do fixture ve tudo em claro
+    const tokenAdmin = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+    const claro = await request(app.getHttpServer())
+      .get(`/student-course/${studentId}/details`)
+      .set({ Authorization: `Bearer ${tokenAdmin}` })
+      .expect(200);
+    expect(claro.body.email).not.toContain('*');
+    expect(claro.body.cpf).not.toContain('*');
+
+    const papelRestrito = new CreateRoleDtoInput();
+    papelRestrito.name = `details_visualizar_${Date.now()}`;
+    papelRestrito.visualizarEstudantes = true;
+    representative.role = await roleService.create(papelRestrito);
+    await userRepository.update(representative);
+
+    const tokenRestrito = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+    const mascarado = await request(app.getHttpServer())
+      .get(`/student-course/${studentId}/details`)
+      .set({ Authorization: `Bearer ${tokenRestrito}` })
+      .expect(200);
+
+    expect(mascarado.body.email).toContain('*');
+    expect(mascarado.body.cpf).toContain('*');
+    expect(mascarado.body.telefone).toContain('*');
+  }, 100000);
 });
