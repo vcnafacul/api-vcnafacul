@@ -352,8 +352,8 @@ describe('AttendanceRecord (e2e)', () => {
       .expect(200);
 
     expect(response.body.report).toHaveLength(1);
-    expect(response.body.report[0].whatsapp ?? null).toBeNull();
-    expect(response.body.report[0].urgencyPhone ?? null).toBeNull();
+    expect(response.body.report[0].whatsapp).toBeNull();
+    expect(response.body.report[0].urgencyPhone).toBeNull();
   }, 100000);
 
   it('export deve trazer as colunas de contato alinhadas com os dias', async () => {
@@ -407,7 +407,59 @@ describe('AttendanceRecord (e2e)', () => {
     const idxDia = header.findIndex(
       (h) => typeof h === 'string' && h.includes('/'),
     );
-    expect(idxDia).toBeGreaterThan(7);
+    // 9 colunas fixas antes das datas (values do exceljs e 1-indexed)
+    expect(idxDia).toBe(10);
+    expect(linha[idxDia]).toBe('P');
+  }, 100000);
+  it('export deve manter o alinhamento quando so o whatsapp esta preenchido', async () => {
+    // urgencyPhone nao e obrigatorio na inscricao: contato parcial e o caso
+    // mais comum em producao e o unico que exercita o `?? ''` do export
+    const { token, classEntity, dia } = await criarTurmaComAlunoEFrequencia({
+      whatsapp: '11955554444',
+      urgencyPhone: null,
+    });
+
+    const response = await request(app.getHttpServer())
+      .get(
+        `/attendance-record/export?classId=${classEntity.id}&startDate=${dia}&endDate=${dia}&maxAbsencePercent=25`,
+      )
+      .set({ Authorization: `Bearer ${token}` })
+      .buffer()
+      .parse((res, callback) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+        res.on('end', () => callback(null, Buffer.concat(chunks)));
+      })
+      .expect(200);
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(response.body);
+    const sheet = workbook.worksheets[0];
+
+    let headerRowNumber = 0;
+    sheet.eachRow((row, rowNumber) => {
+      if (!headerRowNumber && (row.values as string[])[1] === 'Matrícula') {
+        headerRowNumber = rowNumber;
+      }
+    });
+    expect(headerRowNumber).toBeGreaterThan(0);
+
+    const header = sheet.getRow(headerRowNumber).values as string[];
+    const linha = sheet.getRow(headerRowNumber + 1).values as string[];
+
+    // whatsapp preenchido, contato de referencia vazio pelo `?? ''`
+    expect(linha[4]).toBe('11955554444');
+    expect(linha[5]).toBe('');
+
+    // a celula vazia nao pode colapsar e puxar as colunas seguintes
+    expect(header[6]).toBe('% Presença');
+    expect(linha[6]).toBe('100%');
+
+    // 9 colunas fixas antes das datas (values do exceljs e 1-indexed)
+    const idxDia = header.findIndex(
+      (h) => typeof h === 'string' && h.includes('/'),
+    );
+    expect(idxDia).toBe(10);
     expect(linha[idxDia]).toBe('P');
   }, 100000);
 });

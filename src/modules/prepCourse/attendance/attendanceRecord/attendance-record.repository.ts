@@ -234,11 +234,12 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
       socialName: string;
       useSocialName: boolean;
       codEnrolled: string;
-      whatsapp?: string;
-      urgencyPhone?: string;
+      whatsapp: string | null;
+      urgencyPhone: string | null;
       totalClassRecords: number;
-      studentRecords: number;
-      presencePercentage: number;
+      // SUM/ROUND do MySQL voltam como DECIMAL e o mysql2 entrega string
+      studentRecords: string;
+      presencePercentage: string;
     }[]
   > {
     const endDateCopy = new Date(endDate);
