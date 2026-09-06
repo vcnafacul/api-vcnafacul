@@ -12,6 +12,8 @@ import { InscriptionCourseService } from 'src/modules/prepCourse/InscriptionCour
 import { PartnerPrepCourseDtoInput } from 'src/modules/prepCourse/partnerPrepCourse/dtos/create-partner-prep-course.input.dto';
 import { LogPartnerRepository } from 'src/modules/prepCourse/partnerPrepCourse/log-partner/log-partner.repository';
 import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
+import { StatusApplication } from 'src/modules/prepCourse/studentCourse/enums/stastusApplication';
+import { StudentCourseRepository } from 'src/modules/prepCourse/studentCourse/student-course.repository';
 import { StudentCourseService } from 'src/modules/prepCourse/studentCourse/student-course.service';
 import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
 import { Role } from 'src/modules/role/role.entity';
@@ -49,6 +51,7 @@ describe('Class (e2e)', () => {
   let classRepository: ClassRepository;
   let inscriptionCourseService: InscriptionCourseService;
   let studentCourseService: StudentCourseService;
+  let studentCourseRepository: StudentCourseRepository;
   let coursePeriodService: CoursePeriodService;
   let role: Role = null;
   let blobService: BlobService;
@@ -96,6 +99,9 @@ describe('Class (e2e)', () => {
     );
     studentCourseService =
       moduleFixture.get<StudentCourseService>(StudentCourseService);
+    studentCourseRepository = moduleFixture.get<StudentCourseRepository>(
+      StudentCourseRepository,
+    );
     coursePeriodService =
       moduleFixture.get<CoursePeriodService>(CoursePeriodService);
 
@@ -378,4 +384,92 @@ describe('Class (e2e)', () => {
         expect(turma.number_students).toBe(1);
       });
   }, 30000);
+  async function matricularEstudanteNaTurma(
+    userId: string,
+    inscriptionId: string,
+    classId: string,
+  ) {
+    const userDto = CreateUserDtoInputFaker();
+    await userService.create(userDto);
+    const userStudent = await userRepository.findOneBy({
+      email: userDto.email,
+    });
+
+    const dto = createStudentCourseDTOInputFaker(userStudent.id, inscriptionId);
+    dto.rg = '45.678.123-4';
+    const student = await studentCourseService.create(dto);
+
+    // confirmEnrolled so aceita quem declarou interesse
+    const criado = await studentCourseService.findOneBy({ id: student.id });
+    criado.applicationStatus = StatusApplication.DeclaredInterest;
+    await studentCourseRepository.update(criado);
+
+    await studentCourseService.confirmEnrolled(student.id, classId);
+
+    return { studentId: student.id, userId };
+  }
+
+  async function criarTurmaComEstudantes(quantidade: number) {
+    const { user } = await createPartnerFaker();
+    const token = await jwtService.signAsync(
+      { user: { id: user.id } },
+      { expiresIn: '2h' },
+    );
+
+    const classDto = await createClassWithPeriod(user.id, 'turma cancelados');
+    const createdClass = await request(app.getHttpServer())
+      .post('/class')
+      .set({ Authorization: `Bearer ${token}` })
+      .send(classDto)
+      .expect(201);
+    const classId = createdClass.body.id;
+
+    const inscription = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      user.id,
+    );
+
+    const estudantes = [];
+    for (let i = 0; i < quantidade; i++) {
+      estudantes.push(
+        await matricularEstudanteNaTurma(user.id, inscription.id, classId),
+      );
+    }
+
+    return { token, classId, estudantes };
+  }
+
+  it('getById nao deve trazer estudantes com matricula cancelada', async () => {
+    const { token, classId, estudantes } = await criarTurmaComEstudantes(2);
+    const [ativo, cancelado] = estudantes;
+
+    await studentCourseService.cancelEnrolled(cancelado.studentId, 'Abandono');
+
+    const response = await request(app.getHttpServer())
+      .get(`/class/${classId}`)
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+
+    expect(response.body.students).toHaveLength(1);
+    expect(response.body.students[0].id).toBe(ativo.studentId);
+  }, 60000);
+
+  it('getById de turma sem nenhum aluno ativo deve continuar abrindo', async () => {
+    const { token, classId, estudantes } = await criarTurmaComEstudantes(1);
+
+    await studentCourseService.cancelEnrolled(
+      estudantes[0].studentId,
+      'Rotina',
+    );
+
+    // O filtro esta na clausula do JOIN justamente para isto: num andWhere o
+    // LEFT JOIN viraria INNER JOIN e a turma sumiria (404).
+    const response = await request(app.getHttpServer())
+      .get(`/class/${classId}`)
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+
+    expect(response.body.id).toBe(classId);
+    expect(response.body.students).toHaveLength(0);
+  }, 60000);
 });
