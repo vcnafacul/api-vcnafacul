@@ -409,6 +409,16 @@ describe('Class (e2e)', () => {
     return { studentId: student.id, userId };
   }
 
+  async function criarTurma(userId: string, token: string, nome: string) {
+    const classDto = await createClassWithPeriod(userId, nome);
+    const createdClass = await request(app.getHttpServer())
+      .post('/class')
+      .set({ Authorization: `Bearer ${token}` })
+      .send(classDto)
+      .expect(201);
+    return createdClass.body.id as string;
+  }
+
   async function criarTurmaComEstudantes(quantidade: number) {
     const { user } = await createPartnerFaker();
     const token = await jwtService.signAsync(
@@ -416,13 +426,7 @@ describe('Class (e2e)', () => {
       { expiresIn: '2h' },
     );
 
-    const classDto = await createClassWithPeriod(user.id, 'turma cancelados');
-    const createdClass = await request(app.getHttpServer())
-      .post('/class')
-      .set({ Authorization: `Bearer ${token}` })
-      .send(classDto)
-      .expect(201);
-    const classId = createdClass.body.id;
+    const classId = await criarTurma(user.id, token, 'turma cancelados');
 
     const inscription = await inscriptionCourseService.create(
       CreateInscriptionCourseDTOInputFaker(),
@@ -436,7 +440,15 @@ describe('Class (e2e)', () => {
       );
     }
 
-    return { token, classId, estudantes };
+    return { user, token, classId, inscription, estudantes };
+  }
+
+  async function getTurma(token: string, classId: string) {
+    const response = await request(app.getHttpServer())
+      .get(`/class/${classId}`)
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    return response.body;
   }
 
   it('getById nao deve trazer estudantes com matricula cancelada', async () => {
@@ -471,5 +483,57 @@ describe('Class (e2e)', () => {
 
     expect(response.body.id).toBe(classId);
     expect(response.body.students).toHaveLength(0);
+  }, 60000);
+  it('cancelar matricula deve refletir na turma sem esperar o cache expirar', async () => {
+    const { token, classId, estudantes } = await criarTurmaComEstudantes(1);
+
+    // primeira leitura popula o cache presence_by_class_id_<id>
+    expect((await getTurma(token, classId)).students).toHaveLength(1);
+
+    await studentCourseService.cancelEnrolled(
+      estudantes[0].studentId,
+      'Rotina',
+    );
+
+    expect((await getTurma(token, classId)).students).toHaveLength(0);
+  }, 60000);
+
+  it('reativar matricula deve refletir na turma sem esperar o cache expirar', async () => {
+    const { token, classId, estudantes } = await criarTurmaComEstudantes(1);
+    const { studentId } = estudantes[0];
+
+    await studentCourseService.cancelEnrolled(studentId, 'Rotina');
+    expect((await getTurma(token, classId)).students).toHaveLength(0);
+
+    await studentCourseService.activeEnrolled(studentId);
+
+    const turma = await getTurma(token, classId);
+    expect(turma.students).toHaveLength(1);
+    expect(turma.students[0].id).toBe(studentId);
+  }, 60000);
+
+  it('transferir de turma deve refletir na origem e no destino', async () => {
+    const {
+      user,
+      token,
+      classId: origemId,
+      estudantes,
+    } = await criarTurmaComEstudantes(1);
+    const { studentId } = estudantes[0];
+
+    const destinoId = await criarTurma(user.id, token, 'turma destino');
+
+    // popula o cache das duas turmas antes da transferencia
+    expect((await getTurma(token, origemId)).students).toHaveLength(1);
+    expect((await getTurma(token, destinoId)).students).toHaveLength(0);
+
+    await studentCourseService.updateClass(studentId, destinoId);
+
+    // so invalidar o destino deixaria a origem exibindo um aluno que ja saiu
+    expect((await getTurma(token, origemId)).students).toHaveLength(0);
+
+    const destino = await getTurma(token, destinoId);
+    expect(destino.students).toHaveLength(1);
+    expect(destino.students[0].id).toBe(studentId);
   }, 60000);
 });
