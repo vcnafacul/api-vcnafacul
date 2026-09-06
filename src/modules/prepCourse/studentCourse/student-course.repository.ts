@@ -1,9 +1,12 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
-import { GetAllWhereInput } from 'src/shared/modules/base/interfaces/get-all.input';
+import {
+  Filter,
+  GetAllWhereInput,
+} from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { NodeRepository } from 'src/shared/modules/node/node.repository';
-import { EntityManager } from 'typeorm';
+import { EntityManager, SelectQueryBuilder } from 'typeorm';
 import { StatusApplication } from './enums/stastusApplication';
 import { StudentCourse } from './student-course.entity';
 import { Period } from 'src/modules/user/enum/period';
@@ -25,6 +28,63 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
     protected readonly _entityManager: EntityManager,
   ) {
     super(_entityManager.getRepository(StudentCourse));
+  }
+
+  /**
+   * Aplica os filtros da listagem de matriculados (ano letivo + filtros do
+   * grid) num query builder ja construido.
+   *
+   * Existe para que a listagem paginada e a exportacao usem exatamente o mesmo
+   * criterio — divergir aqui significa a planilha nao bater com a tela.
+   */
+  private applyEnrolledFilters(
+    queryBuilder: SelectQueryBuilder<StudentCourse>,
+    { year, filters }: { year?: number; filters?: Filter[] },
+  ): SelectQueryBuilder<StudentCourse> {
+    if (year !== undefined && year !== null) {
+      queryBuilder = queryBuilder.andWhere('course_period.year = :year', {
+        year,
+      });
+    }
+
+    if (!filters || filters.length === 0) {
+      return queryBuilder;
+    }
+
+    filters.forEach((filter) => {
+      if (filter.field === 'class') {
+        queryBuilder = queryBuilder.andWhere('class.name LIKE :filterValue', {
+          filterValue: `%${filter.value}%`,
+        });
+      } else if (filter.field === 'birthday') {
+        const dateValue = new Date(filter.value).toISOString().slice(0, 10); // "YYYY-MM-DD"
+        const operadores: Record<string, string> = {
+          is: '=',
+          after: '>',
+          before: '<',
+        };
+        const operador = operadores[filter.operator];
+        if (operador) {
+          queryBuilder = queryBuilder.andWhere(
+            `DATE(users.birthday) ${operador} :birthday`,
+            { birthday: dateValue },
+          );
+        }
+      } else {
+        const column = StudentCourseRepository.FILTERABLE_FIELDS[filter.field];
+        if (!column) {
+          throw new HttpException(
+            `Filtro não suportado: ${filter.field}`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+        queryBuilder = queryBuilder.andWhere(`${column} LIKE :filterValue`, {
+          filterValue: `%${filter.value}%`,
+        });
+      }
+    });
+
+    return queryBuilder;
   }
 
   override async findAllBy({
@@ -70,15 +130,13 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .where({ ...where })
       .andWhere('entity.deletedAt IS NULL');
 
-    if (year !== undefined && year !== null) {
-      queryBuilder = queryBuilder.andWhere('course_period.year = :year', {
-        year,
-      });
-      queryBuilderCount = queryBuilderCount.andWhere(
-        'course_period.year = :year',
-        { year },
-      );
-    }
+    // A montagem dos filtros e compartilhada com a exportacao: se cada fluxo
+    // montasse o seu, o usuario veria X na tela e baixaria Y.
+    queryBuilder = this.applyEnrolledFilters(queryBuilder, { year, filters });
+    queryBuilderCount = this.applyEnrolledFilters(queryBuilderCount, {
+      year,
+      filters,
+    });
 
     if (orderBy) {
       queryBuilder = queryBuilder.orderBy(
@@ -87,60 +145,6 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       );
     } else {
       queryBuilder = queryBuilder.orderBy('entity.cod_enrolled', 'DESC');
-    }
-
-    if (filters && filters.length > 0) {
-      filters.forEach((filter) => {
-        if (filter.field === 'class') {
-          const query = 'class.name LIKE :filterValue';
-          const params = { filterValue: `%${filter.value}%` };
-          queryBuilder = queryBuilder.andWhere(query, params);
-          queryBuilderCount = queryBuilderCount.andWhere(query, params);
-        } else if (filter.field === 'birthday') {
-          const dateValue = new Date(filter.value).toISOString().slice(0, 10); // "YYYY-MM-DD"
-          if (filter.operator === 'is') {
-            queryBuilder = queryBuilder.andWhere(
-              'DATE(users.birthday) = :birthday',
-              { birthday: dateValue },
-            );
-            queryBuilderCount = queryBuilderCount.andWhere(
-              'DATE(users.birthday) = :birthday',
-              { birthday: dateValue },
-            );
-          } else if (filter.operator === 'after') {
-            queryBuilder = queryBuilder.andWhere(
-              'DATE(users.birthday) > :birthday',
-              { birthday: dateValue },
-            );
-            queryBuilderCount = queryBuilderCount.andWhere(
-              'DATE(users.birthday) > :birthday',
-              { birthday: dateValue },
-            );
-          } else if (filter.operator === 'before') {
-            queryBuilder = queryBuilder.andWhere(
-              'DATE(users.birthday) < :birthday',
-              { birthday: dateValue },
-            );
-            queryBuilderCount = queryBuilderCount.andWhere(
-              'DATE(users.birthday) < :birthday',
-              { birthday: dateValue },
-            );
-          }
-        } else {
-          const column =
-            StudentCourseRepository.FILTERABLE_FIELDS[filter.field];
-          if (!column) {
-            throw new HttpException(
-              `Filtro não suportado: ${filter.field}`,
-              HttpStatus.BAD_REQUEST,
-            );
-          }
-          const query = `${column} LIKE :filterValue`;
-          const params = { filterValue: `%${filter.value}%` };
-          queryBuilder = queryBuilder.andWhere(query, params);
-          queryBuilderCount = queryBuilderCount.andWhere(query, params);
-        }
-      });
     }
 
     const [data, totalItems] = await Promise.all([
@@ -153,6 +157,66 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       limit,
       totalItems,
     };
+  }
+
+  /**
+   * Um lote da listagem de matriculados, para a exportacao.
+   *
+   * Nao calcula o total: a exportacao nao precisa dele, e o `getCount` do
+   * `findAllBy` custaria uma query a mais por lote.
+   *
+   * Usa a mesma montagem de filtros da listagem, com `cod_enrolled` como
+   * desempate final — sem ele, registros empatados no campo ordenado podem
+   * trocar de posicao entre um lote e outro e aparecer duas vezes ou nenhuma.
+   */
+  async findEnrolledBatchForExport({
+    where,
+    orderBy,
+    filters,
+    year,
+    offset,
+    limit,
+  }: {
+    where: object;
+    orderBy?: { field: string; sort: 'ASC' | 'DESC' };
+    filters?: Filter[];
+    year?: number;
+    offset: number;
+    limit: number;
+  }): Promise<StudentCourse[]> {
+    let queryBuilder = this.repository
+      .createQueryBuilder('entity')
+      .leftJoinAndSelect('entity.class', 'class')
+      .leftJoinAndSelect('class.coursePeriod', 'course_period')
+      .leftJoinAndSelect('entity.inscriptionCourse', 'inscription_course')
+      .innerJoin('entity.user', 'users')
+      .addSelect([
+        'users.id',
+        'users.firstName',
+        'users.lastName',
+        'users.socialName',
+        'users.email',
+        'users.birthday',
+        'users.useSocialName',
+      ])
+      .where({ ...where })
+      .andWhere('entity.deletedAt IS NULL');
+
+    queryBuilder = this.applyEnrolledFilters(queryBuilder, { year, filters });
+
+    if (orderBy) {
+      queryBuilder = queryBuilder.orderBy(
+        `entity.${orderBy.field}`,
+        orderBy.sort,
+      );
+      if (orderBy.field !== 'cod_enrolled') {
+        queryBuilder = queryBuilder.addOrderBy('entity.cod_enrolled', 'DESC');
+      }
+    } else {
+      queryBuilder = queryBuilder.orderBy('entity.cod_enrolled', 'DESC');
+    }
+
+    return queryBuilder.skip(offset).take(limit).getMany();
   }
 
   override async findOneBy(where: object): Promise<StudentCourse> {
