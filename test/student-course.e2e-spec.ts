@@ -3323,4 +3323,74 @@ describe('StudentCourse (e2e)', () => {
     expect(resetado.applicationStatus).toBe(StatusApplication.UnderReview);
     expect(resetado.cod_enrolled).toBeFalsy();
   }, 100000);
+  function ordenar(token: string, field: string, order = 'ASC') {
+    return request(app.getHttpServer())
+      .get(`/student-course/enrolled?sort[field]=${field}&sort[order]=${order}`)
+      .set({ Authorization: `Bearer ${token}` });
+  }
+
+  it('sort[field] desconhecido deve responder 400, e nao 500', async () => {
+    const { representative, inscription } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+    await matricularEstudantes(representative.id, inscription.id, 1);
+
+    // antes: 500, porque o campo entrava cru no orderBy
+    await ordenar(token, 'campo_inexistente').expect(400);
+    await ordenar(token, 'actions').expect(400);
+  }, 100000);
+
+  it('todas as colunas ordenaveis do grid devem responder 200', async () => {
+    const { representative, inscription } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+    await matricularEstudantes(representative.id, inscription.id, 2);
+
+    // schoolYear, name, birthday e age davam 500 antes
+    const campos = [
+      'cod_enrolled',
+      'class',
+      'schoolYear',
+      'inscriptionCourse',
+      'email',
+      'whatsapp',
+      'cpf',
+      'name',
+      'applicationStatus',
+      'birthday',
+      'age',
+    ];
+    for (const campo of campos) {
+      const res = await ordenar(token, campo);
+      expect([campo, res.status]).toEqual([campo, 200]);
+    }
+  }, 100000);
+
+  it('ordenar por turma deve usar o nome, e nao a chave estrangeira', async () => {
+    const { representative, inscription } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+
+    // duas turmas com nomes em ordem inversa a de criacao, para que ordenar
+    // pelo uuid da FK nao produza o mesmo resultado que ordenar pelo nome
+    const turmaZ = await createClass(representative.id, 'Z-turma');
+    const turmaA = await createClass(representative.id, 'A-turma');
+
+    for (const turma of [turmaZ, turmaA]) {
+      const { id } = await createStudent(inscription.id);
+      const student = await studentCourseService.findOneBy({ id });
+      student.applicationStatus = StatusApplication.DeclaredInterest;
+      await studentCourseRepository.update(student);
+      await studentCourseService.confirmEnrolled(student.id, turma.id);
+    }
+
+    const res = await ordenar(token, 'class', 'ASC').expect(200);
+    const nomes = res.body.students.data.map(
+      (e: { class: { name: string } }) => e.class.name,
+    );
+    expect(nomes).toEqual(['A-turma', 'Z-turma']);
+  }, 100000);
 });

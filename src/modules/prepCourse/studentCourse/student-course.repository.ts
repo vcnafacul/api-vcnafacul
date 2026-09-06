@@ -15,6 +15,9 @@ import { buildFullSeries } from './handler/build-full-series';
 
 @Injectable()
 export class StudentCourseRepository extends NodeRepository<StudentCourse> {
+  // `class` e `birthday` NAO estao aqui de propósito: sao tratados em ramos
+  // proprios do applyEnrolledFilters, com join e comparacao de data. Quem le
+  // este mapa isolado concluiria que nao sao suportados.
   private static readonly FILTERABLE_FIELDS: Record<string, string> = {
     cod_enrolled: 'entity.cod_enrolled',
     cpf: 'entity.cpf',
@@ -23,11 +26,80 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
     applicationStatus: 'entity.applicationStatus',
   };
 
+  /**
+   * Colunas do grid que podem ser usadas em `sort[field]`.
+   *
+   * Sem esta whitelist, `orderBy(`entity.${campo}`)` era montado com o texto
+   * que veio da query string. Levantamento do que acontecia antes:
+   *
+   * - 500 em `actions`, `schoolYear`, `name`, `birthday`, `age` e qualquer
+   *   campo desconhecido — o caminho de paginacao `distinctAlias` do TypeORM
+   *   resolve a coluna pelos metadados e estoura antes de chegar ao SQL;
+   * - 200 **com ordem errada** em `class` e `inscriptionCourse`: sao
+   *   propriedades de relacao, entao `entity.class` resolvia para a coluna de
+   *   FK e ordenava pelo uuid. O usuario clicava em "Turma" e recebia uma
+   *   ordem arbitraria que parecia plausivel — pior que o erro, porque nao da
+   *   para perceber.
+   */
+  private static readonly SORTABLE_FIELDS: Record<string, string> = {
+    cod_enrolled: 'entity.cod_enrolled',
+    cpf: 'entity.cpf',
+    email: 'entity.email',
+    whatsapp: 'entity.whatsapp',
+    applicationStatus: 'entity.applicationStatus',
+    class: 'class.name',
+    inscriptionCourse: 'inscription_course.name',
+    schoolYear: 'course_period.year',
+    birthday: 'users.birthday',
+    // O nome exibido depende de `useSocialName`, que o banco nao resolve.
+    // Ordenar pelo primeiro nome e a aproximacao mais util disponivel.
+    name: 'users.firstName',
+  };
+
+  /**
+   * `age` e derivado de `birthday`, e a ordem se inverte: quanto mais velho o
+   * estudante, mais antiga a data.
+   */
+  private static readonly INVERTED_SORT_FIELDS = new Set(['age']);
+
   constructor(
     @InjectEntityManager()
     protected readonly _entityManager: EntityManager,
   ) {
     super(_entityManager.getRepository(StudentCourse));
+  }
+
+  /**
+   * Traduz `sort[field]` para a coluna real, validando contra a whitelist.
+   *
+   * Campo desconhecido responde 400, no mesmo criterio que os filtros ja
+   * usam neste metodo — e nao um 500, nem uma ordenacao silenciosamente
+   * errada.
+   */
+  private static applyEnrolledOrder(
+    queryBuilder: SelectQueryBuilder<StudentCourse>,
+    orderBy?: { field: string; sort: 'ASC' | 'DESC' },
+  ): SelectQueryBuilder<StudentCourse> {
+    if (!orderBy?.field) {
+      return queryBuilder.orderBy('entity.cod_enrolled', 'DESC');
+    }
+
+    if (StudentCourseRepository.INVERTED_SORT_FIELDS.has(orderBy.field)) {
+      return queryBuilder.orderBy(
+        'users.birthday',
+        orderBy.sort === 'ASC' ? 'DESC' : 'ASC',
+      );
+    }
+
+    const column = StudentCourseRepository.SORTABLE_FIELDS[orderBy.field];
+    if (!column) {
+      throw new HttpException(
+        `Ordenação não suportada: ${orderBy.field}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return queryBuilder.orderBy(column, orderBy.sort);
   }
 
   /**
@@ -51,10 +123,14 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       return queryBuilder;
     }
 
-    filters.forEach((filter) => {
+    // O nome do bind leva o indice: com nome fixo, um segundo filtro
+    // sobrescreveria o primeiro silenciosamente. Hoje so chega um, mas a
+    // prevencao e de graca.
+    filters.forEach((filter, index) => {
+      const bind = `filterValue_${index}`;
       if (filter.field === 'class') {
-        queryBuilder = queryBuilder.andWhere('class.name LIKE :filterValue', {
-          filterValue: `%${filter.value}%`,
+        queryBuilder = queryBuilder.andWhere(`class.name LIKE :${bind}`, {
+          [bind]: `%${filter.value}%`,
         });
       } else if (filter.field === 'birthday') {
         const dateValue = new Date(filter.value).toISOString().slice(0, 10); // "YYYY-MM-DD"
@@ -66,8 +142,8 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
         const operador = operadores[filter.operator];
         if (operador) {
           queryBuilder = queryBuilder.andWhere(
-            `DATE(users.birthday) ${operador} :birthday`,
-            { birthday: dateValue },
+            `DATE(users.birthday) ${operador} :${bind}`,
+            { [bind]: dateValue },
           );
         }
       } else {
@@ -78,8 +154,8 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
             HttpStatus.BAD_REQUEST,
           );
         }
-        queryBuilder = queryBuilder.andWhere(`${column} LIKE :filterValue`, {
-          filterValue: `%${filter.value}%`,
+        queryBuilder = queryBuilder.andWhere(`${column} LIKE :${bind}`, {
+          [bind]: `%${filter.value}%`,
         });
       }
     });
@@ -138,14 +214,10 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       filters,
     });
 
-    if (orderBy) {
-      queryBuilder = queryBuilder.orderBy(
-        `entity.${orderBy.field}`,
-        orderBy.sort,
-      );
-    } else {
-      queryBuilder = queryBuilder.orderBy('entity.cod_enrolled', 'DESC');
-    }
+    queryBuilder = StudentCourseRepository.applyEnrolledOrder(
+      queryBuilder,
+      orderBy,
+    );
 
     const [data, totalItems] = await Promise.all([
       queryBuilder.getMany(),
@@ -204,16 +276,14 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
 
     queryBuilder = this.applyEnrolledFilters(queryBuilder, { year, filters });
 
-    if (orderBy) {
-      queryBuilder = queryBuilder.orderBy(
-        `entity.${orderBy.field}`,
-        orderBy.sort,
-      );
-      if (orderBy.field !== 'cod_enrolled') {
-        queryBuilder = queryBuilder.addOrderBy('entity.cod_enrolled', 'DESC');
-      }
-    } else {
-      queryBuilder = queryBuilder.orderBy('entity.cod_enrolled', 'DESC');
+    // Mesma whitelist da listagem: a exportacao recebe o `sort[field]` pelos
+    // mesmos query params, entao herdaria o mesmo problema.
+    queryBuilder = StudentCourseRepository.applyEnrolledOrder(
+      queryBuilder,
+      orderBy,
+    );
+    if (orderBy?.field && orderBy.field !== 'cod_enrolled') {
+      queryBuilder = queryBuilder.addOrderBy('entity.cod_enrolled', 'DESC');
     }
 
     return queryBuilder.skip(offset).take(limit).getMany();
