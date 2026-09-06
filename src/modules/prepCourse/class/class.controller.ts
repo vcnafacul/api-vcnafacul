@@ -22,6 +22,7 @@ import { Class } from './class.entity';
 import { ClassService } from './class.service';
 import { ClassDtoOutput } from './dtos/class.dto.output';
 import { CreateClassDtoInput } from './dtos/create-class.dto.input';
+import { CancelledStudentDtoOutput } from './dtos/get-cancelled-students.dto.output';
 import { GetClassByIdDtoOutput } from './dtos/get-class-by-id.dto.output';
 import { UpdateClassDTOInput } from './dtos/update-class.dto.input';
 
@@ -72,6 +73,21 @@ export class ClassController {
     @Req() req: Request,
   ): Promise<GetClassByIdDtoOutput> {
     return await this.service.findOneById(id, (req.user as User).id);
+  }
+
+  @Get(':id/cancelled-students')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarTurmas)
+  @ApiResponse({
+    status: 200,
+    description: 'estudantes da turma com matricula cancelada',
+  })
+  async getCancelledStudents(
+    @Param('id') id: string,
+    @Req() req: Request,
+  ): Promise<CancelledStudentDtoOutput[]> {
+    return await this.service.getCancelledStudents(id, (req.user as User).id);
   }
 
   @Delete(':id')

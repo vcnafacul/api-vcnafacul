@@ -25,6 +25,7 @@ import { SubmissionService } from 'src/modules/vcnafacul-form/submission/submiss
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
+import { DataSource } from 'typeorm';
 import * as request from 'supertest';
 import { CreateCoursePeriodDtoInputFaker } from './faker/create-course-period.dto.input.faker';
 import { CreateGeoDTOInputFaker } from './faker/create-geo.dto.input.faker';
@@ -52,6 +53,7 @@ describe('Class (e2e)', () => {
   let inscriptionCourseService: InscriptionCourseService;
   let studentCourseService: StudentCourseService;
   let studentCourseRepository: StudentCourseRepository;
+  let dataSource: DataSource;
   let coursePeriodService: CoursePeriodService;
   let role: Role = null;
   let blobService: BlobService;
@@ -102,6 +104,7 @@ describe('Class (e2e)', () => {
     studentCourseRepository = moduleFixture.get<StudentCourseRepository>(
       StudentCourseRepository,
     );
+    dataSource = moduleFixture.get<DataSource>(DataSource);
     coursePeriodService =
       moduleFixture.get<CoursePeriodService>(CoursePeriodService);
 
@@ -535,5 +538,76 @@ describe('Class (e2e)', () => {
     const destino = await getTurma(token, destinoId);
     expect(destino.students).toHaveLength(1);
     expect(destino.students[0].id).toBe(studentId);
+  }, 60000);
+  async function getCancelados(token: string, classId: string) {
+    const response = await request(app.getHttpServer())
+      .get(`/class/${classId}/cancelled-students`)
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    return response.body;
+  }
+
+  it('cancelled-students deve trazer o cancelado com justificativa, data e email mascarado', async () => {
+    const { token, classId, estudantes } = await criarTurmaComEstudantes(2);
+    const [ativo, cancelado] = estudantes;
+
+    await studentCourseService.cancelEnrolled(cancelado.studentId, 'Abandono');
+
+    const lista = await getCancelados(token, classId);
+
+    expect(lista).toHaveLength(1);
+    expect(lista[0].id).toBe(cancelado.studentId);
+    expect(lista[0].justification).toBe('Abandono');
+    expect(lista[0].cancelledAt).not.toBeNull();
+    // o papel do teste nao tem gerenciarEstudantes
+    expect(lista[0].email).toContain('*');
+
+    expect(lista.map((e: { id: string }) => e.id)).not.toContain(
+      ativo.studentId,
+    );
+  }, 60000);
+
+  it('cancelled-students deve trazer a justificativa do cancelamento mais recente', async () => {
+    const { token, classId, estudantes } = await criarTurmaComEstudantes(1);
+    const { studentId } = estudantes[0];
+
+    await studentCourseService.cancelEnrolled(studentId, 'Rotina');
+
+    // created_at e timestamp de 1 segundo: sem afastar o primeiro log no
+    // tempo, os dois cancelamentos cairiam no mesmo segundo e "o mais
+    // recente" ficaria ambiguo.
+    await dataSource.query(
+      'UPDATE log_student SET created_at = DATE_SUB(created_at, INTERVAL 1 HOUR) WHERE student_id = ? AND applicationStatus = ?',
+      [studentId, StatusApplication.EnrollmentCancelled],
+    );
+
+    await studentCourseService.activeEnrolled(studentId);
+    await studentCourseService.cancelEnrolled(studentId, 'Transporte');
+
+    const lista = await getCancelados(token, classId);
+
+    expect(lista).toHaveLength(1);
+    expect(lista[0].justification).toBe('Transporte');
+  }, 60000);
+
+  it('cancelled-students de turma de outro cursinho deve responder 404', async () => {
+    const { token } = await criarTurmaComEstudantes(1);
+
+    // turma de um segundo cursinho, sem relacao com o token acima
+    const { user: outroUser } = await createPartnerFaker();
+    const outroToken = await jwtService.signAsync(
+      { user: { id: outroUser.id } },
+      { expiresIn: '2h' },
+    );
+    const turmaDeOutroCursinho = await criarTurma(
+      outroUser.id,
+      outroToken,
+      'turma de outro cursinho',
+    );
+
+    await request(app.getHttpServer())
+      .get(`/class/${turmaDeOutroCursinho}/cancelled-students`)
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(404);
   }, 60000);
 });

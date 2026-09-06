@@ -6,6 +6,7 @@ import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output'
 import { EntityManager } from 'typeorm';
 import { AttendanceRecord } from '../attendance/attendanceRecord/attendance-record.entity';
 import { StatusApplication } from '../studentCourse/enums/stastusApplication';
+import { StudentCourse } from '../studentCourse/student-course.entity';
 import { Class } from './class.entity';
 
 @Injectable()
@@ -157,6 +158,45 @@ export class ClassRepository extends BaseRepository<Class> {
       .where('entity.deletedAt IS NULL')
       .andWhere('course_period.startDate <= :today', { today })
       .andWhere('course_period.endDate >= :today', { today })
+      .getMany();
+  }
+
+  /**
+   * Estudantes da turma com a matricula cancelada, ja com os logs de
+   * cancelamento carregados.
+   *
+   * Os logs vem numa consulta so (join), e nao num laco por estudante — que
+   * viraria N+1. Como pode haver mais de um cancelamento por estudante
+   * (cancelar → reativar → cancelar), quem escolhe o mais recente e o servico.
+   */
+  async findCancelledStudentsByClassId(
+    classId: string,
+  ): Promise<StudentCourse[]> {
+    return this.repository.manager
+      .getRepository(StudentCourse)
+      .createQueryBuilder('student')
+      .innerJoin('student.user', 'user')
+      .addSelect([
+        'user.id',
+        'user.firstName',
+        'user.lastName',
+        'user.socialName',
+        'user.useSocialName',
+        'user.email',
+      ])
+      .leftJoinAndSelect(
+        'student.logs',
+        'log',
+        'log.applicationStatus = :log',
+        {
+          log: StatusApplication.EnrollmentCancelled,
+        },
+      )
+      .where('student.class = :classId', { classId })
+      .andWhere('student.applicationStatus = :status', {
+        status: StatusApplication.EnrollmentCancelled,
+      })
+      .andWhere('student.deletedAt IS NULL')
       .getMany();
   }
 

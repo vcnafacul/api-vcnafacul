@@ -17,6 +17,7 @@ import { ClassRepository } from './class.repository';
 import { ClassDtoOutput } from './dtos/class.dto.output';
 import { CreateClassDtoInput } from './dtos/create-class.dto.input';
 import { GetClassByIdAttendanceDtoOutput } from './dtos/get-class-by-id-attendance.dto.output';
+import { CancelledStudentDtoOutput } from './dtos/get-cancelled-students.dto.output';
 import { GetClassByIdDtoOutput } from './dtos/get-class-by-id.dto.output';
 import { UpdateClassDTOInput } from './dtos/update-class.dto.input';
 
@@ -147,6 +148,74 @@ export class ClassService extends BaseService<Class> {
     );
 
     return cachedData;
+  }
+
+  /**
+   * Estudantes da turma com a matricula cancelada, com a justificativa e a
+   * data do cancelamento mais recente.
+   *
+   * Diferente do `findOneById`, este endpoint confere que a turma pertence ao
+   * cursinho do requisitante — mesmo escopo que o `getAll` ja aplica. Responde
+   * 404 (e nao 403) quando a turma e de outro cursinho, para nao confirmar que
+   * ela existe.
+   *
+   * Nao e cacheado de proposito: e consulta pontual, de volume pequeno, e
+   * evita mais uma chave para invalidar.
+   */
+  async getCancelledStudents(
+    id: string,
+    userId: string,
+  ): Promise<CancelledStudentDtoOutput[]> {
+    const naoEncontrada = new HttpException(
+      `Class not found by id ${id}`,
+      HttpStatus.NOT_FOUND,
+    );
+
+    const partnerPrepCourse =
+      await this.partnerRepository.findOneByUserId(userId);
+    if (!partnerPrepCourse) {
+      throw naoEncontrada;
+    }
+
+    const classEntity = await this.repository.findOneByIdWithPartner(id);
+    if (
+      !classEntity ||
+      classEntity.partnerPrepCourse?.id !== partnerPrepCourse.id
+    ) {
+      throw naoEncontrada;
+    }
+
+    const user = await this.userService.findUserById(userId);
+    const role = await this.roleService.findOneById(user.role.id);
+    const manager = role.gerenciarEstudantes;
+
+    const students = await this.repository.findCancelledStudentsByClassId(id);
+
+    return students
+      .map((student) => {
+        // O fluxo permite cancelar → reativar → cancelar, entao pode haver
+        // mais de um log. A ordenacao e feita aqui, e nao no SQL, para nao
+        // depender da ordem em que o TypeORM hidrata a colecao.
+        const ultimoCancelamento = [...(student.logs ?? [])].sort(
+          (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+        )[0];
+
+        return {
+          id: student.id,
+          name: student.user.useSocialName
+            ? `${student.user.socialName?.split(' ')[0]} ${student.user.lastName}`
+            : `${student.user.firstName} ${student.user.lastName}`,
+          email: manager ? student.user.email : maskEmail(student.user.email),
+          cod_enrolled: student.cod_enrolled,
+          cancelledAt: ultimoCancelamento?.createdAt ?? null,
+          justification: ultimoCancelamento?.description ?? null,
+        };
+      })
+      .sort((a, b) => {
+        if (!a.cancelledAt) return 1;
+        if (!b.cancelledAt) return -1;
+        return b.cancelledAt.getTime() - a.cancelledAt.getTime();
+      });
   }
 
   async update(dto: UpdateClassDTOInput): Promise<void> {
