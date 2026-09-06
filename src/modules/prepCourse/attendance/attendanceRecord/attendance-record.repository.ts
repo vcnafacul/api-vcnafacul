@@ -64,6 +64,14 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
         .addSelect(['class.id', 'class.name'])
         .where('studentCourse.id = :studentCourseId', { studentCourseId })
         .andWhere('entity.deletedAt IS NULL')
+        // `period` e um enum MySQL: a ordenacao nativa segue a ordem de
+        // declaracao (MANHA, TARDE, NOITE), que ja e a cronologica. Ordenar
+        // como texto inverteria NOITE e TARDE.
+        .orderBy('entity.registeredAt', 'DESC')
+        .addOrderBy('entity.period', 'ASC')
+        // desempate final: sem ele o skip/take volta a ser nao-deterministico
+        // quando data e periodo coincidem.
+        .addOrderBy('entity.id', 'ASC')
         .skip((page - 1) * limit)
         .take(limit)
         .getMany(),
