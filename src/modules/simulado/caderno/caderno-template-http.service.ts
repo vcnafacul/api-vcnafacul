@@ -59,15 +59,17 @@ export class CadernoTemplateHttpService {
    * vindo do cliente na chamada ao ms é injeção de parâmetro, como o card 05
    * já deixou escrito. Quem interpreta o que chegou é o controller; aqui o
    * número já chega tipado, e o TS acusa se um dia vier string.
+   *
+   * ⚠️ **Não há `notas` aqui, e é de propósito.** Medido no ms: o
+   * `restaurar` de lá chama `service.restaurar(n, dto.criadorId)` e descarta
+   * o `notas` do corpo — o docblock de lá diz por quê ("quem escreve a nota
+   * de um rascunho restaurado é o serviço: 'Restaurado da versão N'").
+   * Aceitar o campo aqui seria oferecer ao coordenador um texto que
+   * desaparece em silêncio. A api não aceita o que não consegue entregar.
    */
-  async restaurar<T>(
-    versao: number,
-    criadorId: string,
-    notas?: string,
-  ): Promise<T> {
+  async restaurar<T>(versao: number, criadorId: string): Promise<T> {
     return this.axios.post<T>(`${BASE}/versoes/${versao}/restaurar`, {
       criadorId,
-      notas,
     });
   }
 
