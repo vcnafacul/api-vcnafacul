@@ -11,8 +11,10 @@ const BASE = 'v1/caderno/template';
  * O proxy 1:1 dos endpoints de template do caderno no ms-simulado.
  *
  * Nenhuma regra de negócio mora aqui: o layout versionado vive no ms, e a api
- * só repassa. O upload multipart do rascunho fica fora, em serviço próprio —
- * é o único caso sem precedente no repo.
+ * só repassa. A única peça sem precedente no repo é o `subirRascunho`: em toda
+ * a api, é o primeiro lugar que REENVIA um multipart adiante — o upload de
+ * cartão escaneado, que o card citava como padrão, grava no R2 pelo
+ * `BlobService` e nunca repassa nada.
  */
 @Injectable()
 export class CadernoTemplateHttpService {
@@ -47,6 +49,48 @@ export class CadernoTemplateHttpService {
 
   async publicar<T>(): Promise<T> {
     return this.axios.post<T>(`${BASE}/rascunho/publicar`);
+  }
+
+  /**
+   * Reenvia ao ms o zip que o coordenador baixou do Overleaf.
+   *
+   * ⚠️ **Nenhum `Content-Type` explícito, e isso é a decisão inteira.** O
+   * `Content-Type` de um multipart carrega um delimitador (`boundary=----...`)
+   * gerado na hora pelo axios a partir do `FormData`. Passar o header aqui o
+   * SUBSTITUI por um sem boundary, o ms recebe um corpo que não parseia — e a
+   * falha aparece como erro DELE, não daqui.
+   *
+   * ⚠️ `FormData` e `Blob` são nativos do Node 20 (o CI usa `node-version:
+   * 20.x`). Nada de `form-data`: o pacote não está no projeto e não precisa
+   * estar.
+   *
+   * ⚠️ O campo é `arquivo` porque é o que o `FileInterceptor('arquivo')` do ms
+   * espera. Nome diferente e o arquivo simplesmente não chega: o ms responde
+   * 400 "sem arquivo", mensagem que manda procurar no lugar errado.
+   *
+   * ⚠️ `criadorId` é campo INTERNO, vindo do JWT — nunca do cliente.
+   *
+   * ⚠️ `notas` ausente NÃO vira string vazia. O ms guarda a nota da versão; um
+   * `''` apagaria a distinção entre "o coordenador não escreveu nada" e "o
+   * coordenador escreveu nada".
+   */
+  async subirRascunho<T>(
+    arquivo: Express.Multer.File,
+    criadorId: string,
+    notas?: string,
+  ): Promise<T> {
+    const corpo = new FormData();
+    corpo.append(
+      'arquivo',
+      new Blob([arquivo.buffer], { type: arquivo.mimetype }),
+      arquivo.originalname,
+    );
+    corpo.append('criadorId', criadorId);
+    if (notas !== undefined) corpo.append('notas', notas);
+
+    // ⚠️ Sem headers. Ver o docblock e o teste `manda um FormData, e o axios
+    // monta o boundary`.
+    return this.axios.post<T>(`${BASE}/rascunho`, corpo);
   }
 
   /**
