@@ -13,6 +13,42 @@ export class HttpServiceAxiosFactory {
   }
 }
 
+/**
+ * Quanto de um corpo de erro em texto vira `message`.
+ *
+ * O card 06 mostra isso num toast: despejar uma página de erro de proxy
+ * reverso inteira ali é pior do que truncar.
+ */
+const LIMITE_MENSAGEM = 300;
+
+/**
+ * Desembrulha o corpo de erro de uma resposta binária.
+ *
+ * ⚠️ Com `responseType: 'arraybuffer'`, o corpo de erro chega como `Buffer`,
+ * não como objeto. Repassado cru, o `ControllerExceptionsFilter` o trata como
+ * objeto puro e o **espalha**: o 409 sai com 81 chaves começando em
+ * `"0","1","2"`, e a mensagem vira `{"type":"Buffer","data":[...]}`. Medido.
+ *
+ * ⚠️ Os três ramos existem porque **o ms não é a única coisa que responde**.
+ * Um proxy reverso devolve HTML, e um `JSON.parse` solto lançaria de dentro do
+ * tratamento de erro — trocando um 409 legível por um 500 sem causa aparente.
+ */
+function desembrulharCorpo(data: unknown): unknown {
+  if (!Buffer.isBuffer(data)) return data;
+
+  const texto = data.toString('utf-8');
+  try {
+    return JSON.parse(texto);
+  } catch {
+    // Não é JSON. `U+FFFD` é o que sobra de bytes que não eram texto —
+    // deixar passar poria "����" na tela do usuário.
+    const ehTexto = texto.trim().length > 0 && !texto.includes('�');
+    return ehTexto
+      ? { message: texto.slice(0, LIMITE_MENSAGEM) }
+      : { message: 'erro no serviço de simulados' };
+  }
+}
+
 export class HttpServiceAxios {
   private readonly axiosInstance: AxiosInstance;
 
@@ -32,7 +68,7 @@ export class HttpServiceAxios {
     const axiosError = error as AxiosError;
 
     const errorData =
-      axiosError?.response?.data ||
+      desembrulharCorpo(axiosError?.response?.data) ||
       ({
         message: 'Erro desconhecido ou serviço indisponível.',
         status: axiosError?.code || 500,
@@ -111,7 +147,11 @@ export class HttpServiceAxios {
   public async getBinary(
     url: string,
     headers?: Record<string, string>,
-  ): Promise<{ buffer: Buffer; contentType: string }> {
+  ): Promise<{
+    buffer: Buffer;
+    contentType: string;
+    headers: Record<string, string>;
+  }> {
     const fullURL = this.getFullURL(url);
     return this.requestWrapper(
       this.axiosInstance
@@ -121,6 +161,16 @@ export class HttpServiceAxios {
           contentType:
             (response.headers['content-type'] as string) ??
             'application/octet-stream',
+          // ⚠️ Minúsculas SEMPRE. Em `AxiosHeaders` o acesso por índice é
+          // case-sensitive: `h['x-caderno-avisos']` devolve `undefined` se o
+          // header chegou como `X-Caderno-Avisos`. E header que não passa não
+          // dá erro — ele some, e ninguém descobre.
+          headers: Object.fromEntries(
+            Object.entries({ ...response.headers }).map(([k, v]) => [
+              k.toLowerCase(),
+              String(v),
+            ]),
+          ),
         })),
     );
   }
