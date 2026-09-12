@@ -13,6 +13,12 @@ const montar = (retorno: any = {}) => {
   return { controller: new CadernoController(service as any), service, res };
 };
 
+const montarECheckarContentType = async (contentType: string) => {
+  const { controller, res } = montar({ contentType });
+  await controller.baixar('65ecc850a528b39d273e7900', undefined, res);
+  expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/zip');
+};
+
 describe('CadernoController', () => {
   it('envia o zip como anexo, com o nome do arquivo', async () => {
     // `attachment`, não `inline`: zip não se abre no navegador.
@@ -27,6 +33,12 @@ describe('CadernoController', () => {
       'attachment; filename="caderno-65ecc850a528b39d273e7900.zip"',
     );
     expect(res.send).toHaveBeenCalledWith(Buffer.from('ZIP'));
+  });
+
+  it('sem content-type do ms, cai em application/zip', () => {
+    // Se o ms não mandar o header, enviar `Content-Type:` vazio faz o
+    // navegador adivinhar — e adivinhar zip costuma dar errado.
+    return montarECheckarContentType('');
   });
 
   it('repassa o X-Caderno-Avisos', async () => {
