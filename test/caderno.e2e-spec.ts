@@ -1,21 +1,26 @@
-import { HttpException, INestApplication } from '@nestjs/common';
+import { INestApplication, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { AppModule } from 'src/app.module';
-import { CadernoHttpService } from 'src/modules/simulado/caderno/caderno-http.service';
 import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
 import { Role } from 'src/modules/role/role.entity';
 import { RoleService } from 'src/modules/role/role.service';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
 import { ControllerExceptionsFilter } from 'src/exceptions/controller.filter';
+import {
+  HttpServiceAxios,
+  HttpServiceAxiosFactory,
+} from 'src/shared/services/axios/http-service-axios.factory';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import * as request from 'supertest';
 import { CreateUserDtoInputFaker } from './faker/create-user.dto.input.faker';
 import { createNestAppTest } from './utils/createNestAppTest';
 
 jest.mock('src/shared/services/webhooks/discord.ts');
+// ⚠️ Sem isto, `userService.create` quebra tentando renderizar o template
+// React de confirmação de e-mail (mesmo ajuste do course-period.e2e-spec).
 jest.mock('src/shared/services/email/email.service');
 
 const ID = '65ecc850a528b39d273e7900';
@@ -27,8 +32,14 @@ describe('Caderno (e2e)', () => {
   let jwtService: JwtService;
   let roleService: RoleService;
 
-  // O ms nao sobe no e2e: forjamos o service que fala com ele.
-  const cadernoHttpMock = { baixar: jest.fn() };
+  // ⚠️ Forjamos o axios, não o `CadernoHttpService`: mockar o service
+  // tiraria a `HttpServiceAxiosFactory` inteira do caminho, e é justamente
+  // a composição `handleError` (desembrulharCorpo) → `ControllerExceptionsFilter`
+  // que este card conserta. Trocando só a instância do axios por dentro da
+  // `HttpServiceAxios` real, o resto da corrente roda com código de produção.
+  const axiosForjado = { get: jest.fn() };
+  const servicoReal = new HttpServiceAxios('http://ms-forjado', new Logger());
+  (servicoReal as any).axiosInstance = axiosForjado;
 
   const discordWebhookMock = {
     sendMessage: jest.fn(),
@@ -38,8 +49,8 @@ describe('Caderno (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
-      .overrideProvider(CadernoHttpService)
-      .useValue(cadernoHttpMock)
+      .overrideProvider(HttpServiceAxiosFactory)
+      .useValue({ create: () => servicoReal })
       .overrideProvider(DiscordWebhook)
       .useValue(discordWebhookMock)
       .overrideGuard(ThrottlerGuard)
@@ -130,15 +141,16 @@ describe('Caderno (e2e)', () => {
   });
 
   beforeEach(() => {
-    cadernoHttpMock.baixar.mockReset();
+    axiosForjado.get.mockReset();
   });
 
   it('200: devolve o zip com os headers', async () => {
-    cadernoHttpMock.baixar.mockResolvedValue({
-      buffer: Buffer.from('PKfake-zip'),
-      contentType: 'application/zip',
-      avisos: '3',
+    axiosForjado.get.mockResolvedValue({
+      data: Buffer.from('PKfake-zip'),
+      headers: { 'content-type': 'application/zip', 'X-Caderno-Avisos': '3' },
     });
+    // ⚠️ `X-Caderno-Avisos` em maiúsculas de propósito: é a forma como um
+    // servidor real manda, e prova a normalização (lowercase) do `getBinary`.
 
     const r = await request(app.getHttpServer())
       .get(`/mssimulado/caderno/${ID}`)
@@ -162,14 +174,19 @@ describe('Caderno (e2e)', () => {
   });
 
   it('200: repassa o ?draft=true', async () => {
-    cadernoHttpMock.baixar.mockResolvedValue({
-      buffer: Buffer.from('ZIP'),
-      contentType: 'application/zip',
+    axiosForjado.get.mockResolvedValue({
+      data: Buffer.from('ZIP'),
+      headers: { 'content-type': 'application/zip' },
     });
     await request(app.getHttpServer())
       .get(`/mssimulado/caderno/${ID}?draft=true`)
       .set({ Authorization: `Bearer ${tokenComPermissao}` });
-    expect(cadernoHttpMock.baixar).toHaveBeenCalledWith(ID, true);
+
+    // Asserta na URL que o axios recebeu, não em argumentos de um service
+    // mockado: é a prova de que o parâmetro chegou até a chamada real.
+    expect(axiosForjado.get.mock.calls[0][0]).toContain(
+      `v1/caderno/${ID}?draft=true`,
+    );
   });
 
   it('401: sem JWT', async () => {
@@ -192,15 +209,23 @@ describe('Caderno (e2e)', () => {
     // O teste que justifica a Task 1. Antes dela, o corpo saia com 81 chaves
     // comecando em "0","1","2" e a mensagem virava
     // {"type":"Buffer","data":[...]}.
-    cadernoHttpMock.baixar.mockRejectedValue(
-      new HttpException(
-        {
-          message:
-            'simulado nao esta pronto (questoes pendentes ou incompletas)',
-        },
-        409,
-      ),
-    );
+    //
+    // Rejeita como o axios rejeita de verdade: corpo BINÁRIO, porque a
+    // requisição foi feita com `responseType: 'arraybuffer'` (getBinary). É
+    // o cenário que produzia as 81 chaves numéricas no corpo, e é
+    // `desembrulharCorpo` (na factory) que o desfaz antes do filtro.
+    axiosForjado.get.mockRejectedValue({
+      isAxiosError: true,
+      response: {
+        status: 409,
+        data: Buffer.from(
+          JSON.stringify({
+            message:
+              'simulado nao esta pronto (questoes pendentes ou incompletas)',
+          }),
+        ),
+      },
+    });
 
     const r = await request(app.getHttpServer())
       .get(`/mssimulado/caderno/${ID}`)
@@ -216,12 +241,13 @@ describe('Caderno (e2e)', () => {
     // ⚠️ MEDIDO: o Express casa `..%2F..%2F` como UM segmento e entrega o
     // valor decodificado. Sem o pipe, a api chamaria
     // http://ms-simulado:3000/v1/simulado/outro.
-    cadernoHttpMock.baixar.mockClear();
     const r = await request(app.getHttpServer())
       .get('/mssimulado/caderno/..%2F..%2Fv1%2Fsimulado%2Foutro')
       .set({ Authorization: `Bearer ${tokenComPermissao}` });
 
     expect(r.status).toBe(400);
-    expect(cadernoHttpMock.baixar).not.toHaveBeenCalled();
+    // Mais forte do que "um service não foi chamado": prova que nenhuma
+    // requisição saiu para o ms.
+    expect(axiosForjado.get).not.toHaveBeenCalled();
   });
 });
