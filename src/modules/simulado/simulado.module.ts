@@ -9,6 +9,8 @@ import { CollaboratorFrenteRepository } from '../prepCourse/collaborator/collabo
 import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
 import { StudentCourseRepository } from '../prepCourse/studentCourse/student-course.repository';
 import { UserModule } from '../user/user.module';
+import { CadernoController } from './caderno/caderno.controller';
+import { CadernoHttpService } from './caderno/caderno-http.service';
 import { CartaoRespostaController } from './cartao-resposta/cartao-resposta.controller';
 import { CartaoRespostaHttpService } from './cartao-resposta/cartao-resposta-http.service';
 import { CartaoRespostaResultadosService } from './cartao-resposta/cartao-resposta-resultados.service';
@@ -56,6 +58,7 @@ import { SubjectProxyService } from './subject/subject.service';
     ContentProxyController,
     CategoriaProxyController,
     CartaoRespostaController,
+    CadernoController,
   ],
   providers: [
     SimuladoService,
@@ -76,6 +79,7 @@ import { SubjectProxyService } from './subject/subject.service';
     CartaoRespostaResultadosService,
     OmrCacheService,
     CartaoUploadService,
+    CadernoHttpService,
   ],
   exports: [FrenteProxyService, MateriaProxyService, QuestaoService],
 })
