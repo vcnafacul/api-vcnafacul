@@ -165,6 +165,150 @@ describe('HttpServiceAxios', () => {
   });
 });
 
+function capturarHttpException(erro: any): HttpException {
+  const service = new HttpServiceAxios('http://localhost:3000', new Logger());
+  try {
+    // handleError é privado e síncrono (nunca retorna, sempre lança) — chamar
+    // direto evita ter que passar pelo round-trip assíncrono de `get`.
+    (service as any).handleError(erro);
+  } catch (ex) {
+    return ex as HttpException;
+  }
+  throw new Error('handleError deveria ter lançado uma HttpException');
+}
+
+function montarComRespostaBinaria(response: {
+  data: Buffer;
+  headers: Record<string, string>;
+}) {
+  mockAxiosInstance.get.mockResolvedValueOnce(response);
+  const service = new HttpServiceAxios('http://localhost:3000', new Logger());
+  return { service };
+}
+
+describe('handleError — corpo de erro binário', () => {
+  // Com `responseType: 'arraybuffer'`, o corpo de erro chega como Buffer.
+  // Sem desembrulhar, o ControllerExceptionsFilter o trata como objeto puro e
+  // ESPALHA: o 409 sai com 81 chaves começando em "0","1","2" e a mensagem
+  // vira {"type":"Buffer","data":[...]}. Medido.
+  const erroBinario = (corpo: Buffer | string, status: number) => ({
+    isAxiosError: true,
+    response: { status, data: corpo },
+  });
+
+  it('Buffer com JSON válido volta a ser objeto, com a mensagem', () => {
+    const corpo = Buffer.from(
+      JSON.stringify({
+        message: 'simulado não está pronto (questões pendentes ou incompletas)',
+        statusCode: 409,
+      }),
+    );
+    const ex = capturarHttpException(erroBinario(corpo, 409));
+    expect(ex.getStatus()).toBe(409);
+    expect(ex.getResponse()).toEqual({
+      message: 'simulado não está pronto (questões pendentes ou incompletas)',
+      statusCode: 409,
+    });
+  });
+
+  it('Buffer com texto que não é JSON vira message, sem lançar', () => {
+    // O ms não é a única coisa que responde: um proxy reverso ou um
+    // balanceador no meio devolve HTML. Um JSON.parse solto lançaria de
+    // DENTRO do tratamento de erro, trocando um 409 legível por um 500 sem
+    // causa aparente.
+    const ex = capturarHttpException(
+      erroBinario(
+        Buffer.from('<html><body>502 Bad Gateway</body></html>'),
+        502,
+      ),
+    );
+    expect(ex.getStatus()).toBe(502);
+    expect((ex.getResponse() as any).message).toContain('502 Bad Gateway');
+  });
+
+  it('Buffer com bytes que não são texto vira mensagem genérica', () => {
+    // Decodificar binário como utf-8 produz U+FFFD. Deixar passar poria
+    // "����" na tela do usuário.
+    const ex = capturarHttpException(
+      erroBinario(Buffer.from([0xff, 0xfe, 0x00, 0x80, 0x81]), 500),
+    );
+    const corpo = ex.getResponse() as any;
+    expect(corpo.message).toBe('erro no serviço de simulados');
+    expect(JSON.stringify(corpo)).not.toContain('�');
+  });
+
+  it('trunca corpo enorme em vez de despejar a página inteira', () => {
+    // O card 06 mostra isto num toast.
+    const ex = capturarHttpException(
+      erroBinario(Buffer.from('x'.repeat(5000)), 502),
+    );
+    expect((ex.getResponse() as any).message.length).toBeLessThanOrEqual(320);
+  });
+
+  it('Buffer vazio vira mensagem genérica', () => {
+    const ex = capturarHttpException(erroBinario(Buffer.alloc(0), 500));
+    expect((ex.getResponse() as any).message).toBe(
+      'erro no serviço de simulados',
+    );
+  });
+
+  it('corpo NÃO binário continua exatamente como hoje', () => {
+    // Regressão: é o caminho de todo o resto da api.
+    const ex = capturarHttpException(
+      erroBinario(
+        { message: 'categoria em uso', simuladosUsando: 3 } as any,
+        409,
+      ),
+    );
+    expect(ex.getResponse()).toEqual({
+      message: 'categoria em uso',
+      simuladosUsando: 3,
+    });
+  });
+
+  it('sem response (timeout, DNS) continua 500 genérico', () => {
+    const ex = capturarHttpException({
+      isAxiosError: true,
+      code: 'ECONNREFUSED',
+    });
+    expect(ex.getStatus()).toBe(500);
+  });
+});
+
+describe('getBinary — headers', () => {
+  it('devolve os headers junto do buffer e do contentType', async () => {
+    const { service } = montarComRespostaBinaria({
+      data: Buffer.from('ZIP'),
+      headers: { 'content-type': 'application/zip', 'x-caderno-avisos': '3' },
+    });
+    const r = await service.getBinary('v1/caderno/abc');
+    expect(r.buffer).toEqual(Buffer.from('ZIP'));
+    expect(r.contentType).toBe('application/zip');
+    expect(r.headers['x-caderno-avisos']).toBe('3');
+  });
+
+  it('normaliza o nome do header para minúsculas', async () => {
+    // ⚠️ MEDIDO: em `AxiosHeaders`, acesso por índice é case-SENSITIVE —
+    // `h['x-caderno-avisos']` devolve undefined quando o header chegou como
+    // `X-Caderno-Avisos`. E header que não passa não dá erro: ele some.
+    const { service } = montarComRespostaBinaria({
+      data: Buffer.from('ZIP'),
+      headers: { 'Content-Type': 'application/zip', 'X-Caderno-Avisos': '7' },
+    });
+    const r = await service.getBinary('v1/caderno/abc');
+    expect(r.headers['x-caderno-avisos']).toBe('7');
+  });
+
+  it('sem o header, a chave simplesmente não existe', async () => {
+    const { service } = montarComRespostaBinaria({
+      data: Buffer.from('ZIP'),
+      headers: { 'content-type': 'application/zip' },
+    });
+    const r = await service.getBinary('v1/caderno/abc');
+    expect(r.headers['x-caderno-avisos']).toBeUndefined();
+  });
+});
+
 describe('HttpServiceAxiosFactory', () => {
   it('should create an HttpServiceAxios instance', () => {
     const factory = new HttpServiceAxiosFactory({} as any);
