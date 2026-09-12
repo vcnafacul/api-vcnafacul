@@ -113,8 +113,10 @@ Registrado em `simulado.module.ts`, ao lado do `CartaoRespostaController`.
 
 - `Content-Disposition: attachment` — **não** `inline`. Zip não se abre no navegador.
 - Nome do arquivo: `caderno-<simuladoId>.zip`.
-- `?draft=true` concatenado na URL do ms. Só a string exata `'true'` repassa — o card 04 já faz essa
-  checagem do lado de lá, e repetir aqui evita `?draft=false` virar rascunho por acidente.
+- `?draft=true` concatenado na URL do ms. **Só a string exata `'true'` emite o literal
+  `?draft=true`**; qualquer outro valor não emite nada. Não é estilo: concatenar o valor cru injeta
+  parâmetro na chamada interna — medido, `draft=true&x=1` vira
+  `v1/caderno/ID?draft=true&x=1`.
 - `X-Caderno-Avisos` copiado da resposta do ms, quando presente.
 
 ### Uma diferença deliberada do cartão: `JwtAuthGuard`
@@ -129,6 +131,48 @@ O card pede 401 para requisição sem JWT. Os outros três endpoints do controll
 contrato, e não é o assunto deste card.
 
 ---
+
+## O `simuladoId` precisa ser validado antes de entrar na URL
+
+Descoberto na revisão desta spec, e medido ponta a ponta.
+
+`getFullURL` concatena strings, e o Express entrega o parâmetro **já decodificado**. Com isso:
+
+```
+GET /mssimulado/caderno/..%2F..%2Fv1%2Fsimulado%2Foutro
+       Express casa como UM segmento (200) e decodifica
+       → simuladoId = '../../v1/simulado/outro'
+       → api chama http://ms-simulado:3000/v1/simulado/outro
+```
+
+Medido, com os quatro valores testados:
+
+| `simuladoId` recebido | URL que a api chama |
+|---|---|
+| `65ecc850a528b39d273e7900` | `…/v1/caderno/65ecc850a528b39d273e7900` |
+| `../../v1/simulado/outro` | **`…/v1/simulado/outro`** |
+| `abc?draft=true` | `…/v1/caderno/abc?draft=true` |
+| `abc#frag` | `…/v1/caderno/abc#frag` |
+
+Quem tem `visualizarProvas` alcança **qualquer rota do ms-simulado**, usando a posição de rede da api
+— inclusive rotas que a api expõe atrás de outras permissões. É travessia de fronteira de privilégio,
+não só uma URL feia.
+
+**A correção é allowlist, não sanitização:** o `simuladoId` é um ObjectId do Mongo. Vinte e quatro
+caracteres hexadecimais, ou `400`.
+
+```ts
+if (!/^[0-9a-f]{24}$/i.test(simuladoId)) throw new BadRequestException(...);
+```
+
+⚠️ **Allowlist e não uma lista de caracteres proibidos.** Tentar remover `..`, `?`, `#` e `%` é a
+forma que sempre deixa um passar — `%252F` sobrevive a uma rodada de decodificação, e a lista nunca
+acaba. O formato do id é fechado e conhecido; usá-lo é mais curto e não tem buraco.
+
+⚠️ **O `baixarCartao` tem o mesmo buraco, hoje, em produção** — mesma concatenação, mesmo
+`getBinary`. Este card não o corrige: mudar o comportamento de um endpoint em produção é decisão
+separada, e um `400` novo onde antes havia `404` é mudança de contrato. **Registrado como observação
+com prioridade**, junto do ticket de escopo de cursinho.
 
 ## Permissão: `visualizarProvas`, sem escopo de cursinho
 
@@ -169,7 +213,17 @@ simulado, liberado.
 - `Content-Disposition: attachment`, com o nome certo
 - `X-Caderno-Avisos` repassado quando o ms manda; ausente quando não manda
 - `?draft=true` chega na URL do ms; `?draft=false` e `?draft=xpto` **não**
+- `draft=true&x=1` não injeta o `x=1` na chamada interna
 - o buffer sai byte-idêntico ao que entrou
+
+### Validação do `simuladoId`
+
+- ObjectId válido passa
+- `../../v1/simulado/outro` → `400`, e **o service não é chamado**
+- `abc?draft=true`, `abc#frag`, `abc/def` → `400`
+- 23 e 25 hex → `400`; maiúsculas → passa
+- a asserção que importa: **nenhuma URL construída pelo service contém `..`, `?`, `#` ou `/` no
+  lugar do id**
 
 ### E2E
 
@@ -189,6 +243,7 @@ simulado, liberado.
 
 - [ ] Todos os testes acima
 - [ ] Zip do proxy byte-idêntico ao do ms
+- [ ] `simuladoId` fora do formato de ObjectId → `400`, sem tocar no ms
 - [ ] 409 chega no client com a mensagem original, legível
 - [ ] Swagger documentado
 - [ ] Suíte do `cartao-resposta` passa sem alteração
@@ -202,6 +257,10 @@ abre e que o 409 de um simulado bloqueado chega legível.
 ⚠️ Exige o `ms-simulado` rodando com a `poc/caderno-overleaf`, e `SIMULADO_URL` apontando para ele.
 
 ## Risco
+
+⚠️ **Este card deixa de ser puramente aditivo.** Além do proxy novo, ele corrige transporte
+compartilhado e fecha uma travessia de privilégio. O `baixarCartao` continua exposto, e isso é
+decisão consciente, registrada — não esquecimento.
 
 **Baixo para o proxy, médio para a factory.** O proxy é padrão já em produção. A factory é
 compartilhada por todos os módulos que falam com o ms — daí a suíte do cartão como rede de segurança,
