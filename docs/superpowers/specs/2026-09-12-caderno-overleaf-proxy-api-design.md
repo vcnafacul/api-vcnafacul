@@ -236,6 +236,21 @@ simulado, liberado.
 | 403 | JWT sem `visualizarProvas` |
 | 409 | **com a mensagem original legível** — é o teste que prova a correção da factory ponta a ponta |
 
+⚠️ **Forjar o axios, não o `CadernoHttpService`.** Mockar o service tiraria a factory inteira do
+caminho, e é exatamente a composição `handleError` → `ControllerExceptionsFilter` que este card
+conserta. Trocando só a instância do axios (`overrideProvider(HttpServiceAxiosFactory)`), o resto da
+corrente é código de produção.
+
+⚠️ **Medido depois de escrita esta spec:** o teste do 409 fica vermelho quando se remove o
+`desembrulharCorpo`, reproduzindo as chaves numéricas ponta a ponta — mas **não** fica vermelho quando
+se remove o `useGlobalFilters` do spec. Para um corpo já desembrulhado em `{ message }`, o handler
+padrão do Nest serializa igual ao filtro.
+
+Ou seja: **quem evita o defeito é o `desembrulharCorpo`, não o filtro.** Registrar o filtro no e2e
+continua certo — sem ele o spec testaria uma serialização diferente da de produção em outros cenários,
+como o corpo com chaves extras (`simuladosUsando`) do 409 de categoria em uso — mas não é ele que
+salva este caso.
+
 ⚠️ Seria o primeiro e2e do módulo de simulado — o cartão só tem unitário. A infra existe (13 specs,
 `overrideProvider` é o padrão da casa).
 

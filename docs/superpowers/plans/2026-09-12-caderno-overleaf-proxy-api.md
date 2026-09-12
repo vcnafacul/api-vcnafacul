@@ -962,13 +962,22 @@ npm run test:local -- caderno
 ⚠️ Precisa de MySQL na 3307. Se nao houver, `npm test` sobe o Docker. **Se nenhum dos dois subir,
 pare e reporte** - nao desative o e2e nem o marque como `skip`.
 
-- [ ] **Step 4: Provar que o e2e do 409 morde**
+- [ ] **Step 4: Provar que o e2e morde (corrigido depois de medir)**
 
-Tire o `app.useGlobalFilters(...)` do e2e e rode so esse teste. Se ele **continuar passando**, o filtro
-nao estava fazendo diferenca e o teste prova menos do que diz - **reporte**. Restaure.
+⚠️ A versão anterior deste passo dizia que remover o `useGlobalFilters` deixaria o teste do 409
+vermelho. **Medido: não deixa.** Para um corpo já desembrulhado em `{ message }`, o handler padrão do
+Nest serializa igual ao filtro. Quem evita o defeito é o `desembrulharCorpo`, não o filtro.
 
-Depois, tire o `ObjectIdPipe` do `@Param` no controller e confirme que o teste do `400` fica vermelho.
-Restaure.
+As duas provas que valem:
+
+1. **Comente a chamada a `desembrulharCorpo` no `handleError`** (na factory) → o teste do 409 tem que
+   ficar vermelho **com as chaves numéricas**, reproduzindo o defeito original ponta a ponta.
+   Restaure.
+2. **Tire o `ObjectIdPipe` do `@Param`** no controller → o teste do `400` fica vermelho. Restaure.
+
+O `useGlobalFilters` **fica** no spec, mesmo não sendo o que salva este caso: sem ele o e2e testaria
+uma serialização diferente da de produção em outros cenários — o 409 de categoria em uso, por
+exemplo, carrega chaves extras (`simuladosUsando`) que só o filtro espalha.
 
 - [ ] **Step 5: Commit**
 
