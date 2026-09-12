@@ -36,11 +36,23 @@ a saída.
 | `DELETE` | `v1/caderno/template/rascunho` | — |
 | `POST` | `v1/caderno/template/rascunho/publicar` | — |
 | `GET` | `v1/caderno/template/versoes` | — |
-| `POST` | `v1/caderno/template/versoes/:n/restaurar` | JSON: `{ criadorId, notas? }` |
+| `POST` | `v1/caderno/template/versoes/:n/restaurar` | JSON: `{ criadorId }` — devolve **void** |
 | `GET` | `v1/caderno/template/teste` | `?versao=N` · `?rascunho=1` — **binário** |
 
 ⚠️ **`criadorId` é campo interno, injetado pela api a partir do JWT.** Não vem do cliente. É o padrão
-já estabelecido em `prova/dtos/create.dto.input.ts:44`, e o ms o exige em dois endpoints.
+já estabelecido em `src/modules/simulado/dtos/prova-create.dto.request.ts:13`, e o ms o exige em dois
+endpoints.
+
+⚠️ **O `restaurar` NÃO aceita `notas`, e isso é decisão.** Medido no ms: ele ignora o campo de
+propósito — quem escreve a nota de um rascunho restaurado é o próprio ms ("Restaurado da versão N").
+Aceitar o campo aqui ofereceria ao coordenador um texto que desaparece sem erro. **A api não aceita o
+que não consegue entregar.**
+
+⚠️ **`restaurar` devolve `void`.** Não espere corpo na resposta.
+
+⚠️ **A rota `/teste` só existe a partir do card 11** (`ms#184`, ainda não mergeado). Os testes mockam o
+ms, então isso não bloqueia nada aqui — mas **este card não pode ir a homologação antes do merge do
+card 11**, senão o `zipDeTeste` bate em 404.
 
 ## O que já foi verificado (não re-verifique)
 
@@ -564,10 +576,12 @@ describe('o criadorId vem do JWT, nunca do cliente', () => {
     expect(http.subirRascunho).toHaveBeenCalledWith(arquivo, 'user-1', 'x');
   });
 
-  it('restaurar usa req.user.id', async () => {
+  it('restaurar usa req.user.id, e NÃO manda notas', async () => {
+    // ⚠️ O ms ignora `notas` no restaurar de propósito. Aceitar o campo aqui
+    // daria ao coordenador um texto que some sem erro.
     const { http, controller } = montar();
-    await controller.restaurar(2, { notas: 'y' } as any, req());
-    expect(http.restaurar).toHaveBeenCalledWith(2, 'user-1', 'y');
+    await controller.restaurar(2, req());
+    expect(http.restaurar).toHaveBeenCalledWith(2, 'user-1');
   });
 
   it('subirRascunho sem arquivo → 400, sem chamar o ms', async () => {
@@ -604,13 +618,13 @@ describe('a auditoria', () => {
 
   it('restaurar grava, com a versão de origem', async () => {
     const { audit, controller } = montar();
-    await controller.restaurar(2, { notas: 'y' } as any, req());
+    await controller.restaurar(2, req());
     expect(audit.create).toHaveBeenCalledWith(
       expect.objectContaining({
         entityType: 'caderno-template',
         entityId: '2',
         updatedBy: 'user-1',
-        changes: { acao: 'restaurar', versao: 2, notas: 'y' },
+        changes: { acao: 'restaurar', versao: 2 },
       }),
     );
   });
