@@ -175,6 +175,44 @@ export class HttpServiceAxios {
     );
   }
 
+  /**
+   * Espelho do `getBinary` para requisição com corpo.
+   *
+   * Existe porque o caderno passou a mandar os logos no corpo (card 13): o
+   * `post` genérico devolve `response.data` já parseado, o que corrompe zip.
+   *
+   * ⚠️ Headers em minúsculas SEMPRE, pelo mesmo motivo do `getBinary`: em
+   * `AxiosHeaders` o acesso por índice é case-sensitive, e um header que não
+   * passa não dá erro — ele some, e ninguém descobre.
+   */
+  public async postBinary(
+    url: string,
+    body?: any,
+    headers?: Record<string, string>,
+  ): Promise<{
+    buffer: Buffer;
+    contentType: string;
+    headers: Record<string, string>;
+  }> {
+    const fullURL = this.getFullURL(url);
+    return this.requestWrapper(
+      this.axiosInstance
+        .post(fullURL, body, { responseType: 'arraybuffer', headers })
+        .then((response) => ({
+          buffer: Buffer.from(response.data),
+          contentType:
+            (response.headers['content-type'] as string) ??
+            'application/octet-stream',
+          headers: Object.fromEntries(
+            Object.entries({ ...response.headers }).map(([k, v]) => [
+              k.toLowerCase(),
+              String(v),
+            ]),
+          ),
+        })),
+    );
+  }
+
   // Método para debug - mostra a baseURL configurada
   public getBaseURL(): string {
     return this.baseURL;
