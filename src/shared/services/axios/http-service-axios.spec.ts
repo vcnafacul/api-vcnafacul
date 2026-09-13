@@ -186,6 +186,15 @@ function montarComRespostaBinaria(response: {
   return { service };
 }
 
+function montarComRespostaBinariaParaPost(response: {
+  data: Buffer;
+  headers: Record<string, string>;
+}) {
+  mockAxiosInstance.post.mockResolvedValueOnce(response);
+  const service = new HttpServiceAxios('http://localhost:3000', new Logger());
+  return { service };
+}
+
 describe('handleError — corpo de erro binário', () => {
   // Com `responseType: 'arraybuffer'`, o corpo de erro chega como Buffer.
   // Sem desembrulhar, o ControllerExceptionsFilter o trata como objeto puro e
@@ -306,6 +315,63 @@ describe('getBinary — headers', () => {
     });
     const r = await service.getBinary('v1/caderno/abc');
     expect(r.headers['x-caderno-avisos']).toBeUndefined();
+  });
+});
+
+describe('postBinary', () => {
+  it('busca arraybuffer com corpo e devolve {buffer, contentType, headers}', async () => {
+    const { service } = montarComRespostaBinariaParaPost({
+      data: Buffer.from([0x50, 0x4b, 0x03, 0x04]),
+      headers: { 'content-type': 'application/zip' },
+    });
+
+    const r = await service.postBinary('v1/caderno/abc', { logos: {} });
+
+    expect(r.buffer).toEqual(Buffer.from([0x50, 0x4b, 0x03, 0x04]));
+    expect(r.contentType).toBe('application/zip');
+    expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+      'http://localhost:3000/v1/caderno/abc',
+      { logos: {} },
+      { responseType: 'arraybuffer', headers: undefined },
+    );
+  });
+
+  it('normaliza o nome do header para minúsculas', async () => {
+    const { service } = montarComRespostaBinariaParaPost({
+      data: Buffer.from([0x50, 0x4b, 0x03, 0x04]),
+      headers: { 'X-Caderno-Avisos': '2' },
+    });
+
+    const r = await service.postBinary('v1/caderno/abc', { logos: {} });
+
+    expect(r.headers['x-caderno-avisos']).toBe('2');
+  });
+
+  it('manda o corpo e pede arraybuffer', async () => {
+    const { service } = montarComRespostaBinariaParaPost({
+      data: Buffer.from([0x50, 0x4b, 0x03, 0x04]),
+      headers: { 'content-type': 'application/zip' },
+    });
+    const corpo = { logos: { vnf: 'AAA=' } };
+
+    await service.postBinary('v1/caderno/abc', corpo);
+
+    expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+      'http://localhost:3000/v1/caderno/abc',
+      corpo,
+      { responseType: 'arraybuffer', headers: undefined },
+    );
+  });
+
+  it('sem content-type, cai no octet-stream', async () => {
+    const { service } = montarComRespostaBinariaParaPost({
+      data: Buffer.from([0x50]),
+      headers: {},
+    });
+
+    const r = await service.postBinary('v1/caderno/abc', {});
+
+    expect(r.contentType).toBe('application/octet-stream');
   });
 });
 

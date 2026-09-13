@@ -37,7 +37,7 @@ describe('Caderno (e2e)', () => {
   // a composição `handleError` (desembrulharCorpo) → `ControllerExceptionsFilter`
   // que este card conserta. Trocando só a instância do axios por dentro da
   // `HttpServiceAxios` real, o resto da corrente roda com código de produção.
-  const axiosForjado = { get: jest.fn() };
+  const axiosForjado = { post: jest.fn() };
   const servicoReal = new HttpServiceAxios('http://ms-forjado', new Logger());
   (servicoReal as any).axiosInstance = axiosForjado;
 
@@ -141,16 +141,16 @@ describe('Caderno (e2e)', () => {
   });
 
   beforeEach(() => {
-    axiosForjado.get.mockReset();
+    axiosForjado.post.mockReset();
   });
 
   it('200: devolve o zip com os headers', async () => {
-    axiosForjado.get.mockResolvedValue({
+    axiosForjado.post.mockResolvedValue({
       data: Buffer.from('PKfake-zip'),
       headers: { 'content-type': 'application/zip', 'X-Caderno-Avisos': '3' },
     });
     // ⚠️ `X-Caderno-Avisos` em maiúsculas de propósito: é a forma como um
-    // servidor real manda, e prova a normalização (lowercase) do `getBinary`.
+    // servidor real manda, e prova a normalização (lowercase) do `postBinary`.
 
     const r = await request(app.getHttpServer())
       .get(`/mssimulado/caderno/${ID}`)
@@ -174,7 +174,7 @@ describe('Caderno (e2e)', () => {
   });
 
   it('200: repassa o ?draft=true', async () => {
-    axiosForjado.get.mockResolvedValue({
+    axiosForjado.post.mockResolvedValue({
       data: Buffer.from('ZIP'),
       headers: { 'content-type': 'application/zip' },
     });
@@ -184,7 +184,7 @@ describe('Caderno (e2e)', () => {
 
     // Asserta na URL que o axios recebeu, não em argumentos de um service
     // mockado: é a prova de que o parâmetro chegou até a chamada real.
-    expect(axiosForjado.get.mock.calls[0][0]).toContain(
+    expect(axiosForjado.post.mock.calls[0][0]).toContain(
       `v1/caderno/${ID}?draft=true`,
     );
   });
@@ -211,10 +211,10 @@ describe('Caderno (e2e)', () => {
     // {"type":"Buffer","data":[...]}.
     //
     // Rejeita como o axios rejeita de verdade: corpo BINÁRIO, porque a
-    // requisição foi feita com `responseType: 'arraybuffer'` (getBinary). É
+    // requisição foi feita com `responseType: 'arraybuffer'` (postBinary). É
     // o cenário que produzia as 81 chaves numéricas no corpo, e é
     // `desembrulharCorpo` (na factory) que o desfaz antes do filtro.
-    axiosForjado.get.mockRejectedValue({
+    axiosForjado.post.mockRejectedValue({
       isAxiosError: true,
       response: {
         status: 409,
@@ -259,6 +259,6 @@ describe('Caderno (e2e)', () => {
     expect(r.status).toBe(404);
     // O coracao do teste, e ele nao mudou. Mais forte do que "um service nao
     // foi chamado": prova que nenhuma requisicao saiu para o ms.
-    expect(axiosForjado.get).not.toHaveBeenCalled();
+    expect(axiosForjado.post).not.toHaveBeenCalled();
   });
 });

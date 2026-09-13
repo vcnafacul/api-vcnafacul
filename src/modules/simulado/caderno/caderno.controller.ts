@@ -3,22 +3,28 @@ import {
   Get,
   Param,
   Query,
+  Req,
   Res,
   SetMetadata,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { Permissions } from 'src/modules/role/permissions/permissions';
+import { User } from 'src/modules/user/user.entity';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { ObjectIdPipe } from 'src/shared/pipes/object-id.pipe';
 import { CadernoHttpService } from './caderno-http.service';
+import { CadernoLogosService } from './caderno-logos.service';
 
 @ApiTags('Simulado - Caderno')
 @Controller('mssimulado/caderno')
 export class CadernoController {
-  constructor(private readonly service: CadernoHttpService) {}
+  constructor(
+    private readonly http: CadernoHttpService,
+    private readonly logos: CadernoLogosService,
+  ) {}
 
   /**
    * ⚠️ **O param e RESTRITO a 24 hex no proprio path, e e ISSO que impede a
@@ -55,11 +61,17 @@ export class CadernoController {
   async baixar(
     @Param('simuladoId', ObjectIdPipe) simuladoId: string,
     @Query('draft') draft: string | undefined,
+    @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    const { buffer, contentType, avisos } = await this.service.baixar(
+    // ⚠️ O cursinho sai de quem PEDIU, não do simulado: o mesmo simulado
+    // baixado por dois colaboradores sai com logos diferentes.
+    const logos = await this.logos.resolver((req.user as User).id);
+
+    const { buffer, contentType, avisos } = await this.http.baixar(
       simuladoId,
       draft === 'true',
+      logos,
     );
 
     res.setHeader('Content-Type', contentType || 'application/zip');

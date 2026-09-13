@@ -19,7 +19,11 @@ import { CollaboratorService } from './collaborator.service';
     RoleModule,
     BlobModule,
     EnvModule,
-    SimuladoModule,
+    // ⚠️ `forwardRef`: o `SimuladoModule` passou a importar o
+    // `PartnerPrepCourseModule` (que importa este módulo), então esta aresta
+    // fecha um ciclo. Sem o `forwardRef` o binding do `SimuladoModule` ainda é
+    // `undefined` quando o decorator daqui roda.
+    forwardRef(() => SimuladoModule),
     GeoModule,
     forwardRef(() => PartnerPrepCourseModule),
   ],
