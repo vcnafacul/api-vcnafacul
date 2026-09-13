@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { CadernoLogosService } from './caderno-logos.service';
 
 // sharp usa `export =` e a resolução de TIPOS diverge entre ambientes (ver o
@@ -92,6 +92,20 @@ describe('CadernoLogosService — caminho feliz', () => {
     expect(blobService.getFile).toHaveBeenCalledWith('logo.png', 'bucket-home');
   });
 
+  it('cacheia o logo do VNF na chave e no TTL combinados', async () => {
+    const { service, cache } = await comOsDois();
+
+    await service.resolver(USER_ID);
+
+    // Chave errada serve outro objeto cacheado; TTL omitido cai no padrão do
+    // `CacheService`. Os dois são contrato, não detalhe.
+    expect(cache.wrap).toHaveBeenCalledWith(
+      'caderno:logo-vnf',
+      expect.any(Function),
+      60 * 60 * 24 * 1000,
+    );
+  });
+
   it('usa o cursinho do usuário que pediu', async () => {
     const { service, partnerService } = await comOsDois();
 
@@ -111,7 +125,6 @@ describe('CadernoLogosService — conversão para PNG', () => {
     const jpeg = await jpegReal();
     const { service } = montar({
       partnerService: {
-        getByUserId: jest.fn().mockResolvedValue({ id: PARTNER_ID }),
         getLogo: jest.fn().mockResolvedValue({
           buffer: jpeg.toString('base64'),
           contentType: 'image/jpeg',
@@ -150,7 +163,6 @@ describe('CadernoLogosService — falha nunca derruba o download', () => {
   it('cursinho sem logo cadastrado vira ausência', async () => {
     const { service } = montar({
       partnerService: {
-        getByUserId: jest.fn().mockResolvedValue({ id: PARTNER_ID }),
         getLogo: jest.fn().mockResolvedValue({ buffer: null }),
       },
     });
@@ -227,5 +239,72 @@ describe('CadernoLogosService — o próprio catch não pode lançar', () => {
     });
 
     await expect(service.resolver(USER_ID)).resolves.toEqual({});
+  });
+});
+
+describe('CadernoLogosService — nível de log separa rotina de incidente', () => {
+  let erro: jest.SpyInstance;
+  let info: jest.SpyInstance;
+
+  beforeEach(() => {
+    erro = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+    info = jest.spyOn(Logger.prototype, 'log').mockImplementation();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('usuário sem cursinho não polui o log de erro', async () => {
+    const { service } = montar({
+      partnerService: {
+        getByUserId: jest
+          .fn()
+          .mockRejectedValue(
+            new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND),
+          ),
+      },
+    });
+
+    await service.resolver(USER_ID);
+
+    expect(erro).not.toHaveBeenCalled();
+    expect(info).toHaveBeenCalledWith(
+      expect.stringContaining('logo cursinho não resolvido'),
+    );
+  });
+
+  it('bucket fora continua sendo erro', async () => {
+    const { service } = montar({
+      blobService: { getFile: jest.fn().mockRejectedValue(new Error('S3')) },
+    });
+
+    await service.resolver(USER_ID);
+
+    expect(erro).toHaveBeenCalledWith(
+      expect.stringContaining('logo vnf não resolvido'),
+    );
+  });
+
+  // ⚠️ O `s3Service.getFile` traduz o `NoSuchKey` do S3 para o MESMO
+  // `HttpException(NOT_FOUND)` que o `getByUserId` lança. Se a expectativa
+  // fosse pelo status e não pelo ramo, o `logo.png` fora do bucket — erro de
+  // configuração — seria rebaixado para `log` e ninguém veria.
+  it('logo do VNF ausente no bucket é erro, apesar de também ser 404', async () => {
+    const { service } = montar({
+      blobService: {
+        getFile: jest
+          .fn()
+          .mockRejectedValue(
+            new HttpException('Arquivo não encontrado', HttpStatus.NOT_FOUND),
+          ),
+      },
+    });
+
+    await service.resolver(USER_ID);
+
+    expect(erro).toHaveBeenCalledWith(
+      expect.stringContaining('logo vnf não resolvido'),
+    );
   });
 });

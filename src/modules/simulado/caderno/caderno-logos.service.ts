@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
 import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
@@ -14,8 +14,24 @@ const sharp = require('sharp');
 /** A chave fixa do logo do Você na Facul dentro do `BUCKET_HOME`. */
 const CHAVE_LOGO_VNF = 'logo.png';
 
-/** Um dia, igual ao cache que o `PartnerPrepCourseService.getLogo` já usa. */
-const TTL = 60 * 60 * 24 * 1000;
+/**
+ * Um dia, igual ao cache que o `PartnerPrepCourseService.getLogo` já usa.
+ * Governa só o logo do VNF: o do cursinho é cacheado lá dentro do `getLogo`.
+ */
+const TTL_LOGO_VNF = 60 * 60 * 24 * 1000;
+
+/**
+ * O 404 do `getByUserId` é o estado NORMAL de quem não é de cursinho —
+ * `visualizarProvas` não exige vínculo (ver o docblock da classe). Não há
+ * cadastro a corrigir, então isso não é incidente.
+ *
+ * ⚠️ Só vale para o ramo do cursinho. O `s3Service.getFile` traduz o
+ * `NoSuchKey` do S3 para o MESMO `HttpException(NOT_FOUND)`, e ali o 404
+ * significa `logo.png` fora do bucket — erro de configuração, que precisa
+ * gritar. Por isso a expectativa é por ramo, não pelo status.
+ */
+const ehUsuarioSemCursinho = (erro: unknown) =>
+  erro instanceof HttpException && erro.getStatus() === HttpStatus.NOT_FOUND;
 
 export interface LogosDoCaderno {
   vnf?: Buffer;
@@ -48,7 +64,11 @@ export class CadernoLogosService {
   async resolver(userId: string): Promise<LogosDoCaderno> {
     const [vnf, cursinho] = await Promise.all([
       this.semQuebrar('vnf', () => this.buscarVnf()),
-      this.semQuebrar('cursinho', () => this.buscarCursinho(userId)),
+      this.semQuebrar(
+        'cursinho',
+        () => this.buscarCursinho(userId),
+        ehUsuarioSemCursinho,
+      ),
     ]);
 
     const logos: LogosDoCaderno = {};
@@ -65,23 +85,31 @@ export class CadernoLogosService {
   private async semQuebrar(
     rotulo: string,
     buscar: () => Promise<Buffer | undefined>,
+    ehEsperado: (erro: unknown) => boolean = () => false,
   ): Promise<Buffer | undefined> {
     try {
       return await buscar();
     } catch (erro) {
-      // `logger.error`, não `warn`: logo ausente é sempre algo a corrigir —
-      // configuração no caso do VNF, cadastro no caso do cursinho.
       // `?.` e o fallback: um `Promise.reject()` sem argumento rejeita com
       // `undefined`, e ler `.message` dele lançaria de dentro do próprio
       // `catch` — a exceção escaparia justamente por aqui.
-      this.logger.error(
-        `logo ${rotulo} não resolvido: ${(erro as Error)?.message ?? erro}`,
-      );
+      const msg = `logo ${rotulo} não resolvido: ${(erro as Error)?.message ?? erro}`;
+      // Falha esperada não vai para `error`: se o 404 de quem não tem cursinho
+      // saísse no mesmo nível e formato do bucket fora, o incidente real
+      // ficaria enterrado no meio do ruído. O que sobra em `error` é o que
+      // merece investigação.
+      if (ehEsperado(erro)) this.logger.log(msg);
+      else this.logger.error(msg);
       return undefined;
     }
   }
 
   private async buscarVnf(): Promise<Buffer | undefined> {
+    // ⚠️ O que entra no cache é o base64, e a conversão vem DEPOIS de propósito.
+    // Cachear o `Buffer` já convertido parece a otimização óbvia e seria um bug:
+    // o cache é Keyv/Redis, então o `Buffer` volta serializado como
+    // `{"type":"Buffer","data":[…]}` e o `sharp` receberia lixo. O round-trip do
+    // `sharp` num PNG custa ~0,5 ms — irrelevante perto de gerar o ZIP LaTeX.
     const arquivo = await this.cache.wrap<{
       buffer: string;
       contentType: string;
@@ -92,7 +120,7 @@ export class CadernoLogosService {
           CHAVE_LOGO_VNF,
           this.envService.get('BUCKET_HOME'),
         ),
-      TTL,
+      TTL_LOGO_VNF,
     );
     return await this.paraPng(arquivo?.buffer);
   }
