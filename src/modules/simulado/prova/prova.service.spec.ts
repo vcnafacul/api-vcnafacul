@@ -104,6 +104,49 @@ describe('ProvaService.getAllByCursinho', () => {
   });
 });
 
+describe('ProvaService.getProvasAll', () => {
+  function makeService() {
+    const mockAxios = { get: jest.fn().mockResolvedValue({ data: [] }) };
+    const mockFactory = { create: jest.fn().mockReturnValue(mockAxios) };
+    const mockEnv = { get: jest.fn().mockReturnValue('http://ms') };
+    const service = new ProvaService(
+      mockFactory as any,
+      mockEnv as any,
+      {} as any,
+      {} as any,
+    );
+    return { service, mockAxios };
+  }
+
+  it('repassa page/limit no querystring', async () => {
+    const { service, mockAxios } = makeService();
+    await service.getProvasAll('2', '10');
+    expect(mockAxios.get).toHaveBeenCalledWith('v1/prova?page=2&limit=10');
+  });
+
+  it('sem page/limit → `v1/prova` CRU, sem querystring', async () => {
+    // ⚠️ O coracao do conserto. Outros chamadores chamam sem parametro e
+    // esperam o default do ms (limit=40). Mandar `page=undefined` viraria a
+    // STRING "undefined" na URL e quebraria o ms em silencio -- o `if (page)`
+    // no service existe so para isso.
+    const { service, mockAxios } = makeService();
+    await service.getProvasAll();
+    expect(mockAxios.get).toHaveBeenCalledWith('v1/prova');
+  });
+
+  it('so page → so page no querystring', async () => {
+    const { service, mockAxios } = makeService();
+    await service.getProvasAll('3');
+    expect(mockAxios.get).toHaveBeenCalledWith('v1/prova?page=3');
+  });
+
+  it('so limit → so limit no querystring', async () => {
+    const { service, mockAxios } = makeService();
+    await service.getProvasAll(undefined, '25');
+    expect(mockAxios.get).toHaveBeenCalledWith('v1/prova?limit=25');
+  });
+});
+
 describe('ProvaService.createProva — cursinhoId opcional', () => {
   function makeService() {
     const mockAxios = { post: jest.fn().mockResolvedValue({ _id: 'p1' }) };
