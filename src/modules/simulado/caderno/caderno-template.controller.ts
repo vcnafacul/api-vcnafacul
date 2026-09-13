@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   ParseIntPipe,
   Post,
@@ -135,6 +136,12 @@ export class CadernoTemplateController {
    * interno.
    */
   @Post('rascunho')
+  // ⚠️ 200, nao o 201 padrao do Nest. O endpoint nao cria recurso: devolve um
+  // RELATORIO de lint, e o ms responde 200 mesmo com `erros` preenchido, de
+  // proposito, para o cliente nao descartar o corpo (card 10). Deixar a api em
+  // 201 quebraria o proxy 1:1 e obrigaria o card 13 a conhecer dois codigos
+  // para a mesma coisa.
+  @HttpCode(200)
   @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -147,7 +154,7 @@ export class CadernoTemplateController {
       },
     },
   })
-  @ApiResponse({ status: 201, description: 'rascunho criado' })
+  @ApiResponse({ status: 200, description: 'rascunho criado' })
   @ApiResponse({ status: 400, description: 'zip ausente ou inválido' })
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)

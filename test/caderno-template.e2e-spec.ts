@@ -249,7 +249,7 @@ describe('Caderno Template (e2e)', () => {
     expect(Object.keys(r.body).filter((k) => /^\d+$/.test(k))).toEqual([]);
   });
 
-  it('POST /rascunho com lint sujo: { aceitos, ignorados, erros, avisos } íntegro', async () => {
+  it('200 do POST /rascunho com lint sujo: { aceitos, ignorados, erros, avisos } íntegro', async () => {
     // Lint reprovado NAO e erro de upload: o rascunho foi criado e o relatorio
     // do lint volta no corpo de sucesso. E o que a tela do card 13 mostra
     // antes de o coordenador decidir publicar.
@@ -270,7 +270,10 @@ describe('Caderno Template (e2e)', () => {
       .field('notas', 'primeira versao do Overleaf')
       .attach('arquivo', zip, 'template.zip');
 
-    expect(r.status).toBe(201);
+    // ⚠️ 200, nao 201: o ms responde 200 de proposito (o endpoint devolve um
+    // relatorio, nao cria recurso) e a api e proxy 1:1. Um 201 aqui obrigaria
+    // o card 13 a conhecer dois codigos para a mesma coisa.
+    expect(r.status).toBe(200);
     expect(r.body).toEqual(relatorio);
 
     // O multipart reenviado ao ms: o zip tem que chegar como ARQUIVO. Um
