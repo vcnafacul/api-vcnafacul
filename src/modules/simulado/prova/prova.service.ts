@@ -76,8 +76,27 @@ export class ProvaService {
     return await this.axios.get(`v1/prova/${id}`);
   }
 
-  public async getProvasAll() {
-    return await this.axios.get(`v1/prova`);
+  /**
+   * ⚠️ `page`/`limit` sao `string | undefined` de proposito, no MESMO molde do
+   * `getAllByCursinho` logo abaixo. Eles vem crus do querystring; o
+   * `if (page)` garante que o ausente fique **ausente** na URL, em vez de
+   * virar a string "undefined" -- o ms leria isso como um limit invalido e
+   * falharia em silencio.
+   *
+   * ⚠️ **Nao trocar por `@Query() query: GetAllDtoInput`.** MEDIDO: com
+   * `transform: true`, o ValidationPipe instancia o DTO e os inicializadores
+   * de classe entram sempre -- sem querystring o handler recebe
+   * `{ page: 1, limit: 100 }`, nunca `undefined`. Isso (a) tornaria
+   * impossivel repassar `v1/prova` cru e (b) trocaria o default efetivo de
+   * 40 (do ms) por 100 (da api) para todo chamador que hoje chama sem
+   * parametro. Ha teste para o caso "sem query" exatamente por isso.
+   */
+  public async getProvasAll(page?: string, limit?: string) {
+    const params = new URLSearchParams();
+    if (page) params.set('page', page);
+    if (limit) params.set('limit', limit);
+    const qs = params.toString();
+    return await this.axios.get(`v1/prova${qs ? `?${qs}` : ''}`);
   }
 
   public async getAllByCursinho(
