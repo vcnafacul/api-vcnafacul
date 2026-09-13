@@ -1,4 +1,10 @@
-import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
 import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
@@ -55,6 +61,7 @@ export class CadernoLogosService {
   private readonly logger = new Logger(CadernoLogosService.name);
 
   constructor(
+    @Inject('BlobService')
     private readonly blobService: BlobService,
     private readonly partnerPrepCourseService: PartnerPrepCourseService,
     private readonly envService: EnvService,
