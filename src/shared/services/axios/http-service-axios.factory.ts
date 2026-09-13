@@ -1,6 +1,6 @@
 import { HttpService } from '@nestjs/axios';
 import { HttpException, Injectable, Logger } from '@nestjs/common';
-import axios, { AxiosError, AxiosInstance } from 'axios';
+import axios, { AxiosError, AxiosInstance, AxiosResponse } from 'axios';
 
 @Injectable()
 export class HttpServiceAxiosFactory {
@@ -47,6 +47,35 @@ function desembrulharCorpo(data: unknown): unknown {
       ? { message: texto.slice(0, LIMITE_MENSAGEM) }
       : { message: 'erro no serviço de simulados' };
   }
+}
+
+/**
+ * A forma de toda resposta binária. Uma cópia só — as duas regras abaixo são
+ * invisíveis quando divergem.
+ *
+ * ⚠️ Minúsculas SEMPRE. Em `AxiosHeaders` o acesso por índice é case-sensitive:
+ * `h['x-caderno-avisos']` devolve `undefined` se o header chegou como
+ * `X-Caderno-Avisos`. E header que não passa não dá erro — ele some.
+ */
+interface RespostaBinaria {
+  buffer: Buffer;
+  contentType: string;
+  headers: Record<string, string>;
+}
+
+function moldarRespostaBinaria(response: AxiosResponse): RespostaBinaria {
+  return {
+    buffer: Buffer.from(response.data),
+    contentType:
+      (response.headers['content-type'] as string) ??
+      'application/octet-stream',
+    headers: Object.fromEntries(
+      Object.entries({ ...response.headers }).map(([k, v]) => [
+        k.toLowerCase(),
+        String(v),
+      ]),
+    ),
+  };
 }
 
 export class HttpServiceAxios {
@@ -147,31 +176,12 @@ export class HttpServiceAxios {
   public async getBinary(
     url: string,
     headers?: Record<string, string>,
-  ): Promise<{
-    buffer: Buffer;
-    contentType: string;
-    headers: Record<string, string>;
-  }> {
+  ): Promise<RespostaBinaria> {
     const fullURL = this.getFullURL(url);
     return this.requestWrapper(
       this.axiosInstance
         .get(fullURL, { responseType: 'arraybuffer', headers })
-        .then((response) => ({
-          buffer: Buffer.from(response.data),
-          contentType:
-            (response.headers['content-type'] as string) ??
-            'application/octet-stream',
-          // ⚠️ Minúsculas SEMPRE. Em `AxiosHeaders` o acesso por índice é
-          // case-sensitive: `h['x-caderno-avisos']` devolve `undefined` se o
-          // header chegou como `X-Caderno-Avisos`. E header que não passa não
-          // dá erro — ele some, e ninguém descobre.
-          headers: Object.fromEntries(
-            Object.entries({ ...response.headers }).map(([k, v]) => [
-              k.toLowerCase(),
-              String(v),
-            ]),
-          ),
-        })),
+        .then(moldarRespostaBinaria),
     );
   }
 
@@ -180,36 +190,17 @@ export class HttpServiceAxios {
    *
    * Existe porque o caderno passou a mandar os logos no corpo (card 13): o
    * `post` genérico devolve `response.data` já parseado, o que corrompe zip.
-   *
-   * ⚠️ Headers em minúsculas SEMPRE, pelo mesmo motivo do `getBinary`: em
-   * `AxiosHeaders` o acesso por índice é case-sensitive, e um header que não
-   * passa não dá erro — ele some, e ninguém descobre.
    */
   public async postBinary(
     url: string,
-    body?: any,
+    body?: unknown,
     headers?: Record<string, string>,
-  ): Promise<{
-    buffer: Buffer;
-    contentType: string;
-    headers: Record<string, string>;
-  }> {
+  ): Promise<RespostaBinaria> {
     const fullURL = this.getFullURL(url);
     return this.requestWrapper(
       this.axiosInstance
         .post(fullURL, body, { responseType: 'arraybuffer', headers })
-        .then((response) => ({
-          buffer: Buffer.from(response.data),
-          contentType:
-            (response.headers['content-type'] as string) ??
-            'application/octet-stream',
-          headers: Object.fromEntries(
-            Object.entries({ ...response.headers }).map(([k, v]) => [
-              k.toLowerCase(),
-              String(v),
-            ]),
-          ),
-        })),
+        .then(moldarRespostaBinaria),
     );
   }
 
