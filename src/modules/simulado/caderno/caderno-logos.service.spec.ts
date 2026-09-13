@@ -195,16 +195,25 @@ describe('CadernoLogosService — falha nunca derruba o download', () => {
     await expect(service.resolver(USER_ID)).resolves.toEqual({});
   });
 
-  it('uma falha não impede a outra busca de acontecer', async () => {
-    const { service, blobService } = montar({
+  it('uma falha não impede a outra de entregar o resultado', async () => {
+    const b64 = (await pngReal()).toString('base64');
+    const { service } = montar({
+      blobService: {
+        getFile: jest.fn().mockResolvedValue({ buffer: b64 }),
+      },
       partnerService: {
         getByUserId: jest.fn().mockRejectedValue(new Error('db')),
       },
     });
 
-    await service.resolver(USER_ID);
+    const logos = await service.resolver(USER_ID);
 
-    expect(blobService.getFile).toHaveBeenCalled();
+    // ⚠️ O que prende a guarda POR RAMO: se o `semQuebrar` envolvesse o
+    // `Promise.all` inteiro, a falha do cursinho levaria junto o vnf já
+    // resolvido. Aferir que o `getFile` foi chamado não pega isso — o
+    // `Promise.all` dispara os dois ramos de qualquer jeito.
+    expect(logos.vnf).toBeInstanceOf(Buffer);
+    expect(logos.cursinho).toBeUndefined();
   });
 });
 
