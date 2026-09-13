@@ -52,11 +52,16 @@ export class CadernoHttpService {
     // ⚠️ O base64 é feito aqui, não no `CadernoLogosService`: quem fala HTTP é
     // quem codifica para HTTP. E a chave é OMITIDA quando não há logo — o
     // outro lado tolera `null`, mas o contrato é a ausência.
+    //
+    // ⚠️ Itera a LISTA LITERAL de chaves, não o objeto recebido: assim uma
+    // chave extra que aparecesse em `logos` não tem como vazar para o fio, e
+    // isso vale em runtime, não só no compilador. É a mesma forma do outro
+    // lado do hop — o `decodificarLogos` do ms-simulado percorre
+    // `Object.keys(NOMES_DOS_LOGOS)` em vez do corpo recebido, pelo mesmo
+    // motivo. As duas pontas simétricas.
     const corpo: CorpoDoCaderno = { logos: {} };
-    for (const [chave, buffer] of Object.entries(logos) as [
-      keyof LogosDoCaderno,
-      Buffer | undefined,
-    ][]) {
+    for (const chave of ['vnf', 'cursinho'] as const) {
+      const buffer = logos[chave];
       if (buffer?.length) corpo.logos[chave] = buffer.toString('base64');
     }
 
