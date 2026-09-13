@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   SetMetadata,
   UploadedFiles,
@@ -36,8 +37,11 @@ export class ProvaController {
   })
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.visualizarProvas)
-  public async getProvasAll() {
-    return await this.provaService.getProvasAll();
+  public async getProvasAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return await this.provaService.getProvasAll(page, limit);
   }
 
   @Get('missing/:id')
