@@ -71,6 +71,20 @@ export class QuestaoController {
     return await this.questaoService.questoesInfo();
   }
 
+  // ⚠️ `summary` fica ANTES do `@Get(':id')`, e a ordem é significativa: no
+  // Express a primeira rota que casa vence, então com o `:id` em cima
+  // `GET /mssimulado/questoes/summary` caía no `getById()` com `id =
+  // "summary"` e o proxy repassava isso ao ms como id de questão. O endpoint
+  // existe e funciona no ms — inalcançável era só esta camada. O client o
+  // chama na home pública, pelo `impactStats.ts`.
+  //
+  // Guardado por `questao-rotas.controller.spec.ts`, que monta um app de
+  // verdade: chamar o método direto nunca alcança a colisão.
+  @Get('summary')
+  async getSummary() {
+    return await this.questaoService.getSummary();
+  }
+
   // getbyId
   @Get(':id')
   @ApiBearerAuth()
@@ -186,7 +200,11 @@ export class QuestaoController {
     @Body() body: { provaId: string; numero: number },
     @Req() req: Request,
   ) {
-    return await this.questaoService.adicionarEmProva(id, body, req.user as User);
+    return await this.questaoService.adicionarEmProva(
+      id,
+      body,
+      req.user as User,
+    );
   }
 
   @Delete(':id/provas/:provaId')
@@ -202,7 +220,11 @@ export class QuestaoController {
     @Param('provaId') provaId: string,
     @Req() req: Request,
   ) {
-    return await this.questaoService.removerDeProva(id, provaId, req.user as User);
+    return await this.questaoService.removerDeProva(
+      id,
+      provaId,
+      req.user as User,
+    );
   }
 
   @Patch(':id/prova-base')
@@ -218,7 +240,11 @@ export class QuestaoController {
     @Body() body: { provaId: string },
     @Req() req: Request,
   ) {
-    return await this.questaoService.definirProvaBase(id, body, req.user as User);
+    return await this.questaoService.definirProvaBase(
+      id,
+      body,
+      req.user as User,
+    );
   }
 
   @Patch(':id/:status')
@@ -358,10 +384,5 @@ export class QuestaoController {
   @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
   public async history(@Param('id') id: string) {
     return await this.questaoService.getHistory(id);
-  }
-
-  @Get('summary')
-  async getSummary() {
-    return await this.questaoService.getSummary();
   }
 }
