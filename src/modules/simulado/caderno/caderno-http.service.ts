@@ -6,6 +6,18 @@ import {
 } from 'src/shared/services/axios/http-service-axios.factory';
 import { LogosDoCaderno } from './caderno-logos.service';
 
+/**
+ * O corpo do POST interno, espelhando o `LogosDtoInput` do ms-simulado.
+ *
+ * ⚠️ As chaves vêm de `keyof LogosDoCaderno` de propósito: um literal solto
+ * (`Record<string, string>`) deixaria passar chave errada em silêncio, e nada
+ * ligaria este formato de fio ao tipo que o origina. Assim, mexer em
+ * `LogosDoCaderno` não muda o contrato HTTP sem diff visível aqui.
+ */
+interface CorpoDoCaderno {
+  logos: Partial<Record<keyof LogosDoCaderno, string>>;
+}
+
 @Injectable()
 export class CadernoHttpService {
   private readonly axios: HttpServiceAxios;
@@ -40,8 +52,11 @@ export class CadernoHttpService {
     // ⚠️ O base64 é feito aqui, não no `CadernoLogosService`: quem fala HTTP é
     // quem codifica para HTTP. E a chave é OMITIDA quando não há logo — o
     // outro lado tolera `null`, mas o contrato é a ausência.
-    const corpo = { logos: {} as Record<string, string> };
-    for (const [chave, buffer] of Object.entries(logos)) {
+    const corpo: CorpoDoCaderno = { logos: {} };
+    for (const [chave, buffer] of Object.entries(logos) as [
+      keyof LogosDoCaderno,
+      Buffer | undefined,
+    ][]) {
       if (buffer?.length) corpo.logos[chave] = buffer.toString('base64');
     }
 

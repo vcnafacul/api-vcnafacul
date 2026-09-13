@@ -1,5 +1,5 @@
 import { HttpModule } from '@nestjs/axios';
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { CacheManagerModule } from 'src/shared/modules/cache/cache.module';
 import { EnvModule } from 'src/shared/modules/env/env.module';
 import { HttpServiceAxiosFactory } from 'src/shared/services/axios/http-service-axios.factory';
@@ -7,10 +7,12 @@ import { BlobModule } from 'src/shared/services/blob/blob.module';
 import { AuditLogModule } from '../audit-log/audit-log.module';
 import { CollaboratorFrenteRepository } from '../prepCourse/collaborator/collaborator-frente.repository';
 import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
+import { PartnerPrepCourseModule } from '../prepCourse/partnerPrepCourse/partner-prep-course.module';
 import { StudentCourseRepository } from '../prepCourse/studentCourse/student-course.repository';
 import { UserModule } from '../user/user.module';
 import { CadernoController } from './caderno/caderno.controller';
 import { CadernoHttpService } from './caderno/caderno-http.service';
+import { CadernoLogosService } from './caderno/caderno-logos.service';
 import { CadernoTemplateController } from './caderno/caderno-template.controller';
 import { CadernoTemplateHttpService } from './caderno/caderno-template-http.service';
 import { CartaoRespostaController } from './cartao-resposta/cartao-resposta.controller';
@@ -47,6 +49,11 @@ import { SubjectProxyService } from './subject/subject.service';
     EnvModule,
     CacheManagerModule,
     AuditLogModule,
+    // ⚠️ `forwardRef` obrigatório: o `CollaboratorModule` importa de volta o
+    // `SimuladoModule` (via `PartnerPrepCourseModule`), fechando o ciclo
+    // SimuladoModule → PartnerPrepCourseModule → CollaboratorModule →
+    // SimuladoModule. Sem isso o Nest nem monta o módulo.
+    forwardRef(() => PartnerPrepCourseModule),
   ],
   controllers: [
     SimuladoController,
@@ -90,6 +97,7 @@ import { SubjectProxyService } from './subject/subject.service';
     OmrCacheService,
     CartaoUploadService,
     CadernoHttpService,
+    CadernoLogosService,
     CadernoTemplateHttpService,
   ],
   exports: [FrenteProxyService, MateriaProxyService, QuestaoService],

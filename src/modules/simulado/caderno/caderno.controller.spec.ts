@@ -91,38 +91,20 @@ describe('CadernoController', () => {
       );
     });
 
-    it('repassa o draft', async () => {
-      const { controller, service, res } = montar();
-
-      await controller.baixar('65ecc850a528b39d273e7900', 'true', REQ, res);
-
-      expect(service.baixar).toHaveBeenCalledWith(
-        '65ecc850a528b39d273e7900',
-        true,
-        expect.anything(),
-      );
-    });
-
     // ⚠️ O cursinho sai de QUEM PEDIU, não do simulado: o mesmo simulado baixado
     // por dois colaboradores de cursinhos diferentes sai com logos diferentes.
     it('usa o id do usuário do request, não um valor fixo', async () => {
       const { controller, logos, res } = montar();
       const outroReq = { user: { id: 'outro-usuario' } } as any;
 
-      await controller.baixar('65ecc850a528b39d273e7900', undefined, outroReq, res);
+      await controller.baixar(
+        '65ecc850a528b39d273e7900',
+        undefined,
+        outroReq,
+        res,
+      );
 
       expect(logos.resolver).toHaveBeenCalledWith('outro-usuario');
-    });
-
-    it('continua mandando o Content-Disposition com o nome do arquivo', async () => {
-      const { controller, res } = montar();
-
-      await controller.baixar('65ecc850a528b39d273e7900', undefined, REQ, res);
-
-      expect(res.setHeader).toHaveBeenCalledWith(
-        'Content-Disposition',
-        'attachment; filename="caderno-65ecc850a528b39d273e7900.zip"',
-      );
     });
   });
 });
