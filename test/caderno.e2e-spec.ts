@@ -237,17 +237,28 @@ describe('Caderno (e2e)', () => {
     expect(Object.keys(r.body).filter((k) => /^\d+$/.test(k))).toEqual([]);
   });
 
-  it('400: simuladoId que sairia do caminho, sem tocar no ms', async () => {
+  it('404: simuladoId que sairia do caminho nem chega a casar rota', async () => {
     // ⚠️ MEDIDO: o Express casa `..%2F..%2F` como UM segmento e entrega o
-    // valor decodificado. Sem o pipe, a api chamaria
+    // valor decodificado. Sem defesa, a api chamaria
     // http://ms-simulado:3000/v1/simulado/outro.
+    //
+    // ⚠️ **404, e mudou de 400 DE PROPOSITO. Nao "conserte" de volta.** A rota
+    // passou a restringir o param (`:simuladoId([0-9a-fA-F]{24})`) para nao
+    // engolir as rotas literais de `mssimulado/caderno/template/*`; como
+    // efeito, este caminho nao casa rota nenhuma e o `ObjectIdPipe` -- que
+    // roda DENTRO do handler e era quem devolvia o 400 -- nunca e alcancado.
+    //
+    // A garantia substantiva do teste ("sem tocar no ms") nao so continua
+    // valendo como fica MAIS FORTE: a defesa saiu do pipe e foi para o
+    // roteador. Nenhum handler executa, entao nao ha de onde sair requisicao.
+    // O pipe permanece no controller como segunda camada.
     const r = await request(app.getHttpServer())
       .get('/mssimulado/caderno/..%2F..%2Fv1%2Fsimulado%2Foutro')
       .set({ Authorization: `Bearer ${tokenComPermissao}` });
 
-    expect(r.status).toBe(400);
-    // Mais forte do que "um service não foi chamado": prova que nenhuma
-    // requisição saiu para o ms.
+    expect(r.status).toBe(404);
+    // O coracao do teste, e ele nao mudou. Mais forte do que "um service nao
+    // foi chamado": prova que nenhuma requisicao saiu para o ms.
     expect(axiosForjado.get).not.toHaveBeenCalled();
   });
 });

@@ -20,7 +20,28 @@ import { CadernoHttpService } from './caderno-http.service';
 export class CadernoController {
   constructor(private readonly service: CadernoHttpService) {}
 
-  @Get(':simuladoId')
+  /**
+   * ⚠️ **O param e RESTRITO a 24 hex no proprio path, e e ISSO que impede a
+   * colisao** com as rotas literais de `mssimulado/caderno/template/*` do
+   * `CadernoTemplateController`. Sem a restricao, `:simuladoId` casa com
+   * qualquer segmento -- inclusive o literal `template` -- e engole
+   * `GET mssimulado/caderno/template` (a versao publicada do layout), que
+   * morre com 400 do `ObjectIdPipe`. Medido: a rota ficava INALCANCAVEL.
+   *
+   * ⚠️ Por causa disto, a ordem dos controllers no `simulado.module.ts` **nao
+   * importa**. Depender dela funcionava, mas era acoplamento invisivel: nada
+   * aqui diria "eu preciso vir depois", e uma ordenacao alfabetica desfaria
+   * isso em silencio.
+   *
+   * ⚠️ O `ObjectIdPipe` FICA. O regex resolve o roteamento; o pipe e a
+   * validacao, e sobrevive caso alguem mexa neste decorador um dia.
+   *
+   * ⚠️ Custo aceito: um id malformado legitimo recebe 404 em vez de 400 --
+   * nao casa rota nenhuma. O cliente so manda ids reais de uma lista, entao e
+   * raro, e o pedido e recusado igual. Ver o teste `404: simuladoId que sairia
+   * do caminho nem chega a casar rota`.
+   */
+  @Get(':simuladoId([0-9a-fA-F]{24})')
   @ApiBearerAuth()
   @ApiQuery({ name: 'draft', required: false, enum: ['true'] })
   @ApiResponse({ status: 200, description: 'baixa o zip do caderno (LaTeX)' })

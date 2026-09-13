@@ -11,6 +11,8 @@ import { StudentCourseRepository } from '../prepCourse/studentCourse/student-cou
 import { UserModule } from '../user/user.module';
 import { CadernoController } from './caderno/caderno.controller';
 import { CadernoHttpService } from './caderno/caderno-http.service';
+import { CadernoTemplateController } from './caderno/caderno-template.controller';
+import { CadernoTemplateHttpService } from './caderno/caderno-template-http.service';
 import { CartaoRespostaController } from './cartao-resposta/cartao-resposta.controller';
 import { CartaoRespostaHttpService } from './cartao-resposta/cartao-resposta-http.service';
 import { CartaoRespostaResultadosService } from './cartao-resposta/cartao-resposta-resultados.service';
@@ -58,7 +60,15 @@ import { SubjectProxyService } from './subject/subject.service';
     ContentProxyController,
     CategoriaProxyController,
     CartaoRespostaController,
+    // ⚠️ A ordem destes dois NAO importa, e nao por acaso: o
+    // `CadernoController` restringe o param (`:simuladoId([0-9a-fA-F]{24})`),
+    // entao ele nao casa mais com as rotas literais de
+    // `mssimulado/caderno/template/*`. E o param restrito a trava real -- ver
+    // o docblock la. Antes disso a colisao era evitada so pela ordem deste
+    // array, o que e acoplamento invisivel: uma ordenacao alfabetica desfaria
+    // em silencio, e a versao publicada do layout voltaria a ser inalcancavel.
     CadernoController,
+    CadernoTemplateController,
   ],
   providers: [
     SimuladoService,
@@ -80,6 +90,7 @@ import { SubjectProxyService } from './subject/subject.service';
     OmrCacheService,
     CartaoUploadService,
     CadernoHttpService,
+    CadernoTemplateHttpService,
   ],
   exports: [FrenteProxyService, MateriaProxyService, QuestaoService],
 })
