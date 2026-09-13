@@ -42,7 +42,7 @@ export class CadernoHttpService {
     // outro lado tolera `null`, mas o contrato é a ausência.
     const corpo = { logos: {} as Record<string, string> };
     for (const [chave, buffer] of Object.entries(logos)) {
-      if (buffer) corpo.logos[chave] = buffer.toString('base64');
+      if (buffer?.length) corpo.logos[chave] = buffer.toString('base64');
     }
 
     const { buffer, contentType, headers } = await this.axios.postBinary(

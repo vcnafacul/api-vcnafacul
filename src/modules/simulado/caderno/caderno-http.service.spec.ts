@@ -93,5 +93,32 @@ describe('CadernoHttpService', () => {
         { logos: { vnf: PNG_VNF.toString('base64') } },
       );
     });
+
+    // ⚠️ Chave PRESENTE com valor vazio — o `Object.entries` chega nela, então é
+    // a guarda que decide. O teste de cima não cobre isto: lá a chave está
+    // ausente do objeto e o laço nem visita.
+    it('logo presente mas vazio não vira chave com string vazia', async () => {
+      const { service, axios } = montar();
+
+      await service.baixar('65ecc850a528b39d273e7900', false, {
+        vnf: PNG_VNF,
+        cursinho: Buffer.alloc(0),
+      });
+
+      const corpo = axios.postBinary.mock.calls[0][1];
+      expect('cursinho' in corpo.logos).toBe(false);
+    });
+
+    it('chave presente com undefined também é omitida', async () => {
+      const { service, axios } = montar();
+
+      await service.baixar('65ecc850a528b39d273e7900', false, {
+        vnf: PNG_VNF,
+        cursinho: undefined,
+      });
+
+      const corpo = axios.postBinary.mock.calls[0][1];
+      expect('cursinho' in corpo.logos).toBe(false);
+    });
   });
 });
