@@ -18,6 +18,26 @@ interface CorpoDoCaderno {
   logos: Partial<Record<keyof LogosDoCaderno, string>>;
 }
 
+/**
+ * As chaves que vão para o fio — fechadas nas DUAS pontas.
+ *
+ * ⚠️ Construção incomum de propósito, não simplifique para
+ * `['vnf', 'cursinho'] as const`:
+ *
+ * - **runtime**: só estas chaves são percorridas, então uma chave extra que
+ *   aparecesse em `logos` não tem como vazar para o corpo do POST;
+ * - **compilação**: o `satisfies Record<keyof LogosDoCaderno, null>` exige que
+ *   a lista esteja COMPLETA. Acrescentar `parceiro?: Buffer` em
+ *   `LogosDoCaderno` para aqui o build com "Property 'parceiro' is missing".
+ *
+ * Sem a segunda metade, um logo novo simplesmente nunca seria enviado — e em
+ * silêncio, porque `CorpoDoCaderno` aceitaria a chave de bom grado.
+ */
+const CHAVES_DE_LOGO = Object.keys({
+  vnf: null,
+  cursinho: null,
+} satisfies Record<keyof LogosDoCaderno, null>) as (keyof LogosDoCaderno)[];
+
 @Injectable()
 export class CadernoHttpService {
   private readonly axios: HttpServiceAxios;
@@ -53,14 +73,12 @@ export class CadernoHttpService {
     // quem codifica para HTTP. E a chave é OMITIDA quando não há logo — o
     // outro lado tolera `null`, mas o contrato é a ausência.
     //
-    // ⚠️ Itera a LISTA LITERAL de chaves, não o objeto recebido: assim uma
-    // chave extra que aparecesse em `logos` não tem como vazar para o fio, e
-    // isso vale em runtime, não só no compilador. É a mesma forma do outro
-    // lado do hop — o `decodificarLogos` do ms-simulado percorre
-    // `Object.keys(NOMES_DOS_LOGOS)` em vez do corpo recebido, pelo mesmo
-    // motivo. As duas pontas simétricas.
+    // ⚠️ Itera a lista de chaves, não o objeto recebido — ver `CHAVES_DE_LOGO`.
+    // É a mesma forma do outro lado do hop: o `decodificarLogos` do
+    // ms-simulado percorre `Object.keys(NOMES_DOS_LOGOS)` em vez do corpo
+    // recebido, pelo mesmo motivo. As duas pontas simétricas.
     const corpo: CorpoDoCaderno = { logos: {} };
-    for (const chave of ['vnf', 'cursinho'] as const) {
+    for (const chave of CHAVES_DE_LOGO) {
       const buffer = logos[chave];
       if (buffer?.length) corpo.logos[chave] = buffer.toString('base64');
     }

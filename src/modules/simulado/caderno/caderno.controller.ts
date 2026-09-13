@@ -22,7 +22,7 @@ import { CadernoLogosService } from './caderno-logos.service';
 @Controller('mssimulado/caderno')
 export class CadernoController {
   constructor(
-    private readonly service: CadernoHttpService,
+    private readonly http: CadernoHttpService,
     private readonly logos: CadernoLogosService,
   ) {}
 
@@ -68,7 +68,7 @@ export class CadernoController {
     // baixado por dois colaboradores sai com logos diferentes.
     const logos = await this.logos.resolver((req.user as User).id);
 
-    const { buffer, contentType, avisos } = await this.service.baixar(
+    const { buffer, contentType, avisos } = await this.http.baixar(
       simuladoId,
       draft === 'true',
       logos,

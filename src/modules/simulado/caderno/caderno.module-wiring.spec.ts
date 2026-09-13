@@ -14,6 +14,13 @@ import { CadernoLogosService } from './caderno-logos.service';
 // O `EntityManager` e o `ConfigModule` vêm do `AppModule` em produção (TypeORM
 // e ConfigModule globais). Aqui entram dublês: o que está sob teste é a fiação
 // do módulo, não o banco.
+//
+// Se este teste quebrar, leia a mensagem antes de mexer no caderno:
+//   "Invalid BLOB_PROVIDER"  → `.env.example` perdeu `BLOB_PROVIDER=S3`.
+//   "can't resolve <algo>"   → módulo novo na árvore pede um global que o
+//                              AppModule dá e os dublês daqui não.
+// O `validate` do zod fica FORA de propósito: amarrar a fiação ao schema de
+// env faria este teste falhar por motivo alheio.
 @Global()
 @Module({
   providers: [

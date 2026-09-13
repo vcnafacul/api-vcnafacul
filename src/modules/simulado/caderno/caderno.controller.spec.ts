@@ -4,7 +4,7 @@ const USER_ID = 'user-1';
 const REQ = { user: { id: USER_ID } } as any;
 
 const montar = (retorno: any = {}) => {
-  const service = {
+  const http = {
     baixar: jest.fn().mockResolvedValue({
       buffer: Buffer.from('ZIP'),
       contentType: 'application/zip',
@@ -15,8 +15,8 @@ const montar = (retorno: any = {}) => {
   const logos = { resolver: jest.fn().mockResolvedValue({}) };
   const res: any = { setHeader: jest.fn(), send: jest.fn() };
   return {
-    controller: new CadernoController(service as any, logos as any),
-    service,
+    controller: new CadernoController(http as any, logos as any),
+    http,
     logos,
     res,
   };
@@ -67,24 +67,24 @@ describe('CadernoController', () => {
     // Query string chega como texto. Concatenar o valor cru injeta parâmetro
     // na chamada interna: medido, `draft=true&x=1` viraria
     // `?draft=true&x=1` na URL do ms.
-    const { controller, service, res } = montar();
+    const { controller, http, res } = montar();
     for (const v of ['true', 'false', '1', '', 'TRUE', 'true&x=1']) {
       await controller.baixar('65ecc850a528b39d273e7900', v, REQ, res);
     }
-    const draftsRecebidos = service.baixar.mock.calls.map((c: any[]) => c[1]);
+    const draftsRecebidos = http.baixar.mock.calls.map((c: any[]) => c[1]);
     expect(draftsRecebidos).toEqual([true, false, false, false, false, false]);
   });
 
   describe('baixar — logos', () => {
     it('resolve os logos do usuário do request e repassa ao http service', async () => {
-      const { controller, logos, service, res } = montar();
+      const { controller, logos, http, res } = montar();
       const resolvidos = { vnf: Buffer.from([0x89]) };
       logos.resolver.mockResolvedValue(resolvidos);
 
       await controller.baixar('65ecc850a528b39d273e7900', undefined, REQ, res);
 
       expect(logos.resolver).toHaveBeenCalledWith(USER_ID);
-      expect(service.baixar).toHaveBeenCalledWith(
+      expect(http.baixar).toHaveBeenCalledWith(
         '65ecc850a528b39d273e7900',
         false,
         resolvidos,
