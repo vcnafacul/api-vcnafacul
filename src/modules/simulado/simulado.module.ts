@@ -11,6 +11,8 @@ import { StudentCourseRepository } from '../prepCourse/studentCourse/student-cou
 import { UserModule } from '../user/user.module';
 import { CadernoController } from './caderno/caderno.controller';
 import { CadernoHttpService } from './caderno/caderno-http.service';
+import { CadernoTemplateController } from './caderno/caderno-template.controller';
+import { CadernoTemplateHttpService } from './caderno/caderno-template-http.service';
 import { CartaoRespostaController } from './cartao-resposta/cartao-resposta.controller';
 import { CartaoRespostaHttpService } from './cartao-resposta/cartao-resposta-http.service';
 import { CartaoRespostaResultadosService } from './cartao-resposta/cartao-resposta-resultados.service';
@@ -58,6 +60,14 @@ import { SubjectProxyService } from './subject/subject.service';
     ContentProxyController,
     CategoriaProxyController,
     CartaoRespostaController,
+    // ⚠️ `CadernoTemplateController` ANTES do `CadernoController`, e a ordem e
+    // significativa. O `CadernoController` declara `GET mssimulado/caderno/:simuladoId`,
+    // que casa com o segmento literal `template` -- registrado primeiro, ele engole o
+    // `GET mssimulado/caderno/template` (a versao publicada) e o `ObjectIdPipe`
+    // devolve 400. O Nest registra as rotas na ordem deste array, e o Express
+    // atende a primeira que casa. Medido: sem esta ordem, o endpoint da versao
+    // publicada e inalcancavel. O e2e `caderno-template.e2e-spec.ts` trava isso.
+    CadernoTemplateController,
     CadernoController,
   ],
   providers: [
@@ -80,6 +90,7 @@ import { SubjectProxyService } from './subject/subject.service';
     OmrCacheService,
     CartaoUploadService,
     CadernoHttpService,
+    CadernoTemplateHttpService,
   ],
   exports: [FrenteProxyService, MateriaProxyService, QuestaoService],
 })
