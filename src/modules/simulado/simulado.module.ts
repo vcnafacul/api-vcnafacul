@@ -60,15 +60,15 @@ import { SubjectProxyService } from './subject/subject.service';
     ContentProxyController,
     CategoriaProxyController,
     CartaoRespostaController,
-    // ⚠️ `CadernoTemplateController` ANTES do `CadernoController`, e a ordem e
-    // significativa. O `CadernoController` declara `GET mssimulado/caderno/:simuladoId`,
-    // que casa com o segmento literal `template` -- registrado primeiro, ele engole o
-    // `GET mssimulado/caderno/template` (a versao publicada) e o `ObjectIdPipe`
-    // devolve 400. O Nest registra as rotas na ordem deste array, e o Express
-    // atende a primeira que casa. Medido: sem esta ordem, o endpoint da versao
-    // publicada e inalcancavel. O e2e `caderno-template.e2e-spec.ts` trava isso.
-    CadernoTemplateController,
+    // ⚠️ A ordem destes dois NAO importa, e nao por acaso: o
+    // `CadernoController` restringe o param (`:simuladoId([0-9a-fA-F]{24})`),
+    // entao ele nao casa mais com as rotas literais de
+    // `mssimulado/caderno/template/*`. E o param restrito a trava real -- ver
+    // o docblock la. Antes disso a colisao era evitada so pela ordem deste
+    // array, o que e acoplamento invisivel: uma ordenacao alfabetica desfaria
+    // em silencio, e a versao publicada do layout voltaria a ser inalcancavel.
     CadernoController,
+    CadernoTemplateController,
   ],
   providers: [
     SimuladoService,
