@@ -17,6 +17,16 @@ import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { CreateCategoriaDtoInput } from './dtos/create-categoria.dto.input';
 import { CategoriaProxyService } from './categoria.service';
 
+/** Espelha `DONO_SYSTEM` do ms-simulado. Valor de contrato entre os dois. */
+const DONO_SYSTEM = 'system';
+
+/**
+ * Categorias da plataforma.
+ *
+ * ⚠️ Este controller é o do admin: o dono é sempre `'system'`, fixo aqui. As
+ * categorias de cursinho vivem no `CursinhoCategoriaController`, que resolve o
+ * dono pelo JWT.
+ */
 @ApiTags('Simulado - Categoria')
 @Controller('mssimulado/categoria')
 export class CategoriaProxyController {
@@ -26,7 +36,11 @@ export class CategoriaProxyController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async getAll(@Query() query: GetAllDtoInput) {
-    return await this.categoriaService.getAll(query.page, query.limit);
+    return await this.categoriaService.getAll(
+      query.page,
+      query.limit,
+      DONO_SYSTEM,
+    );
   }
 
   @Get(':id')
@@ -41,7 +55,7 @@ export class CategoriaProxyController {
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
   async create(@Body() dto: CreateCategoriaDtoInput) {
-    return await this.categoriaService.create(dto);
+    return await this.categoriaService.create(dto, DONO_SYSTEM);
   }
 
   @Delete(':id')
@@ -49,6 +63,6 @@ export class CategoriaProxyController {
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
   async delete(@Param('id') id: string) {
-    return await this.categoriaService.delete(id);
+    return await this.categoriaService.delete(id, DONO_SYSTEM);
   }
 }

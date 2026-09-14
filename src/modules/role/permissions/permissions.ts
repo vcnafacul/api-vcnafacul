@@ -29,4 +29,5 @@ export enum Permissions {
   editarMateriasFrentes = 'editar_materias_frentes',
   visualizarProvasCursinho = 'visualizar_provas_cursinho',
   cadastrarProvasCursinho = 'cadastrar_provas_cursinho',
+  gerenciarCategoriasCursinho = 'gerenciar_categorias_cursinho',
 }

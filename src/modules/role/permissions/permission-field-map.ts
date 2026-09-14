@@ -31,4 +31,5 @@ export const PERMISSION_FIELD_MAP: Record<Permissions, string> = {
   [Permissions.editarMateriasFrentes]: 'editarMateriasFrentes',
   [Permissions.visualizarProvasCursinho]: 'visualizarProvasCursinho',
   [Permissions.cadastrarProvasCursinho]: 'cadastrarProvasCursinho',
+  [Permissions.gerenciarCategoriasCursinho]: 'gerenciarCategoriasCursinho',
 };
