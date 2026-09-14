@@ -21,6 +21,7 @@ import { CartaoRespostaResultadosService } from './cartao-resposta/cartao-respos
 import { CartaoUploadService } from './cartao-resposta/cartao-upload.service';
 import { OmrCacheService } from './cartao-resposta/omr-cache.service';
 import { CategoriaProxyController } from './categoria/categoria.controller';
+import { CursinhoCategoriaController } from './categoria/cursinho/cursinho-categoria.controller';
 import { CategoriaProxyService } from './categoria/categoria.service';
 import { ContentProxyController } from './content/content.controller';
 import { ContentProxyService } from './content/content.service';
@@ -68,6 +69,7 @@ import { SubjectProxyService } from './subject/subject.service';
     SubjectProxyController,
     ContentProxyController,
     CategoriaProxyController,
+    CursinhoCategoriaController,
     ExameProxyController,
     CartaoRespostaController,
     // ⚠️ A ordem destes dois NAO importa, e nao por acaso: o
