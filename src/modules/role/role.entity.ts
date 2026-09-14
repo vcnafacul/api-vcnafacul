@@ -123,6 +123,9 @@ export class Role extends BaseEntity {
   @Column({ name: Permissions.cadastrarProvasCursinho, default: false })
   cadastrarProvasCursinho: boolean;
 
+  @Column({ name: Permissions.gerenciarCategoriasCursinho, default: false })
+  gerenciarCategoriasCursinho: boolean;
+
   @OneToMany(() => User, (user) => user.role)
   users: User[];
 

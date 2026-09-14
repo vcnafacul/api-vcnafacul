@@ -77,6 +77,17 @@ export const PERMISSION_HIERARCHY: PermissionGroup[] = [
     ],
   },
   {
+    key: 'categorias_cursinho',
+    label: 'Categorias (Cursinho)',
+    permissions: [
+      {
+        key: Permissions.gerenciarCategoriasCursinho,
+        label: 'Gerenciar categorias (cursinho)',
+        type: PermissionType.prepCourse,
+      },
+    ],
+  },
+  {
     key: 'demanda',
     label: 'Demanda',
     permissions: [
