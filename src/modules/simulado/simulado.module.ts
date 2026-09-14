@@ -24,6 +24,8 @@ import { CategoriaProxyController } from './categoria/categoria.controller';
 import { CategoriaProxyService } from './categoria/categoria.service';
 import { ContentProxyController } from './content/content.controller';
 import { ContentProxyService } from './content/content.service';
+import { ExameProxyController } from './exame/exame.controller';
+import { ExameProxyService } from './exame/exame.service';
 import { FrenteProxyController } from './frente/frente.controller';
 import { FrenteProxyService } from './frente/frente.service';
 import { MateriaProxyController } from './materia/materia.controller';
@@ -66,6 +68,7 @@ import { SubjectProxyService } from './subject/subject.service';
     SubjectProxyController,
     ContentProxyController,
     CategoriaProxyController,
+    ExameProxyController,
     CartaoRespostaController,
     // ⚠️ A ordem destes dois NAO importa, e nao por acaso: o
     // `CadernoController` restringe o param (`:simuladoId([0-9a-fA-F]{24})`),
@@ -88,6 +91,7 @@ import { SubjectProxyService } from './subject/subject.service';
     SubjectProxyService,
     ContentProxyService,
     CategoriaProxyService,
+    ExameProxyService,
     CollaboratorFrenteRepository,
     CollaboratorRepository,
     StudentCourseRepository,
