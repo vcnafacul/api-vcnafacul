@@ -17,6 +17,30 @@ import { BlobService } from 'src/shared/services/blob/blob-service';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const sharp = require('sharp');
 
+/**
+ * Largura máxima do logo, em pixels, antes de ir para o ms.
+ *
+ * ⚠️ **É isto que impede o 413**, não o limite de corpo do outro lado. O logo
+ * viaja em base64 no corpo do POST, com ~33% de inflação; sem teto de dimensão
+ * um PNG de 3000px vira megabytes de JSON a cada download.
+ *
+ * ⚠️ 600px é folgado para o uso real: no template LaTeX o logo é impresso com
+ * poucos centímetros de largura. Acima disso não melhora a impressão — só
+ * engorda o corpo da requisição e o PDF final.
+ */
+const LARGURA_MAXIMA_LOGO = 600;
+
+/**
+ * Teto de bytes do logo JÁ processado.
+ *
+ * ⚠️ Rede de segurança para o que o resize não resolve — PNG com muitas cores,
+ * ou um arquivo que o `sharp` devolva maior do que se espera. Ao estourar, o
+ * logo é **descartado**, não lançado: é a política que este arquivo já declara
+ * (nenhuma falha aqui derruba o download), e que até agora valia para erro de
+ * rede mas não para tamanho.
+ */
+const BYTES_MAXIMOS_LOGO = 2 * 1024 * 1024;
+
 /** A chave fixa do logo do Você na Facul dentro do `BUCKET_HOME`. */
 const CHAVE_LOGO_VNF = 'logo.png';
 
@@ -129,7 +153,7 @@ export class CadernoLogosService {
         ),
       TTL_LOGO_VNF,
     );
-    return await this.paraPng(arquivo?.buffer);
+    return await this.paraPng(arquivo?.buffer, 'vnf');
   }
 
   private async buscarCursinho(userId: string): Promise<Buffer | undefined> {
@@ -137,7 +161,7 @@ export class CadernoLogosService {
     const partner = await this.partnerPrepCourseService.getByUserId(userId);
     // `getLogo` já tem cache de um dia, chave `partner:logo:<id>`.
     const arquivo = await this.partnerPrepCourseService.getLogo(partner.id);
-    return await this.paraPng(arquivo?.buffer);
+    return await this.paraPng(arquivo?.buffer, 'cursinho');
   }
 
   /**
@@ -146,10 +170,33 @@ export class CadernoLogosService {
    * svg. Dentro de um arquivo chamado `logo_cursinho.png` isso quebra a
    * compilação — o pdflatex escolhe o leitor pela extensão.
    */
-  private async paraPng(base64?: string | null): Promise<Buffer | undefined> {
+  private async paraPng(
+    base64: string | null | undefined,
+    rotulo: string,
+  ): Promise<Buffer | undefined> {
     if (!base64) return undefined;
     const bruto = Buffer.from(base64, 'base64');
     if (bruto.length === 0) return undefined;
-    return await sharp(bruto).png().toBuffer();
+
+    /**
+     * ⚠️ `withoutEnlargement` não é detalhe: sem ele um logo de 200px seria
+     * **ampliado** para 600, ficando borrado e maior em bytes do que o
+     * original — o oposto do que este resize existe para fazer.
+     */
+    const png = await sharp(bruto)
+      .resize({ width: LARGURA_MAXIMA_LOGO, withoutEnlargement: true })
+      .png()
+      .toBuffer();
+
+    if (png.length > BYTES_MAXIMOS_LOGO) {
+      // ⚠️ Descarta, não lança. Caderno sem logo continua sendo um caderno;
+      // caderno que não baixa, não.
+      this.logger.warn(
+        `logo ${rotulo} descartado: ${png.length} bytes acima do teto de ${BYTES_MAXIMOS_LOGO}`,
+      );
+      return undefined;
+    }
+
+    return png;
   }
 }

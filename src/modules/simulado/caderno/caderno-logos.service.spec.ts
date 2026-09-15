@@ -308,3 +308,86 @@ describe('CadernoLogosService — nível de log separa rotina de incidente', () 
     );
   });
 });
+
+/** PNG quadrado de `lado` px, com ruído para não comprimir a quase nada. */
+async function pngGrande(lado: number): Promise<Buffer> {
+  const pixels = Buffer.alloc(lado * lado * 3);
+  for (let i = 0; i < pixels.length; i++) pixels[i] = (i * 2654435761) % 256;
+  return sharp(pixels, { raw: { width: lado, height: lado, channels: 3 } })
+    .png()
+    .toBuffer();
+}
+
+describe('CadernoLogosService — teto de dimensão do logo', () => {
+  /**
+   * ⚠️ É este teto que impede o `413 request entity too large`, e não o limite
+   * de corpo do ms. O logo viaja em base64 no POST interno, com ~33% de
+   * inflação: um PNG de 3000px vira megabytes de JSON a cada download.
+   */
+  it('reduz o logo grande para no máximo 600px de largura', async () => {
+    const grande = await pngGrande(1600);
+    const resposta = {
+      buffer: grande.toString('base64'),
+      contentType: 'image/png',
+    };
+    const { service } = montar({
+      blobService: { getFile: jest.fn().mockResolvedValue(resposta) },
+      partnerService: {
+        getByUserId: jest.fn().mockResolvedValue({ id: PARTNER_ID }),
+        getLogo: jest.fn().mockResolvedValue(resposta),
+      },
+    });
+
+    const logos = await service.resolver('u1');
+
+    const meta = await sharp(logos.cursinho).metadata();
+    expect(meta.width).toBe(600);
+    // ⚠️ O que interessa de verdade é o payload, não o pixel: é ele que
+    // estourava o corpo da requisição.
+    expect(logos.cursinho!.length).toBeLessThan(grande.length);
+  });
+
+  it('NÃO amplia um logo menor que o teto', async () => {
+    /**
+     * ⚠️ Sem `withoutEnlargement`, um logo de 1px seria ampliado para 600 —
+     * borrado e MAIOR em bytes que o original, o oposto do que este resize
+     * existe para fazer.
+     */
+    const { service } = await comOsDois();
+
+    const logos = await service.resolver('u1');
+
+    expect((await sharp(logos.cursinho).metadata()).width).toBe(1);
+  });
+
+  it('bytes que não são imagem viram ausência de logo, não exceção', async () => {
+    /**
+     * ⚠️ O nome deste teste é o que ele realmente faz. Ele NÃO exercita o teto
+     * de `BYTES_MAXIMOS_LOGO`: depois do resize para 600px esse teto é
+     * praticamente inalcançável, e forçá-lo exigiria fabricar um PNG que o
+     * `sharp` devolvesse com mais de 2 MB a 600px — o que não representa nada
+     * real. O teto fica como rede para o inesperado, e **não tem teste
+     * direto**; está registrado no PR.
+     *
+     * O que se prova aqui é a política do arquivo: falha vira ausência de
+     * logo, nunca exceção. Caderno sem logo continua sendo um caderno.
+     */
+    const lixo = Buffer.alloc(3 * 1024 * 1024, 7);
+    const resposta = {
+      buffer: lixo.toString('base64'),
+      contentType: 'image/png',
+    };
+    const { service } = montar({
+      blobService: { getFile: jest.fn().mockResolvedValue(resposta) },
+      partnerService: {
+        getByUserId: jest.fn().mockResolvedValue({ id: PARTNER_ID }),
+        getLogo: jest.fn().mockResolvedValue(resposta),
+      },
+    });
+
+    const logos = await service.resolver('u1');
+
+    expect(logos.cursinho).toBeUndefined();
+    expect(logos.vnf).toBeUndefined();
+  });
+});
