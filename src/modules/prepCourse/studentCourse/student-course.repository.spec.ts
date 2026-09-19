@@ -104,6 +104,26 @@ describe('StudentCourseRepository.findEnrolledForRelatorio', () => {
     );
   });
 
+  it('com turma, o escopo do cursinho CONTINUA — não é substituído pela turma', async () => {
+    // é este escopo que sustenta a afirmação do spec de que o 403 não é o que
+    // impede vazamento entre cursinhos
+    const { repo, qb } = montar();
+
+    await repo.findEnrolledForRelatorio('cur-1', 't-1');
+
+    expect(qb.where).toHaveBeenCalledWith('ppc.id = :prepCourseId', {
+      prepCourseId: 'cur-1',
+    });
+  });
+
+  it('não lista estudante soft-deletado — `deletedAt` é coluna comum, o TypeORM não filtra sozinho', async () => {
+    const { repo, qb } = montar();
+
+    await repo.findEnrolledForRelatorio('cur-1');
+
+    expect(qb.andWhere).toHaveBeenCalledWith('entity.deletedAt IS NULL');
+  });
+
   it('sem classId, não filtra por turma — o geral traz quem não tem turma', async () => {
     const { repo, qb } = montar();
 

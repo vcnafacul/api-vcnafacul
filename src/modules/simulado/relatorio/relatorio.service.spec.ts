@@ -194,6 +194,74 @@ describe('RelatorioService.consultar', () => {
 
     expect(r.resumo.totalEstudantesComCartaoNoCursinho).toBe(30);
   });
+
+  it('cartão que falhou NÃO entra na média, mesmo trazendo nota velha', async () => {
+    // o `marcarFalha` do ms não limpa `aproveitamento`: um cartão que leu bem,
+    // foi refotografado e falhou mantém a nota antiga no documento. Inferir
+    // "leitura concluída" da presença da nota conta esse cartão — e a aba de
+    // questões, que filtra por status no ms, não conta. As duas discordariam.
+    const { svc } = montar({
+      estudantes: [estudante(), estudante({ userId: 'u2', cod_enrolled: '2' })],
+      linhas: [
+        linha({ aproveitamentoGeral: 1 }),
+        linha({
+          usuario: 'u2',
+          status: 'failed',
+          aproveitamentoGeral: 0.2,
+          falha: { codigo: 'cartao_nao_detectado' },
+        }),
+      ],
+    });
+
+    const r = await svc.consultar('colab-1', 'sim-1');
+
+    expect(r.resumo.comLeituraConcluida).toBe(1);
+    expect(r.resumo.aproveitamentoGeral).toBeCloseTo(1);
+    // A linha em si mostra a nota exatamente como o ms mandou, ao lado do
+    // status `failed` — a api não reescreve o que o ms disse, quem decide o
+    // que renderizar dado o status é a tela.
+    const u2 = r.linhas.find((l) => l.usuario === 'u2')!;
+    expect(u2.status).toBe('failed');
+    expect(u2.aproveitamentoGeral).toBe(0.2);
+  });
+
+  it('status que não é completed nunca entra na média', async () => {
+    const { svc } = montar({
+      estudantes: [
+        estudante(),
+        estudante({ userId: 'u2', cod_enrolled: '2' }),
+        estudante({ userId: 'u3', cod_enrolled: '3' }),
+      ],
+      linhas: [
+        linha({ aproveitamentoGeral: 1 }),
+        linha({ usuario: 'u2', status: 'pending', aproveitamentoGeral: 0.5 }),
+        linha({
+          usuario: 'u3',
+          status: 'awaiting_omr',
+          aproveitamentoGeral: 0.5,
+        }),
+      ],
+    });
+
+    const r = await svc.consultar('colab-1', 'sim-1');
+
+    expect(r.resumo.comLeituraConcluida).toBe(1);
+  });
+
+  it('aproveitamentoGeral null vindo do ms não vira zero na média', async () => {
+    const { svc } = montar({
+      estudantes: [estudante(), estudante({ userId: 'u2', cod_enrolled: '2' })],
+      linhas: [
+        linha({ aproveitamentoGeral: 1 }),
+        linha({ usuario: 'u2', aproveitamentoGeral: null as any }),
+      ],
+    });
+
+    const r = await svc.consultar('colab-1', 'sim-1');
+
+    expect(r.resumo.comLeituraConcluida).toBe(1);
+    expect(r.resumo.aproveitamentoGeral).toBeCloseTo(1);
+  });
 });
 
 describe('RelatorioService.consultar — recorte por turma', () => {

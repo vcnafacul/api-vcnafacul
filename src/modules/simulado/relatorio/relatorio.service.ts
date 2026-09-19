@@ -1,7 +1,9 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { ClassRepository } from 'src/modules/prepCourse/class/class.repository';
+import { StudentCourse } from 'src/modules/prepCourse/studentCourse/student-course.entity';
 import { StudentCourseRepository } from 'src/modules/prepCourse/studentCourse/student-course.repository';
 import { CursinhoResolverService } from '../prova/cursinho/cursinho-resolver.service';
+import { QuestoesDoRelatorioDtoOutput } from './dtos/questoes-do-relatorio.dto.output';
 import {
   LinhaDoRelatorioDtoOutput,
   RelatorioDtoOutput,
@@ -10,7 +12,6 @@ import { RelatorioHttpService } from './relatorio-http.service';
 
 interface LinhaDoMs {
   usuario: string;
-  turmaId?: string;
   historicoId?: string;
   status?: string;
   cartaoCode?: string;
@@ -47,16 +48,25 @@ export class RelatorioService {
     ]);
 
     const porUsuario = new Map(doMs.linhas.map((l) => [l.usuario, l]));
-    const usuariosAtivos = new Set(estudantes.map((e: any) => e.userId));
+    const usuariosAtivos = new Set(estudantes.map((e) => e.userId));
 
     // A lista parte dos ESTUDANTES: quem não enviou some se partir das linhas,
     // e saber quem falta é metade do valor do relatório para quem coordena.
-    const linhas = estudantes.map((e: any) =>
+    const linhas = estudantes.map((e) =>
       this.montarLinha(e, porUsuario.get(e.userId)),
     );
 
+    // ⚠️ Gate no STATUS, não só na presença da nota. O `marcarFalha` do ms não
+    // limpa `aproveitamento`, então um cartão que leu bem e depois falhou no
+    // reprocessamento continua carregando a nota velha. A aba de questões
+    // filtra por `status: completed` no ms — inferir pela nota aqui faria as
+    // duas metades da mesma tela discordarem.
+    //
+    // Literal, não enum: `HistoricoStatus` vive só no repo do ms-simulado,
+    // que não é importável daqui (repositório separado).
     const comLeitura = linhas.filter(
-      (l) => l.aproveitamentoGeral !== undefined,
+      (l) =>
+        l.status === 'completed' && typeof l.aproveitamentoGeral === 'number',
     );
 
     return {
@@ -85,9 +95,13 @@ export class RelatorioService {
     colaboradorUserId: string,
     simuladoId: string,
     turmaId?: string,
-  ): Promise<unknown> {
+  ): Promise<QuestoesDoRelatorioDtoOutput> {
     const cursinhoId = await this.resolverEscopo(colaboradorUserId, turmaId);
-    return this.http.buscarQuestoes(simuladoId, cursinhoId, turmaId);
+    return this.http.buscarQuestoes(
+      simuladoId,
+      cursinhoId,
+      turmaId,
+    ) as Promise<QuestoesDoRelatorioDtoOutput>;
   }
 
   /**
@@ -115,7 +129,10 @@ export class RelatorioService {
     return cursinhoId;
   }
 
-  private montarLinha(e: any, doMs?: LinhaDoMs): LinhaDoRelatorioDtoOutput {
+  private montarLinha(
+    e: StudentCourse,
+    doMs?: LinhaDoMs,
+  ): LinhaDoRelatorioDtoOutput {
     const u = e.user;
     const nome =
       u?.useSocialName && u?.socialName
