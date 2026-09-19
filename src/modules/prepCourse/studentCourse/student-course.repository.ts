@@ -564,6 +564,44 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .getOne();
   }
 
+  /**
+   * Os estudantes de um recorte, com o que o relatório precisa mostrar, numa
+   * consulta só. Uma por estudante mataria a rota.
+   *
+   * ⚠️ A turma entra por `leftJoin`: `StudentCourse.class` é opcional, e um
+   * `innerJoin` faria o estudante sem turma sumir do relatório geral do
+   * cursinho — onde ele é exatamente quem precisa aparecer.
+   */
+  async findEnrolledForRelatorio(
+    prepCourseId: string,
+    classId?: string,
+  ): Promise<StudentCourse[]> {
+    const qb = this.repository
+      .createQueryBuilder('entity')
+      .innerJoin('entity.partnerPrepCourse', 'ppc')
+      .where('ppc.id = :prepCourseId', { prepCourseId })
+      .innerJoin('entity.user', 'user')
+      .addSelect([
+        'user.id',
+        'user.firstName',
+        'user.lastName',
+        'user.socialName',
+        'user.useSocialName',
+      ])
+      .leftJoin('entity.class', 'class')
+      .addSelect(['class.id', 'class.name'])
+      .andWhere('entity.applicationStatus = :status', {
+        status: StatusApplication.Enrolled,
+      })
+      .andWhere('entity.deletedAt IS NULL');
+
+    if (classId !== undefined) {
+      qb.andWhere('class.id = :classId', { classId });
+    }
+
+    return qb.getMany();
+  }
+
   async findOneWithPartnerPrep(id: string): Promise<StudentCourse | null> {
     return this.repository
       .createQueryBuilder('entity')

@@ -5,6 +5,7 @@ import { EnvModule } from 'src/shared/modules/env/env.module';
 import { HttpServiceAxiosFactory } from 'src/shared/services/axios/http-service-axios.factory';
 import { BlobModule } from 'src/shared/services/blob/blob.module';
 import { AuditLogModule } from '../audit-log/audit-log.module';
+import { ClassRepository } from '../prepCourse/class/class.repository';
 import { CollaboratorFrenteRepository } from '../prepCourse/collaborator/collaborator-frente.repository';
 import { CollaboratorRepository } from '../prepCourse/collaborator/collaborator.repository';
 import { PartnerPrepCourseModule } from '../prepCourse/partnerPrepCourse/partner-prep-course.module';
@@ -39,6 +40,9 @@ import { ProvaController } from './prova/prova.controller';
 import { ProvaService } from './prova/prova.service';
 import { QuestaoController } from './questao/questao.controller';
 import { QuestaoService } from './questao/questao.service';
+import { RelatorioController } from './relatorio/relatorio.controller';
+import { RelatorioHttpService } from './relatorio/relatorio-http.service';
+import { RelatorioService } from './relatorio/relatorio.service';
 import { SimuladoController } from './simulado.controller';
 import { SimuladoService } from './simulado.service';
 import { SubjectProxyController } from './subject/subject.controller';
@@ -81,6 +85,7 @@ import { SubjectProxyService } from './subject/subject.service';
     // em silencio, e a versao publicada do layout voltaria a ser inalcancavel.
     CadernoController,
     CadernoTemplateController,
+    RelatorioController,
   ],
   providers: [
     SimuladoService,
@@ -105,6 +110,9 @@ import { SubjectProxyService } from './subject/subject.service';
     CadernoHttpService,
     CadernoLogosService,
     CadernoTemplateHttpService,
+    ClassRepository,
+    RelatorioHttpService,
+    RelatorioService,
   ],
   exports: [FrenteProxyService, MateriaProxyService, QuestaoService],
 })
