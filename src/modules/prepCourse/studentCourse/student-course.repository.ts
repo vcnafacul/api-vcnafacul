@@ -544,6 +544,26 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .getOne();
   }
 
+  /**
+   * Estudante de um cursinho específico, com a turma carregada.
+   *
+   * O escopo por cursinho não é conveniência: é o que impede um colaborador de
+   * enviar cartão para um estudante de outro cursinho.
+   */
+  async findByUserIdAndPrepCourse(
+    userId: string,
+    prepCourseId: string,
+  ): Promise<StudentCourse | null> {
+    return await this.repository
+      .createQueryBuilder('entity')
+      .innerJoin('entity.user', 'user')
+      .where('user.id = :userId', { userId })
+      .innerJoin('entity.partnerPrepCourse', 'partnerPrepCourse')
+      .andWhere('partnerPrepCourse.id = :prepCourseId', { prepCourseId })
+      .leftJoinAndSelect('entity.class', 'class')
+      .getOne();
+  }
+
   async findOneWithPartnerPrep(id: string): Promise<StudentCourse | null> {
     return this.repository
       .createQueryBuilder('entity')
