@@ -65,3 +65,71 @@ describe('StudentCourseRepository.findByUserIdAndPrepCourse', () => {
     );
   });
 });
+
+describe('StudentCourseRepository.findEnrolledForRelatorio', () => {
+  const montar = () => {
+    const qb: any = {};
+    qb.innerJoin = jest.fn().mockReturnValue(qb);
+    qb.leftJoin = jest.fn().mockReturnValue(qb);
+    qb.addSelect = jest.fn().mockReturnValue(qb);
+    qb.where = jest.fn().mockReturnValue(qb);
+    qb.andWhere = jest.fn().mockReturnValue(qb);
+    qb.getMany = jest.fn().mockResolvedValue([]);
+    const repository = { createQueryBuilder: jest.fn().mockReturnValue(qb) };
+    const entityManager = {
+      getRepository: jest.fn().mockReturnValue(repository),
+    };
+    return { repo: new StudentCourseRepository(entityManager as any), qb };
+  };
+
+  const clausulas = (qb: any) =>
+    [...qb.where.mock.calls, ...qb.andWhere.mock.calls]
+      .map((c) => JSON.stringify(c))
+      .join(' ');
+
+  it('escopa no cursinho e só traz matriculado', async () => {
+    // ⚠️ afirma as chamadas com os argumentos EXATOS: um `toContain('cur-1')`
+    // sobreviveria a trocar os parâmetros entre si, como uma revisão anterior
+    // provou por mutação num teste irmão
+    const { repo, qb } = montar();
+
+    await repo.findEnrolledForRelatorio('cur-1');
+
+    expect(qb.where).toHaveBeenCalledWith('ppc.id = :prepCourseId', {
+      prepCourseId: 'cur-1',
+    });
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      'entity.applicationStatus = :status',
+      { status: 'Matriculado' },
+    );
+  });
+
+  it('sem classId, não filtra por turma — o geral traz quem não tem turma', async () => {
+    const { repo, qb } = montar();
+
+    await repo.findEnrolledForRelatorio('cur-1');
+
+    expect(clausulas(qb)).not.toContain('classId');
+  });
+
+  it('com classId, restringe à turma', async () => {
+    const { repo, qb } = montar();
+
+    await repo.findEnrolledForRelatorio('cur-1', 't-1');
+
+    expect(qb.andWhere).toHaveBeenCalledWith('class.id = :classId', {
+      classId: 't-1',
+    });
+  });
+
+  it('a turma entra por leftJoin — estudante sem turma não pode sumir do geral', async () => {
+    const { repo, qb } = montar();
+
+    await repo.findEnrolledForRelatorio('cur-1');
+
+    expect(qb.leftJoin).toHaveBeenCalledWith(
+      'entity.class',
+      expect.any(String),
+    );
+  });
+});
