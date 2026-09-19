@@ -8,6 +8,7 @@ import {
   LinhaDoRelatorioDtoOutput,
   RelatorioDtoOutput,
 } from './dtos/relatorio.dto.output';
+import { SimuladosComCartaoDtoOutput } from './dtos/simulados-com-cartao.dto.output';
 import { RelatorioHttpService } from './relatorio-http.service';
 
 interface LinhaDoMs {
@@ -102,6 +103,22 @@ export class RelatorioService {
       cursinhoId,
       turmaId,
     ) as Promise<QuestoesDoRelatorioDtoOutput>;
+  }
+
+  /**
+   * Proxy puro: nenhuma hidratação. Esta rota devolve simulados, não pessoas,
+   * então o MySQL não entra. O `resolverEscopo` é o MESMO do relatório — é
+   * ele que resolve o cursinho pelo JWT e recusa turma de outro cursinho.
+   */
+  async listarSimulados(
+    colaboradorUserId: string,
+    turmaId?: string,
+  ): Promise<SimuladosComCartaoDtoOutput> {
+    const cursinhoId = await this.resolverEscopo(colaboradorUserId, turmaId);
+    return this.http.buscarSimulados(
+      cursinhoId,
+      turmaId,
+    ) as Promise<SimuladosComCartaoDtoOutput>;
   }
 
   /**
