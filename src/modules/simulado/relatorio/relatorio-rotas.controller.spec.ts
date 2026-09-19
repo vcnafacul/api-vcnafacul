@@ -7,15 +7,17 @@ import { RelatorioController } from './relatorio.controller';
 import { RelatorioService } from './relatorio.service';
 
 /**
- * As quatro rotas montadas num app de verdade.
+ * As seis rotas montadas num app de verdade.
  *
  * ⚠️ **Só um app pega isto.** `:simuladoId`, `:simuladoId/questoes`,
- * `:simuladoId/turma/:turmaId` e `:simuladoId/turma/:turmaId/questoes` convivem
- * na mesma árvore, e um teste de unidade chama o método direto — nunca
- * exercita o roteamento. Este repositório já foi mordido por colisão literal ×
+ * `:simuladoId/turma/:turmaId`, `:simuladoId/turma/:turmaId/questoes`,
+ * `simulados` e `simulados/turma/:turmaId` convivem na mesma árvore, e um
+ * teste de unidade chama o método direto — nunca exercita o roteamento.
+ * As duas literais (`simulados*`) têm a MESMA contagem de segmentos que as
+ * de `:simuladoId`, então a ordem de declaração é o que as salva. Este repositório já foi mordido por colisão literal ×
  * `:param` (ver `questao-rotas.controller.spec.ts`).
  */
-describe('Relatório — as quatro rotas resolvem para o handler certo', () => {
+describe('Relatório — as seis rotas resolvem para o handler certo', () => {
   let app: INestApplication;
 
   const service = {

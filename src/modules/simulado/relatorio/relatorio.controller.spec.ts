@@ -63,7 +63,7 @@ describe('RelatorioController', () => {
 describe('RelatorioController — a permissão está em CADA rota', () => {
   // ⚠️ O PermissionsGuard lê `reflector.get(key, context.getHandler())`, e só.
   // Um @SetMetadata no nível da CLASSE não é visto por ele: `requiredPermissions`
-  // sai undefined, o guard devolve true, e as quatro rotas ficam abertas para
+  // sai undefined, o guard devolve true, e as seis rotas ficam abertas para
   // qualquer usuário autenticado — sem nada ficar vermelho.
   it.each([
     ['geral'],
@@ -72,14 +72,11 @@ describe('RelatorioController — a permissão está em CADA rota', () => {
     ['questoesPorTurma'],
     ['simulados'],
     ['simuladosPorTurma'],
-  ])(
-    '%s exige gerenciarEstudantes',
-    (metodo) => {
-      const meta = Reflect.getMetadata(
-        PermissionsGuard.name,
-        (RelatorioController.prototype as any)[metodo],
-      );
-      expect(meta).toBe(Permissions.gerenciarEstudantes);
-    },
-  );
+  ])('%s exige gerenciarEstudantes', (metodo) => {
+    const meta = Reflect.getMetadata(
+      PermissionsGuard.name,
+      (RelatorioController.prototype as any)[metodo],
+    );
+    expect(meta).toBe(Permissions.gerenciarEstudantes);
+  });
 });
