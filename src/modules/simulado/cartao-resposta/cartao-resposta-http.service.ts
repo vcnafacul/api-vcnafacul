@@ -28,6 +28,8 @@ export class CartaoRespostaHttpService {
     usuario: string;
     imageKey: string;
     cartaoCode: string;
+    cursinhoId?: string;
+    turmaId?: string;
   }): Promise<{ historicoId: string }> {
     return this.axios.post('v1/cartao-resposta/historico', payload);
   }
