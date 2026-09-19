@@ -77,9 +77,18 @@ Foi o pedido explícito: *"um aproveitamento geral daquele simulado, mas somente
 estudantes definidos aqui"*. Reaproveitar um agregado global entregaria outro número, parecido o
 bastante para ninguém notar.
 
-⚠️ **A média exclui quem não teve leitura concluída.** Cartão com erro não tem aproveitamento;
+⚠️ **A média exclui quem não teve leitura concluída.** Cartão com erro não vale como leitura;
 contá-lo como zero puxa a média para baixo e a turma parece pior do que foi. **E as duas contagens
 aparecem**, senão ninguém entende a diferença entre "30 alunos" e "27 no cálculo".
+
+⚠️ **Correção (revisão adversarial, Fix 1): "não tem aproveitamento" era falso.** O `marcarFalha` do
+ms (`historico.repository.ts:255-266`) grava `status` e `falha` e **não limpa `aproveitamento`** — um
+cartão que leu bem, foi refotografado e falhou mantém a nota da tentativa anterior. Inferir "leitura
+concluída" da presença da nota contava esse cartão; medido, uma turma com `1.0` e um cartão falho de
+`0.2` devolvia média `0.6`. E a aba de questões, que filtra `status: completed` **no ms**
+(`relatorio-simulado-estudante.repository.ts:175`), excluía o mesmo cartão — as duas metades da mesma
+tela discordariam, sem ninguém saber qual estava certa. O gate é no `status`, não na presença do
+número.
 
 ### O resumo
 
@@ -107,10 +116,16 @@ quem saiu não é informação que este relatório deva expor.
 
 ## Riscos
 
-⚠️ **A permissão por rota não é pega por teste de unidade neste repo.** Os testes chamam o método
-direto e não passam pelo guard — a mutação que troca a permissão no `@SetMetadata` sobrevive.
-**Registrar no PR como verificação manual e conferir as quatro rotas à mão**, como se fez no PR da
-categoria por cursinho.
+⚠️ ~~**A permissão por rota não é pega por teste de unidade neste repo.**~~ **Correção: dá, sim, e
+o teste está no branch.** O risco original supunha que só o guard em execução provaria a permissão.
+Mas o `PermissionsGuard` lê `reflector.get(PermissionsGuard.name, context.getHandler())` — e um
+teste pode ler a **mesma chave do mesmo lugar**: `relatorio.controller.spec.ts` afirma, para os
+quatro handlers, que o metadado é `Permissions.gerenciarEstudantes`. Junto com o
+`permission.guard.spec.ts`, que já cobre o comportamento do guard dado o metadado, a corrente fecha
+em processo: a mutação que troca a permissão, ou que move o `@SetMetadata` para a classe (onde o
+guard não o enxerga e **libera** a rota), morre.
+
+A conferência manual das quatro rotas continua no PR — mas como confirmação, não como única defesa.
 
 ⚠️ **Colisão de rota literal × `:param`.** `…/:simuladoId/turma/:turmaId` e
 `…/:simuladoId/questoes` convivem, e `…/:simuladoId/turma/:turmaId/questoes` também. Diferem em
@@ -135,9 +150,12 @@ omite de verdade, e não manda `turmaId=`.
 - [ ] Uma requisição = uma consulta de estudantes, não N
 - [ ] Estudante sem cartão aparece com `enviouCartao: false`
 - [ ] O `aproveitamentoGeral` bate com a média das linhas que têm leitura concluída
+- [ ] A média gateia por `status === 'completed'`, não pela presença da nota — cartão falho com nota velha fica de fora
+- [ ] Com `turmaId`, a consulta de estudantes continua escopada pelo cursinho — afirmado por teste
+- [ ] Estudante soft-deletado não aparece — `deletedAt` é coluna comum, o TypeORM não filtra sozinho
 - [ ] As duas contagens aparecem, e `aproveitamentoGeral` é `null` quando ninguém tem leitura
 - [ ] `linhasSemEstudanteAtivo` contado, nunca listado
 - [ ] `temEstudanteSemTurma` verdadeiro quando houver, no relatório geral
 - [ ] As quatro rotas resolvem sem colisão — provado por teste que sobe o app
-- [ ] Permissão `gerenciarEstudantes` nas quatro, conferida **à mão** e registrada no PR
+- [ ] Permissão `gerenciarEstudantes` nas quatro, **fixada por teste** no metadado de cada handler (e conferida à mão no PR)
 - [ ] Teste provando o isolamento entre dois cursinhos
