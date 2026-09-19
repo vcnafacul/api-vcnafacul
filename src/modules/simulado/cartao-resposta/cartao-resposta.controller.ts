@@ -41,8 +41,9 @@ export class CartaoRespostaController {
   async upload(
     @UploadedFile() file: Express.Multer.File,
     @Body('usuario') usuario: string,
+    @Req() req: Request,
   ) {
-    return this.uploadService.processar(usuario, file);
+    return this.uploadService.processar((req.user as User).id, usuario, file);
   }
 
   @Get('resultados')

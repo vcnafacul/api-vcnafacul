@@ -55,7 +55,12 @@ it('POST upload delega ao CartaoUploadService', async () => {
     uploadService as any,
   );
   const file: any = { buffer: Buffer.from('IMG'), mimetype: 'image/jpeg' };
-  const r = await controller.upload(file, 'u-aluno');
-  expect(uploadService.processar).toHaveBeenCalledWith('u-aluno', file);
+  const req: any = { user: { id: 'u-colab' } };
+  const r = await controller.upload(file, 'u-aluno', req);
+  expect(uploadService.processar).toHaveBeenCalledWith(
+    'u-colab',
+    'u-aluno',
+    file,
+  );
   expect(r).toEqual({ historicoId: 'h1' });
 });
