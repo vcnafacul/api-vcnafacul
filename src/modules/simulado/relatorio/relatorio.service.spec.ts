@@ -27,6 +27,9 @@ const montar = (over: any = {}) => {
       totalEstudantesComCartaoNoCursinho: over.totalNoCursinho ?? 0,
     }),
     buscarQuestoes: jest.fn().mockResolvedValue({ questoes: [] }),
+    buscarSimulados: jest
+      .fn()
+      .mockResolvedValue({ simulados: over.simulados ?? [] }),
   };
   const studentCourseRepository = {
     findEnrolledForRelatorio: jest
@@ -55,6 +58,7 @@ const montar = (over: any = {}) => {
     http,
     studentCourseRepository,
     classRepository,
+    cursinhoResolver,
   };
 };
 
@@ -333,5 +337,54 @@ describe('RelatorioService.consultarQuestoes', () => {
     await expect(
       svc.consultarQuestoes('colab-1', 'sim-1', 't-9'),
     ).rejects.toThrow(ForbiddenException);
+  });
+});
+
+describe('RelatorioService.listarSimulados', () => {
+  it('resolve o cursinho pelo JWT e repassa — nenhum parâmetro o troca', async () => {
+    const { svc, http, cursinhoResolver } = montar();
+
+    await svc.listarSimulados('colab-1');
+
+    expect(cursinhoResolver.resolveCursinhoIdByUserId).toHaveBeenCalledWith(
+      'colab-1',
+    );
+    expect(http.buscarSimulados).toHaveBeenCalledWith('cur-1', undefined);
+  });
+
+  it('com turma, repassa as duas coisas', async () => {
+    const { svc, http } = montar();
+
+    await svc.listarSimulados('colab-1', 't-1');
+
+    expect(http.buscarSimulados).toHaveBeenCalledWith('cur-1', 't-1');
+  });
+
+  it('turma de outro cursinho dá 403, e o ms nem é chamado', async () => {
+    // é o `resolverEscopo` do card 04 fazendo o trabalho — não uma validação
+    // nova. Se esta rota tivesse a sua própria, as duas divergiriam.
+    const { svc, http } = montar({ turma: null });
+
+    await expect(svc.listarSimulados('colab-1', 't-alheia')).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(http.buscarSimulados).not.toHaveBeenCalled();
+  });
+
+  it('devolve o que o ms mandou, sem reescrever', async () => {
+    const simulados = [
+      {
+        simuladoId: 's1',
+        nome: 'ENEM',
+        cartoes: 3,
+        comLeituraConcluida: 2,
+        ultimoEnvio: '2026-05-02T00:00:00.000Z',
+      },
+    ];
+    const { svc } = montar({ simulados });
+
+    await expect(svc.listarSimulados('colab-1')).resolves.toEqual({
+      simulados,
+    });
   });
 });

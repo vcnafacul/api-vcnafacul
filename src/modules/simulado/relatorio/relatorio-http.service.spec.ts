@@ -57,4 +57,33 @@ describe('RelatorioHttpService', () => {
       'v1/relatorio-simulado/sim-1/questoes?cursinhoId=cur-1&turmaId=t-1',
     );
   });
+
+  it('buscarSimulados monta a URL com cursinhoId e sem :simuladoId', async () => {
+    const { svc, axios } = montar();
+
+    await svc.buscarSimulados('cur-1');
+
+    expect(axios.get).toHaveBeenCalledWith(
+      'v1/relatorio-simulado/simulados?cursinhoId=cur-1',
+    );
+  });
+
+  it('buscarSimulados OMITE turmaId quando não vem', async () => {
+    // `turmaId=` vazio chega ao ms como filtro por '' e devolve lista vazia
+    const { svc, axios } = montar();
+
+    await svc.buscarSimulados('cur-1');
+
+    expect(axios.get.mock.calls[0][0]).not.toContain('turmaId');
+  });
+
+  it('buscarSimulados inclui turmaId quando vem', async () => {
+    const { svc, axios } = montar();
+
+    await svc.buscarSimulados('cur-1', 't-1');
+
+    expect(axios.get).toHaveBeenCalledWith(
+      'v1/relatorio-simulado/simulados?cursinhoId=cur-1&turmaId=t-1',
+    );
+  });
 });

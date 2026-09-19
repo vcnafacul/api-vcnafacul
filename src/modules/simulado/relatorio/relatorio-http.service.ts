@@ -41,6 +41,15 @@ export class RelatorioHttpService {
     );
   }
 
+  async buscarSimulados(
+    cursinhoId: string,
+    turmaId?: string,
+  ): Promise<unknown> {
+    return this.axios.get(
+      `v1/relatorio-simulado/simulados?${this.query(cursinhoId, turmaId)}`,
+    );
+  }
+
   /**
    * ⚠️ `turmaId` OMITIDO quando não vem, nunca vazio: `turmaId=` chega ao ms
    * como string vazia, vira filtro por `''` e devolve lista vazia — um

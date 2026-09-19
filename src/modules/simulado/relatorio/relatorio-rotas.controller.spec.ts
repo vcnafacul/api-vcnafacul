@@ -7,20 +7,23 @@ import { RelatorioController } from './relatorio.controller';
 import { RelatorioService } from './relatorio.service';
 
 /**
- * As quatro rotas montadas num app de verdade.
+ * As seis rotas montadas num app de verdade.
  *
  * ⚠️ **Só um app pega isto.** `:simuladoId`, `:simuladoId/questoes`,
- * `:simuladoId/turma/:turmaId` e `:simuladoId/turma/:turmaId/questoes` convivem
- * na mesma árvore, e um teste de unidade chama o método direto — nunca
- * exercita o roteamento. Este repositório já foi mordido por colisão literal ×
+ * `:simuladoId/turma/:turmaId`, `:simuladoId/turma/:turmaId/questoes`,
+ * `simulados` e `simulados/turma/:turmaId` convivem na mesma árvore, e um
+ * teste de unidade chama o método direto — nunca exercita o roteamento.
+ * As duas literais (`simulados*`) têm a MESMA contagem de segmentos que as
+ * de `:simuladoId`, então a ordem de declaração é o que as salva. Este repositório já foi mordido por colisão literal ×
  * `:param` (ver `questao-rotas.controller.spec.ts`).
  */
-describe('Relatório — as quatro rotas resolvem para o handler certo', () => {
+describe('Relatório — as seis rotas resolvem para o handler certo', () => {
   let app: INestApplication;
 
   const service = {
     consultar: jest.fn(),
     consultarQuestoes: jest.fn(),
+    listarSimulados: jest.fn(),
   };
 
   const passaTudo = {
@@ -53,6 +56,7 @@ describe('Relatório — as quatro rotas resolvem para o handler certo', () => {
     jest.clearAllMocks();
     service.consultar.mockResolvedValue({ linhas: [], resumo: {} });
     service.consultarQuestoes.mockResolvedValue({ questoes: [] });
+    service.listarSimulados.mockResolvedValue({ simulados: [] });
   });
 
   it('o geral do cursinho cai no handler do geral', async () => {
@@ -91,6 +95,27 @@ describe('Relatório — as quatro rotas resolvem para o handler certo', () => {
       'sim-1',
       't-1',
     );
+    expect(service.consultar).not.toHaveBeenCalled();
+  });
+
+  it('GET /simulados resolve para a literal, não para :simuladoId', async () => {
+    // mesma contagem de segmentos que `:simuladoId` — declarada depois, o
+    // param a captura e o handler errado roda com simuladoId="simulados"
+    await request(app.getHttpServer())
+      .get('/mssimulado/relatorio/simulado/simulados')
+      .expect(200);
+
+    // exatamente um argumento: sem turma, e nada de cursinho vindo da URL
+    expect(service.listarSimulados).toHaveBeenCalledWith('colab-1');
+    expect(service.consultar).not.toHaveBeenCalled();
+  });
+
+  it('GET /simulados/turma/:turmaId resolve para a literal com turma', async () => {
+    await request(app.getHttpServer())
+      .get('/mssimulado/relatorio/simulado/simulados/turma/t-1')
+      .expect(200);
+
+    expect(service.listarSimulados).toHaveBeenCalledWith('colab-1', 't-1');
     expect(service.consultar).not.toHaveBeenCalled();
   });
 });
