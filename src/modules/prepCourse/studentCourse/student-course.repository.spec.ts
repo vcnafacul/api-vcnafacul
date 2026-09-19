@@ -1,5 +1,29 @@
 import { StudentCourseRepository } from './student-course.repository';
 
+it('findByEnrollmentCodeAndPrepCourse filtra por cod_enrolled + prepCourse', async () => {
+  const qb: any = {};
+  qb.where = jest.fn().mockReturnValue(qb);
+  qb.andWhere = jest.fn().mockReturnValue(qb);
+  qb.innerJoinAndSelect = jest.fn().mockReturnValue(qb);
+  qb.getOne = jest.fn().mockResolvedValue({ id: 'sc1' });
+  const entityManager: any = {
+    getRepository: () => ({ createQueryBuilder: () => qb }),
+  };
+  const repo = new StudentCourseRepository(entityManager);
+  const r = await repo.findByEnrollmentCodeAndPrepCourse('MAT1', 'prep1');
+  expect(r).toEqual({ id: 'sc1' });
+  expect(qb.where).toHaveBeenCalledWith(
+    'entity.cod_enrolled = :enrollmentCode',
+    {
+      enrollmentCode: 'MAT1',
+    },
+  );
+  expect(qb.andWhere).toHaveBeenCalledWith(
+    'partnerPrepCourse.id = :prepCourseId',
+    { prepCourseId: 'prep1' },
+  );
+});
+
 describe('StudentCourseRepository.findByUserIdAndPrepCourse', () => {
   const montar = () => {
     const qb: any = {};
@@ -24,12 +48,16 @@ describe('StudentCourseRepository.findByUserIdAndPrepCourse', () => {
     const r = await repo.findByUserIdAndPrepCourse('u1', 'cur-1');
 
     expect(r?.class?.id).toBe('t-1');
-    // o escopo por cursinho é o que impede enviar cartão de aluno de outro cursinho
-    const clausulas = [...qb.where.mock.calls, ...qb.andWhere.mock.calls]
-      .map((c) => JSON.stringify(c))
-      .join(' ');
-    expect(clausulas).toContain('u1');
-    expect(clausulas).toContain('cur-1');
+    // Provado por mutação: trocar {userId} por {prepCourseId} nas duas chamadas
+    // deixava o teste anterior verde, porque ele só checava se a string junta
+    // continha os dois valores — não qual clausula levava qual parâmetro.
+    expect(qb.where).toHaveBeenCalledWith('user.id = :userId', {
+      userId: 'u1',
+    });
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      'partnerPrepCourse.id = :prepCourseId',
+      { prepCourseId: 'cur-1' },
+    );
     // sem a turma carregada, o vínculo iria para o ms sem turmaId
     expect(qb.leftJoinAndSelect).toHaveBeenCalledWith(
       'entity.class',
