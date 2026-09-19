@@ -21,6 +21,7 @@ describe('Relatório — as quatro rotas resolvem para o handler certo', () => {
   const service = {
     consultar: jest.fn(),
     consultarQuestoes: jest.fn(),
+    listarSimulados: jest.fn(),
   };
 
   const passaTudo = {
@@ -53,6 +54,7 @@ describe('Relatório — as quatro rotas resolvem para o handler certo', () => {
     jest.clearAllMocks();
     service.consultar.mockResolvedValue({ linhas: [], resumo: {} });
     service.consultarQuestoes.mockResolvedValue({ questoes: [] });
+    service.listarSimulados.mockResolvedValue({ simulados: [] });
   });
 
   it('o geral do cursinho cai no handler do geral', async () => {
@@ -91,6 +93,27 @@ describe('Relatório — as quatro rotas resolvem para o handler certo', () => {
       'sim-1',
       't-1',
     );
+    expect(service.consultar).not.toHaveBeenCalled();
+  });
+
+  it('GET /simulados resolve para a literal, não para :simuladoId', async () => {
+    // mesma contagem de segmentos que `:simuladoId` — declarada depois, o
+    // param a captura e o handler errado roda com simuladoId="simulados"
+    await request(app.getHttpServer())
+      .get('/mssimulado/relatorio/simulado/simulados')
+      .expect(200);
+
+    // exatamente um argumento: sem turma, e nada de cursinho vindo da URL
+    expect(service.listarSimulados).toHaveBeenCalledWith('colab-1');
+    expect(service.consultar).not.toHaveBeenCalled();
+  });
+
+  it('GET /simulados/turma/:turmaId resolve para a literal com turma', async () => {
+    await request(app.getHttpServer())
+      .get('/mssimulado/relatorio/simulado/simulados/turma/t-1')
+      .expect(200);
+
+    expect(service.listarSimulados).toHaveBeenCalledWith('colab-1', 't-1');
     expect(service.consultar).not.toHaveBeenCalled();
   });
 });

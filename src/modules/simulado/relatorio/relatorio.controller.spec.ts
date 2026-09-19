@@ -65,7 +65,14 @@ describe('RelatorioController — a permissão está em CADA rota', () => {
   // Um @SetMetadata no nível da CLASSE não é visto por ele: `requiredPermissions`
   // sai undefined, o guard devolve true, e as quatro rotas ficam abertas para
   // qualquer usuário autenticado — sem nada ficar vermelho.
-  it.each([['geral'], ['porTurma'], ['questoesGeral'], ['questoesPorTurma']])(
+  it.each([
+    ['geral'],
+    ['porTurma'],
+    ['questoesGeral'],
+    ['questoesPorTurma'],
+    ['simulados'],
+    ['simuladosPorTurma'],
+  ])(
     '%s exige gerenciarEstudantes',
     (metodo) => {
       const meta = Reflect.getMetadata(

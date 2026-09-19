@@ -14,6 +14,7 @@ import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { QuestoesDoRelatorioDtoOutput } from './dtos/questoes-do-relatorio.dto.output';
 import { RelatorioDtoOutput } from './dtos/relatorio.dto.output';
+import { SimuladosComCartaoDtoOutput } from './dtos/simulados-com-cartao.dto.output';
 import { RelatorioService } from './relatorio.service';
 
 const RESPOSTA_403 = {
@@ -27,6 +28,42 @@ const RESPOSTA_403 = {
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class RelatorioController {
   constructor(private readonly service: RelatorioService) {}
+
+  /**
+   * ⚠️ **PRIMEIRAS rotas da classe, e isso não é estilo.** `simulados` tem a
+   * mesma contagem de segmentos que `:simuladoId`; declarada depois, o param
+   * a captura e o handler errado roda com `simuladoId = "simulados"`.
+   * Nenhum teste de unidade pega — só o `relatorio-rotas.controller.spec.ts`,
+   * que sobe o app.
+   */
+  @Get('simulados/turma/:turmaId')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'simulados com cartão da turma',
+    type: SimuladosComCartaoDtoOutput,
+  })
+  @ApiResponse(RESPOSTA_403)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
+  async simuladosPorTurma(
+    @Param('turmaId') turmaId: string,
+    @Req() req: Request,
+  ): Promise<SimuladosComCartaoDtoOutput> {
+    return this.service.listarSimulados((req.user as User).id, turmaId);
+  }
+
+  @Get('simulados')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'simulados com cartão do cursinho',
+    type: SimuladosComCartaoDtoOutput,
+  })
+  @ApiResponse(RESPOSTA_403)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
+  async simulados(@Req() req: Request): Promise<SimuladosComCartaoDtoOutput> {
+    return this.service.listarSimulados((req.user as User).id);
+  }
 
   @Get(':simuladoId/turma/:turmaId/questoes')
   @ApiBearerAuth()
