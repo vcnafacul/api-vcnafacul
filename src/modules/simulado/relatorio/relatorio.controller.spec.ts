@@ -6,6 +6,9 @@ const montar = () => {
   const service = {
     consultar: jest.fn().mockResolvedValue({ linhas: [], resumo: {} }),
     consultarQuestoes: jest.fn().mockResolvedValue({ questoes: [] }),
+    consultarDetalhe: jest
+      .fn()
+      .mockResolvedValue({ status: 'completed', respostas: [] }),
   };
   return { ctrl: new RelatorioController(service as any), service };
 };
@@ -49,6 +52,18 @@ describe('RelatorioController', () => {
     );
   });
 
+  it('detalhe do estudante: passa o usuário, e o cursinho não vem da URL', async () => {
+    const { ctrl, service } = montar();
+
+    await ctrl.detalheDoEstudante('sim-1', 'u1', req);
+
+    expect(service.consultarDetalhe).toHaveBeenCalledWith(
+      'colab-1',
+      'sim-1',
+      'u1',
+    );
+  });
+
   it('o cursinho NUNCA vem da URL — só o id de quem pediu é repassado', async () => {
     const { ctrl, service } = montar();
 
@@ -63,7 +78,7 @@ describe('RelatorioController', () => {
 describe('RelatorioController — a permissão está em CADA rota', () => {
   // ⚠️ O PermissionsGuard lê `reflector.get(key, context.getHandler())`, e só.
   // Um @SetMetadata no nível da CLASSE não é visto por ele: `requiredPermissions`
-  // sai undefined, o guard devolve true, e as seis rotas ficam abertas para
+  // sai undefined, o guard devolve true, e as sete rotas ficam abertas para
   // qualquer usuário autenticado — sem nada ficar vermelho.
   it.each([
     ['geral'],
@@ -72,6 +87,7 @@ describe('RelatorioController — a permissão está em CADA rota', () => {
     ['questoesPorTurma'],
     ['simulados'],
     ['simuladosPorTurma'],
+    ['detalheDoEstudante'],
   ])('%s exige gerenciarEstudantes', (metodo) => {
     const meta = Reflect.getMetadata(
       PermissionsGuard.name,

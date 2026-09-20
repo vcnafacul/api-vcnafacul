@@ -7,23 +7,25 @@ import { RelatorioController } from './relatorio.controller';
 import { RelatorioService } from './relatorio.service';
 
 /**
- * As seis rotas montadas num app de verdade.
+ * As sete rotas montadas num app de verdade.
  *
  * ⚠️ **Só um app pega isto.** `:simuladoId`, `:simuladoId/questoes`,
  * `:simuladoId/turma/:turmaId`, `:simuladoId/turma/:turmaId/questoes`,
- * `simulados` e `simulados/turma/:turmaId` convivem na mesma árvore, e um
- * teste de unidade chama o método direto — nunca exercita o roteamento.
+ * `:simuladoId/estudante/:userId`, `simulados` e `simulados/turma/:turmaId`
+ * convivem na mesma árvore, e um teste de unidade chama o método direto —
+ * nunca exercita o roteamento.
  * As duas literais (`simulados*`) têm a MESMA contagem de segmentos que as
  * de `:simuladoId`, então a ordem de declaração é o que as salva. Este repositório já foi mordido por colisão literal ×
  * `:param` (ver `questao-rotas.controller.spec.ts`).
  */
-describe('Relatório — as seis rotas resolvem para o handler certo', () => {
+describe('Relatório — as sete rotas resolvem para o handler certo', () => {
   let app: INestApplication;
 
   const service = {
     consultar: jest.fn(),
     consultarQuestoes: jest.fn(),
     listarSimulados: jest.fn(),
+    consultarDetalhe: jest.fn(),
   };
 
   const passaTudo = {
@@ -57,6 +59,10 @@ describe('Relatório — as seis rotas resolvem para o handler certo', () => {
     service.consultar.mockResolvedValue({ linhas: [], resumo: {} });
     service.consultarQuestoes.mockResolvedValue({ questoes: [] });
     service.listarSimulados.mockResolvedValue({ simulados: [] });
+    service.consultarDetalhe.mockResolvedValue({
+      status: 'completed',
+      respostas: [],
+    });
   });
 
   it('o geral do cursinho cai no handler do geral', async () => {
@@ -117,5 +123,30 @@ describe('Relatório — as seis rotas resolvem para o handler certo', () => {
 
     expect(service.listarSimulados).toHaveBeenCalledWith('colab-1', 't-1');
     expect(service.consultar).not.toHaveBeenCalled();
+  });
+
+  it('GET :simuladoId/estudante/:userId resolve para o handler certo', async () => {
+    await request(app.getHttpServer())
+      .get('/mssimulado/relatorio/simulado/sim-1/estudante/u1')
+      .expect(200);
+
+    expect(service.consultarDetalhe).toHaveBeenCalledWith(
+      'colab-1',
+      'sim-1',
+      'u1',
+    );
+    expect(service.consultar).not.toHaveBeenCalled();
+    expect(service.consultarQuestoes).not.toHaveBeenCalled();
+  });
+
+  it('`/estudante/:userId` não é engolido pela rota de turma nem vice-versa', async () => {
+    // as duas têm três segmentos com literal no MEIO; se a de turma passasse a
+    // ser `:simuladoId/:algo/:outro`, este par ficaria indistinguível
+    await request(app.getHttpServer())
+      .get('/mssimulado/relatorio/simulado/sim-1/turma/t-1')
+      .expect(200);
+
+    expect(service.consultar).toHaveBeenCalledWith('colab-1', 'sim-1', 't-1');
+    expect(service.consultarDetalhe).not.toHaveBeenCalled();
   });
 });

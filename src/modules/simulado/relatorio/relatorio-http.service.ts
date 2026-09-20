@@ -51,6 +51,22 @@ export class RelatorioHttpService {
   }
 
   /**
+   * Um estudante só: `cursinhoId` é o gate, e turma não entra — o `usuario`
+   * já identifica a pessoa.
+   */
+  async buscarDetalheDoEstudante(
+    simuladoId: string,
+    usuario: string,
+    cursinhoId: string,
+  ): Promise<unknown> {
+    return this.axios.get(
+      `v1/relatorio-simulado/${simuladoId}/estudante/${usuario}?${this.query(
+        cursinhoId,
+      )}`,
+    );
+  }
+
+  /**
    * ⚠️ `turmaId` OMITIDO quando não vem, nunca vazio: `turmaId=` chega ao ms
    * como string vazia, vira filtro por `''` e devolve lista vazia — um
    * relatório em branco sem erro nenhum.

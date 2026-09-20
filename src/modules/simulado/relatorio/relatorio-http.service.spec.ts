@@ -86,4 +86,14 @@ describe('RelatorioHttpService', () => {
       'v1/relatorio-simulado/simulados?cursinhoId=cur-1&turmaId=t-1',
     );
   });
+
+  it('buscarDetalheDoEstudante monta a URL com o usuário no caminho', async () => {
+    const { svc, axios } = montar();
+
+    await svc.buscarDetalheDoEstudante('sim-1', 'u1', 'cur-1');
+
+    expect(axios.get).toHaveBeenCalledWith(
+      'v1/relatorio-simulado/sim-1/estudante/u1?cursinhoId=cur-1',
+    );
+  });
 });

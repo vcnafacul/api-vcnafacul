@@ -30,6 +30,11 @@ const montar = (over: any = {}) => {
     buscarSimulados: jest
       .fn()
       .mockResolvedValue({ simulados: over.simulados ?? [] }),
+    buscarDetalheDoEstudante: jest
+      .fn()
+      .mockResolvedValue(
+        over.detalhe ?? { status: 'completed', respostas: [] },
+      ),
   };
   const studentCourseRepository = {
     findEnrolledForRelatorio: jest
@@ -386,5 +391,42 @@ describe('RelatorioService.listarSimulados', () => {
     await expect(svc.listarSimulados('colab-1')).resolves.toEqual({
       simulados,
     });
+  });
+});
+
+describe('RelatorioService.consultarDetalhe', () => {
+  it('resolve o cursinho pelo JWT — nenhum parâmetro o troca', async () => {
+    const { svc, http, cursinhoResolver } = montar();
+
+    await svc.consultarDetalhe('colab-1', 'sim-1', 'u1');
+
+    expect(cursinhoResolver.resolveCursinhoIdByUserId).toHaveBeenCalledWith(
+      'colab-1',
+    );
+    expect(http.buscarDetalheDoEstudante).toHaveBeenCalledWith(
+      'sim-1',
+      'u1',
+      'cur-1',
+    );
+  });
+
+  it('devolve o que o ms mandou, sem reescrever', async () => {
+    const detalhe = {
+      status: 'completed',
+      respostas: [
+        {
+          numero: 1,
+          questaoId: 'q1',
+          alternativaEstudante: 'A',
+          alternativaCorreta: 'A',
+          resultado: 'acerto',
+        },
+      ],
+    };
+    const { svc } = montar({ detalhe });
+
+    await expect(
+      svc.consultarDetalhe('colab-1', 'sim-1', 'u1'),
+    ).resolves.toEqual(detalhe);
   });
 });

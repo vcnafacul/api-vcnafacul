@@ -3,6 +3,7 @@ import { ClassRepository } from 'src/modules/prepCourse/class/class.repository';
 import { StudentCourse } from 'src/modules/prepCourse/studentCourse/student-course.entity';
 import { StudentCourseRepository } from 'src/modules/prepCourse/studentCourse/student-course.repository';
 import { CursinhoResolverService } from '../prova/cursinho/cursinho-resolver.service';
+import { DetalheDoEstudanteDtoOutput } from './dtos/detalhe-do-estudante.dto.output';
 import { QuestoesDoRelatorioDtoOutput } from './dtos/questoes-do-relatorio.dto.output';
 import {
   LinhaDoRelatorioDtoOutput,
@@ -119,6 +120,26 @@ export class RelatorioService {
       cursinhoId,
       turmaId,
     ) as Promise<SimuladosComCartaoDtoOutput>;
+  }
+
+  /**
+   * Proxy puro. O `resolverEscopo` é o MESMO do relatório — sem turma, porque
+   * o estudante já é identificado e o `cursinhoId` do JWT é o gate.
+   *
+   * O nome do estudante não é buscado aqui: a tela que abre o detalhe já o tem
+   * na linha que foi clicada, e o MySQL repetiria o que está em mãos.
+   */
+  async consultarDetalhe(
+    colaboradorUserId: string,
+    simuladoId: string,
+    userId: string,
+  ): Promise<DetalheDoEstudanteDtoOutput> {
+    const cursinhoId = await this.resolverEscopo(colaboradorUserId);
+    return this.http.buscarDetalheDoEstudante(
+      simuladoId,
+      userId,
+      cursinhoId,
+    ) as Promise<DetalheDoEstudanteDtoOutput>;
   }
 
   /**
