@@ -19,6 +19,7 @@ import { CadernoTemplateHttpService } from './caderno/caderno-template-http.serv
 import { CartaoRespostaController } from './cartao-resposta/cartao-resposta.controller';
 import { CartaoRespostaHttpService } from './cartao-resposta/cartao-resposta-http.service';
 import { CartaoRespostaResultadosService } from './cartao-resposta/cartao-resposta-resultados.service';
+import { CartaoReprocessoService } from './cartao-resposta/cartao-reprocesso.service';
 import { CartaoUploadService } from './cartao-resposta/cartao-upload.service';
 import { OmrCacheService } from './cartao-resposta/omr-cache.service';
 import { CategoriaProxyController } from './categoria/categoria.controller';
@@ -107,6 +108,7 @@ import { SubjectProxyService } from './subject/subject.service';
     CartaoRespostaResultadosService,
     OmrCacheService,
     CartaoUploadService,
+    CartaoReprocessoService,
     CadernoHttpService,
     CadernoLogosService,
     CadernoTemplateHttpService,

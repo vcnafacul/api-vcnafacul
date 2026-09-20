@@ -33,4 +33,27 @@ export class CartaoRespostaHttpService {
   }): Promise<{ historicoId: string }> {
     return this.axios.post('v1/cartao-resposta/historico', payload);
   }
+
+  /**
+   * Reabre um cartão que falhou — com foto nova (`imageKey`) ou só pedindo
+   * nova tentativa.
+   *
+   * ⚠️ `encodeURIComponent` no segmento, e todo o resto no CORPO. Um path
+   * param cru já deixou o chamador reescrever a URL do ms — um `?` embutido
+   * sobrepunha o `cursinhoId` resolvido do JWT.
+   */
+  async reprocessar(
+    historicoId: string,
+    corpo: {
+      cursinhoId: string;
+      imageKey?: string;
+      simuladoId?: string;
+      cartaoCode?: string;
+    },
+  ): Promise<void> {
+    await this.axios.post(
+      `v1/cartao-resposta/${encodeURIComponent(historicoId)}/reprocessar`,
+      corpo,
+    );
+  }
 }
