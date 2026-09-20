@@ -21,6 +21,10 @@ import { RelatorioService } from './relatorio.service';
 describe('Relatório — as sete rotas resolvem para o handler certo', () => {
   let app: INestApplication;
 
+  // `:userId` passa por `ParseUUIDPipe` — qualquer coisa que não seja UUID
+  // morre em 400 antes do handler.
+  const USER_ID = '11111111-2222-4333-8444-555555555555';
+
   const service = {
     consultar: jest.fn(),
     consultarQuestoes: jest.fn(),
@@ -127,16 +131,39 @@ describe('Relatório — as sete rotas resolvem para o handler certo', () => {
 
   it('GET :simuladoId/estudante/:userId resolve para o handler certo', async () => {
     await request(app.getHttpServer())
-      .get('/mssimulado/relatorio/simulado/sim-1/estudante/u1')
+      .get(`/mssimulado/relatorio/simulado/sim-1/estudante/${USER_ID}`)
       .expect(200);
 
     expect(service.consultarDetalhe).toHaveBeenCalledWith(
       'colab-1',
       'sim-1',
-      'u1',
+      USER_ID,
     );
     expect(service.consultar).not.toHaveBeenCalled();
     expect(service.consultarQuestoes).not.toHaveBeenCalled();
+  });
+
+  it('a literal `estudante` está PINADA: qualquer outro meio é 404', async () => {
+    // ⚠️ Este é o teste que o par acima não faz. Trocar
+    // `:simuladoId/estudante/:userId` por `:simuladoId/:qualquer/:userId`
+    // passa em TODO o resto deste arquivo — sobrevive só porque a rota de
+    // turma está declarada antes. Com a literal no lugar, um meio que não é
+    // `turma` nem `estudante` não casa com rota nenhuma.
+    await request(app.getHttpServer())
+      .get(`/mssimulado/relatorio/simulado/sim-1/qualquercoisa/${USER_ID}`)
+      .expect(404);
+
+    expect(service.consultarDetalhe).not.toHaveBeenCalled();
+    expect(service.consultar).not.toHaveBeenCalled();
+    expect(service.consultarQuestoes).not.toHaveBeenCalled();
+  });
+
+  it('`:userId` que não é UUID morre em 400, sem chegar no service', async () => {
+    await request(app.getHttpServer())
+      .get('/mssimulado/relatorio/simulado/sim-1/estudante/u1')
+      .expect(400);
+
+    expect(service.consultarDetalhe).not.toHaveBeenCalled();
   });
 
   it('`/estudante/:userId` não é engolido pela rota de turma nem vice-versa', async () => {

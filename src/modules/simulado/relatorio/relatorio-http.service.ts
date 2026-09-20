@@ -5,6 +5,17 @@ import {
   HttpServiceAxiosFactory,
 } from 'src/shared/services/axios/http-service-axios.factory';
 
+/**
+ * ⚠️ **Todo segmento de caminho vai por `encodeURIComponent`, e isso é
+ * segurança, não estilo.** O Express decodifica os `%XX` dos path params, e
+ * concatenar o valor cru deixa o CHAMADOR reescrever a URL que o gateway
+ * manda: um `?` embutido transforma o resto em query e sobrepõe o
+ * `cursinhoId` que este serviço acabou de resolver do JWT (vazamento entre
+ * cursinhos, medido), e um `/` mais `..` alcança outra rota do ms —
+ * inclusive `GET /v1/historico/:id`, que não checa dono.
+ *
+ * O filtro do ms está certo; o que estava errado era o encanamento até ele.
+ */
 @Injectable()
 export class RelatorioHttpService {
   private readonly axios: HttpServiceAxios;
@@ -24,7 +35,10 @@ export class RelatorioHttpService {
     turmaId?: string,
   ): Promise<unknown> {
     return this.axios.get(
-      `v1/relatorio-simulado/${simuladoId}?${this.query(cursinhoId, turmaId)}`,
+      `v1/relatorio-simulado/${this.seg(simuladoId)}?${this.query(
+        cursinhoId,
+        turmaId,
+      )}`,
     );
   }
 
@@ -34,7 +48,7 @@ export class RelatorioHttpService {
     turmaId?: string,
   ): Promise<unknown> {
     return this.axios.get(
-      `v1/relatorio-simulado/${simuladoId}/questoes?${this.query(
+      `v1/relatorio-simulado/${this.seg(simuladoId)}/questoes?${this.query(
         cursinhoId,
         turmaId,
       )}`,
@@ -60,10 +74,18 @@ export class RelatorioHttpService {
     cursinhoId: string,
   ): Promise<unknown> {
     return this.axios.get(
-      `v1/relatorio-simulado/${simuladoId}/estudante/${usuario}?${this.query(
-        cursinhoId,
-      )}`,
+      `v1/relatorio-simulado/${this.seg(simuladoId)}/estudante/${this.seg(
+        usuario,
+      )}?${this.query(cursinhoId)}`,
     );
+  }
+
+  /**
+   * Um único segmento de caminho, escapado. Ver o docblock da classe: sem
+   * isto o valor cru do chamador reescreve a URL do ms.
+   */
+  private seg(valor: string): string {
+    return encodeURIComponent(valor);
   }
 
   /**

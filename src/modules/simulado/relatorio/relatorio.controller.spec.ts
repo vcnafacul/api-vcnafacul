@@ -55,12 +55,16 @@ describe('RelatorioController', () => {
   it('detalhe do estudante: passa o usuário, e o cursinho não vem da URL', async () => {
     const { ctrl, service } = montar();
 
-    await ctrl.detalheDoEstudante('sim-1', 'u1', req);
+    await ctrl.detalheDoEstudante(
+      'sim-1',
+      '11111111-2222-4333-8444-555555555555',
+      req,
+    );
 
     expect(service.consultarDetalhe).toHaveBeenCalledWith(
       'colab-1',
       'sim-1',
-      'u1',
+      '11111111-2222-4333-8444-555555555555',
     );
   });
 

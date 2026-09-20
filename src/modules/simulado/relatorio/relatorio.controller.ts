@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseUUIDPipe,
   Req,
   SetMetadata,
   UseGuards,
@@ -111,11 +112,19 @@ export class RelatorioController {
     status: 404,
     description: 'estudante não tem cartão neste simulado',
   })
+  @ApiResponse({
+    status: 400,
+    description: ':userId não é um UUID',
+  })
   @ApiResponse(RESPOSTA_403)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
   async detalheDoEstudante(
     @Param('simuladoId') simuladoId: string,
-    @Param('userId') userId: string,
+    // `users.id` é `@PrimaryGeneratedColumn('uuid')`, e a linha do relatório
+    // carrega exatamente esse id em `usuario` — então tudo que não é UUID é
+    // lixo, e barrar aqui é uma segunda trava além do escape em
+    // `RelatorioHttpService` (nada com `?`, `/` ou `..` passa por um UUID).
+    @Param('userId', ParseUUIDPipe) userId: string,
     @Req() req: Request,
   ): Promise<DetalheDoEstudanteDtoOutput> {
     return this.service.consultarDetalhe(
