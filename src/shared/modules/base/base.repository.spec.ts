@@ -51,6 +51,34 @@ describe('BaseRepository', () => {
       await repo.findAllBy({ page: 2, limit: 5, where: {} });
       expect(mockQueryBuilder.skip).toHaveBeenCalledWith(5);
     });
+
+    it('⚠️ ecoa page e limit no corpo PRESERVANDO o tipo que recebeu', async () => {
+      // O corpo da resposta carrega estes dois campos para o client. A Task 1
+      // fez o pipe entregar `number` aqui; este teste prova que o repositório
+      // não os converte de volta, e portanto que o formato do corpo mudou de
+      // `"limit":"10"` para `"limit":10` de propósito, e não por acidente.
+      mockQueryBuilder.getMany.mockResolvedValue([]);
+      mockQueryBuilder.getCount.mockResolvedValue(0);
+
+      const result = await repo.findAllBy({ page: 2, limit: 10, where: {} });
+
+      expect(typeof result.page).toBe('number');
+      expect(typeof result.limit).toBe('number');
+      expect(result.page).toBe(2);
+      expect(result.limit).toBe(10);
+    });
+
+    it('⚠️ o skip nasce da aritmetica de page e limit — nunca negativo com entrada valida', async () => {
+      // `.skip()` recebia `NaN` ou negativo quando `page` era string invalida,
+      // e era dai que saia o 500. Com `@Min(1)` na borda, o menor skip e 0.
+      mockQueryBuilder.getMany.mockResolvedValue([]);
+      mockQueryBuilder.getCount.mockResolvedValue(0);
+
+      await repo.findAllBy({ page: 1, limit: 10, where: {} });
+
+      expect(mockQueryBuilder.skip).toHaveBeenCalledWith(0);
+      expect(mockQueryBuilder.take).toHaveBeenCalledWith(10);
+    });
   });
 
   describe('create', () => {
