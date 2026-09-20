@@ -100,6 +100,33 @@ export class CartaoRespostaController {
     return this.uploadService.processar((req.user as User).id, usuario, file);
   }
 
+  /**
+   * Autocomplete do envio de cartão: estudantes do cursinho por matrícula ou
+   * nome.
+   *
+   * ⚠️ **Declarada ANTES de `@Get(':simuladoId')`**, como a `resultados` ao
+   * lado. O Nest casa rotas na ordem de declaração: depois do param, `buscar`
+   * seria capturado como um `simuladoId` e a rota nunca executaria. É a classe
+   * de defeito que nenhum teste de unidade pega, porque nasce no roteamento.
+   *
+   * ⚠️ `visualizarEstudantes`, a mesma permissão da `resultados`: quem pode ver
+   * o estudante pode procurá-lo. O recorte por cursinho sai do JWT no serviço.
+   */
+  @Get('buscar-estudantes')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'estudantes do cursinho por matrícula ou nome (autocomplete)',
+  })
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarEstudantes)
+  async buscarEstudantes(@Query('termo') termo: string, @Req() req: Request) {
+    return this.resultadosService.buscarEstudantes(
+      (req.user as User).id,
+      termo,
+    );
+  }
+
   @Get('resultados')
   @ApiBearerAuth()
   @ApiResponse({
