@@ -274,15 +274,51 @@ describe('RelatorioService.consultar', () => {
 });
 
 describe('RelatorioService.consultar — recorte por turma', () => {
-  it('restringe a consulta de estudantes e a do ms à turma', async () => {
-    const { svc, http, studentCourseRepository } = montar();
+  it('⚠️ manda ao ms os USUÁRIOS da turma, não o turmaId', async () => {
+    /*
+      Card 18: o `turmaId` gravado na junção do ms é foto do momento do upload
+      e nunca é atualizado. Quem entrou na turma depois de enviar o cartão era
+      filtrado fora lá, vinha do MySQL aqui, e a linha saía com
+      `enviouCartao: false` — a tela AFIRMANDO que a pessoa não enviou.
+
+      A lista de usuários é lida do MySQL a cada consulta, então é sempre a
+      turma atual.
+    */
+    const { svc, http, studentCourseRepository } = montar({
+      estudantes: [estudante({ userId: 'u1' }), estudante({ userId: 'u2' })],
+    });
 
     await svc.consultar('colab-1', 'sim-1', 't-1');
 
     expect(
       studentCourseRepository.findEnrolledForRelatorio,
     ).toHaveBeenCalledWith('cur-1', 't-1');
-    expect(http.buscarLinhas).toHaveBeenCalledWith('sim-1', 'cur-1', 't-1');
+    expect(http.buscarLinhas).toHaveBeenCalledWith('sim-1', 'cur-1', [
+      'u1',
+      'u2',
+    ]);
+  });
+
+  it('⚠️ sem turma, NÃO manda lista — é o cursinho inteiro', async () => {
+    // Mandar centenas de ids só para dizer "todos" faria o corpo crescer à toa.
+    const { svc, http } = montar({
+      estudantes: [estudante({ userId: 'u1' })],
+    });
+
+    await svc.consultar('colab-1', 'sim-1');
+
+    expect(http.buscarLinhas).toHaveBeenCalledWith('sim-1', 'cur-1', undefined);
+  });
+
+  it('⚠️ turma sem ninguém matriculado NÃO consulta o ms', async () => {
+    // O ms recusa `[]` de propósito (seria indistinguível de "todos"), e não
+    // há o que perguntar: sem estudante, não há linha possível.
+    const { svc, http } = montar({ estudantes: [] });
+
+    const r = await svc.consultar('colab-1', 'sim-1', 't-1');
+
+    expect(http.buscarLinhas).not.toHaveBeenCalled();
+    expect(r.linhas).toEqual([]);
   });
 
   it('turma de outro cursinho é 403 — não lista vazia', async () => {
@@ -357,12 +393,25 @@ describe('RelatorioService.listarSimulados', () => {
     expect(http.buscarSimulados).toHaveBeenCalledWith('cur-1', undefined);
   });
 
-  it('com turma, repassa as duas coisas', async () => {
-    const { svc, http } = montar();
+  it('⚠️ com turma, manda os USUÁRIOS dela — não o turmaId', async () => {
+    // Deixou de ser proxy puro no card 18: o ms não consegue mais resolver a
+    // turma sozinho, porque o `turmaId` da junção envelhece.
+    const { svc, http } = montar({
+      estudantes: [estudante({ userId: 'u7' })],
+    });
 
     await svc.listarSimulados('colab-1', 't-1');
 
-    expect(http.buscarSimulados).toHaveBeenCalledWith('cur-1', 't-1');
+    expect(http.buscarSimulados).toHaveBeenCalledWith('cur-1', ['u7']);
+  });
+
+  it('⚠️ turma vazia devolve lista vazia sem chamar o ms', async () => {
+    const { svc, http } = montar({ estudantes: [] });
+
+    const r = await svc.listarSimulados('colab-1', 't-1');
+
+    expect(http.buscarSimulados).not.toHaveBeenCalled();
+    expect(r.simulados).toEqual([]);
   });
 
   it('turma de outro cursinho dá 403, e o ms nem é chamado', async () => {

@@ -33,38 +33,52 @@ export class RelatorioHttpService {
     );
   }
 
+  /**
+   * ⚠️ **POST, e o recorte vai no CORPO** — as três consultas abaixo.
+   *
+   * O ms filtrava por um `turmaId` gravado na junção no momento do upload, que
+   * nunca é atualizado: estudante que entrou na turma depois de enviar sumia do
+   * recorte, e no relatório por turma aparecia como "não enviou" — a tela
+   * AFIRMANDO algo falso. Ver card 18.
+   *
+   * A verdade sobre a turma vive no MySQL, aqui. Então quem resolve o recorte é
+   * esta api, mandando a lista de estudantes; o ms filtra por ela.
+   *
+   * ⚠️ **No corpo porque não cabe na URL:** um UUID ocupa 36 caracteres, e uma
+   * turma de 50 já passa de 2.300 — acima do limite seguro.
+   *
+   * ⚠️ `usuarios` AUSENTE = o cursinho inteiro. Um array vazio seria outra
+   * coisa ("nenhum estudante"), e o ms o recusa de propósito.
+   */
   async buscarLinhas(
     simuladoId: string,
     cursinhoId: string,
-    turmaId?: string,
+    usuarios?: string[],
   ): Promise<unknown> {
-    return this.axios.get(
-      `v1/relatorio-simulado/${this.seg(simuladoId)}?${this.query(
-        cursinhoId,
-        turmaId,
-      )}`,
+    return this.axios.post(
+      `v1/relatorio-simulado/${this.seg(simuladoId)}`,
+      this.corpo(cursinhoId, usuarios),
     );
   }
 
   async buscarQuestoes(
     simuladoId: string,
     cursinhoId: string,
-    turmaId?: string,
+    usuarios?: string[],
   ): Promise<unknown> {
-    return this.axios.get(
-      `v1/relatorio-simulado/${this.seg(simuladoId)}/questoes?${this.query(
-        cursinhoId,
-        turmaId,
-      )}`,
+    return this.axios.post(
+      `v1/relatorio-simulado/${this.seg(simuladoId)}/questoes`,
+      this.corpo(cursinhoId, usuarios),
     );
   }
 
   async buscarSimulados(
     cursinhoId: string,
-    turmaId?: string,
+    usuarios?: string[],
   ): Promise<unknown> {
-    return this.axios.get(
-      `v1/relatorio-simulado/simulados?${this.query(cursinhoId, turmaId)}`,
+    return this.axios.post(
+      'v1/relatorio-simulado/simulados',
+      this.corpo(cursinhoId, usuarios),
     );
   }
 
@@ -93,15 +107,23 @@ export class RelatorioHttpService {
   }
 
   /**
-   * ⚠️ `turmaId` OMITIDO quando não vem, nunca vazio: `turmaId=` chega ao ms
-   * como string vazia, vira filtro por `''` e devolve lista vazia — um
-   * relatório em branco sem erro nenhum.
+   * ⚠️ `usuarios` OMITIDO quando não há recorte, nunca `[]`: array vazio
+   * significaria "nenhum estudante" e o ms o recusa. Ausente é o cursinho
+   * inteiro, que é o relatório geral.
    */
-  private query(cursinhoId: string, turmaId?: string): string {
-    const partes = [`cursinhoId=${encodeURIComponent(cursinhoId)}`];
-    if (turmaId !== undefined) {
-      partes.push(`turmaId=${encodeURIComponent(turmaId)}`);
-    }
-    return partes.join('&');
+  /**
+   * ⚠️ Só o detalhe de UM estudante ainda usa query string, e continua `GET`:
+   * ali não há lista — o `usuario` já identifica a pessoa e o `cursinhoId` é o
+   * gate. Não há recorte por turma para congelar.
+   */
+  private query(cursinhoId: string): string {
+    return `cursinhoId=${encodeURIComponent(cursinhoId)}`;
+  }
+
+  private corpo(
+    cursinhoId: string,
+    usuarios?: string[],
+  ): Record<string, unknown> {
+    return usuarios === undefined ? { cursinhoId } : { cursinhoId, usuarios };
   }
 }
