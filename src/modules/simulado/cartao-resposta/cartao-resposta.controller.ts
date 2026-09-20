@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   Param,
   Post,
   Query,
@@ -51,6 +52,13 @@ export class CartaoRespostaController {
    * rota em produção escondida num PR de feature é o que esta série recusou.
    */
   @Post(':historicoId/reprocessar')
+  /**
+   * ⚠️ **202 explícito.** Sem ele o Nest devolve 201 para POST, e o
+   * `@ApiResponse` abaixo passaria a documentar um código que a rota não
+   * emite — um contrato que mente. E 202 é o certo: o OMR é acionado aqui,
+   * mas a leitura só volta pelo callback.
+   */
+  @HttpCode(202)
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
   @UseInterceptors(
