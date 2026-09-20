@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { CartaoRespostaController } from './cartao-resposta.controller';
 
 it('GET :simuladoId seta Content-Type e envia o buffer', async () => {
@@ -89,4 +91,81 @@ it('POST :historicoId/reprocessar delega com o userId do JWT e o arquivo', async
     'h1',
     file,
   );
+});
+
+describe('GET buscar-estudantes', () => {
+  const montar = (buscarEstudantes = jest.fn()) => {
+    const resultadosService = {
+      buscarPorMatricula: jest.fn(),
+      buscarEstudantes,
+    };
+    const controller = new CartaoRespostaController(
+      { baixarCartao: jest.fn() } as any,
+      resultadosService as any,
+      { processar: jest.fn() } as any,
+      { processar: jest.fn() } as any,
+    );
+    return { controller, resultadosService };
+  };
+
+  it('⚠️ delega passando o userId do JWT, e nao um id da requisicao', async () => {
+    // E o gate de cursinho: o servico resolve o cursinho a partir DESTE id.
+    const { controller, resultadosService } = montar(
+      jest.fn().mockResolvedValue({ estudantes: [] }),
+    );
+
+    await controller.buscarEstudantes('Ana', {
+      user: { id: 'colab-9' },
+    } as any);
+
+    expect(resultadosService.buscarEstudantes).toHaveBeenCalledWith(
+      'colab-9',
+      'Ana',
+    );
+  });
+
+  it('devolve o que o servico devolveu', async () => {
+    const payload = { estudantes: [{ userId: 'u1' }] };
+    const { controller } = montar(jest.fn().mockResolvedValue(payload));
+
+    const r = await controller.buscarEstudantes('Ana', {
+      user: { id: 'c' },
+    } as any);
+
+    expect(r).toBe(payload);
+  });
+});
+
+describe('⚠️ ordem das rotas GET no controller', () => {
+  /**
+   * O Nest casa rotas na ORDEM DE DECLARACAO. `buscar-estudantes` e
+   * `resultados` declaradas depois de `:simuladoId` seriam capturadas como um
+   * id, e as duas rotas nunca executariam — um 200 com corpo errado, nao um
+   * 404, que e o que torna esta classe de defeito dificil de ver.
+   *
+   * Nenhum teste de unidade de controller pega isso, porque o metodo existe e
+   * responde quando chamado direto. Por isso a assercao e sobre o ARQUIVO.
+   */
+  it('as rotas literais vem ANTES da rota com parametro', () => {
+    const fonte = readFileSync(
+      join(__dirname, 'cartao-resposta.controller.ts'),
+      'utf8',
+    );
+
+    // ⚠️ Regex ancorada no inicio da linha, e nao `indexOf`: o docblock da
+    // rota MENCIONA `@Get(':simuladoId')` para explicar a ordem, e um
+    // `indexOf` casaria com o comentario — dando a posicao errada e um teste
+    // vermelho com o codigo certo. Foi o que aconteceu ao escrever isto.
+    const posDe = (rota: string) =>
+      fonte.search(new RegExp(`^\\s*@Get\\('${rota}'\\)`, 'm'));
+
+    const posBuscar = posDe('buscar-estudantes');
+    const posResultados = posDe('resultados');
+    const posParam = posDe(':simuladoId');
+
+    expect(posBuscar).toBeGreaterThan(-1);
+    expect(posParam).toBeGreaterThan(-1);
+    expect(posBuscar).toBeLessThan(posParam);
+    expect(posResultados).toBeLessThan(posParam);
+  });
 });

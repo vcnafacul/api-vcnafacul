@@ -79,3 +79,150 @@ it('aluno não encontrado → NotFound', async () => {
     NotFoundException,
   );
 });
+
+const CURSINHO = 'cursinho-1';
+
+const montar = (encontrados: any[] = []) => {
+  const cursinhoResolver = {
+    resolveCursinhoIdByUserId: jest.fn().mockResolvedValue(CURSINHO),
+  };
+  const studentCourseRepository = {
+    buscarParaEnvioDeCartao: jest.fn().mockResolvedValue(encontrados),
+    findByEnrollmentCodeAndPrepCourse: jest.fn(),
+  };
+  const historicoService = { getAllByUser: jest.fn() };
+  const svc = new CartaoRespostaResultadosService(
+    cursinhoResolver as any,
+    studentCourseRepository as any,
+    historicoService as any,
+  );
+  return { svc, cursinhoResolver, studentCourseRepository, historicoService };
+};
+
+const estudante = (over: any = {}) => ({
+  cod_enrolled: '20250185',
+  class: { id: 't1', name: 'Turma A' },
+  user: {
+    id: 'u1',
+    firstName: 'Cleyton',
+    lastName: 'Biffe',
+    socialName: null,
+    useSocialName: false,
+  },
+  ...over,
+});
+
+describe('CartaoRespostaResultadosService.buscarEstudantes', () => {
+  it('devolve nome, matricula e turma', async () => {
+    const { svc } = montar([estudante()]);
+
+    const r = await svc.buscarEstudantes('colab-1', 'Cleyton');
+
+    expect(r.estudantes).toEqual([
+      {
+        userId: 'u1',
+        nome: 'Cleyton Biffe',
+        matricula: '20250185',
+        turma: 'Turma A',
+      },
+    ]);
+  });
+
+  it('⚠️ o cursinho vem do JWT do colaborador, NUNCA da requisicao', async () => {
+    // E o gate que impede um colaborador de enxergar — e mandar cartao para —
+    // estudante de outro cursinho ao digitar um nome comum.
+    const { svc, cursinhoResolver, studentCourseRepository } = montar([]);
+
+    await svc.buscarEstudantes('colab-1', 'Ana Silva');
+
+    expect(cursinhoResolver.resolveCursinhoIdByUserId).toHaveBeenCalledWith(
+      'colab-1',
+    );
+    expect(
+      studentCourseRepository.buscarParaEnvioDeCartao,
+    ).toHaveBeenCalledWith('Ana Silva', CURSINHO, 10);
+  });
+
+  it('⚠️ termo curto devolve lista VAZIA e nao consulta o banco', async () => {
+    // E o estado normal de quem esta digitando: um 400 aqui viraria toast a
+    // cada tecla, e uma consulta por letra digitada.
+    const { svc, studentCourseRepository, cursinhoResolver } = montar([]);
+
+    const r = await svc.buscarEstudantes('colab-1', 'An');
+
+    expect(r.estudantes).toEqual([]);
+    expect(
+      studentCourseRepository.buscarParaEnvioDeCartao,
+    ).not.toHaveBeenCalled();
+    expect(cursinhoResolver.resolveCursinhoIdByUserId).not.toHaveBeenCalled();
+  });
+
+  it('⚠️ tres caracteres JA buscam — e o minimo combinado', async () => {
+    const { svc, studentCourseRepository } = montar([]);
+
+    await svc.buscarEstudantes('colab-1', 'Ana');
+
+    expect(studentCourseRepository.buscarParaEnvioDeCartao).toHaveBeenCalled();
+  });
+
+  it('espaco em volta nao conta para o minimo', async () => {
+    const { svc, studentCourseRepository } = montar([]);
+
+    await svc.buscarEstudantes('colab-1', '  An  ');
+
+    expect(
+      studentCourseRepository.buscarParaEnvioDeCartao,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('termo e enviado ao repositorio sem espaco em volta', async () => {
+    const { svc, studentCourseRepository } = montar([]);
+
+    await svc.buscarEstudantes('colab-1', '  Cleyton  ');
+
+    expect(
+      studentCourseRepository.buscarParaEnvioDeCartao,
+    ).toHaveBeenCalledWith('Cleyton', CURSINHO, 10);
+  });
+
+  it('⚠️ usa o nome social quando o estudante pediu', async () => {
+    const { svc } = montar([
+      estudante({
+        user: {
+          id: 'u2',
+          firstName: 'Jose',
+          lastName: 'Souza',
+          socialName: 'Maria Souza',
+          useSocialName: true,
+        },
+      }),
+    ]);
+
+    const r = await svc.buscarEstudantes('colab-1', 'Souza');
+
+    expect(r.estudantes[0].nome).toBe('Maria Souza');
+  });
+
+  it('⚠️ estudante sem turma vem com turma null, e nao string vazia', async () => {
+    // E caso real no relatorio geral do cursinho; a tela decide como mostrar.
+    const { svc } = montar([estudante({ class: null })]);
+
+    const r = await svc.buscarEstudantes('colab-1', 'Cleyton');
+
+    expect(r.estudantes[0].turma).toBeNull();
+  });
+
+  it('⚠️ NAO devolve historico — isso e outra tela', async () => {
+    const { svc, historicoService } = montar([estudante()]);
+
+    const r = await svc.buscarEstudantes('colab-1', 'Cleyton');
+
+    expect(r).not.toHaveProperty('historicos');
+    expect(historicoService.getAllByUser).not.toHaveBeenCalled();
+  });
+
+  it('teto de 10 resultados', async () => {
+    expect(CartaoRespostaResultadosService.LIMITE_DA_BUSCA).toBe(10);
+    expect(CartaoRespostaResultadosService.MINIMO_DE_CARACTERES).toBe(3);
+  });
+});

@@ -572,6 +572,67 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
    * `innerJoin` faria o estudante sem turma sumir do relatório geral do
    * cursinho — onde ele é exatamente quem precisa aparecer.
    */
+  /**
+   * Busca de estudante para o autocomplete do envio de cartão.
+   *
+   * ⚠️ **O `prepCourseId` não é filtro de conveniência — é o gate.** Ele vem do
+   * JWT do colaborador (via `resolveCursinhoIdByUserId`), nunca da requisição,
+   * e é o que impede um cursinho de enxergar estudante de outro ao digitar um
+   * nome comum.
+   *
+   * ⚠️ Mesma regra de quem é estudante válido do `findEnrolledForRelatorio`:
+   * `Enrolled` e não apagado. Divergir faria a busca oferecer alguém que o
+   * relatório depois não lista — o cartão enviado sumiria da tela, contado em
+   * `linhasSemEstudanteAtivo` e nunca exibido.
+   *
+   * ⚠️ O nome é casado por `CONCAT(firstName, ' ', lastName)` **e** pelo
+   * `socialName`: comparar só os campos separados faria "Ana Silva" não achar
+   * ninguém, porque nenhuma coluna sozinha contém o espaço.
+   */
+  async buscarParaEnvioDeCartao(
+    termo: string,
+    prepCourseId: string,
+    limite: number,
+  ): Promise<StudentCourse[]> {
+    // ⚠️ Escapa os curingas do LIKE. Sem isto um `%` digitado casa com tudo e
+    // um `_` casa com qualquer caractere — a busca devolveria gente que não
+    // corresponde ao que foi escrito.
+    const escapado = termo.replace(/[\\%_]/g, (c) => `\\${c}`);
+    const padrao = `%${escapado}%`;
+
+    return (
+      this.repository
+        .createQueryBuilder('entity')
+        .innerJoin('entity.partnerPrepCourse', 'ppc')
+        .where('ppc.id = :prepCourseId', { prepCourseId })
+        .innerJoin('entity.user', 'user')
+        .addSelect([
+          'user.id',
+          'user.firstName',
+          'user.lastName',
+          'user.socialName',
+          'user.useSocialName',
+        ])
+        .leftJoin('entity.class', 'class')
+        .addSelect(['class.id', 'class.name'])
+        .andWhere('entity.applicationStatus = :status', {
+          status: StatusApplication.Enrolled,
+        })
+        .andWhere('entity.deletedAt IS NULL')
+        .andWhere(
+          `(entity.cod_enrolled LIKE :padrao
+          OR CONCAT(user.firstName, ' ', user.lastName) LIKE :padrao
+          OR user.socialName LIKE :padrao)`,
+          { padrao },
+        )
+        // ⚠️ Ordem estável: sem ela o MySQL pode devolver dez quaisquer entre os
+        // que casam, e a mesma busca daria listas diferentes a cada tecla.
+        .orderBy('entity.cod_enrolled', 'ASC')
+        .limit(limite)
+        .getMany()
+    );
+  }
+
   async findEnrolledForRelatorio(
     prepCourseId: string,
     classId?: string,
