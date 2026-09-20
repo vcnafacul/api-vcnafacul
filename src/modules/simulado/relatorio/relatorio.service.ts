@@ -38,16 +38,45 @@ export class RelatorioService {
   ): Promise<RelatorioDtoOutput> {
     const cursinhoId = await this.resolverEscopo(colaboradorUserId, turmaId);
 
-    const [estudantes, doMs] = await Promise.all([
-      this.studentCourseRepository.findEnrolledForRelatorio(
+    /*
+      ⚠️ **Os estudantes vêm PRIMEIRO, e o ms é consultado com a lista deles.**
+
+      Antes as duas consultas iam em paralelo e cada lado tinha uma noção
+      diferente de turma: o MySQL sabia a ATUAL, e o ms filtrava por um
+      `turmaId` gravado na junção no momento do upload, que nunca é atualizado.
+      Quem entrou na turma depois de enviar o cartão vinha do MySQL (aparecia na
+      lista) mas era filtrado fora no ms — e a linha saía com
+      `enviouCartao: false`. A tela AFIRMAVA que a pessoa não enviou. Card 18.
+
+      O custo é uma consulta em série em vez de paralela; o ganho é as duas
+      metades falarem da mesma turma.
+    */
+    const estudantes =
+      await this.studentCourseRepository.findEnrolledForRelatorio(
         cursinhoId,
         turmaId,
-      ),
-      this.http.buscarLinhas(simuladoId, cursinhoId, turmaId) as Promise<{
-        linhas: LinhaDoMs[];
-        totalEstudantesComCartaoNoCursinho: number;
-      }>,
-    ]);
+      );
+
+    /*
+      ⚠️ `undefined` sem recorte de turma, e NÃO a lista completa: o relatório
+      do cursinho inteiro pede tudo, e mandar centenas de ids só para dizer
+      "todos" faria o corpo crescer sem necessidade. Com turma, a lista é o
+      recorte — e se ela estiver vazia, não há o que perguntar ao ms.
+    */
+    const usuariosDoRecorte =
+      turmaId === undefined ? undefined : estudantes.map((e) => e.userId);
+
+    const doMs =
+      usuariosDoRecorte !== undefined && usuariosDoRecorte.length === 0
+        ? { linhas: [], totalEstudantesComCartaoNoCursinho: 0 }
+        : ((await this.http.buscarLinhas(
+            simuladoId,
+            cursinhoId,
+            usuariosDoRecorte,
+          )) as {
+            linhas: LinhaDoMs[];
+            totalEstudantesComCartaoNoCursinho: number;
+          });
 
     const porUsuario = new Map(doMs.linhas.map((l) => [l.usuario, l]));
     const usuariosAtivos = new Set(estudantes.map((e) => e.userId));
@@ -92,18 +121,51 @@ export class RelatorioService {
     };
   }
 
-  /** Proxy puro: o agregado por questão não tem dado de estudante. */
+  /**
+   * O agregado por questão não tem dado de estudante — mas o RECORTE tem.
+   *
+   * ⚠️ **Deixou de ser proxy puro** (card 18): o ms não pode mais resolver a
+   * turma sozinho, porque o `turmaId` da junção é foto do upload. Quem sabe
+   * quem está na turma hoje é o MySQL, aqui.
+   */
   async consultarQuestoes(
     colaboradorUserId: string,
     simuladoId: string,
     turmaId?: string,
   ): Promise<QuestoesDoRelatorioDtoOutput> {
     const cursinhoId = await this.resolverEscopo(colaboradorUserId, turmaId);
+    const usuarios = await this.usuariosDoRecorte(cursinhoId, turmaId);
+
+    // turma sem ninguém: não há o que agregar, e mandar `[]` ao ms é recusado
+    if (usuarios !== undefined && usuarios.length === 0) {
+      return { questoes: [] } as QuestoesDoRelatorioDtoOutput;
+    }
+
     return this.http.buscarQuestoes(
       simuladoId,
       cursinhoId,
-      turmaId,
+      usuarios,
     ) as Promise<QuestoesDoRelatorioDtoOutput>;
+  }
+
+  /**
+   * Os `userId` do recorte, ou `undefined` para o cursinho inteiro.
+   *
+   * ⚠️ A lista é a turma **ATUAL**, lida do MySQL a cada consulta. É esta
+   * releitura que corrige o card 18 — nenhum valor é guardado em lugar nenhum
+   * para envelhecer.
+   */
+  private async usuariosDoRecorte(
+    cursinhoId: string,
+    turmaId?: string,
+  ): Promise<string[] | undefined> {
+    if (turmaId === undefined) return undefined;
+    const estudantes =
+      await this.studentCourseRepository.findEnrolledForRelatorio(
+        cursinhoId,
+        turmaId,
+      );
+    return estudantes.map((e) => e.userId);
   }
 
   /**
@@ -116,9 +178,16 @@ export class RelatorioService {
     turmaId?: string,
   ): Promise<SimuladosComCartaoDtoOutput> {
     const cursinhoId = await this.resolverEscopo(colaboradorUserId, turmaId);
+    const usuarios = await this.usuariosDoRecorte(cursinhoId, turmaId);
+
+    // turma sem ninguém matriculado: nenhum simulado tem cartão dela
+    if (usuarios !== undefined && usuarios.length === 0) {
+      return { simulados: [] } as SimuladosComCartaoDtoOutput;
+    }
+
     return this.http.buscarSimulados(
       cursinhoId,
-      turmaId,
+      usuarios,
     ) as Promise<SimuladosComCartaoDtoOutput>;
   }
 
