@@ -9,10 +9,10 @@ Este serviço atua como **gateway central**: autentica usuários, expõe os recu
 ## 🧩 Arquitetura
 
 ```
-client-vcnafacul  →  api-vcnafacul  →  ms-simulado       (motor de provas)
-  (React SPA)       (NestJS gateway)   (NestJS + MongoDB)
-                         ↓
-                    vcnafacul-form    (construtor de formulários)
+client-vcnafacul  →  api-vcnafacul  →  ms-simulado      →   ms-omr
+  (React SPA)        (NestJS gateway)  (NestJS + MongoDB)   (FastAPI + OMRChecker)
+                           ↓                ↑                  ↓
+                    vcnafacul-form          └──── callback ────┘
                     (NestJS + MongoDB)
 ```
 
@@ -20,6 +20,7 @@ client-vcnafacul  →  api-vcnafacul  →  ms-simulado       (motor de provas)
 |---------|-------|-------|-------|
 | **api-vcnafacul** (este) | NestJS 10 + TypeORM | MySQL 8+ | `3333` |
 | ms-simulado | NestJS 10 + Mongoose | MongoDB | `3000` |
+| ms-omr | Python 3.11 + FastAPI | Redis (fila/cache) | `8000` |
 | vcnafacul-form | NestJS 11 + Mongoose | MongoDB | `3001` |
 | client-vcnafacul | React 19 + Vite 6 | — | `5173` |
 
@@ -56,7 +57,7 @@ O frontend fala **apenas** com este gateway. Microsserviços não são expostos 
 # Instalar dependências
 yarn
 
-# Copiar .env de exemplo e preencher as 51 variáveis
+# Copiar .env de exemplo e preencher as variáveis
 cp .env.example .env
 
 # Rodar migrations
