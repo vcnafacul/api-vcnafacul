@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseUUIDPipe,
   Req,
   SetMetadata,
   UseGuards,
@@ -12,6 +13,7 @@ import { Permissions } from 'src/modules/role/permissions/permissions';
 import { User } from 'src/modules/user/user.entity';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
+import { DetalheDoEstudanteDtoOutput } from './dtos/detalhe-do-estudante.dto.output';
 import { QuestoesDoRelatorioDtoOutput } from './dtos/questoes-do-relatorio.dto.output';
 import { RelatorioDtoOutput } from './dtos/relatorio.dto.output';
 import { SimuladosComCartaoDtoOutput } from './dtos/simulados-com-cartao.dto.output';
@@ -97,6 +99,39 @@ export class RelatorioController {
     @Req() req: Request,
   ): Promise<RelatorioDtoOutput> {
     return this.service.consultar((req.user as User).id, simuladoId, turmaId);
+  }
+
+  @Get(':simuladoId/estudante/:userId')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'o que o estudante marcou e o que era correto',
+    type: DetalheDoEstudanteDtoOutput,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'estudante não tem cartão neste simulado',
+  })
+  @ApiResponse({
+    status: 400,
+    description: ':userId não é um UUID',
+  })
+  @ApiResponse(RESPOSTA_403)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
+  async detalheDoEstudante(
+    @Param('simuladoId') simuladoId: string,
+    // `users.id` é `@PrimaryGeneratedColumn('uuid')`, e a linha do relatório
+    // carrega exatamente esse id em `usuario` — então tudo que não é UUID é
+    // lixo, e barrar aqui é uma segunda trava além do escape em
+    // `RelatorioHttpService` (nada com `?`, `/` ou `..` passa por um UUID).
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Req() req: Request,
+  ): Promise<DetalheDoEstudanteDtoOutput> {
+    return this.service.consultarDetalhe(
+      (req.user as User).id,
+      simuladoId,
+      userId,
+    );
   }
 
   @Get(':simuladoId/questoes')
