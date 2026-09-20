@@ -11,8 +11,12 @@ import {
  * concatenar o valor cru deixa o CHAMADOR reescrever a URL que o gateway
  * manda: um `?` embutido transforma o resto em query e sobrepõe o
  * `cursinhoId` que este serviço acabou de resolver do JWT (vazamento entre
- * cursinhos, medido), e um `/` mais `..` alcança outra rota do ms —
- * inclusive `GET /v1/historico/:id`, que não checa dono.
+ * cursinhos, medido), e um `/` mais `..` alcança outra rota do ms.
+ *
+ * ⚠️ Este docblock já citou `GET /v1/historico/:id` como exemplo de rota "que
+ * não checa dono". **Não vale mais:** o card `11` pôs o gate de dono lá. O
+ * risco de troca de rota continua real — o ms tem rotas de sobra, e a próxima
+ * pode não ter gate nenhum —, mas o argumento é o escape, não aquela rota.
  *
  * O filtro do ms está certo; o que estava errado era o encanamento até ele.
  */
