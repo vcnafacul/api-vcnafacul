@@ -118,8 +118,10 @@ describe('RelatorioHttpService', () => {
   });
 
   it('⚠️ não deixa o chamador trocar de rota via / no parâmetro', async () => {
-    // `%2F` vira `/`, e o `URL` do Node normaliza `..` — isso alcançava o
-    // `GET /v1/historico/:id`, que não checa dono nenhum
+    // `%2F` vira `/`, e o `URL` do Node normaliza `..`: o chamador escolhe
+    // QUAL rota do ms o gateway chama, e não a que este serviço quis chamar.
+    // (Este comentário já apontava o `GET /v1/historico/:id` como destino sem
+    // gate — o card `11` fechou aquela rota; o escape é que segue valendo.)
     const { svc, axios } = montar();
 
     await svc.buscarDetalheDoEstudante(

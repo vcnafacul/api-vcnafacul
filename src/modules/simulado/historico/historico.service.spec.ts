@@ -19,11 +19,17 @@ describe('HistoricoService.getById', () => {
   it('⚠️ manda o DONO ao ms — é o gate inteiro', async () => {
     // Sem isto, qualquer usuário autenticado lia o histórico de qualquer outro
     // pelo id: respostas marcadas, gabarito, aproveitamento por matéria.
+    //
+    // ⚠️ O dono do fixture carrega `&` e `#` DE PROPÓSITO: um id que encode
+    // para si mesmo deixaria o `seg()` do SEGUNDO argumento passar sem ser
+    // exercido — tirá-lo continuaria verde. Com estes caracteres, não.
     const { svc, axios } = montar();
 
-    await svc.getById('h1', 'u-dono');
+    await svc.getById('h1', 'u-dono&x=1#y');
 
-    expect(axios.get).toHaveBeenCalledWith('v1/historico/h1?usuario=u-dono');
+    expect(axios.get).toHaveBeenCalledWith(
+      'v1/historico/h1?usuario=u-dono%26x%3D1%23y',
+    );
   });
 
   it('⚠️ um id que é um CAMINHO não alcança outra rota do ms', async () => {
@@ -65,5 +71,42 @@ describe('HistoricoService.getPerformance', () => {
     const url = axios.get.mock.calls[0][0] as string;
     expect(url).not.toContain('../');
     expect(url).toContain('v1/historico/performance/');
+  });
+});
+
+describe('HistoricoService.getAllByUser', () => {
+  it('⚠️ um `#` num valor da query NÃO descarta o userId do JWT', async () => {
+    // O `URL` do axios corta tudo depois do `#`. Concatenando cru, o
+    // `userId` que o serviço acrescenta no fim ia junto — e o ms recebia
+    // só o `userId` que o atacante embutiu. Medido contra socket real.
+    const { svc, axios } = montar();
+
+    await svc.getAllByUser({ page: '1&userId=VITIMA#' } as never, 'u-jwt');
+
+    const url = axios.get.mock.calls[0][0] as string;
+    expect(url).not.toContain('#');
+    expect(url).toContain('userId=u-jwt');
+    expect(url).not.toContain('userId=VITIMA');
+  });
+
+  it('⚠️ um userId que sobreviva na query é SOBRESCRITO pelo do JWT', async () => {
+    const { svc, axios } = montar();
+
+    await svc.getAllByUser({ userId: 'VITIMA' } as never, 'u-jwt');
+
+    const url = axios.get.mock.calls[0][0] as string;
+    expect(url).toContain('userId=u-jwt');
+    expect(url).not.toContain('userId=VITIMA');
+  });
+
+  it('a query normal continua passando', async () => {
+    const { svc, axios } = montar();
+
+    await svc.getAllByUser({ page: 2, limit: 50 } as never, 'u-jwt');
+
+    const url = axios.get.mock.calls[0][0] as string;
+    expect(url).toContain('page=2');
+    expect(url).toContain('limit=50');
+    expect(url).toContain('userId=u-jwt');
   });
 });
