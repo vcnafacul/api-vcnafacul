@@ -7,6 +7,8 @@ import { DetalheDoEstudanteDtoOutput } from './dtos/detalhe-do-estudante.dto.out
 import { QuestoesDoRelatorioDtoOutput } from './dtos/questoes-do-relatorio.dto.output';
 import {
   LinhaDoRelatorioDtoOutput,
+  MateriaDoEstudanteDtoOutput,
+  MediaPorMateriaDtoOutput,
   RelatorioDtoOutput,
 } from './dtos/relatorio.dto.output';
 import { SimuladosComCartaoDtoOutput } from './dtos/simulados-com-cartao.dto.output';
@@ -19,7 +21,55 @@ interface LinhaDoMs {
   cartaoCode?: string;
   questoesRespondidas?: number;
   aproveitamentoGeral?: number;
+  aproveitamentoPorMateria?: MateriaDoEstudanteDtoOutput[];
   falha?: Record<string, unknown>;
+}
+
+/**
+ * A nota da turma em cada matéria, com a base de cada uma.
+ *
+ * ⚠️ **O denominador é por matéria, e não `comLeituraConcluida`.** Quem não
+ * teve questão de Química lida no cartão não tem Química no `materias[]`:
+ * somar tudo e dividir pelo total de estudantes faria a turma parecer pior em
+ * QUALQUER área que alguém não respondeu — e o coordenador mandaria reforçar a
+ * matéria errada.
+ *
+ * ⚠️ **A `base` sai junto, sempre.** "42% em Química" sobre 3 alunos é
+ * verdadeiro e inútil sem o "de 3". Mesmo princípio do `indiceDeDificuldade`
+ * da aba de questões, que já faz o certo.
+ *
+ * ⚠️ Ordena por nome, e não pela ordem de chegada: duas turmas com as mesmas
+ * matérias precisam desenhar o gráfico na mesma ordem, senão comparar duas
+ * telas lado a lado vira quebra-cabeça.
+ *
+ * ⚠️ Devolve `undefined`, nunca `[]` — ver o docblock do campo no DTO.
+ */
+function mediaPorMateria(
+  linhas: LinhaDoRelatorioDtoOutput[],
+): MediaPorMateriaDtoOutput[] | undefined {
+  const acc = new Map<string, { nome: string; soma: number; base: number }>();
+
+  for (const linha of linhas) {
+    for (const materia of linha.aproveitamentoPorMateria ?? []) {
+      const atual = acc.get(materia.id) ?? {
+        nome: materia.nome,
+        soma: 0,
+        base: 0,
+      };
+      atual.soma += materia.aproveitamento;
+      atual.base += 1;
+      acc.set(materia.id, atual);
+    }
+  }
+
+  if (acc.size === 0) return undefined;
+
+  return Array.from(acc, ([id, m]) => ({
+    id,
+    nome: m.nome,
+    media: m.soma / m.base,
+    base: m.base,
+  })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 
 @Injectable()
@@ -110,6 +160,7 @@ export class RelatorioService {
           ? comLeitura.reduce((s, l) => s + l.aproveitamentoGeral!, 0) /
             comLeitura.length
           : null,
+        aproveitamentoPorMateria: mediaPorMateria(comLeitura),
         totalEstudantesComCartaoNoCursinho:
           doMs.totalEstudantesComCartaoNoCursinho,
         temEstudanteSemTurma: linhas.some((l) => l.turmaId === null),
@@ -258,6 +309,9 @@ export class RelatorioService {
       cartaoCode: doMs?.cartaoCode,
       questoesRespondidas: doMs?.questoesRespondidas,
       aproveitamentoGeral: doMs?.aproveitamentoGeral,
+      // ⚠️ Repassado cru, nunca recalculado: o ms é a fonte da nota — ver o
+      // docblock do campo no DTO.
+      aproveitamentoPorMateria: doMs?.aproveitamentoPorMateria,
       falha: doMs?.falha,
     };
   }

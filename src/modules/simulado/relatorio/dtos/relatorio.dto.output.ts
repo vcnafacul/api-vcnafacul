@@ -1,5 +1,37 @@
 import { ApiProperty } from '@nestjs/swagger';
 
+export class FrenteDoEstudanteDtoOutput {
+  @ApiProperty() id: string;
+  @ApiProperty() nome: string;
+  /** Fração de 0 a 1, como `aproveitamentoGeral` — a tela é quem formata. */
+  @ApiProperty() aproveitamento: number;
+}
+
+export class MateriaDoEstudanteDtoOutput {
+  @ApiProperty() id: string;
+  @ApiProperty() nome: string;
+  @ApiProperty() aproveitamento: number;
+  @ApiProperty({ type: [FrenteDoEstudanteDtoOutput] })
+  frentes: FrenteDoEstudanteDtoOutput[];
+}
+
+export class MediaPorMateriaDtoOutput {
+  @ApiProperty() id: string;
+  @ApiProperty() nome: string;
+  @ApiProperty() media: number;
+
+  /**
+   * Quantos estudantes entraram NESTA média.
+   *
+   * ⚠️ **Anda junto com a média, sempre.** "42% em Química" sobre 3 alunos é
+   * verdadeiro e inútil sem o "de 3" — e não é o mesmo número para toda
+   * matéria: quem não teve questão de Química lida não tem Química no
+   * `materias[]` e não entra neste denominador. Mesmo princípio do
+   * `indiceDeDificuldade` da aba de questões.
+   */
+  @ApiProperty() base: number;
+}
+
 export class LinhaDoRelatorioDtoOutput {
   @ApiProperty() usuario: string;
 
@@ -31,6 +63,19 @@ export class LinhaDoRelatorioDtoOutput {
   @ApiProperty({ required: false }) aproveitamentoGeral?: number;
 
   /**
+   * Nota por matéria e frente, vinda do ms. É o que responde "em QUÊ o aluno
+   * foi mal" — a pergunta que decide o que o coordenador faz na segunda-feira.
+   *
+   * ⚠️ **Repassado, nunca recalculado.** A api não refaz nota, pelo mesmo
+   * motivo que já não reescreve `aproveitamentoGeral`: o ms é a fonte, e duas
+   * contas da mesma coisa divergem na primeira mudança de regra.
+   *
+   * ⚠️ Ausente, e nunca `[]`: ausência de medida não é medida zero.
+   */
+  @ApiProperty({ required: false, type: [MateriaDoEstudanteDtoOutput] })
+  aproveitamentoPorMateria?: MateriaDoEstudanteDtoOutput[];
+
+  /**
    * Já descrita pelo ms — `descricao` e `acaoSugerida` prontas.
    *
    * ⚠️ **`Record<string, unknown>` promete menos do que o contrato entrega.**
@@ -56,6 +101,16 @@ export class ResumoDoRelatorioDtoOutput {
 
   /** `null` quando ninguém teve leitura: zero seria uma nota, e não é. */
   @ApiProperty({ nullable: true }) aproveitamentoGeral: number | null;
+
+  /**
+   * A nota da turma em cada matéria. É o que o card 07 desenha.
+   *
+   * ⚠️ **Ausente quando ninguém do recorte tem matéria nenhuma** — `[]` faria
+   * a tela desenhar um gráfico vazio afirmando que a turma não tem matérias,
+   * que é diferente de não haver leitura.
+   */
+  @ApiProperty({ required: false, type: [MediaPorMateriaDtoOutput] })
+  aproveitamentoPorMateria?: MediaPorMateriaDtoOutput[];
 
   /** Vem do ms. Alimenta o rodapé do relatório por turma. */
   @ApiProperty() totalEstudantesComCartaoNoCursinho: number;
