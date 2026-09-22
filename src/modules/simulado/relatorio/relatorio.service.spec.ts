@@ -185,7 +185,17 @@ describe('RelatorioService.consultar', () => {
     expect(r.resumo.linhasSemEstudanteAtivo).toBe(1);
   });
 
-  it('avisa quando há estudante sem turma no relatório geral', async () => {
+  it('⚠️ estudante sem turma continua na lista, com turma nula na LINHA', async () => {
+    /*
+      ⚠️ **O `temEstudanteSemTurma` do resumo saiu no card 15.** Era um booleano
+      que atravessava api e client e ninguém lia — e um booleano não dá nem para
+      escrever "N estudantes sem turma".
+
+      O caso em si não sumiu, e é o que este teste passa a guardar: o estudante
+      aparece na lista com `turmaId: null`, e a coluna `Turma` do client mostra
+      travessão. Quem quiser a informação a tem linha a linha, que é onde ela
+      é acionável — o resumo nunca chegou a mostrá-la.
+    */
     const { svc } = montar({
       estudantes: [estudante({ class: null })],
       linhas: [],
@@ -193,7 +203,9 @@ describe('RelatorioService.consultar', () => {
 
     const r = await svc.consultar('colab-1', 'sim-1');
 
-    expect(r.resumo.temEstudanteSemTurma).toBe(true);
+    expect(r.linhas).toHaveLength(1);
+    expect(r.linhas[0].turmaId).toBeNull();
+    expect('temEstudanteSemTurma' in r.resumo).toBe(false);
   });
 
   it('repassa o total do cursinho, que alimenta o rodapé da turma', async () => {

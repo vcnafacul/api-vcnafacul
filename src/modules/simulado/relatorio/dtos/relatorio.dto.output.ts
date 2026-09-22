@@ -126,11 +126,17 @@ export class ResumoDoRelatorioDtoOutput {
   @ApiProperty({ required: false, type: [MediaPorMateriaDtoOutput] })
   aproveitamentoPorMateria?: MediaPorMateriaDtoOutput[];
 
-  /** Vem do ms. Alimenta o rodapé do relatório por turma. */
+  /**
+   * Quantos estudantes do cursinho INTEIRO têm cartão neste simulado.
+   *
+   * ⚠️ **Alimenta o rodapé do relatório por turma** — "27 dos 30 cartões deste
+   * simulado são desta turma" —, e o card 15 finalmente o ligou à tela: ele
+   * atravessava os três serviços sem chegar a lugar nenhum.
+   *
+   * ⚠️ **Não aparece no relatório do cursinho inteiro**, onde é igual ao
+   * numerador e a frase não informaria nada.
+   */
   @ApiProperty() totalEstudantesComCartaoNoCursinho: number;
-
-  /** Só faz sentido no relatório geral; a tela avisa quando é verdadeiro. */
-  @ApiProperty() temEstudanteSemTurma: boolean;
 
   /**
    * Linhas do ms sem estudante ativo correspondente — quem saiu do cursinho
