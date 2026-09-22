@@ -795,3 +795,79 @@ describe('RelatorioService.consultar — nota por matéria (card 02)', () => {
     ]);
   });
 });
+
+describe('RelatorioService.consultar — acertos absolutos (card 08)', () => {
+  /**
+   * O card 08, lado api: repassar `acertos` (contado no ms) e levar
+   * `totalDeQuestoes` do topo da resposta do ms para o resumo.
+   */
+  async function consultar(over: any = {}) {
+    const { svc } = montar({
+      estudantes: [estudante()],
+      ...over,
+    });
+    return svc.consultar('colab', 'sim-1');
+  }
+
+  it('repassa os acertos sem recalcular', async () => {
+    const r = await consultar({ linhas: [linha({ acertos: 61 })] });
+
+    expect(r.linhas[0].acertos).toBe(61);
+  });
+
+  it('quem não enviou cartão não tem acertos', async () => {
+    const r = await consultar({ linhas: [] });
+
+    expect(r.linhas[0].enviouCartao).toBe(false);
+    expect(r.linhas[0].acertos).toBeUndefined();
+  });
+
+  it('⚠️ o total de questões vai para o RESUMO, não para cada linha', async () => {
+    // É propriedade do simulado, não do estudante.
+    const { svc, http } = montar({ estudantes: [estudante()] });
+    http.buscarLinhas.mockResolvedValue({
+      linhas: [linha({ acertos: 61 })],
+      totalEstudantesComCartaoNoCursinho: 1,
+      totalDeQuestoes: 90,
+    });
+
+    const r = await svc.consultar('colab', 'sim-1');
+
+    expect(r.resumo.totalDeQuestoes).toBe(90);
+    expect(r.linhas[0]).not.toHaveProperty('totalDeQuestoes');
+  });
+
+  it('⚠️ ms sem o card 08 devolve total 0, e não `undefined`', async () => {
+    // Sem o `?? 0` a tela mostraria "61/undefined". Degradar para o percentual
+    // sozinho é o comportamento certo durante a janela de deploy.
+    const { svc, http } = montar({ estudantes: [estudante()] });
+    http.buscarLinhas.mockResolvedValue({
+      linhas: [linha({ acertos: undefined })],
+      totalEstudantesComCartaoNoCursinho: 1,
+    });
+
+    const r = await svc.consultar('colab', 'sim-1');
+
+    expect(r.resumo.totalDeQuestoes).toBe(0);
+  });
+
+  it('⚠️ zero acertos atravessa como ZERO, não como ausente', async () => {
+    // Cartão lido em que o aluno não acertou nada é uma medida. Um `|| undefined`
+    // em qualquer ponto do caminho apagaria justamente o caso extremo.
+    const r = await consultar({ linhas: [linha({ acertos: 0 })] });
+
+    expect(r.linhas[0].acertos).toBe(0);
+  });
+
+  it('recorte de turma vazio devolve total 0 sem chamar o ms', async () => {
+    const { svc, http } = montar({
+      estudantes: [],
+      turma: { id: 't-1', partnerPrepCourse: { id: 'cur-1' } },
+    });
+
+    const r = await svc.consultar('colab', 'sim-1', 't-1');
+
+    expect(r.resumo.totalDeQuestoes).toBe(0);
+    expect(http.buscarLinhas).not.toHaveBeenCalled();
+  });
+});

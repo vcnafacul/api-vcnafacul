@@ -63,6 +63,20 @@ export class LinhaDoRelatorioDtoOutput {
   @ApiProperty({ required: false }) aproveitamentoGeral?: number;
 
   /**
+   * Quantas questões o estudante acertou — o número absoluto.
+   *
+   * Cursinho conversa em acertos ("fiz 61"), e o percentual sozinho esconde o
+   * denominador: 58% de 45 e 58% de 180 são confianças diferentes.
+   *
+   * ⚠️ **Contado no ms, nunca derivado** de `aproveitamentoGeral × total`: a
+   * fração arredondada produz 44 onde o aluno fez 45, e ele confere à mão.
+   *
+   * ⚠️ **AUSENTE, não zero**, sem leitura concluída ou em histórico anterior
+   * ao card 08. Zero acertos num cartão lido é ZERO, e é outra coisa.
+   */
+  @ApiProperty({ required: false }) acertos?: number;
+
+  /**
    * Nota por matéria e frente, vinda do ms. É o que responde "em QUÊ o aluno
    * foi mal" — a pergunta que decide o que o coordenador faz na segunda-feira.
    *
@@ -125,6 +139,15 @@ export class ResumoDoRelatorioDtoOutput {
    * param de bater e a leitura natural é "o sistema perdeu cartão".
    */
   @ApiProperty() linhasSemEstudanteAtivo: number;
+
+  /**
+   * Quantas questões o simulado tem — o denominador de `acertos`.
+   *
+   * ⚠️ **No resumo, não em cada linha**: é propriedade do simulado, não do
+   * estudante. `0` quando o simulado não existe mais, ou quando o ms ainda não
+   * tem o card 08 — a tela mostra só o percentual.
+   */
+  @ApiProperty() totalDeQuestoes: number;
 }
 
 export class RelatorioDtoOutput {
