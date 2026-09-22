@@ -479,3 +479,198 @@ describe('RelatorioService.consultarDetalhe', () => {
     ).resolves.toEqual(detalhe);
   });
 });
+
+describe('RelatorioService.consultar — nota por matéria (card 02)', () => {
+  /**
+   * O card 02, lado api: repassar o campo novo do ms **sem reprocessar** (o ms
+   * é a fonte da nota, como já era para o `aproveitamentoGeral`), e reduzir a
+   * média da turma por matéria a partir das linhas.
+   */
+  const materias = (over: Partial<Record<string, number>> = {}) => [
+    {
+      id: 'm-mat',
+      nome: 'Matemática',
+      aproveitamento: over.mat ?? 0.3,
+      frentes: [{ id: 'f-arit', nome: 'Aritmética', aproveitamento: 0.25 }],
+    },
+    {
+      id: 'm-hum',
+      nome: 'Humanas',
+      aproveitamento: over.hum ?? 0.8,
+      frentes: [{ id: 'f-hist', nome: 'História', aproveitamento: 0.8 }],
+    },
+  ];
+
+  async function resumoDe(opts: { estudantes: any[]; linhas: any[] }) {
+    const { svc } = montar(opts);
+    return svc.consultar('colab', 'sim-1');
+  }
+
+  it('repassa as matérias do ms sem reprocessar', async () => {
+    const r = await resumoDe({
+      estudantes: [estudante()],
+      linhas: [linha({ aproveitamentoPorMateria: materias() })],
+    });
+
+    expect(r.linhas[0].aproveitamentoPorMateria).toEqual(materias());
+  });
+
+  it('quem não enviou cartão não traz o campo', async () => {
+    const r = await resumoDe({ estudantes: [estudante()], linhas: [] });
+
+    expect(r.linhas[0].enviouCartao).toBe(false);
+    expect(r.linhas[0].aproveitamentoPorMateria).toBeUndefined();
+  });
+
+  it('⚠️ a média por matéria sai com a BASE de cada uma', async () => {
+    // "42% em Química" sobre 3 alunos é verdadeiro e inútil sem o "de 3" —
+    // mesmo princípio do `indiceDeDificuldade` da aba de questões.
+    const r = await resumoDe({
+      estudantes: [estudante(), estudante({ userId: 'u2' })],
+      linhas: [
+        linha({ aproveitamentoPorMateria: materias({ mat: 0.2 }) }),
+        linha({
+          usuario: 'u2',
+          aproveitamentoPorMateria: materias({ mat: 0.4 }),
+        }),
+      ],
+    });
+
+    // ⚠️ Ordem alfabética, não de chegada — ver o último teste deste describe.
+    expect(r.resumo.aproveitamentoPorMateria).toEqual([
+      { id: 'm-hum', nome: 'Humanas', media: 0.8, base: 2 },
+      { id: 'm-mat', nome: 'Matemática', media: 0.30000000000000004, base: 2 },
+    ]);
+  });
+
+  it('⚠️ estudante SEM a matéria X não entra no denominador de X', async () => {
+    // Quem não teve questão de Química lida no cartão não tem Química no
+    // `materias[]`. Somar tudo e dividir por `comLeituraConcluida` faria a
+    // turma parecer pior em qualquer área que alguém não respondeu.
+    const r = await resumoDe({
+      estudantes: [estudante(), estudante({ userId: 'u2' })],
+      linhas: [
+        linha({ aproveitamentoPorMateria: materias({ mat: 0.4 }) }),
+        linha({
+          usuario: 'u2',
+          aproveitamentoPorMateria: [
+            { id: 'm-hum', nome: 'Humanas', aproveitamento: 0.6, frentes: [] },
+          ],
+        }),
+      ],
+    });
+
+    const mat = r.resumo.aproveitamentoPorMateria!.find(
+      (m) => m.id === 'm-mat',
+    );
+    expect(mat).toEqual({
+      id: 'm-mat',
+      nome: 'Matemática',
+      media: 0.4,
+      base: 1,
+    });
+  });
+
+  it('⚠️ linha FALHA não entra na média, mesmo trazendo matérias', async () => {
+    // Mesmo gate do `aproveitamentoGeral`: o ms já corta na origem desde este
+    // card, e aqui o filtro por status continua valendo em profundidade — se
+    // um dia o ms voltar a mandar, a média não muda.
+    const r = await resumoDe({
+      estudantes: [estudante(), estudante({ userId: 'u2' })],
+      linhas: [
+        linha({ aproveitamentoPorMateria: materias({ mat: 0.4 }) }),
+        linha({
+          usuario: 'u2',
+          status: 'failed',
+          aproveitamentoGeral: undefined,
+          aproveitamentoPorMateria: materias({ mat: 0.9 }),
+        }),
+      ],
+    });
+
+    const mat = r.resumo.aproveitamentoPorMateria!.find(
+      (m) => m.id === 'm-mat',
+    );
+    expect(mat).toMatchObject({ media: 0.4, base: 1 });
+  });
+
+  it('⚠️ recorte sem matéria nenhuma devolve AUSENTE, não lista vazia', async () => {
+    // Mesma regra da linha: ausência de medida não é medida zero. `[]` faria a
+    // tela desenhar um gráfico vazio afirmando que a turma não tem matérias.
+    const r = await resumoDe({ estudantes: [estudante()], linhas: [] });
+
+    expect(r.resumo.aproveitamentoPorMateria).toBeUndefined();
+  });
+
+  it('a média geral do recorte segue igual — este card não a toca', async () => {
+    const r = await resumoDe({
+      estudantes: [estudante(), estudante({ userId: 'u2' })],
+      linhas: [
+        linha({
+          aproveitamentoGeral: 0.6,
+          aproveitamentoPorMateria: materias(),
+        }),
+        linha({ usuario: 'u2', aproveitamentoGeral: 0.8 }),
+      ],
+    });
+
+    expect(r.resumo.aproveitamentoGeral).toBeCloseTo(0.7);
+    expect(r.resumo.comLeituraConcluida).toBe(2);
+  });
+
+  it('⚠️ a ordem das matérias não depende de quem apareceu primeiro', async () => {
+    // Duas turmas com as mesmas matérias têm de desenhar o gráfico na mesma
+    // ordem; senão comparar duas telas lado a lado vira quebra-cabeça.
+    //
+    // ⚠️ A ordem de CHEGADA aqui é Zoologia→Artes, oposta à alfabética. Com
+    // nomes em que as duas coincidem o teste passaria sem o `sort` — verde
+    // exatamente no caso que ele existe para pegar.
+    const r = await resumoDe({
+      estudantes: [estudante(), estudante({ userId: 'u2' })],
+      linhas: [
+        linha({
+          aproveitamentoPorMateria: [
+            { id: 'm-zoo', nome: 'Zoologia', aproveitamento: 0.5, frentes: [] },
+          ],
+        }),
+        linha({
+          usuario: 'u2',
+          aproveitamentoPorMateria: [
+            { id: 'm-art', nome: 'Artes', aproveitamento: 0.7, frentes: [] },
+          ],
+        }),
+      ],
+    });
+
+    expect(r.resumo.aproveitamentoPorMateria!.map((m) => m.nome)).toEqual([
+      'Artes',
+      'Zoologia',
+    ]);
+  });
+
+  it('⚠️ acentuação não joga a matéria para o fim da lista', async () => {
+    // `localeCompare('pt-BR')`, e não comparação de code point: com `<` cru,
+    // "Ática" viria depois de "Zoologia" porque "Á" é U+00C1.
+    const r = await resumoDe({
+      estudantes: [estudante(), estudante({ userId: 'u2' })],
+      linhas: [
+        linha({
+          aproveitamentoPorMateria: [
+            { id: 'm-zoo', nome: 'Zoologia', aproveitamento: 0.5, frentes: [] },
+          ],
+        }),
+        linha({
+          usuario: 'u2',
+          aproveitamentoPorMateria: [
+            { id: 'm-ati', nome: 'Ática', aproveitamento: 0.7, frentes: [] },
+          ],
+        }),
+      ],
+    });
+
+    expect(r.resumo.aproveitamentoPorMateria!.map((m) => m.nome)).toEqual([
+      'Ática',
+      'Zoologia',
+    ]);
+  });
+});
