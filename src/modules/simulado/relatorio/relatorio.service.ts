@@ -87,7 +87,10 @@ export class RelatorioService {
     simuladoId: string,
     turmaId?: string,
   ): Promise<RelatorioDtoOutput> {
-    const cursinhoId = await this.resolverEscopo(colaboradorUserId, turmaId);
+    const { cursinhoId, turmaNome } = await this.resolverEscopoComNome(
+      colaboradorUserId,
+      turmaId,
+    );
 
     /*
       ⚠️ **Os estudantes vêm PRIMEIRO, e o ms é consultado com a lista deles.**
@@ -123,6 +126,19 @@ export class RelatorioService {
             linhas: [],
             totalEstudantesComCartaoNoCursinho: 0,
             totalDeQuestoes: 0,
+            /*
+              ⚠️ Turma sem ninguém matriculado não chega a perguntar ao ms — é
+              a guarda que evita mandar `[]` e receber 400 —, então não há nome
+              para trazer.
+
+              ⚠️ **`null` aqui NÃO significa "simulado removido"**, e a tela tem
+              de distinguir os dois: com `totalNoRecorte === 0` ela mostra o
+              vazio, sem cabeçalho de identificação nenhum. Tratar este `null`
+              como remoção faria a tela afirmar que o simulado sumiu quando o
+              que está vazio é a turma.
+            */
+            simuladoNome: null,
+            ultimoCartaoEm: null,
           }
         : ((await this.http.buscarLinhas(
             simuladoId,
@@ -132,6 +148,8 @@ export class RelatorioService {
             linhas: LinhaDoMs[];
             totalEstudantesComCartaoNoCursinho: number;
             totalDeQuestoes: number;
+            simuladoNome: string | null;
+            ultimoCartaoEm: string | null;
           });
 
     const porUsuario = new Map(doMs.linhas.map((l) => [l.usuario, l]));
@@ -178,6 +196,18 @@ export class RelatorioService {
           `undefined`, e a tela mostra só o percentual em vez de "61/undefined".
         */
         totalDeQuestoes: doMs.totalDeQuestoes ?? 0,
+        // ⚠️ Repassados do ms — `null` quando o simulado foi apagado.
+        simuladoNome: doMs.simuladoNome ?? null,
+        ultimoCartaoEm: doMs.ultimoCartaoEm ?? null,
+        /*
+          ⚠️ **O nome da TURMA só a api sabe** — o ms guarda o `turmaId` na
+          junção mas não conhece o MySQL. Vem do mesmo objeto que o 403 já
+          busca, sem consulta nova.
+
+          ⚠️ `null` no relatório do cursinho inteiro, e a tela usa isso para
+          não escrever um recorte que não existe.
+        */
+        turmaNome,
         temEstudanteSemTurma: linhas.some((l) => l.turmaId === null),
         // quem saiu do cursinho depois de enviar: contado, nunca listado
         linhasSemEstudanteAtivo: doMs.linhas.filter(
@@ -289,17 +319,36 @@ export class RelatorioService {
     colaboradorUserId: string,
     turmaId?: string,
   ): Promise<string> {
+    const { cursinhoId } = await this.resolverEscopoComNome(
+      colaboradorUserId,
+      turmaId,
+    );
+    return cursinhoId;
+  }
+
+  /**
+   * Igual ao `resolverEscopo`, e devolve também o NOME da turma.
+   *
+   * ⚠️ **Sem consulta nova**: a turma já é buscada aqui para o 403, e o nome
+   * vem no mesmo objeto. O card 18 precisa dele para o cabeçalho dizer qual é o
+   * recorte — hoje a única pista de que `?turma=` está ativo é a coluna `Turma`
+   * **desaparecer**, um sinal por ausência que ninguém lê.
+   */
+  private async resolverEscopoComNome(
+    colaboradorUserId: string,
+    turmaId?: string,
+  ): Promise<{ cursinhoId: string; turmaNome: string | null }> {
     const cursinhoId =
       await this.cursinhoResolver.resolveCursinhoIdByUserId(colaboradorUserId);
 
-    if (turmaId !== undefined) {
-      const turma = await this.classRepository.findOneByIdWithPartner(turmaId);
-      if (!turma || turma.partnerPrepCourse?.id !== cursinhoId) {
-        throw new ForbiddenException('turma não pertence ao seu cursinho');
-      }
+    if (turmaId === undefined) return { cursinhoId, turmaNome: null };
+
+    const turma = await this.classRepository.findOneByIdWithPartner(turmaId);
+    if (!turma || turma.partnerPrepCourse?.id !== cursinhoId) {
+      throw new ForbiddenException('turma não pertence ao seu cursinho');
     }
 
-    return cursinhoId;
+    return { cursinhoId, turmaNome: turma.name ?? null };
   }
 
   private montarLinha(

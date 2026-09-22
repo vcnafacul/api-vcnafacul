@@ -148,6 +148,37 @@ export class ResumoDoRelatorioDtoOutput {
    * tem o card 08 — a tela mostra só o percentual.
    */
   @ApiProperty() totalDeQuestoes: number;
+
+  /**
+   * O nome do simulado — sem ele a tela não se identifica (card 18).
+   *
+   * ⚠️ **`null` quando o simulado foi apagado depois do vínculo.** Os cartões
+   * continuam existindo, e a tela mostra a constante que já usa para isso em
+   * vez de esconder o relatório.
+   */
+  @ApiProperty({ required: true, nullable: true })
+  simuladoNome: string | null;
+
+  /**
+   * O nome da turma quando o recorte é de uma — `null` no cursinho inteiro.
+   *
+   * ⚠️ **Só a api sabe**: o ms guarda o `turmaId` na junção mas não conhece o
+   * MySQL. Hoje a única pista de que `?turma=` está ativo é a coluna `Turma`
+   * desaparecer — um sinal por ausência, que ninguém lê.
+   */
+  @ApiProperty({ required: true, nullable: true })
+  turmaNome: string | null;
+
+  /**
+   * Quando o cartão mais recente entrou no recorte.
+   *
+   * ⚠️ **NÃO é "data da prova"** — ela não existe no modelo (`disponivelDe`
+   * está preenchida em 0 dos 131 simulados de homologação). E **não é "última
+   * atividade"**: reenvio do mesmo estudante não move a data. O rótulo na tela
+   * tem de ser "último cartão".
+   */
+  @ApiProperty({ required: true, nullable: true })
+  ultimoCartaoEm: string | null;
 }
 
 export class RelatorioDtoOutput {
