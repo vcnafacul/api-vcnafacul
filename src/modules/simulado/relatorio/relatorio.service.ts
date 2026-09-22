@@ -208,7 +208,6 @@ export class RelatorioService {
           não escrever um recorte que não existe.
         */
         turmaNome,
-        temEstudanteSemTurma: linhas.some((l) => l.turmaId === null),
         // quem saiu do cursinho depois de enviar: contado, nunca listado
         linhasSemEstudanteAtivo: doMs.linhas.filter(
           (l) => !usuariosAtivos.has(l.usuario),
