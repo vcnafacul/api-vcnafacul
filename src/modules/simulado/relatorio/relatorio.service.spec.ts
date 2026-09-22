@@ -871,3 +871,114 @@ describe('RelatorioService.consultar — acertos absolutos (card 08)', () => {
     expect(http.buscarLinhas).not.toHaveBeenCalled();
   });
 });
+
+describe('RelatorioService.consultar — identificação (card 18)', () => {
+  /**
+   * O card 18: a tela não dizia de que simulado era. Link colado no WhatsApp,
+   * folha impressa e aba esquecida — nenhum dos três se identificava.
+   */
+  const doMs = (over: any = {}) => ({
+    linhas: [linha()],
+    totalEstudantesComCartaoNoCursinho: 1,
+    totalDeQuestoes: 90,
+    simuladoNome: 'ENEM 2024',
+    ultimoCartaoEm: '2026-09-21T15:30:00.000Z',
+    ...over,
+  });
+
+  it('repassa nome do simulado e data do último cartão', async () => {
+    const { svc, http } = montar({ estudantes: [estudante()] });
+    http.buscarLinhas.mockResolvedValue(doMs());
+
+    const r = await svc.consultar('colab', 'sim-1');
+
+    expect(r.resumo.simuladoNome).toBe('ENEM 2024');
+    expect(r.resumo.ultimoCartaoEm).toBe('2026-09-21T15:30:00.000Z');
+  });
+
+  it('⚠️ o nome da TURMA vem da api, que é quem conhece o MySQL', async () => {
+    // O ms guarda o `turmaId` na junção mas não sabe o nome. E hoje a única
+    // pista de que `?turma=` está ativo é a coluna `Turma` desaparecer — um
+    // sinal por ausência, que ninguém lê.
+    const { svc, http } = montar({
+      estudantes: [estudante()],
+      turma: {
+        id: 't-1',
+        name: 'Turma 3ºA',
+        partnerPrepCourse: { id: 'cur-1' },
+      },
+    });
+    http.buscarLinhas.mockResolvedValue(doMs());
+
+    const r = await svc.consultar('colab', 'sim-1', 't-1');
+
+    expect(r.resumo.turmaNome).toBe('Turma 3ºA');
+  });
+
+  it('⚠️ sem recorte de turma, `turmaNome` é null', async () => {
+    // A tela usa isso para não escrever um recorte que não existe.
+    const { svc, http } = montar({ estudantes: [estudante()] });
+    http.buscarLinhas.mockResolvedValue(doMs());
+
+    const r = await svc.consultar('colab', 'sim-1');
+
+    expect(r.resumo.turmaNome).toBeNull();
+  });
+
+  it('⚠️ o nome da turma NÃO custa consulta nova', async () => {
+    // Ele vem do mesmo objeto que o 403 do `resolverEscopo` já busca.
+    const { svc, http, classRepository } = montar({
+      estudantes: [estudante()],
+      turma: { id: 't-1', name: 'Turma B', partnerPrepCourse: { id: 'cur-1' } },
+    });
+    http.buscarLinhas.mockResolvedValue(doMs());
+
+    await svc.consultar('colab', 'sim-1', 't-1');
+
+    expect(classRepository.findOneByIdWithPartner).toHaveBeenCalledTimes(1);
+  });
+
+  it('simulado apagado devolve nome null e o relatório NÃO some', async () => {
+    const { svc, http } = montar({ estudantes: [estudante()] });
+    http.buscarLinhas.mockResolvedValue(doMs({ simuladoNome: null }));
+
+    const r = await svc.consultar('colab', 'sim-1');
+
+    expect(r.resumo.simuladoNome).toBeNull();
+    expect(r.linhas).toHaveLength(1);
+  });
+
+  it('⚠️ turma vazia: nome null, mas `totalNoRecorte` 0 distingue o caso', async () => {
+    // `null` aqui NÃO significa "simulado removido" — a turma é que está
+    // vazia. A tela usa `totalNoRecorte` para não afirmar que o simulado sumiu.
+    const { svc, http } = montar({
+      estudantes: [],
+      turma: {
+        id: 't-1',
+        name: 'Turma vazia',
+        partnerPrepCourse: { id: 'cur-1' },
+      },
+    });
+
+    const r = await svc.consultar('colab', 'sim-1', 't-1');
+
+    expect(r.resumo.simuladoNome).toBeNull();
+    expect(r.resumo.totalNoRecorte).toBe(0);
+    expect(r.resumo.turmaNome).toBe('Turma vazia');
+    expect(http.buscarLinhas).not.toHaveBeenCalled();
+  });
+
+  it('ms antigo (sem o card 18) degrada para null, não quebra', async () => {
+    const { svc, http } = montar({ estudantes: [estudante()] });
+    http.buscarLinhas.mockResolvedValue({
+      linhas: [linha()],
+      totalEstudantesComCartaoNoCursinho: 1,
+      totalDeQuestoes: 90,
+    });
+
+    const r = await svc.consultar('colab', 'sim-1');
+
+    expect(r.resumo.simuladoNome).toBeNull();
+    expect(r.resumo.ultimoCartaoEm).toBeNull();
+  });
+});
