@@ -21,6 +21,7 @@ interface LinhaDoMs {
   cartaoCode?: string;
   questoesRespondidas?: number;
   aproveitamentoGeral?: number;
+  acertos?: number;
   aproveitamentoPorMateria?: MateriaDoEstudanteDtoOutput[];
   falha?: Record<string, unknown>;
 }
@@ -118,7 +119,11 @@ export class RelatorioService {
 
     const doMs =
       usuariosDoRecorte !== undefined && usuariosDoRecorte.length === 0
-        ? { linhas: [], totalEstudantesComCartaoNoCursinho: 0 }
+        ? {
+            linhas: [],
+            totalEstudantesComCartaoNoCursinho: 0,
+            totalDeQuestoes: 0,
+          }
         : ((await this.http.buscarLinhas(
             simuladoId,
             cursinhoId,
@@ -126,6 +131,7 @@ export class RelatorioService {
           )) as {
             linhas: LinhaDoMs[];
             totalEstudantesComCartaoNoCursinho: number;
+            totalDeQuestoes: number;
           });
 
     const porUsuario = new Map(doMs.linhas.map((l) => [l.usuario, l]));
@@ -163,6 +169,15 @@ export class RelatorioService {
         aproveitamentoPorMateria: mediaPorMateria(comLeitura),
         totalEstudantesComCartaoNoCursinho:
           doMs.totalEstudantesComCartaoNoCursinho,
+        /*
+          ⚠️ **Fica no resumo, e não em cada linha**: é propriedade do
+          SIMULADO, não do estudante — repeti-lo em 500 linhas seria dizer 500
+          vezes a mesma coisa e abriria a porta para duas discordarem.
+
+          ⚠️ `?? 0` para o ms antigo: sem o card 08 do outro lado o campo chega
+          `undefined`, e a tela mostra só o percentual em vez de "61/undefined".
+        */
+        totalDeQuestoes: doMs.totalDeQuestoes ?? 0,
         temEstudanteSemTurma: linhas.some((l) => l.turmaId === null),
         // quem saiu do cursinho depois de enviar: contado, nunca listado
         linhasSemEstudanteAtivo: doMs.linhas.filter(
@@ -309,6 +324,8 @@ export class RelatorioService {
       cartaoCode: doMs?.cartaoCode,
       questoesRespondidas: doMs?.questoesRespondidas,
       aproveitamentoGeral: doMs?.aproveitamentoGeral,
+      // ⚠️ Repassado, nunca recalculado — o ms conta; a api não refaz nota.
+      acertos: doMs?.acertos,
       // ⚠️ Repassado cru, nunca recalculado: o ms é a fonte da nota — ver o
       // docblock do campo no DTO.
       aproveitamentoPorMateria: doMs?.aproveitamentoPorMateria,
