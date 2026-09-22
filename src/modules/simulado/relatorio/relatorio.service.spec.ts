@@ -440,6 +440,66 @@ describe('RelatorioService.consultarQuestoes', () => {
 
     expect(r.questoes[0].alternativaCorreta).toBeNull();
   });
+
+  /**
+   * O card 05, lado api: a discriminação atravessa como os outros campos do
+   * agregado — cast, não transformação.
+   *
+   * ⚠️ Mesmo raciocínio do card 03: estes testes não podem falhar hoje. Eles
+   * existem para o dia em que alguém introduzir um `map` neste caminho e
+   * esquecer o campo — o que já aconteceu com `consultarQuestoes` no card 18.
+   */
+  it('a discriminação do ms chega intacta', async () => {
+    const { svc, http } = montar();
+    http.buscarQuestoes.mockResolvedValue({
+      questoes: [
+        {
+          numero: 34,
+          questaoId: 'q34',
+          respondentes: 27,
+          acertos: 6,
+          erros: 19,
+          semLeitura: 2,
+          porAlternativa: { A: 2, B: 16, C: 6, D: 1, E: 0 },
+          alternativaCorreta: 'C',
+          discriminacao: -0.42,
+        },
+      ],
+    });
+
+    const r = await svc.consultarQuestoes('colab-1', 'sim-1');
+
+    // ⚠️ Negativa, de propósito: é o sinal de gabarito trocado, e um
+    // `Math.abs` ou um `?? 0` em qualquer ponto do caminho apagaria justamente
+    // o achado mais acionável do relatório.
+    expect(r.questoes[0].discriminacao).toBe(-0.42);
+  });
+
+  it('⚠️ discriminação `null` atravessa como null, e não vira zero', async () => {
+    // `null` é "não há como medir" (base pequena, ou variância zero); zero é
+    // "a questão não separa ninguém". São afirmações diferentes, e trocar uma
+    // pela outra faz a tela mostrar um veredito onde não há medida.
+    const { svc, http } = montar();
+    http.buscarQuestoes.mockResolvedValue({
+      questoes: [
+        {
+          numero: 1,
+          questaoId: 'q1',
+          respondentes: 4,
+          acertos: 2,
+          erros: 2,
+          semLeitura: 0,
+          porAlternativa: { A: 2, B: 2, C: 0, D: 0, E: 0 },
+          alternativaCorreta: 'A',
+          discriminacao: null,
+        },
+      ],
+    });
+
+    const r = await svc.consultarQuestoes('colab-1', 'sim-1');
+
+    expect(r.questoes[0].discriminacao).toBeNull();
+  });
 });
 
 describe('RelatorioService.listarSimulados', () => {
