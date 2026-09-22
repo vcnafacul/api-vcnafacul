@@ -48,6 +48,26 @@ export class QuestaoDoRelatorioDtoOutput {
    */
   @ApiProperty({ required: true, nullable: true })
   alternativaCorreta: string | null;
+
+  /**
+   * A correlação ponto-bisserial entre acertar esta questão e a nota da prova:
+   * **a questão separa quem sabe de quem não sabe?**
+   *
+   * É o que a dificuldade sozinha não diz. "22% acertaram" pode ser uma questão
+   * difícil e boa — os 22% são quem foi bem na prova inteira — ou uma questão
+   * quebrada, em que acertou quem chutou. As ações são opostas.
+   *
+   * ⚠️ **Negativo é o sinal clássico de gabarito trocado** (os melhores errando
+   * mais que os piores). Faixas usuais: `< 0,20` revisar · `≥ 0,30` boa ·
+   * negativa suspeita. Quem traduz em rótulo é a tela (card 06).
+   *
+   * ⚠️ **`null` NÃO é zero.** Zero diria "não separa ninguém"; `null` diz que
+   * não há como medir — menos de 10 estudantes com LEITURA da questão (quem não
+   * foi lido não entra), ou variância zero. Nunca vem `NaN`, e nunca troque por
+   * um número padrão.
+   */
+  @ApiProperty({ required: true, nullable: true })
+  discriminacao: number | null;
 }
 
 export class QuestoesDoRelatorioDtoOutput {
