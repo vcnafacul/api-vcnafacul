@@ -379,6 +379,67 @@ describe('RelatorioService.consultarQuestoes', () => {
       svc.consultarQuestoes('colab-1', 'sim-1', 't-9'),
     ).rejects.toThrow(ForbiddenException);
   });
+
+  /**
+   * O card 03: o gabarito chega junto com as contagens por alternativa, porque
+   * sem ele "51% marcaram B" é a turma acertando ou a turma caindo no mesmo
+   * distrator — leituras opostas.
+   *
+   * ⚠️ Aqui a api é **cast, não transformação**: o objeto do ms sai inteiro.
+   * Estes testes não podem falhar hoje — eles existem para o dia em que alguém
+   * introduzir um `map` neste caminho e esquecer o campo, que é o defeito
+   * clássico de proxy que deixa de ser proxy (foi o que aconteceu com
+   * `consultarQuestoes` no card 18).
+   */
+  it('o gabarito do ms chega intacto na resposta', async () => {
+    const { svc, http } = montar();
+    http.buscarQuestoes.mockResolvedValue({
+      questoes: [
+        {
+          numero: 7,
+          questaoId: 'q1',
+          respondentes: 20,
+          acertos: 12,
+          erros: 6,
+          semLeitura: 2,
+          porAlternativa: { A: 2, B: 12, C: 4, D: 0, E: 0 },
+          alternativaCorreta: 'B',
+        },
+      ],
+    });
+
+    const r = await svc.consultarQuestoes('colab-1', 'sim-1');
+
+    expect(r.questoes[0].alternativaCorreta).toBe('B');
+    // ⚠️ A invariante do ms sobrevive à travessia: se um dia a api reordenar ou
+    // reconstruir `porAlternativa`, é aqui que se vê.
+    expect(r.questoes[0].porAlternativa['B']).toBe(r.questoes[0].acertos);
+  });
+
+  it('⚠️ gabarito `null` atravessa como null, e não vira letra nenhuma', async () => {
+    // `null` é o que o ms manda quando os históricos do recorte DISCORDAM do
+    // gabarito. Um `?? 'A'` bem-intencionado em qualquer ponto do caminho
+    // transformaria "não sei" em "é A" — exatamente o que o card evita.
+    const { svc, http } = montar();
+    http.buscarQuestoes.mockResolvedValue({
+      questoes: [
+        {
+          numero: 7,
+          questaoId: 'q1',
+          respondentes: 2,
+          acertos: 2,
+          erros: 0,
+          semLeitura: 0,
+          porAlternativa: { A: 1, B: 0, C: 0, D: 1, E: 0 },
+          alternativaCorreta: null,
+        },
+      ],
+    });
+
+    const r = await svc.consultarQuestoes('colab-1', 'sim-1');
+
+    expect(r.questoes[0].alternativaCorreta).toBeNull();
+  });
 });
 
 describe('RelatorioService.listarSimulados', () => {
