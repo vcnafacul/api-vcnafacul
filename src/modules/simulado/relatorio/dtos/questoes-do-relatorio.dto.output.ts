@@ -68,6 +68,36 @@ export class QuestaoDoRelatorioDtoOutput {
    */
   @ApiProperty({ required: true, nullable: true })
   discriminacao: number | null;
+
+  /**
+   * Quantos acertaram esta questão na BASE INTEIRA — todos os cursinhos, todas
+   * as aplicações, os dois fluxos (card 16).
+   *
+   * ⚠️ **Outro ESCOPO, não outro cálculo.** `acertos` acima é do recorte deste
+   * relatório; este é global. É o que responde a pergunta que o recorte não
+   * pode responder: *"minha turma foi mal nesta questão, ou a questão é difícil
+   * para todo mundo?"*. 22% da turma contra 24% da base muda a conclusão de
+   * "preciso dar essa aula" para "a questão é dura mesmo".
+   *
+   * ⚠️ **Contagem, e não percentual**, pela mesma razão do `porAlternativa`: o
+   * percentual arredondado esconde a base, e a base é metade da informação.
+   */
+  @ApiProperty() acertosGeral: number;
+
+  /**
+   * O denominador de `acertosGeral` — quantas respostas a questão recebeu na
+   * base inteira.
+   *
+   * ⚠️ **Tem de chegar à tela junto do percentual.** "24%" sozinho não diz se
+   * são 1.847 respostas ou 12, e as duas leituras são opostas: dificuldade da
+   * questão contra ruído. É a tela que decide o piso abaixo do qual não exibe.
+   *
+   * ⚠️ **Só é confiável depois do card 21 (escrita no ms) E da execução do sync
+   * do card 22.** Antes disso o campo contava APRESENTAÇÕES em vez de
+   * respostas, e o reprocessamento contava duas vezes — medido em
+   * homologação: **0 de 181** questões batiam com o histórico.
+   */
+  @ApiProperty() baseGeral: number;
 }
 
 export class QuestoesDoRelatorioDtoOutput {
