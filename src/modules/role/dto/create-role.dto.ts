@@ -108,4 +108,8 @@ export class CreateRoleDtoInput {
   @IsBoolean()
   @IsOptional()
   gerenciarCategoriasCursinho?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  excluirQuestao?: boolean;
 }

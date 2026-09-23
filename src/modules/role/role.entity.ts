@@ -126,6 +126,17 @@ export class Role extends BaseEntity {
   @Column({ name: Permissions.gerenciarCategoriasCursinho, default: false })
   gerenciarCategoriasCursinho: boolean;
 
+  /**
+   * Excluir questão órfã do banco de questões (card 33).
+   *
+   * ⚠️ **Permissão própria, e não `validarQuestao`.** Excluir é soft e a
+   * questão só sai se passar nas cinco condições do ms, mas desfaz o vínculo
+   * de cópia/versão sem volta — é ação que se concede de propósito, não um
+   * efeito colateral de poder aprovar.
+   */
+  @Column({ name: Permissions.excluirQuestao, default: false })
+  excluirQuestao: boolean;
+
   @OneToMany(() => User, (user) => user.role)
   users: User[];
 
