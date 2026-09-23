@@ -396,12 +396,33 @@ export class QuestaoController {
   @ApiBearerAuth()
   @ApiResponse({
     status: 200,
-    description: 'deleta questão',
+    description: 'exclui (soft) uma questão órfã',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'não pode ser excluída — o corpo lista os motivos',
   })
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.validarQuestao)
-  public async delete(@Param('id') id: string) {
-    return await this.questaoService.delete(id);
+  public async delete(@Param('id') id: string, @Req() req: Request) {
+    return await this.questaoService.delete(id, req.user as User);
+  }
+
+  /**
+   * ⚠️ **`validarQuestao`, a mesma guarda do `DELETE`.** Quem não pode excluir
+   * não tem por que perguntar se pode — e o client só pergunta para decidir se
+   * mostra o botão.
+   */
+  @Get(':id/exclusao')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'se a questão pode ser excluída, e os motivos se não',
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.validarQuestao)
+  public async podeExcluir(@Param('id') id: string) {
+    return await this.questaoService.podeExcluir(id);
   }
 
   @Get('history/:id')
