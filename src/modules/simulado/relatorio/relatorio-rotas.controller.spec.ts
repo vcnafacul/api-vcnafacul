@@ -30,6 +30,7 @@ describe('Relatório — as sete rotas resolvem para o handler certo', () => {
     consultarQuestoes: jest.fn(),
     listarSimulados: jest.fn(),
     consultarDetalhe: jest.fn(),
+    serieDoEstudante: jest.fn(),
   };
 
   const passaTudo = {
@@ -67,6 +68,7 @@ describe('Relatório — as sete rotas resolvem para o handler certo', () => {
       status: 'completed',
       respostas: [],
     });
+    service.serieDoEstudante.mockResolvedValue({ pontos: [] });
   });
 
   it('o geral do cursinho cai no handler do geral', async () => {
@@ -175,5 +177,50 @@ describe('Relatório — as sete rotas resolvem para o handler certo', () => {
 
     expect(service.consultar).toHaveBeenCalledWith('colab-1', 'sim-1', 't-1');
     expect(service.consultarDetalhe).not.toHaveBeenCalled();
+  });
+
+  it('⚠️ GET serie/estudante/:userId resolve para a literal, não para :simuladoId', async () => {
+    /*
+      ⚠️ Mesma contagem de segmentos de `:simuladoId/estudante/:userId`, **e o
+      mesmo segundo segmento**. Declarada depois, esta rota seria capturada por
+      aquela com `simuladoId = 'serie'` — e o `ParseUUIDPipe` do `:userId`
+      deixaria passar, porque o id É um UUID. O handler errado rodaria com um
+      simulado inexistente, e a tela receberia 200 com o detalhe vazio em vez da
+      série.
+
+      Nenhum teste de unidade pega: eles chamam o método direto.
+    */
+    await request(app.getHttpServer())
+      .get(`/mssimulado/relatorio/simulado/serie/estudante/${USER_ID}`)
+      .expect(200);
+
+    // ⚠️ Dois argumentos, não três: a rota sem turma não passa o terceiro, e
+    // o `resolverEscopo` trata a ausência como "o cursinho inteiro".
+    expect(service.serieDoEstudante).toHaveBeenCalledWith('colab-1', USER_ID);
+    expect(service.consultarDetalhe).not.toHaveBeenCalled();
+  });
+
+  it('a série COM turma cai no handler com turma', async () => {
+    await request(app.getHttpServer())
+      .get(
+        `/mssimulado/relatorio/simulado/serie/estudante/${USER_ID}/turma/t-9`,
+      )
+      .expect(200);
+
+    expect(service.serieDoEstudante).toHaveBeenCalledWith(
+      'colab-1',
+      USER_ID,
+      't-9',
+    );
+  });
+
+  it('⚠️ `:userId` da série que não é UUID morre em 400', async () => {
+    // Mesma trava do detalhe: `users.id` é `@PrimaryGeneratedColumn('uuid')`,
+    // e tudo que não é UUID é lixo que não deve chegar ao ms.
+    await request(app.getHttpServer())
+      .get('/mssimulado/relatorio/simulado/serie/estudante/nao-e-uuid')
+      .expect(400);
+
+    expect(service.serieDoEstudante).not.toHaveBeenCalled();
   });
 });

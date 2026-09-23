@@ -35,6 +35,10 @@ const montar = (over: any = {}) => {
       .mockResolvedValue(
         over.detalhe ?? { status: 'completed', respostas: [] },
       ),
+    // ⚠️ Card 17 — a série de aplicações do estudante.
+    buscarSerieDoEstudante: jest
+      .fn()
+      .mockResolvedValue({ pontos: over.pontos ?? [] }),
   };
   const studentCourseRepository = {
     findEnrolledForRelatorio: jest
@@ -992,5 +996,47 @@ describe('RelatorioService.consultar — identificação (card 18)', () => {
 
     expect(r.resumo.simuladoNome).toBeNull();
     expect(r.resumo.ultimoCartaoEm).toBeNull();
+  });
+});
+
+describe('RelatorioService.serieDoEstudante (card 17)', () => {
+  it('⚠️ o turmaId viaja até o ms — é ele que define contra QUEM comparar', async () => {
+    /*
+      Ao contrário do detalhe do estudante, onde turma não entra porque o
+      `usuario` já identifica a pessoa. Aqui o recorte decide a média de cada
+      ponto: "melhorou em relação à turma" e "em relação ao cursinho" são
+      perguntas diferentes.
+    */
+    const { svc, http } = montar({});
+
+    await svc.serieDoEstudante('colab-1', 'u-1', 't-9');
+
+    expect(http.buscarSerieDoEstudante).toHaveBeenCalledWith(
+      'u-1',
+      'cur-1',
+      't-9',
+    );
+  });
+
+  it('sem turma, compara com o cursinho inteiro', async () => {
+    const { svc, http } = montar({});
+
+    await svc.serieDoEstudante('colab-1', 'u-1');
+
+    expect(http.buscarSerieDoEstudante).toHaveBeenCalledWith(
+      'u-1',
+      'cur-1',
+      undefined,
+    );
+  });
+
+  it('⚠️ o cursinho vem do JWT, nunca da URL', async () => {
+    // Mesma garantia do resto do módulo: o `resolverEscopo` resolve pelo
+    // colaborador logado, e o id do cursinho nunca é aceito do chamador.
+    const { svc, http } = montar({});
+
+    await svc.serieDoEstudante('colab-1', 'u-1');
+
+    expect(http.buscarSerieDoEstudante.mock.calls[0][1]).toBe('cur-1');
   });
 });

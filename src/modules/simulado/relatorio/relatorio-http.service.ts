@@ -83,6 +83,29 @@ export class RelatorioHttpService {
   }
 
   /**
+   * A série de aplicações de um estudante (card 17).
+   *
+   * ⚠️ **`turmaId` VIAJA, ao contrário do detalhe do estudante** — e a
+   * diferença é o que o recorte significa em cada um. Ali ele identifica uma
+   * pessoa; aqui ele define contra QUEM o aluno é comparado: a média do ponto é
+   * a do recorte, e "melhorou em relação à turma" e "em relação ao cursinho"
+   * são perguntas diferentes.
+   */
+  async buscarSerieDoEstudante(
+    usuario: string,
+    cursinhoId: string,
+    turmaId?: string,
+  ): Promise<unknown> {
+    const query =
+      turmaId === undefined
+        ? this.query(cursinhoId)
+        : `${this.query(cursinhoId)}&turmaId=${encodeURIComponent(turmaId)}`;
+    return this.axios.get(
+      `v1/relatorio-simulado/serie/estudante/${this.seg(usuario)}?${query}`,
+    );
+  }
+
+  /**
    * Um estudante só: `cursinhoId` é o gate, e turma não entra — o `usuario`
    * já identifica a pessoa.
    */

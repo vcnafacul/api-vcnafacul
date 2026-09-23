@@ -4,6 +4,7 @@ import { StudentCourse } from 'src/modules/prepCourse/studentCourse/student-cour
 import { StudentCourseRepository } from 'src/modules/prepCourse/studentCourse/student-course.repository';
 import { CursinhoResolverService } from '../prova/cursinho/cursinho-resolver.service';
 import { DetalheDoEstudanteDtoOutput } from './dtos/detalhe-do-estudante.dto.output';
+import { SerieDoEstudanteDtoOutput } from './dtos/serie-do-estudante.dto.output';
 import { QuestoesDoRelatorioDtoOutput } from './dtos/questoes-do-relatorio.dto.output';
 import {
   LinhaDoRelatorioDtoOutput,
@@ -284,6 +285,30 @@ export class RelatorioService {
       cursinhoId,
       usuarios,
     ) as Promise<SimuladosComCartaoDtoOutput>;
+  }
+
+  /**
+   * A série de aplicações de um estudante — "o Pedro melhorou?" (card 17).
+   *
+   * ⚠️ **`turmaId` entra no `resolverEscopo`, e não é detalhe:** ele é o que
+   * define contra quem o aluno é comparado. A média de cada ponto é a do
+   * RECORTE — comparar-se com a turma e comparar-se com o cursinho inteiro são
+   * perguntas diferentes, e quem abre a série a partir da turma quer a primeira.
+   *
+   * ⚠️ E o 403 do `resolverEscopo` continua valendo: pedir a série de um aluno
+   * usando uma turma que não é sua recusa, em vez de devolver vazio.
+   */
+  async serieDoEstudante(
+    colaboradorUserId: string,
+    userId: string,
+    turmaId?: string,
+  ): Promise<SerieDoEstudanteDtoOutput> {
+    const cursinhoId = await this.resolverEscopo(colaboradorUserId, turmaId);
+    return this.http.buscarSerieDoEstudante(
+      userId,
+      cursinhoId,
+      turmaId,
+    ) as Promise<SerieDoEstudanteDtoOutput>;
   }
 
   /**
