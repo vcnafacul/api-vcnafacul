@@ -5,12 +5,33 @@ export class FrenteDoEstudanteDtoOutput {
   @ApiProperty() nome: string;
   /** Fração de 0 a 1, como `aproveitamentoGeral` — a tela é quem formata. */
   @ApiProperty() aproveitamento: number;
+  /**
+   * Quantas questões do simulado tocam esta frente — o denominador do
+   * `aproveitamento` (card 30).
+   *
+   * ⚠️ **Opcional, e ausente ≠ zero.** Histórico gravado antes daquele card não
+   * tem a contagem, e ela é **irrecuperável**: o `criaAproveitamento` do ms
+   * calculava o total para dividir e descartava.
+   */
+  @ApiProperty({ required: false }) questoes?: number;
 }
 
 export class MateriaDoEstudanteDtoOutput {
   @ApiProperty() id: string;
   @ApiProperty() nome: string;
   @ApiProperty() aproveitamento: number;
+  /**
+   * Quantas questões do simulado tocam esta matéria.
+   *
+   * ⚠️ **As bases NÃO somam o total do simulado**, e isso é esperado desde o
+   * card 14: uma questão conta inteira em cada (matéria, frente) que toca — 928
+   * das 1.616 frentes secundárias de homologação são de matéria diferente da
+   * questão. Sem este campo, quem soma as matérias acha que a conta não fecha.
+   *
+   * ⚠️ **Não confundir com `MediaPorMateriaDtoOutput.base`**, logo abaixo, que
+   * conta ESTUDANTES no resumo da turma. Aqui são questões.
+   */
+  @ApiProperty({ required: false }) questoes?: number;
   @ApiProperty({ type: [FrenteDoEstudanteDtoOutput] })
   frentes: FrenteDoEstudanteDtoOutput[];
 }
