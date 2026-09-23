@@ -13,6 +13,7 @@ import { Permissions } from 'src/modules/role/permissions/permissions';
 import { User } from 'src/modules/user/user.entity';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
+import { SerieDoEstudanteDtoOutput } from './dtos/serie-do-estudante.dto.output';
 import { DetalheDoEstudanteDtoOutput } from './dtos/detalhe-do-estudante.dto.output';
 import { QuestoesDoRelatorioDtoOutput } from './dtos/questoes-do-relatorio.dto.output';
 import { RelatorioDtoOutput } from './dtos/relatorio.dto.output';
@@ -52,6 +53,54 @@ export class RelatorioController {
     @Req() req: Request,
   ): Promise<SimuladosComCartaoDtoOutput> {
     return this.service.listarSimulados((req.user as User).id, turmaId);
+  }
+
+  /**
+   * ⚠️ **Junto das PRIMEIRAS rotas, pelo mesmo motivo que o `simulados`
+   * acima.** `serie/estudante/:userId/turma/:turmaId` e
+   * `serie/estudante/:userId` começam com dois segmentos literais, mas
+   * `:simuladoId/estudante/:userId` tem a mesma contagem da segunda e o mesmo
+   * segundo segmento — declarada depois, ela seria capturada com
+   * `simuladoId = 'serie'`. Só o `relatorio-rotas.controller.spec.ts` pega.
+   *
+   * ⚠️ **Duas rotas, e a com turma vem ANTES** — quatro segmentos contra três,
+   * mas a ordem torna a intenção óbvia para quem lê e não depende de contagem.
+   */
+  @Get('serie/estudante/:userId/turma/:turmaId')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'as aplicações do estudante, comparadas com a TURMA',
+    type: SerieDoEstudanteDtoOutput,
+  })
+  @ApiResponse(RESPOSTA_403)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
+  async serieDoEstudantePorTurma(
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Param('turmaId') turmaId: string,
+    @Req() req: Request,
+  ): Promise<SerieDoEstudanteDtoOutput> {
+    return this.service.serieDoEstudante(
+      (req.user as User).id,
+      userId,
+      turmaId,
+    );
+  }
+
+  @Get('serie/estudante/:userId')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'as aplicações do estudante, comparadas com o CURSINHO',
+    type: SerieDoEstudanteDtoOutput,
+  })
+  @ApiResponse(RESPOSTA_403)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
+  async serieDoEstudante(
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Req() req: Request,
+  ): Promise<SerieDoEstudanteDtoOutput> {
+    return this.service.serieDoEstudante((req.user as User).id, userId);
   }
 
   @Get('simulados')
