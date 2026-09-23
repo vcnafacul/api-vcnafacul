@@ -200,6 +200,23 @@ export class QuestaoService {
     return await this.axios.get<any>(`v1/questao/pending-by-materia${params}`);
   }
 
+  /**
+   * Cria uma cópia editável da questão, com lastro (card 25).
+   *
+   * ⚠️ **`userId` do JWT, nunca do corpo** — mesmo padrão do `adicionarEmProva`
+   * logo abaixo. É o que faz o log do ms dizer quem duplicou de verdade.
+   */
+  public async duplicar(id: string, user: User) {
+    return await this.axios.post(`v1/questao/${id}/duplicar`, {
+      userId: user.id,
+    });
+  }
+
+  /** As cópias diretas — derivadas de `origem` no ms, não de um array. */
+  public async listarCopias(id: string) {
+    return await this.axios.get(`v1/questao/${id}/copias`);
+  }
+
   public async adicionarEmProva(
     id: string,
     body: { provaId: string; numero: number },

@@ -28,6 +28,9 @@ describe('QuestaoController — a rota summary vence o :id', () => {
   const service = {
     getSummary: jest.fn().mockResolvedValue({ questionTotal: 723 }),
     getById: jest.fn().mockResolvedValue({ _id: 'x' }),
+    // ⚠️ Card 25 — a linhagem.
+    duplicar: jest.fn().mockResolvedValue({ _id: 'copia' }),
+    listarCopias: jest.fn().mockResolvedValue([]),
   };
 
   const passaTudo = { canActivate: () => true };
@@ -54,6 +57,8 @@ describe('QuestaoController — a rota summary vence o :id', () => {
   beforeEach(() => {
     service.getSummary.mockClear();
     service.getById.mockClear();
+    service.duplicar.mockClear();
+    service.listarCopias.mockClear();
   });
 
   it('GET /summary chega no getSummary, não no getById', async () => {
@@ -75,5 +80,31 @@ describe('QuestaoController — a rota summary vence o :id', () => {
 
     expect(service.getById).toHaveBeenCalledWith('65ecc850a528b39d273e7900');
     expect(service.getSummary).not.toHaveBeenCalled();
+  });
+
+  it('⚠️ GET :id/copias não é engolido pelo :id', async () => {
+    /*
+      ⚠️ Não colidem hoje — `:id` tem um segmento e `:id/copias` tem dois —, mas
+      é a mesma classe de defeito que fez o `summary` virar 500 neste controller,
+      e o único jeito de saber é montando o app: teste de unidade chama o método
+      direto e passa com qualquer ordem.
+    */
+    await request(app.getHttpServer())
+      .get('/mssimulado/questoes/665f0c1a2b3c4d5e6f00abc2/copias')
+      .expect(200);
+
+    expect(service.listarCopias).toHaveBeenCalledWith(
+      '665f0c1a2b3c4d5e6f00abc2',
+    );
+    expect(service.getById).not.toHaveBeenCalled();
+  });
+
+  it('POST :id/duplicar chega no duplicar', async () => {
+    await request(app.getHttpServer())
+      .post('/mssimulado/questoes/665f0c1a2b3c4d5e6f00abc2/duplicar')
+      .send({})
+      .expect(201);
+
+    expect(service.duplicar).toHaveBeenCalled();
   });
 });
