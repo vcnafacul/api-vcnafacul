@@ -205,16 +205,19 @@ export class QuestaoController {
   }
 
   /**
-   * ⚠️ **`visualizarQuestao`**: listar as cópias é leitura, e quem abre o banco
-   * de questões precisa ver o badge e o contador sem poder criar nada.
+   * ⚠️ **`visualizarQuestao`**: ver a linhagem é leitura, e quem abre o banco
+   * de questões precisa ver versões e cópias sem poder criar nada.
    */
-  @Get(':id/copias')
+  @Get(':id/linhagem')
   @ApiBearerAuth()
-  @ApiResponse({ status: 200, description: 'as cópias diretas desta questão' })
+  @ApiResponse({
+    status: 200,
+    description: 'a cadeia de versões, as cópias diretas e a origem',
+  })
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
-  public async listarCopias(@Param('id') id: string) {
-    return await this.questaoService.listarCopias(id);
+  public async linhagem(@Param('id') id: string) {
+    return await this.questaoService.linhagem(id);
   }
 
   @Post(':id/provas')

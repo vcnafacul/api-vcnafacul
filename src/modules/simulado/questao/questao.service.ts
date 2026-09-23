@@ -224,9 +224,12 @@ export class QuestaoService {
     });
   }
 
-  /** As cópias diretas — derivadas de `origem` no ms, não de um array. */
-  public async listarCopias(id: string) {
-    return await this.axios.get(`v1/questao/${id}/copias`);
+  /**
+   * A linhagem: cadeia de versões, cópias diretas e origem (card 34A). Substitui
+   * o `/copias` do card 25.
+   */
+  public async linhagem(id: string) {
+    return await this.axios.get(`v1/questao/${id}/linhagem`);
   }
 
   public async adicionarEmProva(
