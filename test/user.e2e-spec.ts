@@ -18,6 +18,7 @@ import * as request from 'supertest';
 jest.mock('src/shared/services/webhooks/discord.ts');
 import { CreateUserDtoInputFaker } from './faker/create-user.dto.input.faker';
 import { createNestAppTest } from './utils/createNestAppTest';
+import { PropositoDoToken } from 'src/shared/auth/token-de-email';
 
 describe('User e2e', () => {
   let app: INestApplication;
@@ -99,7 +100,8 @@ describe('User e2e', () => {
     const user = await userRepository.findOneBy({ email: newUser.email });
 
     const token = await jwtService.signAsync(
-      { user: { id: user.id } },
+      // ⚠️ Com o propósito — é o que o `create` assina (card 01 do convite).
+      { user: { id: user.id }, typ: PropositoDoToken.confirmarEmail },
       { expiresIn: '2h' },
     );
 
@@ -112,6 +114,31 @@ describe('User e2e', () => {
       .expect((res) => {
         expect(res.body).toHaveProperty('access_token');
       });
+  }, 30000);
+
+  it('⚠️ token de LOGIN não confirma email, e token de email não é login', async () => {
+    /*
+      Card 01 de `convite-de-colaborador`: os tokens de email eram assinados
+      igual ao de login, e o link valia como credencial em qualquer rota.
+    */
+    const newUser = CreateUserDtoInputFaker();
+    await request(app.getHttpServer()).post('/user').send(newUser).expect(201);
+    const user = await userRepository.findOneBy({ email: newUser.email });
+
+    const deLogin = await jwtService.signAsync({ user: { id: user.id } });
+    await request(app.getHttpServer())
+      .patch(`/user/confirmemail`)
+      .set({ Authorization: `Bearer ${deLogin}` })
+      .expect(401);
+
+    const deEmail = await jwtService.signAsync({
+      user: { id: user.id },
+      typ: PropositoDoToken.confirmarEmail,
+    });
+    await request(app.getHttpServer())
+      .get(`/user/me`)
+      .set({ Authorization: `Bearer ${deEmail}` })
+      .expect(401);
   }, 30000);
 
   it('should throw an error if user not found', () => {

@@ -95,6 +95,7 @@ import { SocioeconomicAnswer } from './types/student-course-full';
 import { createEnrollmentCertificate } from './utils/create-enrollment-certificate';
 import { AggregatePeriodDtoInput } from 'src/shared/dtos/aggregate-period.dto.input';
 import { AggregateStudentCoursePeriodDtoOutput } from './dtos/aggregate-student-course-period.dto.output';
+import { PropositoDoToken } from 'src/shared/auth/token-de-email';
 
 @Injectable()
 export class StudentCourseService extends BaseService<StudentCourse> {
@@ -216,6 +217,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     const token = await this.jwtService.signAsync(
       {
         user: { id: user.id, flow: CreateFlow.CREATE_STUDENT, inscriptionId },
+        typ: PropositoDoToken.confirmarEmail,
       },
       { expiresIn: '2h' },
     );

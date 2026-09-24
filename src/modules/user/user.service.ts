@@ -33,6 +33,8 @@ import { ProfileDetectorService } from './services/profile-detector.service';
 import { RefreshTokenService } from './services/refresh-token.service';
 import { User } from './user.entity';
 import { UserRepository } from './user.repository';
+import { PropositoDoToken } from 'src/shared/auth/token-de-email';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class UserService extends BaseService<User> {
@@ -59,13 +61,26 @@ export class UserService extends BaseService<User> {
   async create(userDto: CreateUserDtoInput): Promise<void> {
     const user = await this.createUser(userDto);
     const token = await this.jwtService.signAsync(
-      { user: { id: user.id, flow: CreateFlow.DEFAULT } },
+      {
+        user: { id: user.id, flow: CreateFlow.DEFAULT },
+        typ: PropositoDoToken.confirmarEmail,
+      },
       { expiresIn: '2h' },
     );
     await this.emailService.sendCreateUser(user, token);
   }
 
-  async createUser(userDto: CreateUserDtoInput) {
+  /**
+   * @param opcoes.manager ⚠️ cria DENTRO da transação de quem chama — o
+   *   cadastro pelo convite (card 05 de `convite-de-colaborador`) cria a conta
+   *   e o vínculo com o cursinho juntos: se o vínculo falha, a conta não fica.
+   * @param opcoes.emailConfirmado ⚠️ só o convite: o clique no link mandado
+   *   àquele email já prova que ele é da pessoa.
+   */
+  async createUser(
+    userDto: CreateUserDtoInput,
+    opcoes: { manager?: EntityManager; emailConfirmado?: boolean } = {},
+  ) {
     try {
       // Validação de senha
       if (userDto.password !== userDto.password_confirmation) {
@@ -100,8 +115,14 @@ export class UserService extends BaseService<User> {
 
       newUser.role = role;
       if (userDto.socialName) newUser.useSocialName = true;
+      // `null` = confirmado; o default da coluna (agora) é "aguardando".
+      if (opcoes.emailConfirmado) newUser.emailConfirmSended = null;
 
-      const user = await this.userRepository.create(newUser);
+      const user = opcoes.manager
+        ? await opcoes.manager
+            .getRepository(User)
+            .save(opcoes.manager.getRepository(User).create(newUser))
+        : await this.userRepository.create(newUser);
 
       this.logger.log('User created: ' + user.id + ' - ' + user.email);
       return user;
@@ -158,7 +179,10 @@ export class UserService extends BaseService<User> {
       );
     else {
       const token = await this.jwtService.signAsync(
-        { user: { id: userFullInfo.id, flow: CreateFlow.DEFAULT } },
+        {
+          user: { id: userFullInfo.id, flow: CreateFlow.DEFAULT },
+          typ: PropositoDoToken.confirmarEmail,
+        },
         { expiresIn: '15m' },
       );
       await this.emailService.sendCreateUser(userFullInfo, token);
@@ -208,7 +232,7 @@ export class UserService extends BaseService<User> {
   async forgotPassword(email: string) {
     const user = await this.userRepository.findOneBy({ email });
     const token = await this.jwtService.signAsync(
-      { user: { id: user.id } },
+      { user: { id: user.id }, typ: PropositoDoToken.redefinirSenha },
       { expiresIn: '2h' },
     );
     await this.emailService.sendForgotPasswordMail(
@@ -396,6 +420,14 @@ export class UserService extends BaseService<User> {
   private convertDtoToDomain(userDto: CreateUserDtoInput): User {
     const newUser = new User();
     return Object.assign(newUser, userDto) as User;
+  }
+
+  /**
+   * A sessão de login de um usuário — para quem acabou de nascer já logado
+   * (cadastro pelo convite, card 05 de `convite-de-colaborador`).
+   */
+  async emitirSessao(user: User): Promise<LoginTokenDTO> {
+    return this.getAccessToken(user);
   }
 
   private async getAccessToken(domain: User): Promise<LoginTokenDTO> {

@@ -36,6 +36,10 @@ import { UpdateUserDTOInput } from './dto/update.dto.input';
 import { UserWithRoleName } from './dto/userWithRoleName';
 import { User } from './user.entity';
 import { UserService } from './user.service';
+import {
+  PropositoDoToken,
+  TokenDeEmailGuard,
+} from 'src/shared/auth/token-de-email';
 
 @ApiTags('User')
 @Controller('user')
@@ -177,7 +181,8 @@ export class UserController {
 
   @Patch('reset')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  // ⚠️ Só o token de redefinir senha — nem o de login, nem outro de email.
+  @UseGuards(TokenDeEmailGuard(PropositoDoToken.redefinirSenha))
   async reset(
     @Body() resetPassword: ResetPasswordDtoInput,
     @Req() req: Request,
@@ -187,7 +192,7 @@ export class UserController {
 
   @Patch('confirmemail')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(TokenDeEmailGuard(PropositoDoToken.confirmarEmail))
   async confirmEmail(@Req() req: Request) {
     return await this.userService.confirmEmail((req.user as User).id);
   }
@@ -237,10 +242,16 @@ export class UserController {
     return await this.userService.findUserById(id);
   }
 
+  /**
+   * ⚠️ **Só o admin da plataforma** (`alterarPermissao`) — card 02 de
+   * `convite-de-colaborador`. Antes exigia `gerenciarPermissoesCursinho`, e o
+   * gestor de um cursinho dava qualquer função a qualquer usuário. No cursinho,
+   * a troca é `PATCH partner-prep-course/collaborator-role`, com as regras.
+   */
   @Patch('updateRole')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarPermissoesCursinho)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
   async updateRole(@Body() dto: UpdateUserRoleInput) {
     return await this.userService.updateRole(dto.userId, dto.roleId);
   }
