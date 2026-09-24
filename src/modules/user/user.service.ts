@@ -340,12 +340,14 @@ export class UserService extends BaseService<User> {
     limit,
     name,
     roleId,
+    partnerId,
   }: GetUserDtoInput): Promise<GetAllDtoOutput<UserWithRoleName>> {
     const result = await this.userRepository.findAllBy({
       name,
       page,
       limit,
       roleId,
+      partnerId,
     });
 
     const data = result.data.map((user) => ({
@@ -368,6 +370,10 @@ export class UserService extends BaseService<User> {
       },
       roleId: user.role.id,
       roleName: user.role.name,
+      // Só com o filtro de cursinho (card 06): o join só existe nele.
+      ...(partnerId && user.collaborator
+        ? { colaborador: { ativo: user.collaborator.actived } }
+        : {}),
     }));
 
     return Object.assign(new GetAllDtoOutput<UserWithRoleName>(), {
