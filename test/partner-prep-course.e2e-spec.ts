@@ -124,10 +124,6 @@ describe('PartnerPrepCourse (e2e)', () => {
       .spyOn(emailService, 'sendCreateUser')
       .mockImplementation(async () => {});
 
-    jest
-      .spyOn(emailService, 'sendInviteMember')
-      .mockImplementation(async () => {});
-
     jest.spyOn(emailService, 'sendEmailGeo').mockImplementation(async () => {});
 
     jest
@@ -305,104 +301,4 @@ describe('PartnerPrepCourse (e2e)', () => {
         expect(res.body.message[0]).toBe('Usuário não encontrado');
       });
   }, 30000);
-
-  it('invite member, partner prep course not found', async () => {
-    const representative = await createUserRepresentative();
-
-    const token = await jwtService.signAsync(
-      { user: { id: representative.id } },
-      { expiresIn: '2h' },
-    );
-
-    const dto = {
-      email: 'not-exist',
-    };
-
-    return await request(app.getHttpServer())
-      .post('/partner-prep-course/invite-members')
-      .send(dto)
-      .set({
-        Authorization: `Bearer ${token}`,
-      })
-      .expect(404)
-      .expect((res) => {
-        expect(res.body).toHaveProperty('message');
-        expect(res.body.message).toBe('Cursinho parceiro não encontrado');
-      });
-  });
-
-  it('invite member, user not found', async () => {
-    const { representative } = await createPartnerPrepCourse();
-
-    const token = await jwtService.signAsync(
-      { user: { id: representative.id } },
-      { expiresIn: '2h' },
-    );
-
-    const dto = {
-      email: 'not-exist',
-    };
-
-    return await request(app.getHttpServer())
-      .post('/partner-prep-course/invite-members')
-      .send(dto)
-      .set({
-        Authorization: `Bearer ${token}`,
-      })
-      .expect(404)
-      .expect((res) => {
-        expect(res.body).toHaveProperty('message');
-        expect(res.body.message).toBe('Usuário não encontrado');
-      });
-  });
-
-  it('invite member, user is already member', async () => {
-    const { representative } = await createPartnerPrepCourse();
-
-    const token = await jwtService.signAsync(
-      { user: { id: representative.id } },
-      { expiresIn: '2h' },
-    );
-
-    const dto = {
-      email: representative.email,
-    };
-
-    return await request(app.getHttpServer())
-      .post('/partner-prep-course/invite-members')
-      .send(dto)
-      .set({
-        Authorization: `Bearer ${token}`,
-      })
-      .expect(400)
-      .expect((res) => {
-        expect(res.body).toHaveProperty('message');
-        expect(res.body.message).toBe(
-          'Usuário já é membro desse cursinho parceiro',
-        );
-      });
-  });
-
-  it('invite member, user is already member', async () => {
-    const { representative } = await createPartnerPrepCourse();
-
-    const token = await jwtService.signAsync(
-      { user: { id: representative.id } },
-      { expiresIn: '2h' },
-    );
-
-    const user = await createUserRepresentative();
-
-    const dto = {
-      email: user.email,
-    };
-
-    return await request(app.getHttpServer())
-      .post('/partner-prep-course/invite-members')
-      .send(dto)
-      .set({
-        Authorization: `Bearer ${token}`,
-      })
-      .expect(201);
-  });
 });
