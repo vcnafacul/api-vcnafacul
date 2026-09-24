@@ -145,9 +145,16 @@ export class UserController {
     return res.status(200).json(false);
   }
 
+  /**
+   * ⚠️ **`alterarPermissao`** — card 01 de `tela-de-usuarios`. Antes exigia só
+   * login: qualquer usuário logado (um aluno) listava a base inteira, com email
+   * e telefone. Só a tela de usuários (`dashRoles`) chama, e ela já exige a
+   * permissão para abrir.
+   */
   @Get()
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
   async find(
     @Query() query: GetUserDtoInput,
   ): Promise<GetAllDtoOutput<UserWithRoleName>> {
@@ -235,9 +242,16 @@ export class UserController {
     return await this.userService.searchUsersByName(query);
   }
 
+  /**
+   * ⚠️ **`alterarPermissao`** — card 01 de `tela-de-usuarios`: com só login,
+   * qualquer um lia o cadastro de qualquer um pelo id. Nenhuma tela chama hoje;
+   * fica com a permissão para o resumo do usuário (card 04) não precisar de
+   * outra leitura por id.
+   */
   @Get(':id')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
   async findById(@Param('id') id: string) {
     return await this.userService.findUserById(id);
   }
