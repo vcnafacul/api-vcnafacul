@@ -56,4 +56,19 @@ export class CartaoRespostaHttpService {
       corpo,
     );
   }
+
+  /**
+   * Onde está a foto do cartão, se o histórico é do cursinho — o ms responde
+   * 404 para histórico alheio ou sem foto. Mesmo contrato do `reprocessar`:
+   * segmento codificado e o `cursinhoId` no corpo.
+   */
+  async localizarImagem(
+    historicoId: string,
+    corpo: { cursinhoId: string },
+  ): Promise<{ imageKey: string }> {
+    return this.axios.post(
+      `v1/cartao-resposta/${encodeURIComponent(historicoId)}/imagem`,
+      corpo,
+    );
+  }
 }
