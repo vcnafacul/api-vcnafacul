@@ -29,12 +29,8 @@ import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output'
 import { PartnerPrepCourseDtoInput } from './dtos/create-partner-prep-course.input.dto';
 import { PrepCourseDtoOutput } from './dtos/get-all-prep-course.dto.outoput';
 import { GetOnePrepCourseByIdDtoOutput } from './dtos/get-one-prep-course-by-id.dto.output';
-import { inviteMembersInputDto } from './dtos/invite-members.input.dto';
 import { PartnerPrepCourseService } from './partner-prep-course.service';
-import {
-  PropositoDoToken,
-  TokenDeEmailGuard,
-} from 'src/shared/auth/token-de-email';
+import { AtribuirFuncaoDtoInput } from './dtos/atribuir-funcao.input.dto';
 
 @ApiTags('PartnerPrepCourse')
 @Controller('partner-prep-course')
@@ -73,18 +69,6 @@ export class PartnerPrepCourseController {
     return await this.service.getAll(dto.page, dto.limit);
   }
 
-  @Get('invite-members-accept')
-  @ApiBearerAuth()
-  @UseGuards(TokenDeEmailGuard(PropositoDoToken.convite))
-  async inviteMemberAccept(@Req() req: Request): Promise<void> {
-    return await this.service.inviteMemberAccept(
-      (req.user as User).id,
-      (req.user as any).partner as string,
-    );
-  }
-
-  // TODO: repensarr se é necessário mover para outro controller (role)
-  // Permissões precisam ser gerenciarPermissoesCursinho e alterarPermissao
   @Get('role-base')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
@@ -132,19 +116,55 @@ export class PartnerPrepCourseController {
     return await this.service.updateRole(dto, (req.user as User).id);
   }
 
-  @Post('invite-members')
+  /**
+   * As funções que quem pede pode atribuir — ver `getRolesAtribuiveis`.
+   *
+   * ⚠️ Rota literal de dois segmentos: não colide com nada em `role/:x` hoje,
+   * e o teste de rotas garante.
+   */
+  @Get('role/atribuiveis')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarColaboradores)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.gerenciarPermissoesCursinho,
+    Permissions.gerenciarColaboradores,
+  ])
   @ApiResponse({
     status: 200,
-    description: 'convidar membros para o cursinho parceiro',
+    description: 'funções que quem pede pode atribuir',
   })
-  async inviteMembers(
-    @Body() dto: inviteMembersInputDto,
+  async getRolesAtribuiveis(@Req() req: Request): Promise<Role[]> {
+    return await this.service.getRolesAtribuiveis((req.user as User).id);
+  }
+
+  /**
+   * Troca a função de um colaborador do cursinho (card 02 de
+   * `convite-de-colaborador`).
+   *
+   * ⚠️ O guard só diz que quem pede tem UMA das duas permissões — as regras de
+   * escopo e de escalada estão no service.
+   */
+  @Patch('collaborator-role')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.gerenciarPermissoesCursinho,
+    Permissions.gerenciarColaboradores,
+  ])
+  @ApiResponse({ status: 200, description: 'troca a função de um colaborador' })
+  @ApiResponse({
+    status: 403,
+    description: 'fora das regras — a mensagem diz qual',
+  })
+  async atribuirFuncao(
+    @Body() dto: AtribuirFuncaoDtoInput,
     @Req() req: Request,
   ): Promise<void> {
-    return await this.service.inviteMember(dto.email, (req.user as User).id);
+    return await this.service.atribuirFuncao(
+      (req.user as User).id,
+      dto.userId,
+      dto.roleId,
+    );
   }
 
   @Get('logos')

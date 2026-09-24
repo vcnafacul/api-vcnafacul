@@ -13,10 +13,10 @@ import { sendEmailConfirmEmail } from './templates/confirm-email';
 import { sendGeoEmail } from './templates/create-geo';
 import { sendEmailDeclaredInterest } from './templates/declared-interest';
 import { sendEmailDeclaredInterestBulk } from './templates/declared-interest-bulk';
-import { sendEmailInviteMember } from './templates/invite-member-prep-course';
 import { sendEmail } from './templates/reset-password';
 import { sendEmailWaitingList } from './templates/waiting-list';
 import { sendEssayReviewNotification } from './templates/essay-review-notification';
+import { sendEmailConviteColaborador } from './templates/convite-colaborador';
 
 @Injectable()
 export class EmailService {
@@ -186,34 +186,39 @@ export class EmailService {
     await this.transporter.sendMail(mailOptions);
   }
 
-  async sendInviteMember(
-    email: string,
-    name: string,
-    nameManager: string,
-    nomeCursinho: string,
-    token: string,
-  ) {
-    const prepCourseName = nomeCursinho.includes('Cursinho')
-      ? nomeCursinho
-      : `Cursinho ${nomeCursinho}`;
-    const acceptInviteUrl = `${this.envService.get(
+  async sendConviteColaborador(dados: {
+    email: string;
+    nome: string | null;
+    nomeGestor: string;
+    nomeCursinho: string;
+    funcao: string;
+    token: string;
+    temConta: boolean;
+    validoAte: string;
+  }) {
+    const nomeCursinho = dados.nomeCursinho.includes('Cursinho')
+      ? dados.nomeCursinho
+      : `Cursinho ${dados.nomeCursinho}`;
+    const url = `${this.envService.get(
       'FRONT_URL',
-    )}/convidar-membro?token=${token}`;
+    )}/convite-colaborador?token=${encodeURIComponent(dados.token)}`;
 
-    const mailOptions = {
-      from: this.envService.get('SMTP_USERNAME'),
-      to: email,
-      subject: `Convite Membro ${prepCourseName} - Você na Facul`,
-      context: {
-        name,
-        nameManager,
-        prepCourseName,
-        acceptInviteUrl,
-      },
-    };
-    await sendEmailInviteMember({
+    await sendEmailConviteColaborador({
       transporter: this.transporter,
-      options: mailOptions,
+      options: {
+        from: this.envService.get('SMTP_USERNAME'),
+        to: dados.email,
+        subject: `Convite para o ${nomeCursinho} - Você na Facul`,
+        context: {
+          nome: dados.nome,
+          nomeGestor: dados.nomeGestor,
+          nomeCursinho,
+          funcao: dados.funcao,
+          url,
+          temConta: dados.temConta,
+          validoAte: dados.validoAte,
+        },
+      },
     });
   }
 

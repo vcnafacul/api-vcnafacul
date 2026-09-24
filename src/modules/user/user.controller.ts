@@ -242,10 +242,16 @@ export class UserController {
     return await this.userService.findUserById(id);
   }
 
+  /**
+   * ⚠️ **Só o admin da plataforma** (`alterarPermissao`) — card 02 de
+   * `convite-de-colaborador`. Antes exigia `gerenciarPermissoesCursinho`, e o
+   * gestor de um cursinho dava qualquer função a qualquer usuário. No cursinho,
+   * a troca é `PATCH partner-prep-course/collaborator-role`, com as regras.
+   */
   @Patch('updateRole')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarPermissoesCursinho)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
   async updateRole(@Body() dto: UpdateUserRoleInput) {
     return await this.userService.updateRole(dto.userId, dto.roleId);
   }

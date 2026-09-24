@@ -22,7 +22,10 @@ import { EnvService } from '../modules/env/env.service';
  * rota como aquele usuário, por até 7 dias no caso do convite.
  */
 export enum PropositoDoToken {
-  convite = 'convite',
+  /*
+    ⚠️ Sem \`convite\`: o convite de colaborador deixou de ser JWT (card 03 —
+    token opaco, só o hash no banco), e o convite antigo saiu no card 06.
+  */
   confirmarEmail = 'confirmar-email',
   redefinirSenha = 'redefinir-senha',
 }
