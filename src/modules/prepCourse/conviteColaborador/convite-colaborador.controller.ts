@@ -32,19 +32,23 @@ import { THROTTLE_CONFIG } from 'src/shared/config/email.config';
 /**
  * Convites de colaborador (card 03 de `convite-de-colaborador`).
  *
- * ⚠️ **Tudo `gerenciarPermissoesCursinho`** — decidido 2026-09-24: convidar,
- * escolhendo a função, é do admin do cursinho. Quem só tem
- * `gerenciarColaboradores` não convida.
+ * ⚠️ **`gerenciarPermissoesCursinho` OU `gerenciarColaboradores`** — corrigido
+ * em 2026-09-24: quem gerencia colaboradores também convida, escolhendo uma
+ * função que JÁ EXISTE (não cria nem edita função — isso segue só do admin).
+ * O que impede a escalada (convidar com função de admin) está no service.
  *
  * ⚠️ **O guard vai em CADA rota, não na classe.** O `PermissionsGuard` lê a
  * permissão só do handler (`reflector.get(..., context.getHandler())`): com o
  * `@SetMetadata` na classe ele não acha nada e LIBERA — sem nem preencher
  * `req.user`. O e2e deste card pegou isso.
  */
-const SoAdminDoCursinho = () =>
+const GerenciaColaboradores = () =>
   applyDecorators(
     UseGuards(PermissionsGuard),
-    SetMetadata(PermissionsGuard.name, Permissions.gerenciarPermissoesCursinho),
+    SetMetadata(PermissionsGuard.name, [
+      Permissions.gerenciarPermissoesCursinho,
+      Permissions.gerenciarColaboradores,
+    ]),
   );
 @ApiTags('Convites de colaborador')
 @Controller('convites-colaborador')
@@ -53,7 +57,7 @@ export class ConviteColaboradorController {
   constructor(private readonly service: ConviteColaboradorService) {}
 
   @Post()
-  @SoAdminDoCursinho()
+  @GerenciaColaboradores()
   @ApiResponse({ status: 201, type: ConviteDtoOutput })
   @ApiResponse({
     status: 409,
@@ -128,14 +132,14 @@ export class ConviteColaboradorController {
   }
 
   @Get()
-  @SoAdminDoCursinho()
+  @GerenciaColaboradores()
   @ApiResponse({ status: 200, type: [ConviteDtoOutput] })
   async listar(@Req() req: Request) {
     return await this.service.listar((req.user as User).id);
   }
 
   @Post(':id/reenviar')
-  @SoAdminDoCursinho()
+  @GerenciaColaboradores()
   @ApiResponse({
     status: 201,
     description: 'token novo — o link anterior deixa de valer',
@@ -145,7 +149,7 @@ export class ConviteColaboradorController {
   }
 
   @Patch(':id')
-  @SoAdminDoCursinho()
+  @GerenciaColaboradores()
   async trocarFuncao(
     @Param('id') id: string,
     @Body() dto: TrocarFuncaoDoConviteDtoInput,
@@ -159,7 +163,7 @@ export class ConviteColaboradorController {
   }
 
   @Delete(':id')
-  @SoAdminDoCursinho()
+  @GerenciaColaboradores()
   async cancelar(@Param('id') id: string, @Req() req: Request) {
     return await this.service.cancelar((req.user as User).id, id);
   }
