@@ -10,6 +10,7 @@ import { GeoRepository } from 'src/modules/geo/geo.repository';
 import { GeoService } from 'src/modules/geo/geo.service';
 import { LogGeoRepository } from 'src/modules/geo/log-geo/log-geo.repository';
 import { ConviteColaborador } from 'src/modules/prepCourse/conviteColaborador/convite-colaborador.entity';
+import { ConviteColaboradorService } from 'src/modules/prepCourse/conviteColaborador/convite-colaborador.service';
 import { LogPartnerRepository } from 'src/modules/prepCourse/partnerPrepCourse/log-partner/log-partner.repository';
 import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
 import { RoleService } from 'src/modules/role/role.service';
@@ -362,5 +363,103 @@ describe('Convite de colaborador (e2e)', () => {
     );
 
     expect(body.message).toMatch(/expirou/);
+  }, 30000);
+
+  // ── Card 05: cadastro pelo convite ────────────────────────────────────
+
+  /** Convida um email SEM conta e devolve o token do email. */
+  async function convidarQuemNaoTemConta() {
+    const cursinho = await cursinhoComAdmin();
+    const dados = CreateUserDtoInputFaker();
+    const email = moduleEmail();
+    email.sendConviteColaborador.mockClear();
+    await convidar(cursinho.token, dados.email, cursinho.funcao.id).expect(201);
+    const { token, temConta } = email.sendConviteColaborador.mock.calls[0][0];
+    expect(temConta).toBe(false);
+    return { ...cursinho, dados, tokenDoConvite: token };
+  }
+
+  const cadastrar = (token: string, dados: object) =>
+    request(app.getHttpServer())
+      .post('/convites-colaborador/cadastrar')
+      .send({ ...dados, token });
+
+  it('⚠️ cadastro pelo convite: conta nasce colaboradora, com a função, e logada', async () => {
+    const { dados, tokenDoConvite, funcao, admin } =
+      await convidarQuemNaoTemConta();
+
+    const resposta = await cadastrar(tokenDoConvite, dados).expect(201);
+
+    expect(resposta.body).toHaveProperty('access_token');
+    expect(String(resposta.headers['set-cookie'])).toMatch(/refresh_token=/);
+    const usuario = await userRepository.findOneBy({
+      email: dados.email.toLowerCase(),
+    });
+    expect(usuario.role.id).toBe(funcao.id);
+    const colaborador: any = await dataSource
+      .getRepository('Collaborator')
+      .findOne({
+        where: { user: { id: usuario.id } },
+        relations: ['partnerPrepCourse'],
+      });
+    const cursinho = await partnerPrepCourseService.getByUserId(admin.id);
+    expect(colaborador.partnerPrepCourse.id).toBe(cursinho.id);
+  }, 30000);
+
+  it('⚠️ sem a etapa de confirmar email — entra com a senha na hora', async () => {
+    const { dados, tokenDoConvite } = await convidarQuemNaoTemConta();
+
+    await cadastrar(tokenDoConvite, dados).expect(201);
+
+    const usuario = await userRepository.findOneBy({
+      email: dados.email.toLowerCase(),
+    });
+    expect(usuario.emailConfirmSended).toBeNull();
+    await request(app.getHttpServer())
+      .post('/user/login')
+      .send({ email: dados.email.toLowerCase(), password: dados.password })
+      .expect(200);
+  }, 30000);
+
+  it('⚠️ email diferente do convidado: recusa, e a conta NÃO é criada', async () => {
+    // Senão um convite para a@x criaria conta CONFIRMADA para b@y.
+    const { dados, tokenDoConvite } = await convidarQuemNaoTemConta();
+    const outroEmail = `outro.${Date.now()}@y.com`;
+
+    await cadastrar(tokenDoConvite, { ...dados, email: outroEmail }).expect(
+      400,
+    );
+
+    expect(await userRepository.findOneBy({ email: outroEmail })).toBeNull();
+  }, 30000);
+
+  it('⚠️ se o vínculo falha, a conta NÃO fica — mesma transação', async () => {
+    const { dados, tokenDoConvite } = await convidarQuemNaoTemConta();
+    const vincular = jest
+      .spyOn(app.get(ConviteColaboradorService) as any, 'vincular')
+      .mockRejectedValueOnce(new Error('falhou no meio'));
+
+    await cadastrar(tokenDoConvite, dados).expect(500);
+
+    vincular.mockRestore();
+    expect(
+      await userRepository.findOneBy({ email: dados.email.toLowerCase() }),
+    ).toBeNull();
+  }, 30000);
+
+  it('convite expirado: recusa sem criar conta', async () => {
+    const { dados, tokenDoConvite } = await convidarQuemNaoTemConta();
+    await dataSource
+      .getRepository(ConviteColaborador)
+      .update(
+        { email: dados.email.toLowerCase() },
+        { expiraEm: new Date(Date.now() - 1000) },
+      );
+
+    await cadastrar(tokenDoConvite, dados).expect(400);
+
+    expect(
+      await userRepository.findOneBy({ email: dados.email.toLowerCase() }),
+    ).toBeNull();
   }, 30000);
 });
