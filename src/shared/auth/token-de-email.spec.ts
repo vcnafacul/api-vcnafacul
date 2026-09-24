@@ -53,7 +53,7 @@ describe('JwtStrategy — recusa token de email', () => {
 });
 
 describe('PermissionsGuard — recusa token de email', () => {
-  it('⚠️ o link do convite não passa numa rota com permissão', async () => {
+  it('⚠️ o link de confirmar email não passa numa rota com permissão', async () => {
     /*
       O guard busca a permissão NO BANCO pelo `user.id` — um token de email
       de alguém com permissão passaria. Tem de ser recusado antes.
@@ -68,7 +68,7 @@ describe('PermissionsGuard — recusa token de email', () => {
       env,
     );
 
-    const { ctx } = contexto(doEmail(PropositoDoToken.convite));
+    const { ctx } = contexto(doEmail(PropositoDoToken.confirmarEmail));
 
     await expect(guard.canActivate(ctx)).resolves.toBe(false);
     expect(userService.checkUserPermission).not.toHaveBeenCalled();
@@ -101,8 +101,8 @@ describe('TokenDeEmailGuard — cada rota aceita só o próprio propósito', () 
   });
 
   it('⚠️ token de OUTRO propósito é recusado', () => {
-    // O link do convite não redefine a senha de ninguém.
-    const { ctx } = contexto(doEmail(PropositoDoToken.convite));
+    // O link de confirmar email não redefine a senha de ninguém.
+    const { ctx } = contexto(doEmail(PropositoDoToken.confirmarEmail));
 
     expect(() => guard.canActivate(ctx)).toThrow(UnauthorizedException);
   });

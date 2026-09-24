@@ -8,11 +8,12 @@ import {
   Patch,
   Post,
   Req,
+  Res,
   SetMetadata,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { Permissions } from 'src/modules/role/permissions/permissions';
 import { User } from 'src/modules/user/user.entity';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
@@ -20,6 +21,13 @@ import { ConviteColaboradorService } from './convite-colaborador.service';
 import { ConviteDtoOutput } from './dtos/convite.output.dto';
 import { CriarConviteDtoInput } from './dtos/criar-convite.input.dto';
 import { TrocarFuncaoDoConviteDtoInput } from './dtos/trocar-funcao-convite.input.dto';
+import { AceitarConviteDtoInput } from './dtos/aceitar-convite.input.dto';
+import { ConvitePorTokenDtoOutput } from './dtos/convite-por-token.output.dto';
+import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
+import { CadastrarPeloConviteDtoInput } from './dtos/cadastrar-pelo-convite.input.dto';
+import { CreateUserDtoInput } from 'src/modules/user/dto/create.dto.input';
+import { Throttle } from '@nestjs/throttler';
+import { THROTTLE_CONFIG } from 'src/shared/config/email.config';
 
 /**
  * Convites de colaborador (card 03 de `convite-de-colaborador`).
@@ -57,6 +65,66 @@ export class ConviteColaboradorController {
       dto.email,
       dto.roleId,
     );
+  }
+
+  /**
+   * ⚠️ **Público** — é o que a página do link mostra antes do login. Só
+   * responde a quem tem o token.
+   */
+  @Get('por-token/:token')
+  @ApiResponse({ status: 200, type: ConvitePorTokenDtoOutput })
+  async porToken(@Param('token') token: string) {
+    return await this.service.porToken(token);
+  }
+
+  /**
+   * ⚠️ **Exige login** (card 04): o token do convite não autentica nada — é só
+   * o dado de qual convite aceitar.
+   */
+  @Post('aceitar')
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({ status: 201, description: 'virou colaborador, com a função' })
+  @ApiResponse({ status: 403, description: 'o convite é para outro email' })
+  async aceitar(@Body() dto: AceitarConviteDtoInput, @Req() req: Request) {
+    return await this.service.aceitar((req.user as User).id, dto.token);
+  }
+
+  /**
+   * Cadastro pelo convite (card 05) — público, como o cadastro normal, e já
+   * devolve a sessão: a pessoa sai logada, como colaboradora.
+   *
+   * ⚠️ O refresh vai no cookie httpOnly, igual ao login.
+   */
+  @Post('cadastrar')
+  @Throttle({
+    default: {
+      ttl: THROTTLE_CONFIG.CREATE_USER.ttl,
+      limit: THROTTLE_CONFIG.CREATE_USER.limit,
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'conta criada, já colaboradora e logada',
+  })
+  async cadastrar(
+    @Body() dto: CadastrarPeloConviteDtoInput,
+    @Res() res: Response,
+  ) {
+    const { token, ...dados } = dto;
+    const sessao = await this.service.cadastrar(
+      token,
+      dados as CreateUserDtoInput,
+    );
+    res.cookie('refresh_token', sessao.refresh_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+    return res.status(201).json({
+      access_token: sessao.access_token,
+      expires_in: sessao.expires_in,
+    });
   }
 
   @Get()

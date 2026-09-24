@@ -5,7 +5,6 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { StatusLogGeo } from 'src/modules/geo/enum/status-log-geo';
 import { LogGeo } from 'src/modules/geo/log-geo/log-geo.entity';
@@ -34,7 +33,6 @@ import { LogPartnerRepository } from './log-partner/log-partner.repository';
 import { PartnerPrepCourse } from './partner-prep-course.entity';
 import { PartnerPrepCourseRepository } from './partner-prep-course.repository';
 import { createTermOfUse } from './utils/create-term-of-use';
-import { PropositoDoToken } from 'src/shared/auth/token-de-email';
 import {
   motivosParaNaoAtribuir,
   TEXTO_DO_MOTIVO,
@@ -46,7 +44,6 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     private readonly repository: PartnerPrepCourseRepository,
     private readonly userService: UserService,
     private readonly emailService: EmailService,
-    private readonly jwtService: JwtService,
     private readonly collaboratorRepository: CollaboratorRepository,
     private readonly logGeoRepository: LogGeoRepository,
     private readonly logPartnerRepository: LogPartnerRepository,
@@ -370,136 +367,6 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
 
   async update(entity: PartnerPrepCourse): Promise<void> {
     await this.repository.update(entity);
-  }
-
-  async inviteMember(email: string, userId: string) {
-    const inviter = await this.userService.findOneBy({ id: userId });
-    const prepCourse = await this.getByUserId(userId);
-
-    const user = await this.userService.findOneBy({ email });
-    if (!user) {
-      throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
-    }
-    const collaborator = await this.collaboratorRepository.findOneByUserId(
-      user.id,
-    );
-    if (prepCourse.members && collaborator) {
-      const collaborators = prepCourse.members.find(
-        (m) => m.id === collaborator.id,
-      );
-      if (collaborators) {
-        throw new HttpException(
-          'Usuário já é membro desse cursinho parceiro',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-    }
-    const token = await this.jwtService.signAsync(
-      {
-        user: { id: user.id, partner: prepCourse.id },
-        typ: PropositoDoToken.convite,
-      },
-      { expiresIn: '7d' },
-    );
-    const fullName = inviter.firstName + ' ' + inviter.lastName;
-    await this.emailService.sendInviteMember(
-      user.email,
-      user.firstName,
-      fullName,
-      prepCourse.geo.name,
-      token,
-    );
-    this.logger.log(
-      JSON.stringify({
-        event: 'inviteMember',
-        status: 'success',
-        guest: email,
-        inviter: inviter.email,
-        partner: prepCourse.geo.name,
-        partnerId: prepCourse.id,
-        timestamp: new Date().toISOString(),
-      }),
-    );
-
-    const logPartner = new LogPartner();
-    logPartner.partnerId = prepCourse.id;
-    logPartner.description = `Convite enviado para ${user.firstName} ${user.lastName} (${email})`;
-    await this.logPartnerRepository.create(logPartner);
-  }
-
-  async inviteMemberAccept(userId: string, partnerId: string) {
-    await this.dataSource.transaction(async (manager) => {
-      const prepCoursePartner = await manager
-        .getRepository(PartnerPrepCourse)
-        .findOne({
-          where: { id: partnerId },
-          relations: ['members'],
-        });
-      if (!prepCoursePartner) {
-        throw new HttpException(
-          'Cursinho não encontrado',
-          HttpStatus.NOT_FOUND,
-        );
-      }
-      const user = await this.userService.findOneBy({ id: userId });
-      if (!user) {
-        throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
-      }
-      let collaborator: Collaborator = null;
-      collaborator = await this.collaboratorRepository.findOneByUserId(user.id);
-      if (!collaborator) {
-        collaborator = new Collaborator();
-        collaborator.user = user;
-        collaborator.partnerPrepCourse = prepCoursePartner;
-        collaborator.description = '';
-        await manager.getRepository(Collaborator).save(collaborator);
-      }
-      if (
-        prepCoursePartner.members &&
-        prepCoursePartner.members.find((m) => m.id === collaborator.id)
-      ) {
-        this.logger.warn(
-          JSON.stringify({
-            event: 'inviteMemberAccept',
-            status: 'error',
-            userId,
-            partnerId,
-            reason: 'Usuário já é membro desse cursinho parceiro',
-            timestamp: new Date().toISOString(),
-          }),
-        );
-        throw new HttpException(
-          'Usuário já é membro desse cursinho parceiro',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      if (!prepCoursePartner.members) {
-        prepCoursePartner.members = [collaborator];
-      } else {
-        prepCoursePartner.members = [
-          ...prepCoursePartner.members,
-          collaborator,
-        ];
-      }
-
-      await manager.getRepository(PartnerPrepCourse).save(prepCoursePartner);
-
-      this.logger.log(
-        JSON.stringify({
-          event: 'inviteMemberAccept',
-          status: 'success',
-          userId,
-          guest: user.email,
-          partnerId,
-          timestamp: new Date().toISOString(),
-        }),
-      );
-
-      const logPartner = new LogPartner();
-      logPartner.partnerId = partnerId;
-      logPartner.description = `${user.firstName} ${user.lastName} (${user.email}) aceitou convite e entrou como membro`;
-      await this.logPartnerRepository.create(logPartner);
-    });
   }
 
   async getByUserId(userId: string): Promise<PartnerPrepCourse> {

@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { EmailService } from 'src/shared/services/email/email.service';
-import { DataSource, LessThanOrEqual } from 'typeorm';
+import { DataSource, EntityManager, LessThanOrEqual } from 'typeorm';
 import { Role } from '../../role/role.entity';
 import { RoleService } from '../../role/role.service';
 import { User } from '../../user/user.entity';
@@ -18,11 +18,17 @@ import {
 import {
   dataCurta,
   gerarTokenDeConvite,
+  hashDoToken,
+  MENSAGEM_DA_SITUACAO,
   normalizarEmail,
   situacaoDoConvite,
   VALIDADE_DO_CONVITE_MS,
 } from './convite-colaborador.regras';
 import { ConviteDtoOutput } from './dtos/convite.output.dto';
+import { ConvitePorTokenDtoOutput } from './dtos/convite-por-token.output.dto';
+import { Collaborator } from '../collaborator/collaborator.entity';
+import { CreateUserDtoInput } from '../../user/dto/create.dto.input';
+import { LoginTokenDTO } from '../../user/dto/login-token.dto.input';
 
 /**
  * Convites de colaborador gravados, já com a função (card 03 de
@@ -236,6 +242,203 @@ export class ConviteColaboradorService {
       { status: StatusDoConvite.cancelado },
     );
     await this.registrar(cursinho.id, `Convite de ${convite.email} cancelado`);
+  }
+
+  /**
+   * O que a página do link mostra, antes de qualquer login (cards 04 e 05).
+   *
+   * ⚠️ **Público, mas só pelo token** — 32 bytes aleatórios, não dá para
+   * adivinhar. Expõe só o necessário para a pessoa decidir: cursinho, função,
+   * o email convidado (o cadastro do card 05 o trava) e se já existe conta.
+   */
+  async porToken(token: string): Promise<ConvitePorTokenDtoOutput> {
+    const convite = await this.pelaChave(token);
+    const usuario = await this.userService.findOneBy({ email: convite.email });
+    return {
+      nomeCursinho: convite.partnerPrepCourse?.geo?.name ?? '',
+      funcao: convite.role?.name ?? '',
+      email: convite.email,
+      situacao: situacaoDoConvite(convite, new Date()),
+      expiraEm: convite.expiraEm,
+      temConta: !!usuario,
+    };
+  }
+
+  /**
+   * Aceita o convite: vira colaborador do cursinho JÁ COM A FUNÇÃO (card 04).
+   *
+   * ⚠️ **Quem aceita é a pessoa LOGADA, e o token não autentica nada.** Antes,
+   * o link do convite era um JWT que servia de login (card 01).
+   *
+   * ⚠️ **O email do convite tem de ser o da conta** — senão quem recebe o link
+   * encaminhado entra no cursinho com a conta dele.
+   */
+  async aceitar(userId: string, token: string): Promise<void> {
+    const convite = await this.pelaChave(token);
+    const situacao = situacaoDoConvite(convite, new Date());
+    if (situacao !== 'pendente') {
+      throw new HttpException(
+        MENSAGEM_DA_SITUACAO[situacao],
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const usuario = await this.userService.findOneBy({ id: userId });
+    if (!usuario || normalizarEmail(usuario.email) !== convite.email) {
+      throw new HttpException(
+        `Este convite foi enviado para ${convite.email}. Entre com essa conta para aceitá-lo.`,
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    /*
+      ⚠️ **De novo, e não só no convite**: a pessoa pode ter virado
+      colaboradora de outro cursinho entre o convite e o aceite.
+    */
+    const colaborador =
+      await this.collaboratorRepository.findOneByUserId(userId);
+    if (colaborador) {
+      throw new HttpException(
+        colaborador.partnerPrepCourse?.id === convite.partnerPrepCourseId
+          ? 'Você já é colaborador deste cursinho.'
+          : 'Você já está vinculado a outro cursinho e não pode aceitar este convite no momento.',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    try {
+      await this.dataSource.transaction((manager) =>
+        this.vincular(manager, convite, userId),
+      );
+    } catch (erro) {
+      throw this.traduzirCorrida(erro);
+    }
+
+    await this.registrar(
+      convite.partnerPrepCourseId,
+      `${usuario.firstName} ${usuario.lastName} (${usuario.email}) aceitou o convite como "${convite.role?.name ?? ''}"`,
+    );
+  }
+
+  /**
+   * Cadastro pelo convite (card 05): cria a conta E aceita o convite, na
+   * MESMA transação — e sai logado.
+   *
+   * ⚠️ **Sem a etapa de confirmar email**: o clique no link mandado àquele
+   * email já prova que ele é da pessoa. Por isso o email tem de ser o do
+   * convite — senão um convite para `a@x.com` criaria conta confirmada para
+   * `b@y.com`.
+   *
+   * ⚠️ **Se o vínculo falha, a conta não é criada.** Criar a conta e deixar o
+   * convite pendurado confundiria a pessoa.
+   */
+  async cadastrar(
+    token: string,
+    dados: CreateUserDtoInput,
+  ): Promise<LoginTokenDTO> {
+    const convite = await this.pelaChave(token);
+    const situacao = situacaoDoConvite(convite, new Date());
+    if (situacao !== 'pendente') {
+      throw new HttpException(
+        MENSAGEM_DA_SITUACAO[situacao],
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (normalizarEmail(dados.email) !== convite.email) {
+      throw new HttpException(
+        `O cadastro por este convite tem de usar o email ${convite.email}.`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (await this.userService.findOneBy({ email: convite.email })) {
+      throw new HttpException(
+        'Já existe uma conta com este email — entre com ela para aceitar o convite.',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    let userId: string;
+    try {
+      await this.dataSource.transaction(async (manager) => {
+        const usuario = await this.userService.createUser(
+          { ...dados, email: convite.email },
+          { manager, emailConfirmado: true },
+        );
+        userId = usuario.id;
+        await this.vincular(manager, convite, usuario.id);
+      });
+    } catch (erro) {
+      throw this.traduzirCorrida(erro);
+    }
+
+    const usuario = await this.userService.findOneBy({ id: userId! });
+    await this.registrar(
+      convite.partnerPrepCourseId,
+      `${usuario.firstName} ${usuario.lastName} (${usuario.email}) criou a conta pelo convite e entrou como "${convite.role?.name ?? ''}"`,
+    );
+    return await this.userService.emitirSessao(usuario);
+  }
+
+  /**
+   * Liga a pessoa ao cursinho com a função — o miolo do aceite e do cadastro.
+   *
+   * ⚠️ O convite é marcado `aceito` **condicionado a `pendente`**: dois
+   * aceites em paralelo, o segundo não acha mais o pendente e não escreve.
+   */
+  private async vincular(
+    manager: EntityManager,
+    convite: ConviteColaborador,
+    userId: string,
+  ): Promise<void> {
+    const { affected } = await manager
+      .getRepository(ConviteColaborador)
+      .update(
+        { id: convite.id, status: StatusDoConvite.pendente },
+        { status: StatusDoConvite.aceito, aceitoPorId: userId },
+      );
+    if (!affected) {
+      throw new HttpException(
+        'Este convite já foi usado.',
+        HttpStatus.CONFLICT,
+      );
+    }
+    await manager.getRepository(Collaborator).save(
+      manager.getRepository(Collaborator).create({
+        user: { id: userId } as User,
+        partnerPrepCourse: {
+          id: convite.partnerPrepCourseId,
+        } as PartnerPrepCourse,
+        description: '',
+      }),
+    );
+    await manager
+      .getRepository(User)
+      .update({ id: userId }, { role: { id: convite.roleId } as Role });
+  }
+
+  /** ⚠️ `UNIQUE (user_id)` em `collaborators` fecha a corrida com outro aceite. */
+  private traduzirCorrida(erro: unknown): unknown {
+    return (erro as { code?: string })?.code === 'ER_DUP_ENTRY'
+      ? new HttpException(
+          'Você já é colaborador de um cursinho.',
+          HttpStatus.CONFLICT,
+        )
+      : erro;
+  }
+
+  /** O convite pelo token do link — 404 se não existir. */
+  private async pelaChave(token: string): Promise<ConviteColaborador> {
+    const convite = await this.repo.findOne({
+      where: { tokenHash: hashDoToken(token) },
+      relations: ['role', 'partnerPrepCourse', 'partnerPrepCourse.geo'],
+    });
+    if (!convite) {
+      throw new HttpException(
+        'Convite não encontrado. Ele pode ter sido reenviado — use o link do email mais recente.',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    return convite;
   }
 
   private async cursinhoDe(quemPedeId: string): Promise<PartnerPrepCourse> {

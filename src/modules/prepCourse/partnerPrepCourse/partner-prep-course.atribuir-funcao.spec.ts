@@ -64,7 +64,6 @@ const montar = (opcoes: {
     repository as any,
     userService as any,
     {} as any,
-    {} as any,
     collaboratorRepository as any,
     {} as any,
     logPartnerRepository as any,
