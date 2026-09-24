@@ -34,8 +34,12 @@ import { LoginTokenDTO } from '../../user/dto/login-token.dto.input';
  * Convites de colaborador gravados, já com a função (card 03 de
  * `convite-de-colaborador`).
  *
- * ⚠️ **Só o admin do cursinho** (`gerenciarPermissoesCursinho`) chega aqui — o
- * guard está no controller. Toda operação é escopada ao cursinho de quem pede.
+ * ⚠️ **Admin do cursinho ou quem gerencia colaboradores** chega aqui — o guard
+ * está no controller. Toda operação é escopada ao cursinho de quem pede.
+ *
+ * ⚠️ **Sem escalada:** quem não é admin (`gerenciarPermissoesCursinho`) não
+ * convida com função de admin, não troca um convite para ela e não mexe num
+ * convite que já é de admin — a mesma regra do card 02, pelo convite.
  */
 @Injectable()
 export class ConviteColaboradorService {
@@ -63,6 +67,7 @@ export class ConviteColaboradorService {
     const cursinho = await this.cursinhoDe(quemPedeId);
     const email = normalizarEmail(emailInformado);
     const role = await this.funcaoDoCursinho(roleId, cursinho);
+    await this.semEscalada(quemPedeId, role);
 
     /*
       ⚠️ **"Outro cursinho = Não"**, decidido 2026-09-24. Com `Collaborator` 1:1
@@ -180,6 +185,7 @@ export class ConviteColaboradorService {
   async reenviar(quemPedeId: string, id: string): Promise<ConviteDtoOutput> {
     const cursinho = await this.cursinhoDe(quemPedeId);
     const convite = await this.pendenteDoCursinho(id, cursinho);
+    await this.semEscalada(quemPedeId, convite.role);
 
     const { token, hash } = gerarTokenDeConvite();
     convite.tokenHash = hash;
@@ -220,6 +226,8 @@ export class ConviteColaboradorService {
     const cursinho = await this.cursinhoDe(quemPedeId);
     const convite = await this.pendenteDoCursinho(id, cursinho);
     const role = await this.funcaoDoCursinho(roleId, cursinho);
+    await this.semEscalada(quemPedeId, convite.role);
+    await this.semEscalada(quemPedeId, role);
 
     await this.repo.update({ id: convite.id }, { roleId: role.id });
     await this.registrar(
@@ -236,6 +244,7 @@ export class ConviteColaboradorService {
   async cancelar(quemPedeId: string, id: string): Promise<void> {
     const cursinho = await this.cursinhoDe(quemPedeId);
     const convite = await this.pendenteDoCursinho(id, cursinho);
+    await this.semEscalada(quemPedeId, convite.role);
 
     await this.repo.update(
       { id: convite.id },
@@ -450,6 +459,21 @@ export class ConviteColaboradorService {
       );
     }
     return cursinho;
+  }
+
+  /**
+   * ⚠️ **Quem só gerencia colaboradores não chega à função de admin.** Sem isto,
+   * convidaria alguém — ou um segundo email seu — com
+   * `gerenciarPermissoesCursinho`, e viraria admin pelo convite.
+   */
+  private async semEscalada(quemPedeId: string, role: Role | undefined) {
+    if (!role?.gerenciarPermissoesCursinho) return;
+    const quemPede = await this.userService.findOneBy({ id: quemPedeId });
+    if (quemPede?.role?.gerenciarPermissoesCursinho) return;
+    throw new HttpException(
+      'Só o administrador do cursinho pode convidar para uma função de administração.',
+      HttpStatus.FORBIDDEN,
+    );
   }
 
   /** ⚠️ Só função DESTE cursinho — nem de outro, nem da plataforma. */

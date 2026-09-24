@@ -215,7 +215,7 @@ describe('Convite de colaborador (e2e)', () => {
       .expect(404);
   }, 30000);
 
-  it('⚠️ sem gerenciarPermissoesCursinho: 403 — o guard está em cada rota', async () => {
+  it('⚠️ sem gerenciarPermissoesCursinho nem gerenciarColaboradores: 403', async () => {
     /*
       Com o guard na CLASSE, o PermissionsGuard não achava a permissão (lê só
       do handler) e liberava tudo. Este teste é o que garante que não voltou.
@@ -461,5 +461,56 @@ describe('Convite de colaborador (e2e)', () => {
     expect(
       await userRepository.findOneBy({ email: dados.email.toLowerCase() }),
     ).toBeNull();
+  }, 30000);
+
+  // ── Correção: quem gerencia colaboradores também convida ──────────────
+
+  it('⚠️ gerenciarColaboradores convida com função comum, e NÃO com a de admin', async () => {
+    /*
+      Um gestor de verdade: colaborador do cursinho com uma função que tem
+      gerenciarColaboradores (e não gerenciarPermissoesCursinho), que entrou
+      pelo próprio convite.
+    */
+    const cursinho = await cursinhoComAdmin();
+    const funcaoGestor = await partnerPrepCourseService.createRole(
+      {
+        name: `Gestor ${Date.now()}`,
+        base: false,
+        gerenciarColaboradores: true,
+      } as any,
+      cursinho.admin.id,
+    );
+    const funcaoAdmin = await partnerPrepCourseService.createRole(
+      {
+        name: `Coordenação ${Date.now()}`,
+        base: false,
+        gerenciarPermissoesCursinho: true,
+      } as any,
+      cursinho.admin.id,
+    );
+    const dto = CreateUserDtoInputFaker();
+    await userService.create(dto);
+    const gestor = await userRepository.findOneBy({ email: dto.email });
+    moduleEmail().sendConviteColaborador.mockClear();
+    await convidar(cursinho.token, dto.email, funcaoGestor.id).expect(201);
+    const { token: conviteDoGestor } =
+      moduleEmail().sendConviteColaborador.mock.calls[0][0];
+    const tokenDoGestor = await jwtService.signAsync({
+      user: { id: gestor.id },
+    });
+    await aceitar(tokenDoGestor, conviteDoGestor).expect(201);
+
+    await convidar(
+      tokenDoGestor,
+      `comum.${Date.now()}@x.com`,
+      cursinho.funcao.id,
+    ).expect(201);
+    const { body } = await convidar(
+      tokenDoGestor,
+      `escalada.${Date.now()}@x.com`,
+      funcaoAdmin.id,
+    ).expect(403);
+
+    expect(body.message).toMatch(/Só o administrador/);
   }, 30000);
 });

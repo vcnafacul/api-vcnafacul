@@ -15,6 +15,7 @@ const montar = (
     vigente?: unknown;
     convite?: unknown;
     erroAoSalvar?: unknown;
+    quemPedeEhAdmin?: boolean;
   } = {},
 ) => {
   const salvos: any[] = [];
@@ -41,7 +42,12 @@ const montar = (
   const userService = {
     findOneBy: jest.fn(async (where: { id?: string; email?: string }) =>
       where.id
-        ? { id: where.id, firstName: 'Carla', lastName: 'Admin' }
+        ? {
+            id: where.id,
+            firstName: 'Carla',
+            lastName: 'Admin',
+            role: { gerenciarPermissoesCursinho: !!opcoes.quemPedeEhAdmin },
+          }
         : (opcoes.usuario ?? null),
     ),
   };
@@ -260,5 +266,65 @@ describe('ConviteColaboradorService — pendente', () => {
     expect((await erroDe(service.cancelar('gestor', 'cv9')))?.getStatus()).toBe(
       404,
     );
+  });
+});
+
+describe('ConviteColaboradorService — quem só gerencia colaboradores (correção)', () => {
+  const FUNCAO_ADMIN = {
+    ...FUNCAO,
+    id: 'r-adm',
+    gerenciarPermissoesCursinho: true,
+  };
+
+  it('convida com função comum', async () => {
+    const { service, salvos } = montar();
+
+    await service.criar('gestor', 'ana@x.com', 'r1');
+
+    expect(salvos).toHaveLength(1);
+  });
+
+  it('⚠️ NÃO convida com função de admin — seria escalada pelo convite', async () => {
+    const { service, salvos, emailService } = montar({ funcao: FUNCAO_ADMIN });
+
+    const erro = await erroDe(service.criar('gestor', 'eu.2@x.com', 'r-adm'));
+
+    expect(erro?.getStatus()).toBe(403);
+    expect(salvos).toHaveLength(0);
+    expect(emailService.sendConviteColaborador).not.toHaveBeenCalled();
+  });
+
+  it('⚠️ não mexe num convite que já é de admin', async () => {
+    const { service, repo } = montar({
+      convite: {
+        id: 'cv1',
+        email: 'x@x.com',
+        partnerPrepCourseId: 'c1',
+        status: StatusDoConvite.pendente,
+        expiraEm: EM_7_DIAS(),
+        role: FUNCAO_ADMIN,
+        convidadoPor: { firstName: 'A', lastName: 'B' },
+      },
+    });
+
+    for (const acao of [
+      service.cancelar('gestor', 'cv1'),
+      service.reenviar('gestor', 'cv1'),
+      service.trocarFuncao('gestor', 'cv1', 'r1'),
+    ]) {
+      expect((await erroDe(acao))?.getStatus()).toBe(403);
+    }
+    expect(repo.update).not.toHaveBeenCalled();
+  });
+
+  it('o admin do cursinho convida com função de admin', async () => {
+    const { service, salvos } = montar({
+      funcao: FUNCAO_ADMIN,
+      quemPedeEhAdmin: true,
+    });
+
+    await service.criar('gestor', 'nova.admin@x.com', 'r-adm');
+
+    expect(salvos).toHaveLength(1);
   });
 });
