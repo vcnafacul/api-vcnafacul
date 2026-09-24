@@ -35,6 +35,7 @@ export class UserRepository extends BaseRepository<User> {
     limit,
     name,
     roleId,
+    partnerId,
   }: GetUserDtoInput): Promise<GetAllOutput<User>> {
     const query = this.repository
       .createQueryBuilder('entity')
@@ -67,6 +68,15 @@ export class UserRepository extends BaseRepository<User> {
 
     if (roleId) {
       query.andWhere('role.id = :roleId', { roleId });
+    }
+
+    // ⚠️ `INNER JOIN`: com o cursinho, só quem é colaborador dele — e o
+    // `collaborator` vem junto, para a tela dizer quem está ativo.
+    if (partnerId) {
+      query
+        .innerJoinAndSelect('entity.collaborator', 'collaborator')
+        .innerJoin('collaborator.partnerPrepCourse', 'cursinho')
+        .andWhere('cursinho.id = :partnerId', { partnerId });
     }
 
     // ⚠️ Lista e contagem da MESMA consulta — antes o `count` era montado à

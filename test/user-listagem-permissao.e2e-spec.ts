@@ -126,6 +126,22 @@ describe('GET /user e GET /user/:id — permissão (e2e)', () => {
 
   // ── Card 02: a busca dá match ─────────────────────────────────────────
 
+  /** Um cursinho de verdade (geo + parceiro), para os vínculos apontarem. */
+  async function umCursinho() {
+    const dono = (await usuario(false)).u;
+    const geo = await app.get(GeoRepository).create({
+      ...CreateGeoDTOInputFaker(),
+      status: 1,
+    } as any);
+    await app
+      .get(PartnerPrepCourseService)
+      .create({ geoId: geo.id, representative: dono.id } as any, dono.id);
+    const cursinho = await app
+      .get(PartnerPrepCourseService)
+      .getByUserId(dono.id);
+    return { cursinho, nome: geo.name };
+  }
+
   describe('busca (usuários 02)', () => {
     /** Marca única por execução — nenhum outro teste tem este sobrenome. */
     const marca = `Qz${Date.now().toString(36)}`;
@@ -226,22 +242,6 @@ describe('GET /user e GET /user/:id — permissão (e2e)', () => {
         .get(`/user/${id}/resumo`)
         .set({ Authorization: `Bearer ${token}` });
 
-    /** Um cursinho de verdade (geo + parceiro), para os vínculos apontarem. */
-    async function umCursinho() {
-      const dono = (await usuario(false)).u;
-      const geo = await app.get(GeoRepository).create({
-        ...CreateGeoDTOInputFaker(),
-        status: 1,
-      } as any);
-      await app
-        .get(PartnerPrepCourseService)
-        .create({ geoId: geo.id, representative: dono.id } as any, dono.id);
-      const cursinho = await app
-        .get(PartnerPrepCourseService)
-        .getByUserId(dono.id);
-      return { cursinho, nome: geo.name };
-    }
-
     it('⚠️ só com alterarPermissao — aluno 403', async () => {
       const { token } = await usuario(false);
       const { u: outro } = await usuario(false);
@@ -333,6 +333,110 @@ describe('GET /user e GET /user/:id — permissão (e2e)', () => {
       const { token } = await usuario(true);
 
       await resumo(token, '00000000-0000-0000-0000-000000000000').expect(404);
+    }, 30000);
+  });
+  // ── Card 06: colaboradores de um cursinho ─────────────────────────────
+
+  describe('filtro por cursinho (usuários 06)', () => {
+    let tokenAdmin: string;
+    let cursinhoId: string;
+    let outroCursinhoId: string;
+    const marca = `Cz${Date.now().toString(36)}`;
+    const pessoas: Record<string, { id: string; email: string }> = {};
+
+    const listar = (query: string) =>
+      request(app.getHttpServer())
+        .get(`/user?page=1&limit=100&${query}`)
+        .set({ Authorization: `Bearer ${tokenAdmin}` })
+        .expect(200)
+        .then((r) => r.body);
+
+    const emails = (body: any) =>
+      body.data.map((d: any) => d.user.email).sort();
+
+    const colaborar = (userId: string, partnerId: string, actived = true) =>
+      dataSource.getRepository('Collaborator').save({
+        user: { id: userId },
+        partnerPrepCourse: { id: partnerId },
+        description: '',
+        actived,
+      });
+
+    beforeAll(async () => {
+      tokenAdmin = (await usuario(true)).token;
+      cursinhoId = (await umCursinho()).cursinho.id;
+      outroCursinhoId = (await umCursinho()).cursinho.id;
+
+      const cadastrar = async (chave: string, nome: string) => {
+        const dto = {
+          ...CreateUserDtoInputFaker(),
+          firstName: nome,
+          lastName: marca,
+          email: `${chave}.${marca.toLowerCase()}@x.com`,
+        };
+        await userService.create(dto as any);
+        pessoas[chave] = await userRepository.findOneBy({ email: dto.email });
+      };
+      await cadastrar('ana', 'Ana');
+      await cadastrar('bia', 'Bia');
+      await cadastrar('caio', 'Caio');
+      await cadastrar('fora', 'Ana');
+
+      await colaborar(pessoas.ana.id, cursinhoId);
+      await colaborar(pessoas.bia.id, cursinhoId, false);
+      await colaborar(pessoas.caio.id, outroCursinhoId);
+      // `fora` não é colaborador — mesmo nome da Ana, para o teste com nome.
+
+      const admin = await roleService.findOneBy({ name: 'admin' });
+      const bia = await userRepository.findOneBy({ id: pessoas.bia.id });
+      bia.role = admin; // função diferente da dos outros, para o teste com roleId
+      await userRepository.update(bia);
+    }, 60000);
+
+    it('⚠️ sozinho, sem nome: os colaboradores do cursinho — ativos e inativos', async () => {
+      const body = await listar(`partnerId=${cursinhoId}&name=${marca}`);
+
+      expect(emails(body)).toEqual(
+        [pessoas.ana.email, pessoas.bia.email].sort(),
+      );
+      const sem = await listar(`partnerId=${cursinhoId}`);
+      expect(emails(sem)).toEqual(
+        expect.arrayContaining([pessoas.ana.email, pessoas.bia.email]),
+      );
+      expect(emails(sem)).not.toContain(pessoas.caio.email);
+      expect(emails(sem)).not.toContain(pessoas.fora.email);
+    }, 30000);
+
+    it('⚠️ diz quem está ativo', async () => {
+      const body = await listar(`partnerId=${cursinhoId}&name=${marca}`);
+      const ativoDe = (email: string) =>
+        body.data.find((d: any) => d.user.email === email).colaborador.ativo;
+
+      expect(ativoDe(pessoas.ana.email)).toBe(true);
+      expect(ativoDe(pessoas.bia.email)).toBe(false);
+    }, 30000);
+
+    it('com nome: E, não OU — a Ana de fora não entra', async () => {
+      const body = await listar(`partnerId=${cursinhoId}&name=Ana ${marca}`);
+
+      expect(emails(body)).toEqual([pessoas.ana.email]);
+      expect(body.totalItems).toBe(1);
+    }, 30000);
+
+    it('com função: E', async () => {
+      const admin = await roleService.findOneBy({ name: 'admin' });
+      const body = await listar(
+        `partnerId=${cursinhoId}&roleId=${admin.id}&name=${marca}`,
+      );
+
+      expect(emails(body)).toEqual([pessoas.bia.email]);
+    }, 30000);
+
+    it('sem o filtro, nada muda: sem `colaborador` na resposta', async () => {
+      const body = await listar(`name=${marca}`);
+
+      expect(emails(body)).toHaveLength(4);
+      expect(body.data.every((d: any) => !('colaborador' in d))).toBe(true);
     }, 30000);
   });
 });
