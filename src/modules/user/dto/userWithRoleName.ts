@@ -18,4 +18,6 @@ export class UserWithRoleName {
   };
   roleId: string;
   roleName: string;
+  /** Só com `partnerId` (card 06 de `tela-de-usuarios`). */
+  colaborador?: { ativo: boolean };
 }

@@ -23,12 +23,14 @@ import { UserService } from './user.service';
 import { EmailExistValidator } from './validator/email-exist.validator';
 import { EmailUniqueValidator } from './validator/email-unique.validator';
 import { UserExistValidator } from './validator/user-exist.validator';
+import { ResumoDoUsuarioService } from './resumo/resumo-do-usuario.service';
 
 @Module({
   controllers: [UserController],
   imports: [AuditLogModule, EnvModule, HttpModule],
   providers: [
     UserService,
+    ResumoDoUsuarioService,
     UserRepository,
     RefreshTokenService,
     EmailUniqueValidator,
