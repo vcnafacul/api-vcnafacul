@@ -187,6 +187,36 @@ export class QuestaoController {
     return await this.questaoService.uploadImage(id, file);
   }
 
+  /**
+   * ⚠️ **`criarQuestao`, e NÃO `validarQuestao`.** Duplicar produz uma questão
+   * nova — quem pode criar pode duplicar. Um validador que só aprova/rejeita
+   * não deveria poder encher o banco de cópias.
+   */
+  @Post(':id/duplicar')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 201,
+    description: 'cria uma cópia editável da questão, com lastro',
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  public async duplicar(@Param('id') id: string, @Req() req: Request) {
+    return await this.questaoService.duplicar(id, req.user as User);
+  }
+
+  /**
+   * ⚠️ **`visualizarQuestao`**: listar as cópias é leitura, e quem abre o banco
+   * de questões precisa ver o badge e o contador sem poder criar nada.
+   */
+  @Get(':id/copias')
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'as cópias diretas desta questão' })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
+  public async listarCopias(@Param('id') id: string) {
+    return await this.questaoService.listarCopias(id);
+  }
+
   @Post(':id/provas')
   @ApiBearerAuth()
   @ApiResponse({ status: 200, description: 'adiciona questão a uma prova' })

@@ -98,6 +98,23 @@ export class QuestaoDoRelatorioDtoOutput {
    * homologação: **0 de 181** questões batiam com o histórico.
    */
   @ApiProperty() baseGeral: number;
+
+  /**
+   * Esta questão é uma **versão** de outra (card 29).
+   *
+   * ⚠️ **Existe para EXPLICAR a base pequena, não para somar.** A contagem
+   * global é da questão, e não da linhagem: como "correção" edita in-place e só
+   * "nova versão" cria uma entidade nova (card 27), toda versão nasce de uma
+   * mudança substantiva — e somar a família somaria textos diferentes.
+   *
+   * O custo é a base encolher a cada versão. Este booleano é o que permite à
+   * tela dizer *"a base é pequena porque a questão é nova"* em vez de deixar a
+   * coluna sumir sem explicação.
+   *
+   * ⚠️ **Booleano, e não o id da origem**: mandar o id convidaria a buscar a
+   * questão antiga e somar os números.
+   */
+  @ApiProperty() ehVersao: boolean;
 }
 
 export class QuestoesDoRelatorioDtoOutput {
