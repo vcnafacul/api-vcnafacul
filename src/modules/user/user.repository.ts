@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
-import { EntityManager } from 'typeorm';
+import { EntityManager, Brackets } from 'typeorm';
 import { BaseRepository } from '../../shared/modules/base/base.repository';
 import { AggregateUserLastAcessDtoOutput } from './dto/aggregate-user-last-acess.dto.output';
 import { AggregateUserPeriodDtoOutput } from './dto/aggregate-user-period.dto.output';
@@ -11,6 +11,7 @@ import { Period } from './enum/period';
 import { buildFullSeriesActive } from './handler/build-full-series-active';
 import { buildFullSeriesLastAccess } from './handler/build-full-series-last-access';
 import { User } from './user.entity';
+import { palavrasDaBusca } from './busca-de-usuario';
 
 @Injectable()
 export class UserRepository extends BaseRepository<User> {
@@ -37,35 +38,40 @@ export class UserRepository extends BaseRepository<User> {
   }: GetUserDtoInput): Promise<GetAllOutput<User>> {
     const query = this.repository
       .createQueryBuilder('entity')
+      .innerJoinAndSelect('entity.role', 'role')
       .orderBy('entity.createdAt', 'DESC')
       .skip((page - 1) * limit)
-      .take(limit)
-      .innerJoinAndSelect('entity.role', 'role');
+      .take(limit);
 
-    const count = this.repository.createQueryBuilder('entity');
+    /*
+      ⚠️ **Cada palavra tem de casar** (card 02 de `tela-de-usuarios`) — com o
+      nome completo, o nome social completo ou o email. Antes o termo inteiro
+      tinha de caber num campo só, e "Maria Silva" não achava ninguém.
 
-    if (name) {
+      ⚠️ `COALESCE`: `CONCAT` com `NULL` dá `NULL`, e quem não tem nome social
+      sumiria da busca pelo nome completo.
+    */
+    palavrasDaBusca(name).forEach((palavra, i) => {
       query.andWhere(
-        '(entity.firstName LIKE :name OR entity.lastName LIKE :name OR entity.email LIKE :name)',
-        { name: `%${name}%` },
+        new Brackets((qb) =>
+          qb
+            .where(`CONCAT(entity.firstName, ' ', entity.lastName) LIKE :p${i}`)
+            .orWhere(
+              `CONCAT(COALESCE(entity.socialName, ''), ' ', entity.lastName) LIKE :p${i}`,
+            )
+            .orWhere(`entity.email LIKE :p${i}`),
+        ),
+        { [`p${i}`]: `%${palavra}%` },
       );
-      count.andWhere(
-        '(entity.firstName LIKE :name OR entity.lastName LIKE :name OR entity.email LIKE :name)',
-        { name: `%${name}%` },
-      );
-    }
+    });
 
     if (roleId) {
       query.andWhere('role.id = :roleId', { roleId });
-      count.innerJoin('entity.role', 'role').andWhere('role.id = :roleId', {
-        roleId,
-      });
     }
 
-    const [data, totalItems] = await Promise.all([
-      query.getMany(),
-      count.getCount(),
-    ]);
+    // ⚠️ Lista e contagem da MESMA consulta — antes o `count` era montado à
+    // parte, repetindo o filtro, e podia divergir.
+    const [data, totalItems] = await query.getManyAndCount();
 
     return {
       data,

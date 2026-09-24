@@ -116,4 +116,98 @@ describe('GET /user e GET /user/:id — permissão (e2e)', () => {
       .set({ Authorization: `Bearer ${token}` })
       .expect(200);
   }, 30000);
+
+  // ── Card 02: a busca dá match ─────────────────────────────────────────
+
+  describe('busca (usuários 02)', () => {
+    /** Marca única por execução — nenhum outro teste tem este sobrenome. */
+    const marca = `Qz${Date.now().toString(36)}`;
+    let tokenAdmin: string;
+
+    const cadastrar = async (dados: Record<string, string>) => {
+      const dto = { ...CreateUserDtoInputFaker(), ...dados };
+      await userService.create(dto as any);
+      return dto;
+    };
+
+    const buscar = (termo: string) =>
+      request(app.getHttpServer())
+        .get(`/user?page=1&limit=50&name=${encodeURIComponent(termo)}`)
+        .set({ Authorization: `Bearer ${tokenAdmin}` })
+        .expect(200)
+        .then((r) => ({
+          // A resposta é `{ user, roleId, roleName }`.
+          emails: r.body.data.map((d: any) => d.user.email),
+          total: r.body.totalItems,
+        }));
+
+    let maria: { email: string };
+    let carla: { email: string };
+    let joao: { email: string };
+
+    beforeAll(async () => {
+      tokenAdmin = (await usuario(true)).token;
+      maria = await cadastrar({
+        firstName: 'Maria',
+        lastName: `da Silva ${marca}`,
+        email: `maria.${marca.toLowerCase()}@x.com`,
+      });
+      carla = await cadastrar({
+        firstName: 'Carlos',
+        socialName: 'Carla',
+        lastName: `Souza ${marca}`,
+        email: `c.${marca.toLowerCase()}@x.com`,
+      });
+      joao = await cadastrar({
+        firstName: 'João',
+        lastName: `Pereira ${marca}`,
+        email: `jp.${marca.toLowerCase()}@x.com`,
+      });
+    }, 60000);
+
+    it('⚠️ nome + sobrenome dá match — antes não achava ninguém', async () => {
+      expect((await buscar(`Maria ${marca}`)).emails).toEqual([maria.email]);
+    });
+
+    it('⚠️ pula o do meio: "Maria Silva" acha "Maria da Silva"', async () => {
+      expect((await buscar(`Maria Silva ${marca}`)).emails).toEqual([
+        maria.email,
+      ]);
+    });
+
+    it('espaços extras não atrapalham', async () => {
+      expect((await buscar(`  Maria   ${marca} `)).emails).toEqual([
+        maria.email,
+      ]);
+    });
+
+    it('email dá match', async () => {
+      expect((await buscar(maria.email)).emails).toEqual([maria.email]);
+    });
+
+    it('⚠️ nome social dá match', async () => {
+      expect((await buscar(`Carla ${marca}`)).emails).toEqual([carla.email]);
+    });
+
+    it('maiúscula não importa', async () => {
+      expect((await buscar(`MARIA ${marca.toUpperCase()}`)).emails).toEqual([
+        maria.email,
+      ]);
+    });
+
+    it('acento não importa: "joao" acha "João"', async () => {
+      // Depende da collation do servidor — medido no MySQL 8 e no MariaDB.
+      expect((await buscar(`joao ${marca}`)).emails).toEqual([joao.email]);
+    });
+
+    it('⚠️ "%" é literal, não curinga — não devolve a base inteira', async () => {
+      expect((await buscar('%')).total).toBe(0);
+    });
+
+    it('a contagem é a da mesma consulta', async () => {
+      const r = await buscar(marca);
+      expect(r.total).toBe(3);
+      expect(r.emails).toHaveLength(3);
+    });
+  });
 });
