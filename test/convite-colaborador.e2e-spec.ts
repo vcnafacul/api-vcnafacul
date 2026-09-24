@@ -230,4 +230,137 @@ describe('Convite de colaborador (e2e)', () => {
       .set({ Authorization: `Bearer ${token}` })
       .expect(403);
   }, 30000);
+
+  // ── Card 04: aceitar ─────────────────────────────────────────────────
+
+  /** Convida uma pessoa que já tem conta e devolve o token do email. */
+  async function convidarQuemTemConta() {
+    const cursinho = await cursinhoComAdmin();
+    const dto = CreateUserDtoInputFaker();
+    await userService.create(dto);
+    const convidada = await userRepository.findOneBy({ email: dto.email });
+    const tokenDeLogin = await jwtService.signAsync({
+      user: { id: convidada.id },
+    });
+
+    const email = moduleEmail();
+    email.sendConviteColaborador.mockClear();
+    await convidar(cursinho.token, dto.email, cursinho.funcao.id).expect(201);
+    const { token } = email.sendConviteColaborador.mock.calls[0][0];
+
+    return { ...cursinho, convidada, tokenDeLogin, tokenDoConvite: token };
+  }
+
+  /*
+    ⚠️ O `EmailService` é instanciado por módulo — o do convite não é o do
+    `app.get`. Com o `jest.mock`, o método mockado mora no PROTÓTIPO, e vale
+    para todas as instâncias.
+  */
+  const moduleEmail = () =>
+    EmailService.prototype as unknown as {
+      sendConviteColaborador: jest.Mock;
+    };
+
+  const aceitar = (tokenDeLogin: string, token: string) =>
+    request(app.getHttpServer())
+      .post('/convites-colaborador/aceitar')
+      .set({ Authorization: `Bearer ${tokenDeLogin}` })
+      .send({ token });
+
+  it('por-token mostra cursinho, função e se já existe conta — sem login', async () => {
+    const { tokenDoConvite, funcao, convidada } = await convidarQuemTemConta();
+
+    const { body } = await request(app.getHttpServer())
+      .get(`/convites-colaborador/por-token/${tokenDoConvite}`)
+      .expect(200);
+
+    expect(body).toMatchObject({
+      funcao: funcao.name,
+      email: convidada.email.toLowerCase(),
+      situacao: 'pendente',
+      temConta: true,
+    });
+  }, 30000);
+
+  it('⚠️ aceitar: vira colaborador DO CURSINHO já com a FUNÇÃO', async () => {
+    const { tokenDeLogin, tokenDoConvite, convidada, funcao, admin } =
+      await convidarQuemTemConta();
+
+    await aceitar(tokenDeLogin, tokenDoConvite).expect(201);
+
+    const usuario = await userRepository.findOneBy({ id: convidada.id });
+    expect(usuario.role.id).toBe(funcao.id);
+    const colaborador = await dataSource.getRepository('Collaborator').findOne({
+      where: { user: { id: convidada.id } },
+      relations: ['partnerPrepCourse'],
+    });
+    const cursinhoDoAdmin = await partnerPrepCourseService.getByUserId(
+      admin.id,
+    );
+    expect((colaborador as any).partnerPrepCourse.id).toBe(cursinhoDoAdmin.id);
+  }, 30000);
+
+  it('⚠️ o token do convite NÃO autentica — sem login, 401', async () => {
+    const { tokenDoConvite } = await convidarQuemTemConta();
+
+    await request(app.getHttpServer())
+      .post('/convites-colaborador/aceitar')
+      .set({ Authorization: `Bearer ${tokenDoConvite}` })
+      .send({ token: tokenDoConvite })
+      .expect(401);
+  }, 30000);
+
+  it('⚠️ link encaminhado: outra conta não aceita — 403', async () => {
+    const { tokenDoConvite } = await convidarQuemTemConta();
+    const outra = CreateUserDtoInputFaker();
+    await userService.create(outra);
+    const intrusa = await userRepository.findOneBy({ email: outra.email });
+    const tokenDaIntrusa = await jwtService.signAsync({
+      user: { id: intrusa.id },
+    });
+
+    const { body } = await aceitar(tokenDaIntrusa, tokenDoConvite).expect(403);
+
+    expect(body.message).toMatch(/foi enviado para/);
+  }, 30000);
+
+  it('⚠️ aceitar duas vezes: a segunda recusa, sem duplicar', async () => {
+    const { tokenDeLogin, tokenDoConvite } = await convidarQuemTemConta();
+
+    await aceitar(tokenDeLogin, tokenDoConvite).expect(201);
+    const { body } = await aceitar(tokenDeLogin, tokenDoConvite).expect(400);
+
+    expect(body.message).toBe('Este convite já foi aceito.');
+  }, 30000);
+
+  it('⚠️ reenviado: o link ANTIGO não aceita mais', async () => {
+    const c = await convidarQuemTemConta();
+    const [convite] = (
+      await request(app.getHttpServer())
+        .get('/convites-colaborador')
+        .set({ Authorization: `Bearer ${c.token}` })
+    ).body;
+    await request(app.getHttpServer())
+      .post(`/convites-colaborador/${convite.id}/reenviar`)
+      .set({ Authorization: `Bearer ${c.token}` })
+      .expect(201);
+
+    await aceitar(c.tokenDeLogin, c.tokenDoConvite).expect(404);
+  }, 30000);
+
+  it('expirado: recusa com a mensagem', async () => {
+    const c = await convidarQuemTemConta();
+    await dataSource
+      .getRepository(ConviteColaborador)
+      .update(
+        { email: c.convidada.email.toLowerCase() },
+        { expiraEm: new Date(Date.now() - 1000) },
+      );
+
+    const { body } = await aceitar(c.tokenDeLogin, c.tokenDoConvite).expect(
+      400,
+    );
+
+    expect(body.message).toMatch(/expirou/);
+  }, 30000);
 });

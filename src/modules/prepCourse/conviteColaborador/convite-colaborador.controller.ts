@@ -20,6 +20,9 @@ import { ConviteColaboradorService } from './convite-colaborador.service';
 import { ConviteDtoOutput } from './dtos/convite.output.dto';
 import { CriarConviteDtoInput } from './dtos/criar-convite.input.dto';
 import { TrocarFuncaoDoConviteDtoInput } from './dtos/trocar-funcao-convite.input.dto';
+import { AceitarConviteDtoInput } from './dtos/aceitar-convite.input.dto';
+import { ConvitePorTokenDtoOutput } from './dtos/convite-por-token.output.dto';
+import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 
 /**
  * Convites de colaborador (card 03 de `convite-de-colaborador`).
@@ -57,6 +60,28 @@ export class ConviteColaboradorController {
       dto.email,
       dto.roleId,
     );
+  }
+
+  /**
+   * ⚠️ **Público** — é o que a página do link mostra antes do login. Só
+   * responde a quem tem o token.
+   */
+  @Get('por-token/:token')
+  @ApiResponse({ status: 200, type: ConvitePorTokenDtoOutput })
+  async porToken(@Param('token') token: string) {
+    return await this.service.porToken(token);
+  }
+
+  /**
+   * ⚠️ **Exige login** (card 04): o token do convite não autentica nada — é só
+   * o dado de qual convite aceitar.
+   */
+  @Post('aceitar')
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({ status: 201, description: 'virou colaborador, com a função' })
+  @ApiResponse({ status: 403, description: 'o convite é para outro email' })
+  async aceitar(@Body() dto: AceitarConviteDtoInput, @Req() req: Request) {
+    return await this.service.aceitar((req.user as User).id, dto.token);
   }
 
   @Get()

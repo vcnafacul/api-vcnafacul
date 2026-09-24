@@ -18,11 +18,15 @@ import {
 import {
   dataCurta,
   gerarTokenDeConvite,
+  hashDoToken,
+  MENSAGEM_DA_SITUACAO,
   normalizarEmail,
   situacaoDoConvite,
   VALIDADE_DO_CONVITE_MS,
 } from './convite-colaborador.regras';
 import { ConviteDtoOutput } from './dtos/convite.output.dto';
+import { ConvitePorTokenDtoOutput } from './dtos/convite-por-token.output.dto';
+import { Collaborator } from '../collaborator/collaborator.entity';
 
 /**
  * Convites de colaborador gravados, já com a função (card 03 de
@@ -236,6 +240,131 @@ export class ConviteColaboradorService {
       { status: StatusDoConvite.cancelado },
     );
     await this.registrar(cursinho.id, `Convite de ${convite.email} cancelado`);
+  }
+
+  /**
+   * O que a página do link mostra, antes de qualquer login (cards 04 e 05).
+   *
+   * ⚠️ **Público, mas só pelo token** — 32 bytes aleatórios, não dá para
+   * adivinhar. Expõe só o necessário para a pessoa decidir: cursinho, função,
+   * o email convidado (o cadastro do card 05 o trava) e se já existe conta.
+   */
+  async porToken(token: string): Promise<ConvitePorTokenDtoOutput> {
+    const convite = await this.pelaChave(token);
+    const usuario = await this.userService.findOneBy({ email: convite.email });
+    return {
+      nomeCursinho: convite.partnerPrepCourse?.geo?.name ?? '',
+      funcao: convite.role?.name ?? '',
+      email: convite.email,
+      situacao: situacaoDoConvite(convite, new Date()),
+      expiraEm: convite.expiraEm,
+      temConta: !!usuario,
+    };
+  }
+
+  /**
+   * Aceita o convite: vira colaborador do cursinho JÁ COM A FUNÇÃO (card 04).
+   *
+   * ⚠️ **Quem aceita é a pessoa LOGADA, e o token não autentica nada.** Antes,
+   * o link do convite era um JWT que servia de login (card 01).
+   *
+   * ⚠️ **O email do convite tem de ser o da conta** — senão quem recebe o link
+   * encaminhado entra no cursinho com a conta dele.
+   */
+  async aceitar(userId: string, token: string): Promise<void> {
+    const convite = await this.pelaChave(token);
+    const situacao = situacaoDoConvite(convite, new Date());
+    if (situacao !== 'pendente') {
+      throw new HttpException(
+        MENSAGEM_DA_SITUACAO[situacao],
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const usuario = await this.userService.findOneBy({ id: userId });
+    if (!usuario || normalizarEmail(usuario.email) !== convite.email) {
+      throw new HttpException(
+        `Este convite foi enviado para ${convite.email}. Entre com essa conta para aceitá-lo.`,
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    /*
+      ⚠️ **De novo, e não só no convite**: a pessoa pode ter virado
+      colaboradora de outro cursinho entre o convite e o aceite.
+    */
+    const colaborador =
+      await this.collaboratorRepository.findOneByUserId(userId);
+    if (colaborador) {
+      throw new HttpException(
+        colaborador.partnerPrepCourse?.id === convite.partnerPrepCourseId
+          ? 'Você já é colaborador deste cursinho.'
+          : 'Você já está vinculado a outro cursinho e não pode aceitar este convite no momento.',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    try {
+      await this.dataSource.transaction(async (manager) => {
+        /*
+          ⚠️ Condicionado a `pendente`: dois aceites em paralelo — o segundo
+          não acha mais o convite pendente e não escreve nada.
+        */
+        const { affected } = await manager
+          .getRepository(ConviteColaborador)
+          .update(
+            { id: convite.id, status: StatusDoConvite.pendente },
+            { status: StatusDoConvite.aceito, aceitoPorId: userId },
+          );
+        if (!affected) {
+          throw new HttpException(
+            'Este convite já foi usado.',
+            HttpStatus.CONFLICT,
+          );
+        }
+        await manager.getRepository(Collaborator).save(
+          manager.getRepository(Collaborator).create({
+            user: { id: userId } as User,
+            partnerPrepCourse: {
+              id: convite.partnerPrepCourseId,
+            } as PartnerPrepCourse,
+            description: '',
+          }),
+        );
+        await manager
+          .getRepository(User)
+          .update({ id: userId }, { role: { id: convite.roleId } as Role });
+      });
+    } catch (erro) {
+      // ⚠️ `UNIQUE (user_id)` em `collaborators` fecha a corrida com outro aceite.
+      if ((erro as { code?: string })?.code === 'ER_DUP_ENTRY') {
+        throw new HttpException(
+          'Você já é colaborador de um cursinho.',
+          HttpStatus.CONFLICT,
+        );
+      }
+      throw erro;
+    }
+
+    await this.registrar(
+      convite.partnerPrepCourseId,
+      `${usuario.firstName} ${usuario.lastName} (${usuario.email}) aceitou o convite como "${convite.role?.name ?? ''}"`,
+    );
+  }
+
+  /** O convite pelo token do link — 404 se não existir. */
+  private async pelaChave(token: string): Promise<ConviteColaborador> {
+    const convite = await this.repo.findOne({
+      where: { tokenHash: hashDoToken(token) },
+      relations: ['role', 'partnerPrepCourse', 'partnerPrepCourse.geo'],
+    });
+    if (!convite) {
+      throw new HttpException(
+        'Convite não encontrado. Ele pode ter sido reenviado — use o link do email mais recente.',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    return convite;
   }
 
   private async cursinhoDe(quemPedeId: string): Promise<PartnerPrepCourse> {
