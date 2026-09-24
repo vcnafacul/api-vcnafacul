@@ -1,0 +1,98 @@
+import {
+  applyDecorators,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+  SetMetadata,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Request } from 'express';
+import { Permissions } from 'src/modules/role/permissions/permissions';
+import { User } from 'src/modules/user/user.entity';
+import { PermissionsGuard } from 'src/shared/guards/permission.guard';
+import { ConviteColaboradorService } from './convite-colaborador.service';
+import { ConviteDtoOutput } from './dtos/convite.output.dto';
+import { CriarConviteDtoInput } from './dtos/criar-convite.input.dto';
+import { TrocarFuncaoDoConviteDtoInput } from './dtos/trocar-funcao-convite.input.dto';
+
+/**
+ * Convites de colaborador (card 03 de `convite-de-colaborador`).
+ *
+ * ⚠️ **Tudo `gerenciarPermissoesCursinho`** — decidido 2026-09-24: convidar,
+ * escolhendo a função, é do admin do cursinho. Quem só tem
+ * `gerenciarColaboradores` não convida.
+ *
+ * ⚠️ **O guard vai em CADA rota, não na classe.** O `PermissionsGuard` lê a
+ * permissão só do handler (`reflector.get(..., context.getHandler())`): com o
+ * `@SetMetadata` na classe ele não acha nada e LIBERA — sem nem preencher
+ * `req.user`. O e2e deste card pegou isso.
+ */
+const SoAdminDoCursinho = () =>
+  applyDecorators(
+    UseGuards(PermissionsGuard),
+    SetMetadata(PermissionsGuard.name, Permissions.gerenciarPermissoesCursinho),
+  );
+@ApiTags('Convites de colaborador')
+@Controller('convites-colaborador')
+@ApiBearerAuth()
+export class ConviteColaboradorController {
+  constructor(private readonly service: ConviteColaboradorService) {}
+
+  @Post()
+  @SoAdminDoCursinho()
+  @ApiResponse({ status: 201, type: ConviteDtoOutput })
+  @ApiResponse({
+    status: 409,
+    description: 'já há convite pendente, ou a pessoa já é colaboradora',
+  })
+  async criar(@Body() dto: CriarConviteDtoInput, @Req() req: Request) {
+    return await this.service.criar(
+      (req.user as User).id,
+      dto.email,
+      dto.roleId,
+    );
+  }
+
+  @Get()
+  @SoAdminDoCursinho()
+  @ApiResponse({ status: 200, type: [ConviteDtoOutput] })
+  async listar(@Req() req: Request) {
+    return await this.service.listar((req.user as User).id);
+  }
+
+  @Post(':id/reenviar')
+  @SoAdminDoCursinho()
+  @ApiResponse({
+    status: 201,
+    description: 'token novo — o link anterior deixa de valer',
+  })
+  async reenviar(@Param('id') id: string, @Req() req: Request) {
+    return await this.service.reenviar((req.user as User).id, id);
+  }
+
+  @Patch(':id')
+  @SoAdminDoCursinho()
+  async trocarFuncao(
+    @Param('id') id: string,
+    @Body() dto: TrocarFuncaoDoConviteDtoInput,
+    @Req() req: Request,
+  ) {
+    return await this.service.trocarFuncao(
+      (req.user as User).id,
+      id,
+      dto.roleId,
+    );
+  }
+
+  @Delete(':id')
+  @SoAdminDoCursinho()
+  async cancelar(@Param('id') id: string, @Req() req: Request) {
+    return await this.service.cancelar((req.user as User).id, id);
+  }
+}

@@ -17,6 +17,7 @@ import { sendEmailInviteMember } from './templates/invite-member-prep-course';
 import { sendEmail } from './templates/reset-password';
 import { sendEmailWaitingList } from './templates/waiting-list';
 import { sendEssayReviewNotification } from './templates/essay-review-notification';
+import { sendEmailConviteColaborador } from './templates/convite-colaborador';
 
 @Injectable()
 export class EmailService {
@@ -214,6 +215,48 @@ export class EmailService {
     await sendEmailInviteMember({
       transporter: this.transporter,
       options: mailOptions,
+    });
+  }
+
+  /**
+   * O convite de colaborador com função (card 03 de `convite-de-colaborador`).
+   *
+   * ⚠️ O link leva a `/convite-colaborador` — a página que decide entre
+   * aceitar (tem conta, card 04) e cadastrar (card 05).
+   */
+  async sendConviteColaborador(dados: {
+    email: string;
+    nome: string | null;
+    nomeGestor: string;
+    nomeCursinho: string;
+    funcao: string;
+    token: string;
+    temConta: boolean;
+    validoAte: string;
+  }) {
+    const nomeCursinho = dados.nomeCursinho.includes('Cursinho')
+      ? dados.nomeCursinho
+      : `Cursinho ${dados.nomeCursinho}`;
+    const url = `${this.envService.get(
+      'FRONT_URL',
+    )}/convite-colaborador?token=${encodeURIComponent(dados.token)}`;
+
+    await sendEmailConviteColaborador({
+      transporter: this.transporter,
+      options: {
+        from: this.envService.get('SMTP_USERNAME'),
+        to: dados.email,
+        subject: `Convite para o ${nomeCursinho} - Você na Facul`,
+        context: {
+          nome: dados.nome,
+          nomeGestor: dados.nomeGestor,
+          nomeCursinho,
+          funcao: dados.funcao,
+          url,
+          temConta: dados.temConta,
+          validoAte: dados.validoAte,
+        },
+      },
     });
   }
 
