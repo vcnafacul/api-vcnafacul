@@ -30,4 +30,5 @@ export enum Permissions {
   visualizarProvasCursinho = 'visualizar_provas_cursinho',
   cadastrarProvasCursinho = 'cadastrar_provas_cursinho',
   gerenciarCategoriasCursinho = 'gerenciar_categorias_cursinho',
+  excluirQuestao = 'excluir_questao',
 }

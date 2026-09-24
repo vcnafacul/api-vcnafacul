@@ -111,8 +111,20 @@ export class QuestaoService {
     return { assetId: fileKey };
   }
 
-  public async delete(id: string) {
-    await this.axios.delete(`v1/questao/${id}`);
+  /**
+   * Exclui (soft) uma questão órfã (card 33). O ms recusa com 409 e a lista de
+   * motivos quando alguma condição falha — e o erro chega inteiro ao client.
+   *
+   * ⚠️ **`userId` na query**: o `delete` do axios não manda corpo, e o log do
+   * ms guarda quem excluiu.
+   */
+  public async delete(id: string, user: User) {
+    await this.axios.delete(`v1/questao/${id}?userId=${user.id}`);
+  }
+
+  /** Se pode excluir, e por quê não — as mesmas condições do `delete`. */
+  public async podeExcluir(id: string) {
+    return await this.axios.get(`v1/questao/${id}/exclusao`);
   }
 
   public async getHistory(id: string): Promise<HistoryQuestionDTOOutput> {
@@ -212,9 +224,12 @@ export class QuestaoService {
     });
   }
 
-  /** As cópias diretas — derivadas de `origem` no ms, não de um array. */
-  public async listarCopias(id: string) {
-    return await this.axios.get(`v1/questao/${id}/copias`);
+  /**
+   * A linhagem: cadeia de versões, cópias diretas e origem (card 34A). Substitui
+   * o `/copias` do card 25.
+   */
+  public async linhagem(id: string) {
+    return await this.axios.get(`v1/questao/${id}/linhagem`);
   }
 
   public async adicionarEmProva(

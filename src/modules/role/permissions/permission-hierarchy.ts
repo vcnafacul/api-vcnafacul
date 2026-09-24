@@ -36,6 +36,12 @@ export const PERMISSION_HIERARCHY: PermissionGroup[] = [
         implies: [Permissions.visualizarQuestao],
       },
       {
+        key: Permissions.excluirQuestao,
+        label: 'Excluir questão',
+        type: PermissionType.project,
+        implies: [Permissions.visualizarQuestao],
+      },
+      {
         key: Permissions.visualizarQuestao,
         label: 'Visualizar questão',
         type: PermissionType.project,

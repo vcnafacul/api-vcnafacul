@@ -205,16 +205,19 @@ export class QuestaoController {
   }
 
   /**
-   * ⚠️ **`visualizarQuestao`**: listar as cópias é leitura, e quem abre o banco
-   * de questões precisa ver o badge e o contador sem poder criar nada.
+   * ⚠️ **`visualizarQuestao`**: ver a linhagem é leitura, e quem abre o banco
+   * de questões precisa ver versões e cópias sem poder criar nada.
    */
-  @Get(':id/copias')
+  @Get(':id/linhagem')
   @ApiBearerAuth()
-  @ApiResponse({ status: 200, description: 'as cópias diretas desta questão' })
+  @ApiResponse({
+    status: 200,
+    description: 'a cadeia de versões, as cópias diretas e a origem',
+  })
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
-  public async listarCopias(@Param('id') id: string) {
-    return await this.questaoService.listarCopias(id);
+  public async linhagem(@Param('id') id: string) {
+    return await this.questaoService.linhagem(id);
   }
 
   @Post(':id/provas')
@@ -396,12 +399,33 @@ export class QuestaoController {
   @ApiBearerAuth()
   @ApiResponse({
     status: 200,
-    description: 'deleta questão',
+    description: 'exclui (soft) uma questão órfã',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'não pode ser excluída — o corpo lista os motivos',
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.validarQuestao)
-  public async delete(@Param('id') id: string) {
-    return await this.questaoService.delete(id);
+  @SetMetadata(PermissionsGuard.name, Permissions.excluirQuestao)
+  public async delete(@Param('id') id: string, @Req() req: Request) {
+    return await this.questaoService.delete(id, req.user as User);
+  }
+
+  /**
+   * ⚠️ **`excluirQuestao`, a mesma guarda do `DELETE`.** Quem não pode excluir
+   * não tem por que perguntar se pode — e o client só pergunta para decidir se
+   * mostra o botão.
+   */
+  @Get(':id/exclusao')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'se a questão pode ser excluída, e os motivos se não',
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.excluirQuestao)
+  public async podeExcluir(@Param('id') id: string) {
+    return await this.questaoService.podeExcluir(id);
   }
 
   @Get('history/:id')
