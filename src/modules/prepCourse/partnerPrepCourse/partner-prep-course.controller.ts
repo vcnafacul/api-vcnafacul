@@ -29,13 +29,8 @@ import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output'
 import { PartnerPrepCourseDtoInput } from './dtos/create-partner-prep-course.input.dto';
 import { PrepCourseDtoOutput } from './dtos/get-all-prep-course.dto.outoput';
 import { GetOnePrepCourseByIdDtoOutput } from './dtos/get-one-prep-course-by-id.dto.output';
-import { inviteMembersInputDto } from './dtos/invite-members.input.dto';
 import { PartnerPrepCourseService } from './partner-prep-course.service';
 import { AtribuirFuncaoDtoInput } from './dtos/atribuir-funcao.input.dto';
-import {
-  PropositoDoToken,
-  TokenDeEmailGuard,
-} from 'src/shared/auth/token-de-email';
 
 @ApiTags('PartnerPrepCourse')
 @Controller('partner-prep-course')
@@ -74,18 +69,6 @@ export class PartnerPrepCourseController {
     return await this.service.getAll(dto.page, dto.limit);
   }
 
-  @Get('invite-members-accept')
-  @ApiBearerAuth()
-  @UseGuards(TokenDeEmailGuard(PropositoDoToken.convite))
-  async inviteMemberAccept(@Req() req: Request): Promise<void> {
-    return await this.service.inviteMemberAccept(
-      (req.user as User).id,
-      (req.user as any).partner as string,
-    );
-  }
-
-  // TODO: repensarr se é necessário mover para outro controller (role)
-  // Permissões precisam ser gerenciarPermissoesCursinho e alterarPermissao
   @Get('role-base')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
@@ -182,21 +165,6 @@ export class PartnerPrepCourseController {
       dto.userId,
       dto.roleId,
     );
-  }
-
-  @Post('invite-members')
-  @ApiBearerAuth()
-  @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarColaboradores)
-  @ApiResponse({
-    status: 200,
-    description: 'convidar membros para o cursinho parceiro',
-  })
-  async inviteMembers(
-    @Body() dto: inviteMembersInputDto,
-    @Req() req: Request,
-  ): Promise<void> {
-    return await this.service.inviteMember(dto.email, (req.user as User).id);
   }
 
   @Get('logos')

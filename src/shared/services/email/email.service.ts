@@ -13,7 +13,6 @@ import { sendEmailConfirmEmail } from './templates/confirm-email';
 import { sendGeoEmail } from './templates/create-geo';
 import { sendEmailDeclaredInterest } from './templates/declared-interest';
 import { sendEmailDeclaredInterestBulk } from './templates/declared-interest-bulk';
-import { sendEmailInviteMember } from './templates/invite-member-prep-course';
 import { sendEmail } from './templates/reset-password';
 import { sendEmailWaitingList } from './templates/waiting-list';
 import { sendEssayReviewNotification } from './templates/essay-review-notification';
@@ -187,43 +186,6 @@ export class EmailService {
     await this.transporter.sendMail(mailOptions);
   }
 
-  async sendInviteMember(
-    email: string,
-    name: string,
-    nameManager: string,
-    nomeCursinho: string,
-    token: string,
-  ) {
-    const prepCourseName = nomeCursinho.includes('Cursinho')
-      ? nomeCursinho
-      : `Cursinho ${nomeCursinho}`;
-    const acceptInviteUrl = `${this.envService.get(
-      'FRONT_URL',
-    )}/convidar-membro?token=${token}`;
-
-    const mailOptions = {
-      from: this.envService.get('SMTP_USERNAME'),
-      to: email,
-      subject: `Convite Membro ${prepCourseName} - Você na Facul`,
-      context: {
-        name,
-        nameManager,
-        prepCourseName,
-        acceptInviteUrl,
-      },
-    };
-    await sendEmailInviteMember({
-      transporter: this.transporter,
-      options: mailOptions,
-    });
-  }
-
-  /**
-   * O convite de colaborador com função (card 03 de `convite-de-colaborador`).
-   *
-   * ⚠️ O link leva a `/convite-colaborador` — a página que decide entre
-   * aceitar (tem conta, card 04) e cadastrar (card 05).
-   */
   async sendConviteColaborador(dados: {
     email: string;
     nome: string | null;
