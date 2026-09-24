@@ -86,7 +86,7 @@ export class ConviteColaborador extends BaseEntity {
    *
    * ⚠️ O pendente VENCIDO continua ocupando a chave: ao criar um convite novo,
    * ele vira `expirado` na mesma transação.
-    *
+   *
    * ⚠️ **Homol e prod são MariaDB.** Uma migration gerada a partir daqui sai
    * com `STORED NULL`, que o MariaDB recusa — tirar o `NULL` à mão (ver a
    * migration `1790270693123`).
