@@ -34,6 +34,7 @@ import { LogPartnerRepository } from './log-partner/log-partner.repository';
 import { PartnerPrepCourse } from './partner-prep-course.entity';
 import { PartnerPrepCourseRepository } from './partner-prep-course.repository';
 import { createTermOfUse } from './utils/create-term-of-use';
+import { PropositoDoToken } from 'src/shared/auth/token-de-email';
 
 @Injectable()
 export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
@@ -392,6 +393,7 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     const token = await this.jwtService.signAsync(
       {
         user: { id: user.id, partner: prepCourse.id },
+        typ: PropositoDoToken.convite,
       },
       { expiresIn: '7d' },
     );

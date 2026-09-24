@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 import * as jwt from 'jsonwebtoken';
 import { UserService } from 'src/modules/user/user.service';
 import { EnvService } from '../modules/env/env.service';
+import { ehTokenDeEmail } from '../auth/token-de-email';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -51,6 +52,10 @@ export class PermissionsGuard implements CanActivate {
         token,
         this.envService.get('APP_KEY'),
       ) as jwt.JwtPayload;
+
+      // ⚠️ Token de email não é login — ver `JwtStrategy.validate`. Aqui é
+      // ainda mais grave: a permissão vem do banco pelo `user.id`.
+      if (ehTokenDeEmail(decoded)) return false;
 
       const userId = decoded.user?.id;
 

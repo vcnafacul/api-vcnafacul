@@ -24,7 +24,6 @@ import { Role } from 'src/modules/role/role.entity';
 import { Permissions } from 'src/modules/role/permissions/permissions';
 import { User } from 'src/modules/user/user.entity';
 import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
-import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { PartnerPrepCourseDtoInput } from './dtos/create-partner-prep-course.input.dto';
@@ -32,6 +31,10 @@ import { PrepCourseDtoOutput } from './dtos/get-all-prep-course.dto.outoput';
 import { GetOnePrepCourseByIdDtoOutput } from './dtos/get-one-prep-course-by-id.dto.output';
 import { inviteMembersInputDto } from './dtos/invite-members.input.dto';
 import { PartnerPrepCourseService } from './partner-prep-course.service';
+import {
+  PropositoDoToken,
+  TokenDeEmailGuard,
+} from 'src/shared/auth/token-de-email';
 
 @ApiTags('PartnerPrepCourse')
 @Controller('partner-prep-course')
@@ -72,7 +75,7 @@ export class PartnerPrepCourseController {
 
   @Get('invite-members-accept')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(TokenDeEmailGuard(PropositoDoToken.convite))
   async inviteMemberAccept(@Req() req: Request): Promise<void> {
     return await this.service.inviteMemberAccept(
       (req.user as User).id,

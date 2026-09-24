@@ -33,6 +33,7 @@ import { ProfileDetectorService } from './services/profile-detector.service';
 import { RefreshTokenService } from './services/refresh-token.service';
 import { User } from './user.entity';
 import { UserRepository } from './user.repository';
+import { PropositoDoToken } from 'src/shared/auth/token-de-email';
 
 @Injectable()
 export class UserService extends BaseService<User> {
@@ -59,7 +60,10 @@ export class UserService extends BaseService<User> {
   async create(userDto: CreateUserDtoInput): Promise<void> {
     const user = await this.createUser(userDto);
     const token = await this.jwtService.signAsync(
-      { user: { id: user.id, flow: CreateFlow.DEFAULT } },
+      {
+        user: { id: user.id, flow: CreateFlow.DEFAULT },
+        typ: PropositoDoToken.confirmarEmail,
+      },
       { expiresIn: '2h' },
     );
     await this.emailService.sendCreateUser(user, token);
@@ -158,7 +162,10 @@ export class UserService extends BaseService<User> {
       );
     else {
       const token = await this.jwtService.signAsync(
-        { user: { id: userFullInfo.id, flow: CreateFlow.DEFAULT } },
+        {
+          user: { id: userFullInfo.id, flow: CreateFlow.DEFAULT },
+          typ: PropositoDoToken.confirmarEmail,
+        },
         { expiresIn: '15m' },
       );
       await this.emailService.sendCreateUser(userFullInfo, token);
@@ -208,7 +215,7 @@ export class UserService extends BaseService<User> {
   async forgotPassword(email: string) {
     const user = await this.userRepository.findOneBy({ email });
     const token = await this.jwtService.signAsync(
-      { user: { id: user.id } },
+      { user: { id: user.id }, typ: PropositoDoToken.redefinirSenha },
       { expiresIn: '2h' },
     );
     await this.emailService.sendForgotPasswordMail(
