@@ -35,6 +35,10 @@ import { PartnerPrepCourse } from './partner-prep-course.entity';
 import { PartnerPrepCourseRepository } from './partner-prep-course.repository';
 import { createTermOfUse } from './utils/create-term-of-use';
 import { PropositoDoToken } from 'src/shared/auth/token-de-email';
+import {
+  motivosParaNaoAtribuir,
+  TEXTO_DO_MOTIVO,
+} from './atribuicao-de-funcao';
 
 @Injectable()
 export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
@@ -553,6 +557,81 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
       },
     });
     return roles.data;
+  }
+
+  /**
+   * As funções que quem pede pode atribuir (card 02 de
+   * `convite-de-colaborador`).
+   *
+   * ⚠️ **Filtrada no servidor**: quem não é admin do cursinho não recebe as
+   * funções com `gerenciarPermissoesCursinho` — não basta esconder no client.
+   * Mesmo formato do `getRoles`, para a tela não mudar.
+   */
+  async getRolesAtribuiveis(quemPedeId: string): Promise<Role[]> {
+    const roles = await this.getRoles(quemPedeId);
+    const quemPede = await this.userService.findOneBy({ id: quemPedeId });
+    if (quemPede?.role?.gerenciarPermissoesCursinho) return roles;
+    return roles.filter((r) => !r.gerenciarPermissoesCursinho);
+  }
+
+  /**
+   * Troca a função de um colaborador do cursinho (card 02 de
+   * `convite-de-colaborador`) — as regras em `atribuicao-de-funcao.ts`.
+   *
+   * ⚠️ **Substitui o `PATCH user/updateRole` no contexto do cursinho.** Aquele
+   * não conferia cursinho nem função: o gestor dava qualquer função a qualquer
+   * usuário. Ele fica só para o admin da plataforma (`alterarPermissao`).
+   */
+  async atribuirFuncao(
+    quemPedeId: string,
+    alvoUserId: string,
+    roleId: string,
+  ): Promise<void> {
+    const cursinho = await this.repository.findOneByUserId(quemPedeId);
+    if (!cursinho) {
+      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
+    }
+    const [quemPede, colaborador, alvo, role] = await Promise.all([
+      this.userService.findOneBy({ id: quemPedeId }),
+      this.collaboratorRepository.findOneByUserId(alvoUserId),
+      this.userService.findOneBy({ id: alvoUserId }),
+      this.roleService.findOneByIdWithPartner(roleId),
+    ]);
+    if (!role) {
+      throw new HttpException('Função não encontrada', HttpStatus.NOT_FOUND);
+    }
+
+    const motivos = motivosParaNaoAtribuir({
+      quemPedeId,
+      quemPedeEhAdmin: !!quemPede?.role?.gerenciarPermissoesCursinho,
+      cursinhoId: cursinho.id,
+      alvo:
+        colaborador && alvo
+          ? {
+              userId: alvoUserId,
+              cursinhoId: colaborador.partnerPrepCourse?.id ?? null,
+              ativo: colaborador.actived,
+              ehAdmin: !!alvo.role?.gerenciarPermissoesCursinho,
+            }
+          : null,
+      funcao: {
+        cursinhoId: role.partnerPrepCourse?.id ?? null,
+        ehDeAdmin: !!role.gerenciarPermissoesCursinho,
+      },
+    });
+    if (motivos.length > 0) {
+      throw new HttpException(
+        motivos.map((m) => TEXTO_DO_MOTIVO[m]).join(' '),
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    await this.userService.updateRole(alvoUserId, roleId);
+
+    const logPartner = new LogPartner();
+    logPartner.partnerId = cursinho.id;
+    logPartner.description = `Função de ${alvo!.firstName} ${alvo!.lastName} alterada para "${role.name}"`;
+    await this.logPartnerRepository.create(logPartner);
   }
 
   async updateRole(dto: UpdateRoleDtoInput, userId: string) {

@@ -31,6 +31,7 @@ import { PrepCourseDtoOutput } from './dtos/get-all-prep-course.dto.outoput';
 import { GetOnePrepCourseByIdDtoOutput } from './dtos/get-one-prep-course-by-id.dto.output';
 import { inviteMembersInputDto } from './dtos/invite-members.input.dto';
 import { PartnerPrepCourseService } from './partner-prep-course.service';
+import { AtribuirFuncaoDtoInput } from './dtos/atribuir-funcao.input.dto';
 import {
   PropositoDoToken,
   TokenDeEmailGuard,
@@ -130,6 +131,57 @@ export class PartnerPrepCourseController {
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarPermissoesCursinho)
   async update(@Body() dto: UpdateRoleDtoInput, @Req() req: Request) {
     return await this.service.updateRole(dto, (req.user as User).id);
+  }
+
+  /**
+   * As funções que quem pede pode atribuir — ver `getRolesAtribuiveis`.
+   *
+   * ⚠️ Rota literal de dois segmentos: não colide com nada em `role/:x` hoje,
+   * e o teste de rotas garante.
+   */
+  @Get('role/atribuiveis')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.gerenciarPermissoesCursinho,
+    Permissions.gerenciarColaboradores,
+  ])
+  @ApiResponse({
+    status: 200,
+    description: 'funções que quem pede pode atribuir',
+  })
+  async getRolesAtribuiveis(@Req() req: Request): Promise<Role[]> {
+    return await this.service.getRolesAtribuiveis((req.user as User).id);
+  }
+
+  /**
+   * Troca a função de um colaborador do cursinho (card 02 de
+   * `convite-de-colaborador`).
+   *
+   * ⚠️ O guard só diz que quem pede tem UMA das duas permissões — as regras de
+   * escopo e de escalada estão no service.
+   */
+  @Patch('collaborator-role')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.gerenciarPermissoesCursinho,
+    Permissions.gerenciarColaboradores,
+  ])
+  @ApiResponse({ status: 200, description: 'troca a função de um colaborador' })
+  @ApiResponse({
+    status: 403,
+    description: 'fora das regras — a mensagem diz qual',
+  })
+  async atribuirFuncao(
+    @Body() dto: AtribuirFuncaoDtoInput,
+    @Req() req: Request,
+  ): Promise<void> {
+    return await this.service.atribuirFuncao(
+      (req.user as User).id,
+      dto.userId,
+      dto.roleId,
+    );
   }
 
   @Post('invite-members')
