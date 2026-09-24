@@ -13,7 +13,7 @@ import {
   SetMetadata,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { THROTTLE_CONFIG } from 'src/shared/config/email.config';
 import { Request, Response } from 'express';
@@ -36,6 +36,8 @@ import { UpdateUserDTOInput } from './dto/update.dto.input';
 import { UserWithRoleName } from './dto/userWithRoleName';
 import { User } from './user.entity';
 import { UserService } from './user.service';
+import { ResumoDoUsuarioService } from './resumo/resumo-do-usuario.service';
+import { ResumoDoUsuarioDtoOutput } from './resumo/resumo-do-usuario.output.dto';
 import {
   PropositoDoToken,
   TokenDeEmailGuard,
@@ -44,7 +46,10 @@ import {
 @ApiTags('User')
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly resumoDoUsuarioService: ResumoDoUsuarioService,
+  ) {}
 
   @Post()
   @Throttle({
@@ -240,6 +245,22 @@ export class UserController {
   ])
   async searchUsersByName(@Query() query: SearchUsersDtoInput) {
     return await this.userService.searchUsersByName(query);
+  }
+
+  /**
+   * Quem é a pessoa na plataforma — conta, colaborador e estudante (card 04 de
+   * `tela-de-usuarios`).
+   *
+   * ⚠️ Dois segmentos: não colide com o `GET :id` abaixo — e o teste de rota
+   * garante.
+   */
+  @Get(':id/resumo')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
+  @ApiResponse({ status: 200, type: ResumoDoUsuarioDtoOutput })
+  async resumo(@Param('id') id: string): Promise<ResumoDoUsuarioDtoOutput> {
+    return await this.resumoDoUsuarioService.resumo(id);
   }
 
   /**

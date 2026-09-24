@@ -14,6 +14,11 @@ import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import * as request from 'supertest';
 import { CreateUserDtoInputFaker } from './faker/create-user.dto.input.faker';
 import { createNestAppTest } from './utils/createNestAppTest';
+import { DataSource } from 'typeorm';
+import { GeoRepository } from 'src/modules/geo/geo.repository';
+import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
+import { StatusApplication } from 'src/modules/prepCourse/studentCourse/enums/stastusApplication';
+import { CreateGeoDTOInputFaker } from './faker/create-geo.dto.input.faker';
 
 jest.mock('src/shared/services/email/email.service');
 jest.mock('src/shared/services/webhooks/discord.ts');
@@ -32,6 +37,7 @@ describe('GET /user e GET /user/:id — permissão (e2e)', () => {
   let userService: UserService;
   let userRepository: UserRepository;
   let roleService: RoleService;
+  let dataSource: DataSource;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -49,6 +55,7 @@ describe('GET /user e GET /user/:id — permissão (e2e)', () => {
     userService = moduleFixture.get(UserService);
     userRepository = moduleFixture.get(UserRepository);
     roleService = moduleFixture.get(RoleService);
+    dataSource = moduleFixture.get(DataSource);
     jest
       .spyOn(moduleFixture.get(EmailService), 'sendCreateUser')
       .mockImplementation(async () => {});
@@ -209,5 +216,123 @@ describe('GET /user e GET /user/:id — permissão (e2e)', () => {
       expect(r.total).toBe(3);
       expect(r.emails).toHaveLength(3);
     });
+  });
+
+  // ── Card 04: o resumo do usuário ──────────────────────────────────────
+
+  describe('resumo (usuários 04)', () => {
+    const resumo = (token: string, id: string) =>
+      request(app.getHttpServer())
+        .get(`/user/${id}/resumo`)
+        .set({ Authorization: `Bearer ${token}` });
+
+    /** Um cursinho de verdade (geo + parceiro), para os vínculos apontarem. */
+    async function umCursinho() {
+      const dono = (await usuario(false)).u;
+      const geo = await app.get(GeoRepository).create({
+        ...CreateGeoDTOInputFaker(),
+        status: 1,
+      } as any);
+      await app
+        .get(PartnerPrepCourseService)
+        .create({ geoId: geo.id, representative: dono.id } as any, dono.id);
+      const cursinho = await app
+        .get(PartnerPrepCourseService)
+        .getByUserId(dono.id);
+      return { cursinho, nome: geo.name };
+    }
+
+    it('⚠️ só com alterarPermissao — aluno 403', async () => {
+      const { token } = await usuario(false);
+      const { u: outro } = await usuario(false);
+
+      await resumo(token, outro.id).expect(403);
+    }, 30000);
+
+    it('⚠️ a rota não é engolida pelo GET :id', async () => {
+      const { token } = await usuario(true);
+      const { u: outro } = await usuario(false);
+
+      const { body } = await resumo(token, outro.id).expect(200);
+
+      expect(body).toHaveProperty('conta');
+      expect(body).toHaveProperty('estudante');
+    }, 30000);
+
+    it('só aluno: sem colaborador, sem inscrição, email ainda não confirmado', async () => {
+      const { token } = await usuario(true);
+      const { u: aluno } = await usuario(false);
+
+      const { body } = await resumo(token, aluno.id).expect(200);
+
+      expect(body.conta).toMatchObject({
+        id: aluno.id,
+        email: aluno.email,
+        emailConfirmado: false,
+        desativada: false,
+        funcao: { nome: 'aluno' },
+      });
+      expect(body.colaborador).toBeNull();
+      expect(body.estudante).toEqual({ atual: [], historico: [] });
+    }, 30000);
+
+    it('colaborador: o cursinho, ativo e desde quando', async () => {
+      const { token } = await usuario(true);
+      const { u: pessoa } = await usuario(false);
+      const { cursinho, nome } = await umCursinho();
+      await dataSource.getRepository('Collaborator').save({
+        user: { id: pessoa.id },
+        partnerPrepCourse: { id: cursinho.id },
+        description: '',
+      });
+
+      const { body } = await resumo(token, pessoa.id).expect(200);
+
+      expect(body.colaborador).toMatchObject({
+        cursinho: { id: cursinho.id, nome },
+        ativo: true,
+      });
+    }, 30000);
+
+    it('⚠️ estudante: Matriculado é o atual, o resto é histórico', async () => {
+      const { token } = await usuario(true);
+      const { u: pessoa } = await usuario(false);
+      const { cursinho, nome } = await umCursinho();
+      const repo = dataSource.getRepository('StudentCourse');
+      for (const applicationStatus of [
+        StatusApplication.Enrolled,
+        StatusApplication.EnrollmentClosed,
+        StatusApplication.UnderReview,
+      ]) {
+        await repo.save({
+          userId: pessoa.id,
+          user: { id: pessoa.id },
+          cpf: '00000000000',
+          email: pessoa.email,
+          partnerPrepCourse: { id: cursinho.id },
+          applicationStatus,
+        });
+      }
+
+      const { body } = await resumo(token, pessoa.id).expect(200);
+
+      expect(body.estudante.atual).toHaveLength(1);
+      expect(body.estudante.atual[0]).toMatchObject({
+        cursinho: { id: cursinho.id, nome },
+        status: StatusApplication.Enrolled,
+      });
+      expect(body.estudante.historico.map((i: any) => i.status).sort()).toEqual(
+        [
+          StatusApplication.EnrollmentClosed,
+          StatusApplication.UnderReview,
+        ].sort(),
+      );
+    }, 30000);
+
+    it('usuário que não existe: 404', async () => {
+      const { token } = await usuario(true);
+
+      await resumo(token, '00000000-0000-0000-0000-000000000000').expect(404);
+    }, 30000);
   });
 });
