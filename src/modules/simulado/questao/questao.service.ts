@@ -268,6 +268,20 @@ export class QuestaoService {
     return await this.axios.patch<any>(`v1/questao/${id}/content`, body);
   }
 
+  /**
+   * Congela a questão e cria a sucessora já editada (card 26/27) — o corpo é o
+   * mesmo do `updateContent`.
+   *
+   * ⚠️ O `userId` sai do JWT e SOBREPÕE o do corpo: é quem fica registrado
+   * como autor da versão nova.
+   */
+  public async novaVersao(id: string, body: object, user: User) {
+    return await this.axios.patch<any>(
+      `v1/questao/${encodeURIComponent(id)}/nova-versao`,
+      { ...body, userId: user.id },
+    );
+  }
+
   public async updateImageAlternativa(
     id: string,
     file: Express.Multer.File,
