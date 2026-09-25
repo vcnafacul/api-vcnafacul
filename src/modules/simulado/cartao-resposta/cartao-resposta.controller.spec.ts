@@ -17,6 +17,7 @@ it('GET :simuladoId seta Content-Type e envia o buffer', async () => {
     resultadosService as any,
     uploadService as any,
     { processar: jest.fn() } as any,
+    { baixar: jest.fn() } as any,
   );
   await controller.baixarCartao('665abc', res);
   expect(service.baixarCartao).toHaveBeenCalledWith('665abc');
@@ -37,6 +38,7 @@ it('GET resultados delega ao service com userId + matricula', async () => {
     resultadosService as any,
     uploadService as any,
     { processar: jest.fn() } as any,
+    { baixar: jest.fn() } as any,
   );
   const req: any = { user: { id: 'u-colab' } };
   const r = await controller.resultadosPorMatricula('MAT1', req);
@@ -58,6 +60,7 @@ it('POST upload delega ao CartaoUploadService', async () => {
     resultadosMock as any,
     uploadService as any,
     { processar: jest.fn() } as any,
+    { baixar: jest.fn() } as any,
   );
   const file: any = { buffer: Buffer.from('IMG'), mimetype: 'image/jpeg' };
   const req: any = { user: { id: 'u-colab' } };
@@ -79,6 +82,7 @@ it('POST :historicoId/reprocessar delega com o userId do JWT e o arquivo', async
     { buscarPorMatricula: jest.fn() } as any,
     { processar: jest.fn() } as any,
     reprocessoService as any,
+    { baixar: jest.fn() } as any,
   );
   const file: any = { buffer: Buffer.from('IMG'), mimetype: 'image/jpeg' };
   const req: any = { user: { id: 'u-colab' } };
@@ -104,6 +108,7 @@ describe('GET buscar-estudantes', () => {
       resultadosService as any,
       { processar: jest.fn() } as any,
       { processar: jest.fn() } as any,
+      { baixar: jest.fn() } as any,
     );
     return { controller, resultadosService };
   };
@@ -167,5 +172,39 @@ describe('⚠️ ordem das rotas GET no controller', () => {
     expect(posParam).toBeGreaterThan(-1);
     expect(posBuscar).toBeLessThan(posParam);
     expect(posResultados).toBeLessThan(posParam);
+  });
+});
+
+describe('CartaoRespostaController — baixar a foto do cartão', () => {
+  it('manda a imagem como anexo, com o usuário do JWT', async () => {
+    const imagemService = {
+      baixar: jest.fn().mockResolvedValue({
+        buffer: Buffer.from('IMG'),
+        contentType: 'image/jpeg',
+        nomeDoArquivo: 'foto.jpg',
+      }),
+    };
+    const controller = new CartaoRespostaController(
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      imagemService as any,
+    );
+    const res: any = { setHeader: jest.fn(), send: jest.fn() };
+
+    await controller.baixarImagem(
+      'h1',
+      { user: { id: 'u-colab' } } as any,
+      res,
+    );
+
+    expect(imagemService.baixar).toHaveBeenCalledWith('u-colab', 'h1');
+    expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'image/jpeg');
+    expect(res.setHeader).toHaveBeenCalledWith(
+      'Content-Disposition',
+      'attachment; filename="foto.jpg"',
+    );
+    expect(res.send).toHaveBeenCalledWith(Buffer.from('IMG'));
   });
 });

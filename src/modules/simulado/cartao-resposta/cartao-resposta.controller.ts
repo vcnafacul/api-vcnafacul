@@ -23,6 +23,7 @@ import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { CartaoRespostaHttpService } from './cartao-resposta-http.service';
 import { CartaoRespostaResultadosService } from './cartao-resposta-resultados.service';
 import { CartaoReprocessoService } from './cartao-reprocesso.service';
+import { CartaoImagemService } from './cartao-imagem.service';
 import { CartaoUploadService } from './cartao-upload.service';
 
 /**
@@ -41,6 +42,7 @@ export class CartaoRespostaController {
     private readonly resultadosService: CartaoRespostaResultadosService,
     private readonly uploadService: CartaoUploadService,
     private readonly reprocessoService: CartaoReprocessoService,
+    private readonly imagemService: CartaoImagemService,
   ) {}
 
   /**
@@ -84,6 +86,39 @@ export class CartaoRespostaController {
       historicoId,
       file,
     );
+  }
+
+  /**
+   * Baixa a foto do cartão enviado — o botão do modal do estudante no
+   * relatório do simulado.
+   *
+   * ⚠️ `gerenciarEstudantes`, a permissão do relatório onde o botão mora: quem
+   * vê o detalhe pode baixar a foto dele. O recorte por cursinho sai do JWT.
+   *
+   * ⚠️ Dois segmentos: não colide com o `GET :simuladoId` abaixo.
+   */
+  @Get(':historicoId/imagem')
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'a foto do cartão enviado' })
+  @ApiResponse({
+    status: 404,
+    description: 'histórico de outro cursinho, ou sem foto',
+  })
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
+  async baixarImagem(
+    @Param('historicoId') historicoId: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    const { buffer, contentType, nomeDoArquivo } =
+      await this.imagemService.baixar((req.user as User).id, historicoId);
+    res.setHeader('Content-Type', contentType);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${nomeDoArquivo}"`,
+    );
+    res.send(buffer);
   }
 
   @Post('upload')

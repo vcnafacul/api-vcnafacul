@@ -22,6 +22,7 @@ import { CartaoRespostaResultadosService } from './cartao-resposta/cartao-respos
 import { CartaoReprocessoService } from './cartao-resposta/cartao-reprocesso.service';
 import { CartaoUploadService } from './cartao-resposta/cartao-upload.service';
 import { OmrCacheService } from './cartao-resposta/omr-cache.service';
+import { CartaoImagemService } from './cartao-resposta/cartao-imagem.service';
 import { CategoriaProxyController } from './categoria/categoria.controller';
 import { CursinhoCategoriaController } from './categoria/cursinho/cursinho-categoria.controller';
 import { CategoriaProxyService } from './categoria/categoria.service';
@@ -107,6 +108,7 @@ import { SubjectProxyService } from './subject/subject.service';
     CartaoRespostaHttpService,
     CartaoRespostaResultadosService,
     OmrCacheService,
+    CartaoImagemService,
     CartaoUploadService,
     CartaoReprocessoService,
     CadernoHttpService,
