@@ -35,6 +35,9 @@ describe('QuestaoController — a rota summary vence o :id', () => {
     podeExcluir: jest
       .fn()
       .mockResolvedValue({ podeExcluir: true, motivos: [] }),
+    // ⚠️ QA — a nova versão caía no `:id/:status`.
+    novaVersao: jest.fn().mockResolvedValue({ _id: 'sucessora' }),
+    questoesUpdateStatus: jest.fn().mockResolvedValue({}),
   };
 
   const passaTudo = { canActivate: () => true };
@@ -64,6 +67,8 @@ describe('QuestaoController — a rota summary vence o :id', () => {
     service.duplicar.mockClear();
     service.linhagem.mockClear();
     service.podeExcluir.mockClear();
+    service.novaVersao.mockClear();
+    service.questoesUpdateStatus.mockClear();
   });
 
   it('GET /summary chega no getSummary, não no getById', async () => {
@@ -120,5 +125,43 @@ describe('QuestaoController — a rota summary vence o :id', () => {
       '665f0c1a2b3c4d5e6f00abc2',
     );
     expect(service.getById).not.toHaveBeenCalled();
+  });
+
+  it('⚠️ PATCH :id/nova-versao chega no novaVersao — não no :id/:status (QA)', async () => {
+    const r = await request(app.getHttpServer())
+      .patch('/mssimulado/questoes/665f0c1a2b3c4d5e6f00abc2/nova-versao')
+      .send({ enunciado: 'novo' })
+      .expect(200);
+
+    expect(r.body).toEqual({ _id: 'sucessora' });
+    expect(service.novaVersao).toHaveBeenCalledWith(
+      '665f0c1a2b3c4d5e6f00abc2',
+      { enunciado: 'novo' },
+      undefined,
+    );
+    expect(service.questoesUpdateStatus).not.toHaveBeenCalled();
+  });
+
+  it('PATCH :id/<número> continua sendo a troca de status', async () => {
+    await request(app.getHttpServer())
+      .patch('/mssimulado/questoes/665f0c1a2b3c4d5e6f00abc2/1')
+      .send({ message: 'ok' })
+      .expect(200);
+
+    expect(service.questoesUpdateStatus).toHaveBeenCalledWith(
+      '665f0c1a2b3c4d5e6f00abc2',
+      '1',
+      undefined,
+      'ok',
+    );
+  });
+
+  it('⚠️ PATCH :id/<literal desconhecido> é 404 — não vira status NaN no ms', async () => {
+    await request(app.getHttpServer())
+      .patch('/mssimulado/questoes/665f0c1a2b3c4d5e6f00abc2/qualquer-coisa')
+      .send({})
+      .expect(404);
+
+    expect(service.questoesUpdateStatus).not.toHaveBeenCalled();
   });
 });

@@ -144,6 +144,32 @@ export class QuestaoController {
     return await this.questaoService.updateContent(id, body);
   }
 
+  /**
+   * ⚠️ **Faltava na api** (QA): o client chamava `PATCH :id/nova-versao` e caía
+   * no `:id/:status` abaixo, com `status = "nova-versao"` — o ms respondia
+   * `Cast to Number failed for value "NaN"`. Salvar como nova versão nunca
+   * funcionou por aqui.
+   *
+   * `criarQuestao`, a mesma permissão de editar o conteúdo: versionar é editar
+   * o conteúdo guardando a original.
+   */
+  @Patch(':id/nova-versao')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description:
+      'congela a questão e cria a sucessora já editada; as provas passam a usar a nova',
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  public async novaVersao(
+    @Param('id') id: string,
+    @Body() body: object,
+    @Req() req: Request,
+  ) {
+    return await this.questaoService.novaVersao(id, body, req.user as User);
+  }
+
   @Patch(':id/image-alternativa')
   @ApiBearerAuth()
   @ApiResponse({
@@ -280,7 +306,13 @@ export class QuestaoController {
     );
   }
 
-  @Patch(':id/:status')
+  /**
+   * ⚠️ **`:status` só casa com número** (o `Status` é 0, 1 ou 2). Sem isso,
+   * qualquer `PATCH :id/<literal>` que a api não declare cai aqui e vira
+   * `Cast to Number ... "NaN"` no ms — foi como a falta da `nova-versao` se
+   * escondeu. Agora um literal desconhecido é 404 na api.
+   */
+  @Patch(':id/:status(\\d+)')
   @ApiBearerAuth()
   @ApiResponse({
     status: 200,
