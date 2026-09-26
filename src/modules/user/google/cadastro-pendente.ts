@@ -8,4 +8,6 @@ export const VALIDADE_DO_CADASTRO_MS = 30 * 60 * 1000;
 export interface CadastroPendente {
   perfil: PerfilGoogle;
   voltar: string;
+  /** O token do convite de colaborador, se veio de um (card 05). */
+  convite?: string;
 }

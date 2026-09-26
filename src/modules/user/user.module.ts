@@ -57,6 +57,11 @@ import { GoogleStrategy } from './google/google.strategy';
     },
     { provide: COLLABORATOR_REPO_TOKEN, useExisting: CollaboratorRepository },
   ],
-  exports: [UserService, UserRepository, RefreshTokenService],
+  exports: [
+    UserService,
+    UserRepository,
+    RefreshTokenService,
+    GoogleAuthService,
+  ],
 })
 export class UserModule {}

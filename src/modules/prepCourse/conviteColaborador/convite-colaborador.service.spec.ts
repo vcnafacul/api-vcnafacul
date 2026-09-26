@@ -68,6 +68,7 @@ const montar = (
     } as any,
     emailService as any,
     { create: jest.fn() } as any,
+    { lerCadastro: jest.fn() } as any,
   );
   return { service, repoTx, repo, emailService, salvos };
 };
