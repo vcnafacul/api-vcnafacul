@@ -164,6 +164,16 @@ export class UserService extends BaseService<User> {
     if (!userFullInfo || userFullInfo.deletedAt != null) {
       throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     }
+    /*
+      ⚠️ Conta criada pelo Google não tem senha — sem esta checagem o
+      `bcrypt.compare` recebe `null` e lança.
+    */
+    if (!userFullInfo.password) {
+      throw new HttpException(
+        'Esta conta entra pelo Google — use o botão "Entrar com Google" ou redefina a senha.',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
     if (!(await bcrypt.compare(loginInput.password, userFullInfo?.password))) {
       throw new HttpException('password invalid', HttpStatus.CONFLICT);
     }
