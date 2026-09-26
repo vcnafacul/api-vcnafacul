@@ -50,7 +50,7 @@ export class GoogleAuthController {
   @Get()
   @ApiOperation({
     summary:
-      'Leva ao Google para entrar. `?voltar=/caminho` — para onde ir depois',
+      'Leva ao Google para entrar. `?voltar=/caminho` — para onde ir depois; `?convite=<token>` — cadastro pelo convite de colaborador',
   })
   @UseGuards(GoogleAuthGuard)
   // O guard redireciona ao Google; o corpo nunca roda
@@ -81,13 +81,14 @@ export class GoogleAuthController {
     } catch {
       return erro('google');
     }
-    const voltar = lerState(req.query.state)?.voltar ?? DESTINO_PADRAO;
+    const state = lerState(req.query.state);
+    const voltar = state?.voltar ?? DESTINO_PADRAO;
 
     // Sem conta: 2º passo (card 02) — a conta só nasce lá
     if ('erro' in resultado && resultado.erro === 'sem-conta') {
       res.cookie(
         COOKIE_DO_CADASTRO,
-        await this.service.tokenDeCadastro(perfil, voltar),
+        await this.service.tokenDeCadastro(perfil, voltar, state?.convite),
         OPCOES_DO_COOKIE_DO_CADASTRO,
       );
       return res.redirect(`${front}/cadastro/google`);

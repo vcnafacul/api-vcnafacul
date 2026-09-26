@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
+import * as cookieParser from 'cookie-parser';
+import { Strategy } from 'passport-google-oauth20';
 import { AppModule } from 'src/app.module';
 import { RoleSeedService } from 'src/db/seeds/1-role.seed';
 import { RoleUpdateAdminSeedService } from 'src/db/seeds/2-role-update-admin.seed';
@@ -28,6 +30,16 @@ import { createNestAppTest } from './utils/createNestAppTest';
 jest.mock('src/shared/services/email/email.service');
 jest.mock('src/shared/services/blob/blob-service.ts');
 jest.mock('src/shared/services/webhooks/discord.ts');
+
+// Google simulado (card 05 de `login-com-google`): a volta traz o perfil no `code`
+jest.spyOn(Strategy.prototype, 'authenticate').mockImplementation(function (
+  this: any,
+  req: any,
+  options: any,
+) {
+  if (req.query?.code) return this.success(JSON.parse(req.query.code));
+  return this.redirect(`https://accounts.google.com/?state=${options.state}`);
+});
 
 /**
  * Convite gravado (card 03 de `convite-de-colaborador`) contra o MySQL real.
@@ -60,6 +72,7 @@ describe('Convite de colaborador (e2e)', () => {
       .compile();
 
     app = createNestAppTest(moduleFixture);
+    app.use(cookieParser());
     dataSource = moduleFixture.get(DataSource);
     jwtService = moduleFixture.get(JwtService);
     userService = moduleFixture.get(UserService);
@@ -461,6 +474,182 @@ describe('Convite de colaborador (e2e)', () => {
     expect(
       await userRepository.findOneBy({ email: dados.email.toLowerCase() }),
     ).toBeNull();
+  }, 30000);
+
+  // ── login-com-google 05: cadastro pelo convite com o Google ─────────────
+
+  const segundoPasso = {
+    firstName: 'Bia',
+    lastName: 'Lima',
+    phone: '(11) 98888-0000',
+    gender: 2,
+    birthday: '1999-03-01',
+    state: 'SP',
+    city: 'Campinas',
+    lgpd: true,
+  };
+
+  /** Ida e volta do Google a partir do convite: devolve o cookie do cadastro. */
+  async function peloGoogle(tokenDoConvite: string, emailDoGoogle: string) {
+    const ida = await request(app.getHttpServer())
+      .get('/user/auth/google')
+      .query({ convite: tokenDoConvite, voltar: '/convite-colaborador' })
+      .expect(302);
+    const state = new URL(ida.headers.location).searchParams.get('state');
+    const nonce = [ida.headers['set-cookie']]
+      .flat()
+      .find((c: string) => c.startsWith('google_state='))
+      .split(';')[0];
+    const volta = await request(app.getHttpServer())
+      .get('/user/auth/google/callback')
+      .query({
+        state,
+        code: JSON.stringify({
+          googleId: `g-${Date.now()}-${Math.random()}`,
+          email: emailDoGoogle.toLowerCase(),
+          firstName: 'Bia',
+          lastName: 'Lima',
+        }),
+      })
+      .set('Cookie', nonce)
+      .expect(302);
+    expect(volta.headers.location).toMatch(/\/cadastro\/google$/);
+    return [volta.headers['set-cookie']]
+      .flat()
+      .find((c: string) => c.startsWith('google_cadastro='))
+      .split(';')[0];
+  }
+
+  const cadastrarPeloGoogle = (cookie: string) =>
+    request(app.getHttpServer())
+      .post('/convites-colaborador/cadastrar-pelo-google')
+      .set('Cookie', cookie)
+      .send(segundoPasso);
+
+  it('⚠️ Google + convite: conta sem senha, vinculada, colaboradora com a função, logada', async () => {
+    const { dados, tokenDoConvite, funcao } = await convidarQuemNaoTemConta();
+    const cookie = await peloGoogle(tokenDoConvite, dados.email);
+
+    // O 2º passo sabe que veio de um convite
+    const pendente = await request(app.getHttpServer())
+      .get('/user/auth/google/cadastro')
+      .set('Cookie', cookie)
+      .expect(200);
+    expect(pendente.body.convite).toBe(tokenDoConvite);
+
+    const resposta = await cadastrarPeloGoogle(cookie).expect(201);
+
+    expect(resposta.body).toHaveProperty('access_token');
+    expect(String(resposta.headers['set-cookie'])).toMatch(/refresh_token=/);
+    const usuario = await userRepository.findOneBy({
+      email: dados.email.toLowerCase(),
+    });
+    expect(usuario.googleId).toMatch(/^g-/);
+    expect(usuario.emailConfirmSended).toBeNull();
+    expect(usuario.role.id).toBe(funcao.id);
+    const [{ password }] = await dataSource.query(
+      'SELECT password FROM users WHERE id = ?',
+      [usuario.id],
+    );
+    expect(password).toBeNull();
+    const colaborador = await dataSource
+      .getRepository('Collaborator')
+      .findOne({ where: { user: { id: usuario.id } } });
+    expect(colaborador).toBeTruthy();
+  }, 30000);
+
+  it('⚠️ conta Google com OUTRO email: recusa, e a conta NÃO é criada', async () => {
+    const { tokenDoConvite } = await convidarQuemNaoTemConta();
+    const outro = `outra.${Date.now()}@gmail.com`;
+    const cookie = await peloGoogle(tokenDoConvite, outro);
+
+    const { body } = await cadastrarPeloGoogle(cookie).expect(400);
+
+    expect(body.message).toMatch(/tem de usar o email/);
+    expect(await userRepository.findOneBy({ email: outro })).toBeNull();
+  }, 30000);
+
+  it('⚠️ se o vínculo falha, a conta pelo Google também NÃO fica', async () => {
+    const { dados, tokenDoConvite } = await convidarQuemNaoTemConta();
+    const cookie = await peloGoogle(tokenDoConvite, dados.email);
+    const vincular = jest
+      .spyOn(app.get(ConviteColaboradorService) as any, 'vincular')
+      .mockRejectedValueOnce(new Error('falhou no meio'));
+
+    await cadastrarPeloGoogle(cookie).expect(500);
+
+    vincular.mockRestore();
+    expect(
+      await userRepository.findOneBy({ email: dados.email.toLowerCase() }),
+    ).toBeNull();
+  }, 30000);
+
+  it('convite venceu no meio: 400 sem conta — e dá para concluir sem o convite', async () => {
+    const { dados, tokenDoConvite } = await convidarQuemNaoTemConta();
+    const cookie = await peloGoogle(tokenDoConvite, dados.email);
+    await dataSource
+      .getRepository(ConviteColaborador)
+      .update(
+        { email: dados.email.toLowerCase() },
+        { expiraEm: new Date(Date.now() - 1000) },
+      );
+
+    await cadastrarPeloGoogle(cookie).expect(400);
+    expect(
+      await userRepository.findOneBy({ email: dados.email.toLowerCase() }),
+    ).toBeNull();
+
+    // O mesmo cadastro pendente, pelo caminho sem convite (card 02)
+    await request(app.getHttpServer())
+      .post('/user/auth/google/cadastro')
+      .set('Cookie', cookie)
+      .send(segundoPasso)
+      .expect(201);
+    const usuario = await userRepository.findOneBy({
+      email: dados.email.toLowerCase(),
+    });
+    expect(usuario.role.name).toBe('aluno');
+  }, 30000);
+
+  it('cadastro pendente que não veio de convite: 400', async () => {
+    const email = `semconvite.${Date.now()}@gmail.com`;
+    const ida = await request(app.getHttpServer())
+      .get('/user/auth/google')
+      .expect(302);
+    const state = new URL(ida.headers.location).searchParams.get('state');
+    const nonce = [ida.headers['set-cookie']]
+      .flat()
+      .find((c: string) => c.startsWith('google_state='))
+      .split(';')[0];
+    const volta = await request(app.getHttpServer())
+      .get('/user/auth/google/callback')
+      .query({
+        state,
+        code: JSON.stringify({
+          googleId: `g-${Date.now()}`,
+          email,
+          firstName: 'A',
+          lastName: 'B',
+        }),
+      })
+      .set('Cookie', nonce);
+    const cookie = [volta.headers['set-cookie']]
+      .flat()
+      .find((c: string) => c.startsWith('google_cadastro='))
+      .split(';')[0];
+
+    await cadastrarPeloGoogle(cookie).expect(400);
+  }, 30000);
+
+  it('?convite= sem a forma de um token é descartado no state', async () => {
+    const { dados } = await convidarQuemNaoTemConta();
+    const cookie = await peloGoogle('../x', dados.email);
+
+    const pendente = await request(app.getHttpServer())
+      .get('/user/auth/google/cadastro')
+      .set('Cookie', cookie)
+      .expect(200);
+    expect(pendente.body.convite).toBeUndefined();
   }, 30000);
 
   // ── Correção: quem gerencia colaboradores também convida ──────────────

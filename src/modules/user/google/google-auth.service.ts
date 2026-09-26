@@ -9,6 +9,7 @@ import {
   ErroDoGoogle,
   PerfilGoogle,
   decidirEntrada,
+  sanitizarConvite,
   sanitizarVoltar,
 } from './google-auth.regras';
 import { CadastroPeloGoogleDtoInput } from './cadastro-pelo-google.dto.input';
@@ -57,20 +58,25 @@ export class GoogleAuthService {
    * — **nenhuma linha em `users`** até o 2º passo (decisão de 2026-09-25:
    * quem fecha o navegador no meio não deixa conta sem aceite de LGPD).
    */
-  async tokenDeCadastro(perfil: PerfilGoogle, voltar: string): Promise<string> {
+  async tokenDeCadastro(
+    perfil: PerfilGoogle,
+    voltar: string,
+    convite?: string,
+  ): Promise<string> {
     return this.jwtService.signAsync(
-      { typ: PropositoDoToken.cadastroGoogle, perfil, voltar },
+      { typ: PropositoDoToken.cadastroGoogle, perfil, voltar, convite },
       { expiresIn: VALIDADE_DO_CADASTRO_MS / 1000 },
     );
   }
 
   /** O que o 2º passo mostra: email (travado) e nome do Google. */
   async cadastroPendente(token: string | undefined) {
-    const { perfil } = await this.lerCadastro(token);
+    const { perfil, convite } = await this.lerCadastro(token);
     return {
       email: perfil.email,
       firstName: perfil.firstName,
       lastName: perfil.lastName,
+      convite,
     };
   }
 
@@ -115,9 +121,11 @@ export class GoogleAuthService {
     return { sessao: await this.userService.emitirSessao(usuario), voltar };
   }
 
-  private async lerCadastro(
-    token: string | undefined,
-  ): Promise<CadastroPendente> {
+  /**
+   * O cadastro pendente do cookie — público porque o cadastro pelo convite
+   * (card 05, módulo do convite) também o consome.
+   */
+  async lerCadastro(token: string | undefined): Promise<CadastroPendente> {
     if (!token) {
       throw new HttpException(SEM_CADASTRO_PENDENTE, HttpStatus.UNAUTHORIZED);
     }
@@ -134,6 +142,7 @@ export class GoogleAuthService {
     return {
       perfil: payload.perfil,
       voltar: sanitizarVoltar(payload.voltar),
+      convite: sanitizarConvite(payload.convite),
     };
   }
 }

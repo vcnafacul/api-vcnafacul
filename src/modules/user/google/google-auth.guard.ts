@@ -7,6 +7,7 @@ import {
   gerarNonce,
   lerState,
   montarState,
+  sanitizarConvite,
   sanitizarVoltar,
 } from './google-auth.regras';
 
@@ -30,7 +31,11 @@ export class GoogleAuthGuard extends AuthGuard('google') {
       maxAge: VALIDADE_DO_STATE_MS,
     });
     return {
-      state: montarState(nonce, sanitizarVoltar(req.query.voltar)),
+      state: montarState(
+        nonce,
+        sanitizarVoltar(req.query.voltar),
+        sanitizarConvite(req.query.convite),
+      ),
     } as IAuthModuleOptions;
   }
 }
