@@ -77,8 +77,14 @@ export class InscriptionCourseRepository extends LinkedListRepository<
         .take(limit)
         .where({ ...where })
         .andWhere('entity.deletedAt IS NULL')
-        .leftJoin('entity.students', 'student_course')
-        .addSelect('student_course.id')
+        /*
+          ⚠️ COUNT no banco, e não `leftJoin` + `addSelect(student.id)` para
+          o service contar `.length`: aquilo trazia uma linha por inscrito de
+          todos os processos do cursinho só para devolver um número por
+          processo (tickets/021 card 06). O contrato (`subscribersCount`)
+          não muda.
+        */
+        .loadRelationCountAndMap('entity.subscribersCount', 'entity.students')
         .leftJoin('entity.partnerPrepCourse', 'partner_prep_course')
         .addSelect(['partner_prep_course.id'])
         .leftJoin('partner_prep_course.geo', 'geo')

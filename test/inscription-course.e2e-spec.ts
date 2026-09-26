@@ -299,6 +299,74 @@ describe('InscriptionCourse (e2e)', () => {
       });
   });
 
+  /*
+    tickets/021 card 06: a contagem de inscritos sai de um COUNT no banco, e
+    não de trazer uma linha por inscrito para contar no service.
+  */
+  it('listagem: subscribersCount por processo e paginação certa com vários inscritos', async () => {
+    const { representative } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync(
+      { user: { id: representative.id } },
+      { expiresIn: '2h' },
+    );
+
+    const inscrever = async (inscriptionId: string) => {
+      const dto = CreateUserDtoInputFaker();
+      await userService.create(dto);
+      const aluno = await userRepository.findOneBy({ email: dto.email });
+      await studentCourseService.create(
+        createStudentCourseDTOInputFaker(aluno.id, inscriptionId),
+      );
+    };
+
+    const esperado = new Map<string, number>();
+    for (const inscritos of [3, 0, 2]) {
+      const criada = await inscriptionService.create(
+        CreateInscriptionCourseDTOInputFaker(),
+        representative.id,
+      );
+      for (let i = 0; i < inscritos; i++) await inscrever(criada.id);
+      esperado.set(criada.id, inscritos);
+    }
+
+    const pagina = async (page: number) =>
+      (
+        await request(app.getHttpServer())
+          .get('/inscription-course')
+          .query({ page, limit: 2 })
+          .set({ Authorization: `Bearer ${token}` })
+          .expect(200)
+      ).body;
+
+    const p1 = await pagina(1);
+    const p2 = await pagina(2);
+
+    // ⚠️ Com join 1:N, paginar LINHAS em vez de processos repetiria ou
+    // perderia processos entre as páginas
+    expect(p1.totalItems).toBe(3);
+    expect(p1.data).toHaveLength(2);
+    expect(p2.data).toHaveLength(1);
+    const todos = [...p1.data, ...p2.data];
+    expect(new Set(todos.map((i) => i.id)).size).toBe(3);
+    for (const i of todos) {
+      expect(i.subscribersCount).toBe(esperado.get(i.id));
+    }
+
+    // ⚠️ E a lista não carrega mais os inscritos — só o número
+    const partner = await partnerPrepCourseService.getByUserId(
+      representative.id,
+    );
+    const doBanco = await inscriptionRepository.findAllBy({
+      page: 1,
+      limit: 10,
+      where: { partnerPrepCourse: partner },
+    });
+    for (const i of doBanco.data) {
+      expect(i.students).toBeUndefined();
+      expect(typeof i.subscribersCount).toBe('number');
+    }
+  }, 60000);
+
   it('get one inscription course', async () => {
     const { representative } = await createPartnerPrepCourse();
 

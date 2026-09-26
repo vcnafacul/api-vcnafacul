@@ -39,6 +39,12 @@ export class InscriptionCourse extends LinkedListEntity {
   )
   students: StudentCourse[];
 
+  /**
+   * Preenchido só pela listagem (`findAllBy`), com um COUNT no banco — não é
+   * coluna (tickets/021 card 06).
+   */
+  subscribersCount?: number;
+
   @Column({ default: false })
   requestDocuments: boolean;
 
