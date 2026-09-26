@@ -171,6 +171,14 @@ export class InscriptionCourseRepository extends LinkedListRepository<
       .getCount();
   }
 
+  async getTotalNonTest() {
+    return this.repository
+      .createQueryBuilder('entity')
+      .where('entity.deletedAt IS NULL')
+      .andWhere('entity.isTest = :isTest', { isTest: false })
+      .getCount();
+  }
+
   async entityByStatus(status: Status) {
     return this.repository
       .createQueryBuilder('entity')

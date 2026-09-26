@@ -607,29 +607,19 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
   }
 
   async getSummary() {
-    const inscriptionTotal = await this.cache.wrap<number>(
-      'inscription:total',
-      async () => this.repository.getTotalEntity(),
-    );
-    const inscriptionPending = await this.cache.wrap<number>(
-      'inscription:pending',
-      async () => this.repository.entityByStatus(Status.Pending),
-    );
-    const inscriptionApproved = await this.cache.wrap<number>(
-      'inscription:approved',
-      async () => this.repository.entityByStatus(Status.Approved),
-    );
-    const inscriptionRejected = await this.cache.wrap<number>(
-      'inscription:rejected',
-      async () => this.repository.entityByStatus(Status.Rejected),
-    );
-
-    return {
-      inscriptionTotal,
-      inscriptionPending,
-      inscriptionApproved,
-      inscriptionRejected,
-    };
+    // Uma unica chave: todos os totais sao calculados no mesmo momento, entao
+    // o total sem testes nunca fica maior que o total geral no card.
+    return await this.cache.wrap('inscription:summary', async () => ({
+      inscriptionTotal: await this.repository.getTotalEntity(),
+      inscriptionPending: await this.repository.entityByStatus(Status.Pending),
+      inscriptionApproved: await this.repository.entityByStatus(
+        Status.Approved,
+      ),
+      inscriptionRejected: await this.repository.entityByStatus(
+        Status.Rejected,
+      ),
+      inscriptionTotalNonTest: await this.repository.getTotalNonTest(),
+    }));
   }
 
   async aggregateInscriptionCourseByPeriod({

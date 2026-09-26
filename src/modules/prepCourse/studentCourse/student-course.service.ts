@@ -1926,19 +1926,12 @@ export class StudentCourseService extends BaseService<StudentCourse> {
   }
 
   async getSummary() {
-    const totalStudents = await this.cache.wrap<number>(
-      'student:total',
-      async () => this.repository.getTotalEntity(),
-    );
-    const studentEnrolled = await this.cache.wrap<number>(
-      'student:enrolled',
-      async () => this.repository.getTotalEnrolled(),
-    );
-
-    return {
-      totalStudents,
-      studentEnrolled,
-    };
+    return await this.cache.wrap('student:summary', async () => ({
+      totalStudents: await this.repository.getTotalEntity(),
+      studentEnrolled: await this.repository.getTotalEnrolled(),
+      totalStudentsNonTest: await this.repository.getTotalNonTest(),
+      studentEnrolledNonTest: await this.repository.getTotalEnrolledNonTest(),
+    }));
   }
 
   async getRegistrationMonitoring(
