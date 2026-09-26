@@ -127,7 +127,7 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
           endDate: i.endDate,
           actived: i.actived,
           openingsCount: i.expectedOpening,
-          subscribersCount: i.students?.length || 0,
+          subscribersCount: i.subscribersCount ?? 0,
           createdAt: i.createdAt,
           updatedAt: i.updatedAt,
           partnerPrepCourseId: i.partnerPrepCourse.id,
