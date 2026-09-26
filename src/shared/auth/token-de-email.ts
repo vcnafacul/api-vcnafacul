@@ -23,11 +23,17 @@ import { EnvService } from '../modules/env/env.service';
  */
 export enum PropositoDoToken {
   /*
-    ⚠️ Sem \`convite\`: o convite de colaborador deixou de ser JWT (card 03 —
+    ⚠️ Sem `convite`: o convite de colaborador deixou de ser JWT (card 03 —
     token opaco, só o hash no banco), e o convite antigo saiu no card 06.
   */
   confirmarEmail = 'confirmar-email',
   redefinirSenha = 'redefinir-senha',
+  /*
+    Não vai por email, mas é o mesmo problema: o cadastro pelo Google (card
+    02 de `login-com-google`) guarda os dados do Google num JWT até o 2º passo,
+    e sem `typ` ele passaria por login.
+  */
+  cadastroGoogle = 'cadastro-google',
 }
 
 /** O token é de email (tem propósito)? — o de login não tem `typ`. */

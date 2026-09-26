@@ -29,6 +29,8 @@ import { ConvitePorTokenDtoOutput } from './dtos/convite-por-token.output.dto';
 import { Collaborator } from '../collaborator/collaborator.entity';
 import { CreateUserDtoInput } from '../../user/dto/create.dto.input';
 import { LoginTokenDTO } from '../../user/dto/login-token.dto.input';
+import { CadastroPeloGoogleDtoInput } from '../../user/google/cadastro-pelo-google.dto.input';
+import { GoogleAuthService } from '../../user/google/google-auth.service';
 
 /**
  * Convites de colaborador gravados, já com a função (card 03 de
@@ -53,6 +55,7 @@ export class ConviteColaboradorService {
     private readonly roleService: RoleService,
     private readonly emailService: EmailService,
     private readonly logPartnerRepository: LogPartnerRepository,
+    private readonly googleAuthService: GoogleAuthService,
   ) {}
 
   private get repo() {
@@ -345,6 +348,58 @@ export class ConviteColaboradorService {
     token: string,
     dados: CreateUserDtoInput,
   ): Promise<LoginTokenDTO> {
+    const convite = await this.conviteParaCadastro(token, dados.email);
+    return this.criarContaEVincular(
+      convite,
+      (manager) =>
+        this.userService.createUser(
+          { ...dados, email: convite.email },
+          { manager, emailConfirmado: true },
+        ),
+      'criou a conta pelo convite',
+    );
+  }
+
+  /**
+   * Cadastro pelo convite **com o Google** (card 05 de `login-com-google`): o
+   * mesmo do `cadastrar`, com o email e o `googleId` vindos do cadastro
+   * pendente do Google (cookie `google_cadastro`), e sem senha.
+   *
+   * ⚠️ **O email do Google tem de ser o do convite** — a mesma regra do email
+   * travado: o convite prova só aquele email.
+   */
+  async cadastrarPeloGoogle(
+    tokenDoCadastro: string | undefined,
+    dados: CadastroPeloGoogleDtoInput,
+  ): Promise<LoginTokenDTO> {
+    const { perfil, convite: tokenDoConvite } =
+      await this.googleAuthService.lerCadastro(tokenDoCadastro);
+    if (!tokenDoConvite) {
+      throw new HttpException(
+        'Este cadastro não veio de um convite.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const convite = await this.conviteParaCadastro(
+      tokenDoConvite,
+      perfil.email,
+    );
+    return this.criarContaEVincular(
+      convite,
+      (manager) =>
+        this.userService.createUser(
+          { ...dados, email: convite.email } as CreateUserDtoInput,
+          { manager, emailConfirmado: true, googleId: perfil.googleId },
+        ),
+      'criou a conta pelo Google, pelo convite,',
+    );
+  }
+
+  /** O convite, se ainda vale para criar a conta de `email`. */
+  private async conviteParaCadastro(
+    token: string,
+    email: string,
+  ): Promise<ConviteColaborador> {
     const convite = await this.pelaChave(token);
     const situacao = situacaoDoConvite(convite, new Date());
     if (situacao !== 'pendente') {
@@ -353,7 +408,7 @@ export class ConviteColaboradorService {
         HttpStatus.BAD_REQUEST,
       );
     }
-    if (normalizarEmail(dados.email) !== convite.email) {
+    if (normalizarEmail(email) !== convite.email) {
       throw new HttpException(
         `O cadastro por este convite tem de usar o email ${convite.email}.`,
         HttpStatus.BAD_REQUEST,
@@ -365,14 +420,22 @@ export class ConviteColaboradorService {
         HttpStatus.CONFLICT,
       );
     }
+    return convite;
+  }
 
+  /**
+   * ⚠️ **Se o vínculo falha, a conta não é criada** — mesma transação.
+   * Criar a conta e deixar o convite pendurado confundiria a pessoa.
+   */
+  private async criarContaEVincular(
+    convite: ConviteColaborador,
+    criarConta: (manager: EntityManager) => Promise<User>,
+    comoEntrou: string,
+  ): Promise<LoginTokenDTO> {
     let userId: string;
     try {
       await this.dataSource.transaction(async (manager) => {
-        const usuario = await this.userService.createUser(
-          { ...dados, email: convite.email },
-          { manager, emailConfirmado: true },
-        );
+        const usuario = await criarConta(manager);
         userId = usuario.id;
         await this.vincular(manager, convite, usuario.id);
       });
@@ -383,7 +446,7 @@ export class ConviteColaboradorService {
     const usuario = await this.userService.findOneBy({ id: userId! });
     await this.registrar(
       convite.partnerPrepCourseId,
-      `${usuario.firstName} ${usuario.lastName} (${usuario.email}) criou a conta pelo convite e entrou como "${convite.role?.name ?? ''}"`,
+      `${usuario.firstName} ${usuario.lastName} (${usuario.email}) ${comoEntrou} e entrou como "${convite.role?.name ?? ''}"`,
     );
     return await this.userService.emitirSessao(usuario);
   }

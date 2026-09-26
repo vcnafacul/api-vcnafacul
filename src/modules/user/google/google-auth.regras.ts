@@ -29,6 +29,17 @@ export function sanitizarVoltar(voltar: unknown): string {
   return voltar;
 }
 
+/**
+ * O token do link do convite, carregado pelo `state` e pelo token de cadastro
+ * (card 05 de `login-com-google`). ⚠️ O módulo de usuário **não o interpreta**
+ * — só o leva; quem confere é o módulo do convite. Aqui só se recusa o que
+ * nem tem a forma de um (o token é `randomBytes(32)` em base64url).
+ */
+export function sanitizarConvite(convite: unknown): string | undefined {
+  if (typeof convite !== 'string') return undefined;
+  return /^[A-Za-z0-9_-]{16,128}$/.test(convite) ? convite : undefined;
+}
+
 export function gerarNonce(): string {
   return randomBytes(16).toString('base64url');
 }
@@ -41,20 +52,28 @@ export function gerarNonce(): string {
  * terceiros mandaria o navegador da vítima ao callback com o `code` da conta
  * Google do atacante, e a vítima ficaria logada na conta dele.
  */
-export function montarState(nonce: string, voltar: string): string {
-  return Buffer.from(JSON.stringify({ n: nonce, v: voltar })).toString(
-    'base64url',
-  );
+export function montarState(
+  nonce: string,
+  voltar: string,
+  convite?: string,
+): string {
+  return Buffer.from(
+    JSON.stringify({ n: nonce, v: voltar, c: convite }),
+  ).toString('base64url');
 }
 
 export function lerState(
   state: unknown,
-): { nonce: string; voltar: string } | null {
+): { nonce: string; voltar: string; convite?: string } | null {
   if (typeof state !== 'string' || !state) return null;
   try {
-    const { n, v } = JSON.parse(Buffer.from(state, 'base64url').toString());
+    const { n, v, c } = JSON.parse(Buffer.from(state, 'base64url').toString());
     if (typeof n !== 'string' || !n) return null;
-    return { nonce: n, voltar: sanitizarVoltar(v) };
+    return {
+      nonce: n,
+      voltar: sanitizarVoltar(v),
+      convite: sanitizarConvite(c),
+    };
   } catch {
     return null;
   }

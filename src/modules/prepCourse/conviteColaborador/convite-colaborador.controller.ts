@@ -28,6 +28,9 @@ import { CadastrarPeloConviteDtoInput } from './dtos/cadastrar-pelo-convite.inpu
 import { CreateUserDtoInput } from 'src/modules/user/dto/create.dto.input';
 import { Throttle } from '@nestjs/throttler';
 import { THROTTLE_CONFIG } from 'src/shared/config/email.config';
+import { CadastroPeloGoogleDtoInput } from 'src/modules/user/google/cadastro-pelo-google.dto.input';
+import { COOKIE_DO_CADASTRO } from 'src/modules/user/google/cadastro-pendente';
+import { OPCOES_DO_COOKIE_DE_REFRESH } from 'src/modules/user/cookie-de-refresh';
 
 /**
  * Convites de colaborador (card 03 de `convite-de-colaborador`).
@@ -125,6 +128,46 @@ export class ConviteColaboradorController {
       sameSite: 'strict',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
+    return res.status(201).json({
+      access_token: sessao.access_token,
+      expires_in: sessao.expires_in,
+    });
+  }
+
+  /**
+   * Cadastro pelo convite com o Google (card 05 de `login-com-google`): o
+   * 2º passo do Google, quando o cadastro pendente veio do botão da página do
+   * convite. Mesmo corpo do `POST user/auth/google/cadastro`.
+   *
+   * ⚠️ Se o convite não vale mais, a conta **não** é criada — a tela oferece
+   * concluir pelo cadastro do Google sem o convite.
+   */
+  @Post('cadastrar-pelo-google')
+  @Throttle({
+    default: {
+      ttl: THROTTLE_CONFIG.CREATE_USER.ttl,
+      limit: THROTTLE_CONFIG.CREATE_USER.limit,
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'conta criada pelo Google, já colaboradora e logada',
+  })
+  async cadastrarPeloGoogle(
+    @Req() req: Request,
+    @Body() dto: CadastroPeloGoogleDtoInput,
+    @Res() res: Response,
+  ) {
+    const sessao = await this.service.cadastrarPeloGoogle(
+      req.cookies?.[COOKIE_DO_CADASTRO],
+      dto,
+    );
+    res.clearCookie(COOKIE_DO_CADASTRO);
+    res.cookie(
+      'refresh_token',
+      sessao.refresh_token,
+      OPCOES_DO_COOKIE_DE_REFRESH,
+    );
     return res.status(201).json({
       access_token: sessao.access_token,
       expires_in: sessao.expires_in,

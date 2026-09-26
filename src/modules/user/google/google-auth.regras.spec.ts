@@ -5,6 +5,7 @@ import {
   decidirEntrada,
   lerState,
   montarState,
+  sanitizarConvite,
   sanitizarVoltar,
 } from './google-auth.regras';
 
@@ -110,5 +111,27 @@ describe('decidirEntrada', () => {
 
   it('não achou ninguém: sem conta', () => {
     expect(decidirEntrada(null, null, perfil)).toEqual({ acao: 'sem-conta' });
+  });
+});
+
+describe('convite no state (card 05)', () => {
+  const token = 'Abc_123-xyzXYZ0987654321abcdEFGH';
+
+  it('ida e volta preservam o token do convite', () => {
+    expect(lerState(montarState('n1', '/x', token))?.convite).toBe(token);
+  });
+
+  it('sem convite: undefined', () => {
+    expect(lerState(montarState('n1', '/x'))?.convite).toBeUndefined();
+  });
+
+  it.each([
+    ['../x'],
+    ['curto'],
+    ['a'.repeat(200)],
+    ['com espaço aqui 1234'],
+    [42],
+  ])('descarta %p, que não tem a forma de um token', (entrada) => {
+    expect(sanitizarConvite(entrada)).toBeUndefined();
   });
 });
