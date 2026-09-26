@@ -1,5 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import * as cookieParser from 'cookie-parser';
@@ -44,6 +45,7 @@ describe('Login com Google (e2e)', () => {
   let dataSource: DataSource;
   let userService: UserService;
   let userRepository: UserRepository;
+  let jwtService: JwtService;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -61,6 +63,7 @@ describe('Login com Google (e2e)', () => {
     dataSource = moduleFixture.get(DataSource);
     userService = moduleFixture.get(UserService);
     userRepository = moduleFixture.get(UserRepository);
+    jwtService = moduleFixture.get(JwtService);
     jest
       .spyOn(moduleFixture.get(EmailService), 'sendCreateUser')
       .mockImplementation(async () => {});
@@ -188,12 +191,165 @@ describe('Login com Google (e2e)', () => {
     expect(res.headers.location).toBe(`${FRONT}/login?erro=google`);
   });
 
-  it('sem conta: volta ao login com sem-conta (o cadastro é o card 02)', async () => {
-    const res = await voltarDoGoogle(
-      perfilDe(`ninguem-${Date.now()}@gmail.com`),
-      await irAoGoogle(),
-    ).expect(302);
-    expect(res.headers.location).toBe(`${FRONT}/login?erro=sem-conta`);
+  describe('cadastro pelo Google (card 02)', () => {
+    const segundoPasso = () => ({
+      firstName: 'Ana Maria',
+      lastName: 'Souza',
+      socialName: 'Aninha',
+      phone: '(11) 99999-0000',
+      gender: 2,
+      birthday: '2000-05-10',
+      state: 'SP',
+      city: 'São Paulo',
+      lgpd: true,
+    });
+
+    /** Volta do Google sem conta: devolve o cookie do cadastro pendente. */
+    async function semConta(email = `nova-${Date.now()}@gmail.com`) {
+      const perfil = perfilDe(email);
+      const res = await voltarDoGoogle(perfil, await irAoGoogle()).expect(302);
+      const cookie = [res.headers['set-cookie']]
+        .flat()
+        .find((c: string) => c.startsWith('google_cadastro='));
+      return { perfil, res, cookie: cookie?.split(';')[0] };
+    }
+
+    it('sem conta: vai ao 2º passo e NÃO grava nada em users', async () => {
+      const { perfil, res, cookie } = await semConta();
+      expect(res.headers.location).toBe(`${FRONT}/cadastro/google`);
+      expect(cookie).toBeDefined();
+      expect(
+        await userRepository.findOneBy({ email: perfil.email }),
+      ).toBeNull();
+    });
+
+    it('GET cadastro devolve email e nome do Google', async () => {
+      const { perfil, cookie } = await semConta();
+      const res = await request(app.getHttpServer())
+        .get('/user/auth/google/cadastro')
+        .set('Cookie', cookie)
+        .expect(200);
+      expect(res.body).toEqual({
+        email: perfil.email,
+        firstName: 'Ana',
+        lastName: 'Silva',
+      });
+    });
+
+    it('2º passo: cria a conta confirmada, sem senha, vinculada, e sai logada', async () => {
+      const { perfil, cookie } = await semConta();
+
+      const res = await request(app.getHttpServer())
+        .post('/user/auth/google/cadastro')
+        .set('Cookie', cookie)
+        .send({ ...segundoPasso(), email: 'outro@x.com' })
+        .expect(201);
+
+      expect(res.body.access_token).toBeDefined();
+      expect(res.body.voltar).toBe('/convite-colaborador?token=abc');
+      const cookies = [res.headers['set-cookie']].flat();
+      expect(cookies.some((c) => c.startsWith('refresh_token='))).toBe(true);
+      expect(cookies.some((c) => /^google_cadastro=;/.test(c))).toBe(true);
+
+      // ⚠️ o email é o do Google — o do body é ignorado
+      expect(
+        await userRepository.findOneBy({ email: 'outro@x.com' }),
+      ).toBeNull();
+      const conta = await userRepository.findOneBy({ email: perfil.email });
+      expect(conta).toMatchObject({
+        googleId: perfil.googleId,
+        emailConfirmSended: null,
+        firstName: 'Ana Maria',
+        socialName: 'Aninha',
+        useSocialName: true,
+        lgpd: true,
+      });
+      const [{ password }] = await dataSource.query(
+        'SELECT password FROM users WHERE id = ?',
+        [conta.id],
+      );
+      expect(password).toBeNull();
+
+      // Da próxima vez, é login
+      const login = await voltarDoGoogle(perfil, await irAoGoogle()).expect(
+        302,
+      );
+      expect(login.headers.location).toMatch(`${FRONT}/auth/google?`);
+    });
+
+    it('sem o cookie: 401', async () => {
+      await request(app.getHttpServer())
+        .post('/user/auth/google/cadastro')
+        .send(segundoPasso())
+        .expect(401);
+    });
+
+    it('um access token de login no lugar do cookie: 401', async () => {
+      const usuario = await contaComSenha();
+      const login = await voltarDoGoogle(
+        perfilDe(usuario.email),
+        await irAoGoogle(),
+      ).expect(302);
+      const refresh = [login.headers['set-cookie']]
+        .flat()
+        .find((c: string) => c.startsWith('refresh_token='));
+      const { body } = await request(app.getHttpServer())
+        .post('/user/refresh')
+        .set('Cookie', refresh.split(';')[0]);
+
+      await request(app.getHttpServer())
+        .get('/user/auth/google/cadastro')
+        .set('Cookie', `google_cadastro=${body.access_token}`)
+        .expect(401);
+    });
+
+    it('token com perfil mas sem o typ de cadastro: 401', async () => {
+      const forjado = await jwtService.signAsync({
+        perfil: perfilDe(`forjado-${Date.now()}@gmail.com`),
+        voltar: '/',
+      });
+      await request(app.getHttpServer())
+        .post('/user/auth/google/cadastro')
+        .set('Cookie', `google_cadastro=${forjado}`)
+        .send(segundoPasso())
+        .expect(401);
+    });
+
+    it('o token de cadastro não vale como login', async () => {
+      const { cookie } = await semConta();
+      await request(app.getHttpServer())
+        .get('/user/me')
+        .set('Authorization', `Bearer ${cookie.split('=')[1]}`)
+        .expect(401);
+    });
+
+    it.each([
+      ['sem aceite da LGPD', { lgpd: false }],
+      ['menor de 14 anos', { birthday: new Date().toISOString() }],
+      ['sem telefone', { phone: '' }],
+    ])('%s: recusa', async (_, campo) => {
+      const { perfil, cookie } = await semConta();
+      await request(app.getHttpServer())
+        .post('/user/auth/google/cadastro')
+        .set('Cookie', cookie)
+        .send({ ...segundoPasso(), ...campo })
+        .expect(400);
+      expect(
+        await userRepository.findOneBy({ email: perfil.email }),
+      ).toBeNull();
+    });
+
+    it('o email ganhou conta no meio do caminho: 409', async () => {
+      const dto = CreateUserDtoInputFaker();
+      const { cookie } = await semConta(dto.email);
+      await userService.create(dto);
+
+      await request(app.getHttpServer())
+        .post('/user/auth/google/cadastro')
+        .set('Cookie', cookie)
+        .send(segundoPasso())
+        .expect(409);
+    });
   });
 
   it('conta removida: recusa', async () => {
