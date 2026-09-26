@@ -74,12 +74,18 @@ export class UserService extends BaseService<User> {
    * @param opcoes.manager ⚠️ cria DENTRO da transação de quem chama — o
    *   cadastro pelo convite (card 05 de `convite-de-colaborador`) cria a conta
    *   e o vínculo com o cursinho juntos: se o vínculo falha, a conta não fica.
-   * @param opcoes.emailConfirmado ⚠️ só o convite: o clique no link mandado
-   *   àquele email já prova que ele é da pessoa.
+   * @param opcoes.emailConfirmado ⚠️ só o convite e o Google: o clique no
+   *   link mandado àquele email, ou o Google, já provam que ele é da pessoa.
+   * @param opcoes.googleId conta criada pelo Google (card 02 de
+   *   `login-com-google`) — nasce vinculada e sem senha.
    */
   async createUser(
     userDto: CreateUserDtoInput,
-    opcoes: { manager?: EntityManager; emailConfirmado?: boolean } = {},
+    opcoes: {
+      manager?: EntityManager;
+      emailConfirmado?: boolean;
+      googleId?: string;
+    } = {},
   ) {
     try {
       // Validação de senha
@@ -117,6 +123,7 @@ export class UserService extends BaseService<User> {
       if (userDto.socialName) newUser.useSocialName = true;
       // `null` = confirmado; o default da coluna (agora) é "aguardando".
       if (opcoes.emailConfirmado) newUser.emailConfirmSended = null;
+      if (opcoes.googleId) newUser.googleId = opcoes.googleId;
 
       const user = opcoes.manager
         ? await opcoes.manager
@@ -163,6 +170,16 @@ export class UserService extends BaseService<User> {
     });
     if (!userFullInfo || userFullInfo.deletedAt != null) {
       throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
+    /*
+      ⚠️ Conta criada pelo Google não tem senha — sem esta checagem o
+      `bcrypt.compare` recebe `null` e lança.
+    */
+    if (!userFullInfo.password) {
+      throw new HttpException(
+        'Esta conta entra pelo Google — use o botão "Entrar com Google" ou redefina a senha.',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
     if (!(await bcrypt.compare(loginInput.password, userFullInfo?.password))) {
       throw new HttpException('password invalid', HttpStatus.CONFLICT);

@@ -24,9 +24,12 @@ import { EmailExistValidator } from './validator/email-exist.validator';
 import { EmailUniqueValidator } from './validator/email-unique.validator';
 import { UserExistValidator } from './validator/user-exist.validator';
 import { ResumoDoUsuarioService } from './resumo/resumo-do-usuario.service';
+import { GoogleAuthController } from './google/google-auth.controller';
+import { GoogleAuthService } from './google/google-auth.service';
+import { GoogleStrategy } from './google/google.strategy';
 
 @Module({
-  controllers: [UserController],
+  controllers: [UserController, GoogleAuthController],
   imports: [AuditLogModule, EnvModule, HttpModule],
   providers: [
     UserService,
@@ -46,12 +49,19 @@ import { ResumoDoUsuarioService } from './resumo/resumo-do-usuario.service';
     StudentCourseRepository,
     DiscordWebhook,
     ProfileDetectorService,
+    GoogleAuthService,
+    GoogleStrategy,
     {
       provide: STUDENT_COURSE_REPO_TOKEN,
       useExisting: StudentCourseRepository,
     },
     { provide: COLLABORATOR_REPO_TOKEN, useExisting: CollaboratorRepository },
   ],
-  exports: [UserService, UserRepository, RefreshTokenService],
+  exports: [
+    UserService,
+    UserRepository,
+    RefreshTokenService,
+    GoogleAuthService,
+  ],
 })
 export class UserModule {}

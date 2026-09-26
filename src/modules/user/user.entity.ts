@@ -18,9 +18,10 @@ export class User extends BaseEntity {
   @Column({ unique: true })
   public email: string;
 
-  @Column()
+  /** `null` em conta criada pelo Google — ganha senha pela redefinição. */
+  @Column({ nullable: true })
   @Exclude()
-  public password: string;
+  public password: string | null;
 
   @Column()
   public firstName: string;
@@ -101,4 +102,9 @@ export class User extends BaseEntity {
 
   @Column({ nullable: true })
   public lastAccess: Date;
+
+  /** O `sub` da conta Google vinculada (card 01 de `login-com-google`). */
+  @Exclude()
+  @Column({ nullable: true, unique: true, name: 'google_id' })
+  public googleId: string | null;
 }

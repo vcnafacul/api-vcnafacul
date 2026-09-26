@@ -90,6 +90,15 @@ export const envSchema = z.object({
     .string()
     .default('AIzaSyCK0EJwZiLpGw46t2sC811b63L8pVvT3A'),
 
+  // Login com Google (OAuth). Sem as credenciais a api sobe, mas o botão do
+  // Google leva a um erro do próprio Google.
+  GOOGLE_CLIENT_ID: z.string().default('dev-disabled'),
+  GOOGLE_CLIENT_SECRET: z.string().default('dev-disabled'),
+  GOOGLE_CALLBACK_URL: z
+    .string()
+    .url()
+    .default('http://localhost:3333/user/auth/google/callback'),
+
   // Essay AI
   ESSAY_AI_ENABLED: z
     .enum(['true', 'false'])
