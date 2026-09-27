@@ -11,6 +11,10 @@ import { UserService } from '../user/user.service';
 import { CreateGeoDTOInput } from './dto/create-geo.dto.input';
 import { GeoStatusChangeDTOInput } from './dto/geo-status.dto.input';
 import { ListGeoDTOInput } from './dto/list-geo.dto.input';
+import {
+  PublicGeoDtoOutput,
+  paraGeoPublico,
+} from './dto/public-geo.dto.output';
 import { ReportMapHome } from './dto/report-map-home';
 import { SearchGeoDtoOutput } from './dto/search-geo.dto.output';
 import { UpdateGeoDTOInput } from './dto/update-geo.dto.input';
@@ -20,6 +24,11 @@ import { Geolocation } from './geo.entity';
 import { GeoRepository } from './geo.repository';
 import { LogGeo } from './log-geo/log-geo.entity';
 import { LogGeoRepository } from './log-geo/log-geo.repository';
+
+/** 5 min: é o endpoint mais chamado da home; aprovar/editar invalida antes. */
+export const TTL_GEO_PUBLICO = 5 * 60 * 1000;
+const CHAVE_GEO_PUBLICO = (type?: TypeGeo) =>
+  `geo:public:${type === undefined ? 'todos' : type}`;
 
 @Injectable()
 export class GeoService extends BaseService<Geolocation> {
@@ -76,6 +85,26 @@ export class GeoService extends BaseService<Geolocation> {
     return data;
   }
 
+  /** Aprovados, só com campos públicos (`GET /geo/public`). */
+  async findPublic(type?: TypeGeo): Promise<PublicGeoDtoOutput[]> {
+    return this.cache.wrap(
+      CHAVE_GEO_PUBLICO(type),
+      async () =>
+        (await this.geoRepository.aprovadosPublicos(type)).map(paraGeoPublico),
+      TTL_GEO_PUBLICO,
+    );
+  }
+
+  /** Aprovar e editar mudam o que o público vê: a lista sai do cache. */
+  private async invalidarPublico(): Promise<void> {
+    const tipos = Object.values(TypeGeo).filter(
+      (v): v is TypeGeo => typeof v === 'number',
+    );
+    await Promise.all(
+      [undefined, ...tipos].map((t) => this.cache.del(CHAVE_GEO_PUBLICO(t))),
+    );
+  }
+
   async findOneById(id: string): Promise<Geolocation> {
     const geo = await this.geoRepository.findOneBy({ id: id });
 
@@ -103,6 +132,7 @@ export class GeoService extends BaseService<Geolocation> {
     }
 
     await this.geoRepository.update(oldGeo);
+    await this.invalidarPublico();
 
     const logGeo = new LogGeo();
     logGeo.geoId = oldGeo.id;
@@ -120,6 +150,7 @@ export class GeoService extends BaseService<Geolocation> {
     const oldStatus = geo.status;
     geo.status = geoStatus.status;
     await this.geoRepository.update(geo);
+    await this.invalidarPublico();
 
     const changes = `Status: ${statusLabels[oldStatus]} -> ${
       statusLabels[geoStatus.status]

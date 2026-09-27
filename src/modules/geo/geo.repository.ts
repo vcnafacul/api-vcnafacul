@@ -5,6 +5,8 @@ import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output'
 import { Brackets, EntityManager } from 'typeorm';
 import { BaseRepository } from '../../shared/modules/base/base.repository';
 import { Status } from '../simulado/enum/status.enum';
+import { CAMPOS_PUBLICOS_GEO } from './dto/public-geo.dto.output';
+import { TypeGeo } from './enum/typeGeo';
 import { Geolocation } from './geo.entity';
 
 @Injectable()
@@ -82,8 +84,14 @@ export class GeoRepository extends BaseRepository<Geolocation> {
     return await this.repository.findOneBy(where);
   }
 
-  async update(geo: Geolocation) {
-    this.repository.save(geo);
+  /**
+   * ⚠️ **Com `await`.** Sem ele, a gravação ficava solta: o `updateGeo` e o
+   * `validateGeolocation` voltavam antes de o banco gravar, um erro virava
+   * rejeição não tratada, e a invalidação do cache do `/geo/public` corria
+   * ANTES da gravação — a leitura seguinte recolocava o dado antigo no cache.
+   */
+  async update(geo: Geolocation): Promise<void> {
+    await this.repository.save(geo);
   }
 
   async EntityByTypeAndStatus(type: number, status: Status) {
@@ -122,5 +130,20 @@ export class GeoRepository extends BaseRepository<Geolocation> {
       })
       .limit(10)
       .getMany();
+  }
+
+  /**
+   * Aprovados, só com as colunas públicas (sem `logs`, sem `user*`). É a
+   * fonte do `GET /geo/public` — o mapa da home e a busca.
+   */
+  async aprovadosPublicos(type?: TypeGeo): Promise<Geolocation[]> {
+    const qb = this.repository
+      .createQueryBuilder('geo')
+      .select(CAMPOS_PUBLICOS_GEO.map((c) => `geo.${c}`))
+      .where('geo.status = :status', { status: Status.Approved })
+      .andWhere('geo.deletedAt IS NULL')
+      .orderBy('geo.name', 'ASC');
+    if (type !== undefined) qb.andWhere('geo.type = :type', { type });
+    return qb.getMany();
   }
 }

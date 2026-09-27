@@ -22,6 +22,8 @@ import { CreateGeoDTOInput } from './dto/create-geo.dto.input';
 import { GeoStatusChangeDTOInput } from './dto/geo-status.dto.input';
 import { ListGeoDTOInput } from './dto/list-geo.dto.input';
 import { ReportMapHome } from './dto/report-map-home';
+import { ListPublicGeoDtoInput } from './dto/list-public-geo.dto.input';
+import { PublicGeoDtoOutput } from './dto/public-geo.dto.output';
 import { SearchGeoDtoInput } from './dto/search-geo.input';
 import { UpdateGeoDTOInput } from './dto/update-geo.dto.input';
 import { Geolocation } from './geo.entity';
@@ -35,6 +37,18 @@ export class GeoController {
   @Post()
   async createGeo(@Body() createGeoDTO: CreateGeoDTOInput) {
     return await this.geoService.create(createGeoDTO);
+  }
+
+  /**
+   * Cursinhos e universidades **aprovados**, só com os campos públicos (mapa da
+   * home e busca). Sem auth e sem paginação: são poucas dezenas.
+   */
+  @Get('public')
+  @ApiResponse({ status: 200, type: [PublicGeoDtoOutput] })
+  async findPublic(
+    @Query() { type }: ListPublicGeoDtoInput,
+  ): Promise<PublicGeoDtoOutput[]> {
+    return this.geoService.findPublic(type);
   }
 
   @Get()
