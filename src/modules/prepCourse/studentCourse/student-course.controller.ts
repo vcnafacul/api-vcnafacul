@@ -315,7 +315,16 @@ export class StudentCourseController {
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
-  async updateClass(@Body() dto: UpdateClassDTOInput): Promise<void> {
+  async updateClass(
+    @Body() dto: UpdateClassDTOInput,
+    @Req() req: Request,
+  ): Promise<void> {
+    // ⚠️ A turma também: sem ela, o cursinho move o próprio aluno para uma
+    // turma de outro.
+    await this.service.garantirDoCursinho((req.user as User).id, {
+      estudanteId: dto.studentId,
+      turmaId: dto.classId,
+    });
     await this.service.updateClass(dto.studentId, dto.classId);
   }
 
@@ -401,7 +410,11 @@ export class StudentCourseController {
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
   async cancelEnrolled(
     @Body() { studentId, reason }: { studentId: string; reason: string },
+    @Req() req: Request,
   ): Promise<void> {
+    await this.service.garantirDoCursinho((req.user as User).id, {
+      estudanteId: studentId,
+    });
     return await this.service.cancelEnrolled(studentId, reason);
   }
 
@@ -409,7 +422,13 @@ export class StudentCourseController {
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
-  async activeEnrolled(@Body() { studentId }: { studentId: string }) {
+  async activeEnrolled(
+    @Body() { studentId }: { studentId: string },
+    @Req() req: Request,
+  ) {
+    await this.service.garantirDoCursinho((req.user as User).id, {
+      estudanteId: studentId,
+    });
     return await this.service.activeEnrolled(studentId);
   }
 
@@ -422,6 +441,9 @@ export class StudentCourseController {
     @UploadedFile() file: Express.Multer.File,
     @Req() req: Request,
   ) {
+    await this.service.garantirDoCursinho((req.user as User).id, {
+      estudanteId: req.body.studentId,
+    });
     return await this.service.updateProfilePhotoByStudent(
       file,
       req.body.studentId,
