@@ -281,18 +281,43 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     return fileKey;
   }
 
+  /**
+   * A inscrição `studentId` **do usuário logado**, ou 404.
+   *
+   * ⚠️ **O dono é filtro da busca, não uma checagem depois dela.** As rotas da
+   * declaração de interesse tiram o `studentId` do corpo da requisição, e só
+   * exigiam login: qualquer usuário logado com o id de uma inscrição convocada
+   * subia a foto dela, respondia a pesquisa e **confirmava a declaração no
+   * lugar dela**. Com `userId` no `where`, inscrição alheia simplesmente não é
+   * encontrada — não existe checagem separada que alguém esqueça de escrever.
+   *
+   * ⚠️ **404, e não 403:** "não é sua" e "não existe" recebem a mesma resposta,
+   * para não confirmar a existência da inscrição de outra pessoa.
+   */
+  private async inscricaoDoUsuario(
+    studentId: string,
+    usuarioId: string,
+  ): Promise<StudentCourse> {
+    const student = await this.repository.findOneBy({
+      id: studentId,
+      userId: usuarioId,
+    });
+    if (!student) {
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+    }
+    return student;
+  }
+
   async declaredInterest(
     files: Array<Express.Multer.File>,
     photo: Express.Multer.File,
     areaInterest: string[],
     selectedCourses: string[],
     studentId: string,
+    usuarioId: string,
     declarationContext?: { userAgent?: string; ip?: string },
   ) {
-    const student = await this.repository.findOneBy({ id: studentId });
-    if (!student) {
-      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
-    }
+    const student = await this.inscricaoDoUsuario(studentId, usuarioId);
     if (student.applicationStatus === StatusApplication.DeclaredInterest) {
       throw new HttpException(
         'Você já declarou interesse neste Processo Seletivo',
@@ -727,11 +752,12 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     };
   }
 
-  async submitDocuments(files: Array<Express.Multer.File>, studentId: string) {
-    const student = await this.repository.findOneBy({ id: studentId });
-    if (!student) {
-      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
-    }
+  async submitDocuments(
+    files: Array<Express.Multer.File>,
+    studentId: string,
+    usuarioId: string,
+  ) {
+    const student = await this.inscricaoDoUsuario(studentId, usuarioId);
     if (student.applicationStatus !== StatusApplication.CalledForEnrollment) {
       throw new HttpException(
         'Apenas estudantes convocados podem enviar documentos',
@@ -781,11 +807,12 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     await this.logStudentRepository.create(log);
   }
 
-  async submitPhoto(photo: Express.Multer.File, studentId: string) {
-    const student = await this.repository.findOneBy({ id: studentId });
-    if (!student) {
-      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
-    }
+  async submitPhoto(
+    photo: Express.Multer.File,
+    studentId: string,
+    usuarioId: string,
+  ) {
+    const student = await this.inscricaoDoUsuario(studentId, usuarioId);
     if (student.applicationStatus !== StatusApplication.CalledForEnrollment) {
       throw new HttpException(
         'Apenas estudantes convocados podem enviar foto',
@@ -824,11 +851,9 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     areaInterest: string[],
     selectedCourses: string[],
     studentId: string,
+    usuarioId: string,
   ) {
-    const student = await this.repository.findOneBy({ id: studentId });
-    if (!student) {
-      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
-    }
+    const student = await this.inscricaoDoUsuario(studentId, usuarioId);
     if (student.applicationStatus !== StatusApplication.CalledForEnrollment) {
       throw new HttpException(
         'Apenas estudantes convocados podem responder pesquisa',
@@ -862,9 +887,10 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
   async confirmDeclaration(
     studentId: string,
+    usuarioId: string,
     declarationContext?: { userAgent?: string; ip?: string },
   ) {
-    const student = await this.repository.findOneBy({ id: studentId });
+    const student = await this.inscricaoDoUsuario(studentId, usuarioId);
     if (!student) {
       throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
     }

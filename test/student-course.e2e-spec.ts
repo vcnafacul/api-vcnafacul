@@ -2528,6 +2528,104 @@ describe('StudentCourse (e2e)', () => {
       });
   }, 30000);
 
+  describe('⚠️ declaração de interesse: só o DONO da inscrição', () => {
+    /*
+      As cinco rotas tiram o `studentId` do corpo e exigiam só login: qualquer
+      usuário logado com o id de uma inscrição convocada agia por ela —
+      inclusive confirmando a declaração no lugar dela. B quer agir na
+      inscrição de A: 404 (não 403, para não confirmar que ela existe) e nada
+      muda no registro de A.
+    */
+    async function doisConvocados() {
+      const { representative } = await createPartnerPrepCourse();
+      const inscricao = await inscriptionCourseService.create(
+        CreateInscriptionCourseDTOInputFaker(),
+        representative.id,
+      );
+      const a = await createCalledStudent(inscricao.id);
+      const b = await createCalledStudent(inscricao.id);
+      return { a, tokenDeB: b.token };
+    }
+
+    async function semMudanca(studentId: string) {
+      const depois = await studentCourseService.findOneBy({ id: studentId });
+      expect(depois.applicationStatus).toBe(
+        StatusApplication.CalledForEnrollment,
+      );
+      expect(depois.photoDone).toBe(false);
+      expect(depois.surveyDone).toBe(false);
+      expect(depois.documentsDone).toBe(false);
+    }
+
+    it('foto', async () => {
+      const { a, tokenDeB } = await doisConvocados();
+      await request(app.getHttpServer())
+        .patch('/student-course/declaration-photo')
+        .set({ Authorization: `Bearer ${tokenDeB}` })
+        .field('studentId', a.student.id)
+        .attach('photo', Buffer.from('imagem fake'), 'photo.jpg')
+        .expect(404);
+      await semMudanca(a.student.id);
+    }, 30000);
+
+    it('pesquisa', async () => {
+      const { a, tokenDeB } = await doisConvocados();
+      await request(app.getHttpServer())
+        .patch('/student-course/declaration-survey')
+        .set({ Authorization: `Bearer ${tokenDeB}` })
+        .send({
+          studentId: a.student.id,
+          areaInterest: ['Exatas'],
+          selectedCourses: ['Engenharia'],
+        })
+        .expect(404);
+      await semMudanca(a.student.id);
+    }, 30000);
+
+    it('documentos', async () => {
+      const { a, tokenDeB } = await doisConvocados();
+      await request(app.getHttpServer())
+        .patch('/student-course/declaration-documents')
+        .set({ Authorization: `Bearer ${tokenDeB}` })
+        .field('studentId', a.student.id)
+        .attach('files', Buffer.from('pdf fake'), 'doc.pdf')
+        .expect(404);
+      await semMudanca(a.student.id);
+    }, 30000);
+
+    it('⚠️ confirmar a declaração — o pior caso: muda o status de outra pessoa', async () => {
+      const { a, tokenDeB } = await doisConvocados();
+      // As etapas de A prontas: sem a correção, a confirmação passaria.
+      a.student.photoDone = true;
+      a.student.surveyDone = true;
+      await studentCourseRepository.update(a.student);
+
+      await request(app.getHttpServer())
+        .patch('/student-course/declaration-confirm')
+        .set({ Authorization: `Bearer ${tokenDeB}` })
+        .send({ studentId: a.student.id })
+        .expect(404);
+
+      const depois = await studentCourseService.findOneBy({ id: a.student.id });
+      expect(depois.applicationStatus).toBe(
+        StatusApplication.CalledForEnrollment,
+      );
+    }, 30000);
+
+    it('declaração numa chamada só (fluxo antigo)', async () => {
+      const { a, tokenDeB } = await doisConvocados();
+      await request(app.getHttpServer())
+        .patch('/student-course/declared-interest')
+        .set({ Authorization: `Bearer ${tokenDeB}` })
+        .field('studentId', a.student.id)
+        .field('areaInterest', 'Exatas')
+        .field('selectedCourses', 'Engenharia')
+        .attach('photo', Buffer.from('imagem fake'), 'photo.jpg')
+        .expect(404);
+      await semMudanca(a.student.id);
+    }, 30000);
+  });
+
   it('declaração por etapa - confirmDeclaration completa', async () => {
     const { representative } = await createPartnerPrepCourse();
 
