@@ -5,6 +5,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { createHash, randomUUID } from 'crypto';
 import { AppModule } from 'src/app.module';
+import { AuditLog } from 'src/modules/audit-log/audit-log.entity';
 import { PushCleanupTask } from 'src/modules/push/push-cleanup.task';
 import { PushDevice } from 'src/modules/push/push-device.entity';
 import { PushDeviceRepository } from 'src/modules/push/push-device.repository';
@@ -541,6 +542,235 @@ describe('PushService (e2e)', () => {
       await app.get(PushCleanupTask).limpar(agora);
 
       expect(await buscar(parado)).not.toBeNull();
+    });
+  });
+
+  describe('tela admin (BE-06)', () => {
+    const http = () => request(app.getHttpServer());
+    const bearer = async (userId: string) =>
+      `Bearer ${await jwtService.signAsync({ user: { id: userId } }, { expiresIn: '1h' })}`;
+
+    let admin: string; // Authorization de quem TEM enviarNotificacao
+    let adminId: string;
+    let semPermissao: string;
+
+    beforeAll(async () => {
+      const [roleAdmin, roleComum] = await Promise.all([
+        roleService.create({
+          name: `Push admin ${randomUUID()}`,
+          base: false,
+          enviarNotificacao: true,
+        } as CreateRoleDtoInput),
+        novaRole(),
+      ]);
+      const [a, b] = await Promise.all([novoUsuario(), novoUsuario()]);
+      a.role = roleAdmin;
+      b.role = roleComum;
+      await Promise.all([userRepository.update(a), userRepository.update(b)]);
+      adminId = a.id;
+      admin = await bearer(a.id);
+      semPermissao = await bearer(b.id);
+    });
+
+    const corpo = (audience: object, extra: object = {}) => ({
+      title: 'Aviso',
+      body: 'Corpo do aviso',
+      url: '/simulados',
+      audience,
+      ...extra,
+    });
+
+    /** O envio roda em segundo plano: espera o detalhe sair de `sending`. */
+    const esperarTerminar = async (id: string) => {
+      for (let i = 0; i < 50; i++) {
+        const { body } = await http()
+          .get(`/push/notifications/${id}`)
+          .set('Authorization', admin)
+          .expect(200);
+        if (body.status !== 'sending') return body;
+        await new Promise((r) => setTimeout(r, 50));
+      }
+      throw new Error('envio não terminou');
+    };
+
+    it('sem JWT → 401; sem a permissão → 403 (nas 4 rotas)', async () => {
+      const rotas = [
+        () =>
+          http()
+            .post('/push/audience/preview')
+            .send({ audience: { type: 'all' } }),
+        () =>
+          http()
+            .post('/push/send')
+            .send(corpo({ type: 'all' })),
+        () => http().get('/push/notifications'),
+        () => http().get(`/push/notifications/${randomUUID()}`),
+      ];
+      for (const rota of rotas) {
+        await rota().expect(401);
+        await rota().set('Authorization', semPermissao).expect(403);
+      }
+    });
+
+    it('⚠️ preview devolve os mesmos números que o envio efetivo', async () => {
+      const role = await novaRole();
+      const [x, y] = await Promise.all([novoUsuario(), novoUsuario()]);
+      x.role = role;
+      y.role = role;
+      await Promise.all([userRepository.update(x), userRepository.update(y)]);
+      await Promise.all([
+        novoAparelho(x.id),
+        novoAparelho(x.id),
+        novoAparelho(y.id),
+      ]);
+      const audience = { type: 'roles', roleIds: [role.id] };
+
+      const preview = await http()
+        .post('/push/audience/preview')
+        .set('Authorization', admin)
+        .send({ audience })
+        .expect(200);
+      const envio = await http()
+        .post('/push/send')
+        .set('Authorization', admin)
+        .send(corpo(audience))
+        .expect(202);
+
+      expect(preview.body).toEqual({ targetUsers: 2, targetDevices: 3 });
+      expect(envio.body).toMatchObject({
+        targetUsers: 2,
+        targetDevices: 3,
+        status: 'sending',
+      });
+    });
+
+    it('envio → 202, termina em done com contadores, e entra no audit-log', async () => {
+      const email = `push-${randomUUID()}@teste.com`;
+      const u = await novoUsuario(email);
+      const vivo = await novoAparelho(u.id);
+      const morto = await novoAparelho(u.id);
+      respostaDoFcm.set(
+        morto.token,
+        'messaging/registration-token-not-registered',
+      );
+
+      const { body } = await http()
+        .post('/push/send')
+        .set('Authorization', admin)
+        .send(corpo({ type: 'emails', emails: [email] }))
+        .expect(202);
+      const final = await esperarTerminar(body.id);
+
+      expect(final).toMatchObject({
+        status: 'done',
+        targetDevices: 2,
+        successCount: 1,
+        failureCount: 1,
+        audience: { type: 'emails', emails: [email] },
+        sentBy: { id: adminId },
+      });
+      expect(final.finishedAt).not.toBeNull();
+      expect(await tokensDe({ type: 'users', userIds: [u.id] })).toEqual([
+        vivo.token,
+      ]);
+
+      const auditoria = await dataSource
+        .getRepository(AuditLog)
+        .findOneBy({ entityId: body.id });
+      expect(auditoria).toMatchObject({
+        entityType: 'push_notification',
+        updatedBy: adminId,
+      });
+    });
+
+    it('⚠️ público sem aparelho → 422 e NADA vai para o histórico', async () => {
+      const antes = await dataSource.getRepository(PushNotification).count();
+
+      const r = await http()
+        .post('/push/send')
+        .set('Authorization', admin)
+        .send(corpo({ type: 'emails', emails: ['ninguem@teste.com'] }))
+        .expect(422);
+
+      expect(r.body.message).toMatch(/Ninguém nesse público/);
+      expect(await dataSource.getRepository(PushNotification).count()).toBe(
+        antes,
+      );
+      expect(sendEachForMulticast).not.toHaveBeenCalled();
+    });
+
+    it('validação → 400: público fora do MVP, lista vazia, título longo, link externo', async () => {
+      const casos = [
+        corpo({ type: 'users', userIds: [adminId] }),
+        corpo({ type: 'roles', roleIds: [] }),
+        corpo({ type: 'roles' }),
+        corpo({ type: 'emails', emails: [] }),
+        corpo({ type: 'all' }, { title: 'x'.repeat(101) }),
+        corpo({ type: 'all' }, { body: '' }),
+      ];
+      for (const c of casos) {
+        await http()
+          .post('/push/send')
+          .set('Authorization', admin)
+          .send(c)
+          .expect(400);
+      }
+      const u = await novoUsuario();
+      await novoAparelho(u.id);
+      await http()
+        .post('/push/send')
+        .set('Authorization', admin)
+        .send(corpo({ type: 'all' }, { url: 'https://golpe.example' }))
+        .expect(400);
+    });
+
+    it('público "all" guardado sem campos que não são dele', async () => {
+      const u = await novoUsuario();
+      await novoAparelho(u.id);
+      const { body } = await http()
+        .post('/push/send')
+        .set('Authorization', admin)
+        .send(corpo({ type: 'all', roleIds: [randomUUID()] }))
+        .expect(202);
+      const final = await esperarTerminar(body.id);
+      expect(final.audience).toEqual({ type: 'all' });
+    });
+
+    it('histórico paginado, do mais novo ao mais antigo, com autor sem dados pessoais', async () => {
+      const repo = dataSource.getRepository(PushNotification);
+      await repo.clear();
+      const base = Date.now();
+      for (let i = 0; i < 3; i++) {
+        await repo.save(
+          Object.assign(new PushNotification(), {
+            title: `Envio ${i}`,
+            body: 'b',
+            audience: { type: 'all' },
+            sentById: adminId,
+            createdAt: new Date(base - (3 - i) * 60_000),
+          }),
+        );
+      }
+
+      const { body } = await http()
+        .get('/push/notifications?page=1&limit=2')
+        .set('Authorization', admin)
+        .expect(200);
+
+      expect(body).toMatchObject({ page: 1, limit: 2, totalItems: 3 });
+      expect(body.data.map((e) => e.title)).toEqual(['Envio 2', 'Envio 1']);
+      expect(Object.keys(body.data[0].sentBy).sort()).toEqual(['id', 'name']);
+    });
+
+    it('detalhe: id inexistente → 404; id inválido → 400', async () => {
+      await http()
+        .get(`/push/notifications/${randomUUID()}`)
+        .set('Authorization', admin)
+        .expect(404);
+      await http()
+        .get('/push/notifications/nao-e-uuid')
+        .set('Authorization', admin)
+        .expect(400);
     });
   });
 });

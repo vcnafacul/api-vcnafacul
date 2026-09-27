@@ -45,6 +45,7 @@ import { EssayModule } from './modules/essay/essay.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { FirebaseModule } from './shared/modules/firebase/firebase.module';
+import { PushAdminModule } from './modules/push/admin/push-admin.module';
 import { PushModule } from './modules/push/push.module';
 
 /**
@@ -124,6 +125,7 @@ const throttlerProvider: Provider = isTestEnv
     DashboardModule,
     FirebaseModule,
     PushModule,
+    PushAdminModule,
     ChatModule,
   ],
   controllers: [AppController],

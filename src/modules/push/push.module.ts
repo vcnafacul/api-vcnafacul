@@ -23,6 +23,6 @@ import { PushService } from './push.service';
     PushNotificationRepository,
     PushCleanupTask,
   ],
-  exports: [PushService, PushDeviceRepository],
+  exports: [PushService, PushDeviceRepository, PushNotificationRepository],
 })
 export class PushModule {}
