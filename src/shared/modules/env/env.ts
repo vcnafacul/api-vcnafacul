@@ -112,6 +112,14 @@ export const envSchema = z.object({
   // Firebase (chat de suporte)
   FIREBASE_PROJECT_ID: z.string().default(''),
   FIREBASE_SERVICE_ACCOUNT_BASE64: z.string().default(''),
+
+  // Push (série pwa-push). Desligado por padrão; o link do clique é validado
+  // contra o FRONT_URL.
+  PUSH_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+  PUSH_DEFAULT_ICON_URL: z.string().default(''),
 });
 
 export type Env = z.infer<typeof envSchema>;

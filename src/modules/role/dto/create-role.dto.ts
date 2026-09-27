@@ -112,4 +112,8 @@ export class CreateRoleDtoInput {
   @IsBoolean()
   @IsOptional()
   excluirQuestao?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  enviarNotificacao?: boolean;
 }

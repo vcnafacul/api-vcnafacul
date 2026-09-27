@@ -200,6 +200,17 @@ export const PERMISSION_HIERARCHY: PermissionGroup[] = [
     ],
   },
   {
+    key: 'comunicacao',
+    label: 'Comunicação',
+    permissions: [
+      {
+        key: Permissions.enviarNotificacao,
+        label: 'Enviar notificações push',
+        type: PermissionType.project,
+      },
+    ],
+  },
+  {
     key: 'redacoes',
     label: 'Redações',
     permissions: [
