@@ -158,6 +158,7 @@ export class StudentCourseController {
       areaInterest,
       selectedCourses,
       req.body.studentId,
+      (req.user as User).id,
       declarationContext,
     );
   }
@@ -465,7 +466,11 @@ export class StudentCourseController {
     @UploadedFiles() files: Express.Multer.File[],
     @Req() req: Request,
   ) {
-    await this.service.submitDocuments(files || [], req.body.studentId);
+    await this.service.submitDocuments(
+      files || [],
+      req.body.studentId,
+      (req.user as User).id,
+    );
   }
 
   @Patch('declaration-photo')
@@ -480,7 +485,11 @@ export class StudentCourseController {
     @UploadedFile() photo: Express.Multer.File,
     @Req() req: Request,
   ) {
-    await this.service.submitPhoto(photo, req.body.studentId);
+    await this.service.submitPhoto(
+      photo,
+      req.body.studentId,
+      (req.user as User).id,
+    );
   }
 
   @Patch('declaration-survey')
@@ -490,11 +499,12 @@ export class StudentCourseController {
   })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  async submitSurvey(@Body() dto: SubmitSurveyDtoInput) {
+  async submitSurvey(@Body() dto: SubmitSurveyDtoInput, @Req() req: Request) {
     await this.service.submitSurvey(
       dto.areaInterest,
       dto.selectedCourses,
       dto.studentId,
+      (req.user as User).id,
     );
   }
 
@@ -515,7 +525,11 @@ export class StudentCourseController {
         (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ??
         req.socket?.remoteAddress,
     };
-    await this.service.confirmDeclaration(dto.studentId, declarationContext);
+    await this.service.confirmDeclaration(
+      dto.studentId,
+      (req.user as User).id,
+      declarationContext,
+    );
   }
 
   @Get(':id/details')
