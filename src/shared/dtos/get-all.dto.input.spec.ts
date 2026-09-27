@@ -1,5 +1,5 @@
 import { ValidationPipe } from '@nestjs/common';
-import { GetAllStudentDtoInput } from 'src/modules/prepCourse/studentCourse/dtos/get-all-student.dto.input';
+import { GetAttendanceRecordByStudent } from 'src/modules/prepCourse/attendance/attendanceRecord/dtos/get-attendance-record-by-student';
 import { GetAllDtoInput, LIMITE_MAXIMO } from './get-all.dto.input';
 
 // ⚠️ O teste passa pelo `ValidationPipe` de propósito, com as MESMAS opções do
@@ -108,20 +108,23 @@ describe('GetAllDtoInput — limit', () => {
 });
 
 describe('GetAllDtoInput — as 9 subclasses herdam', () => {
-  // ⚠️ `partnerPrepCourse` é obrigatório (`@IsString`) na subclasse. Sem ele o
-  // pipe devolve 400 por OUTRO motivo, e o teste de recusa passaria mesmo com
-  // o `page` sem validador nenhum — decorativo. Ele vai preenchido de
-  // propósito, para que o único motivo possível de 400 aqui seja o `page`.
-  const base = { partnerPrepCourse: 'qualquer-cursinho' };
+  // ⚠️ `studentId` é obrigatório (`@IsString`) na subclasse. Sem ele o pipe
+  // devolve 400 por OUTRO motivo, e o teste de recusa passaria mesmo com o
+  // `page` sem validador nenhum — decorativo. Ele vai preenchido de propósito,
+  // para que o único motivo possível de 400 aqui seja o `page`.
+  const base = { studentId: 'qualquer-estudante' };
 
   it('uma subclasse real recusa page inválido', async () => {
     await expect(
-      parse({ ...base, page: '0' }, GetAllStudentDtoInput),
+      parse({ ...base, page: '0' }, GetAttendanceRecordByStudent),
     ).rejects.toMatchObject({ status: 400 });
   });
 
   it('uma subclasse real coage page para número', async () => {
-    const out = await parse({ ...base, page: '3' }, GetAllStudentDtoInput);
+    const out = await parse(
+      { ...base, page: '3' },
+      GetAttendanceRecordByStudent,
+    );
     expect(out.page).toBe(3);
     expect(typeof out.page).toBe('number');
   });

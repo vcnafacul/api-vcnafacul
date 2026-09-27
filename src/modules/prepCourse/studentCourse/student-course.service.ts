@@ -36,7 +36,6 @@ import {
   GetAllInput,
   Sort,
 } from 'src/shared/modules/base/interfaces/get-all.input';
-import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import {
   cancelledStudentsByClassIdKey,
   presenceByClassIdKey,
@@ -67,11 +66,6 @@ import { DocumentStudentRepository } from './documents/document-students.reposit
 import { CreateLegalGuardianInput } from './dtos/create-legal-guardian.dto.input';
 import { CreateStudentCourseInput } from './dtos/create-student-course.dto.input';
 import { CreateStudentCourseOutput } from './dtos/create-student-course.dto.output';
-import { GetAllStudentDtoInput } from './dtos/get-all-student.dto.input';
-import {
-  GetAllStudentDtoOutput,
-  toGetAllStudentDtoOutput,
-} from './dtos/get-all-student.dto.output';
 import {
   GetEnrolledDtoOutput,
   StudentsDtoOutput,
@@ -224,27 +218,6 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     await this.emailService.sendCreateUser(user, token);
   }
 
-  async findAll({
-    page,
-    limit,
-    partnerPrepCourse,
-  }: GetAllStudentDtoInput): Promise<GetAllOutput<GetAllStudentDtoOutput>> {
-    const result = await this.repository.findAllBy({
-      where: { partnerPrepCourse },
-      limit: limit,
-      page: page,
-    });
-
-    return {
-      data: result.data.map((studentCourse) =>
-        toGetAllStudentDtoOutput(studentCourse),
-      ),
-      page: result.page,
-      totalItems: result.totalItems,
-      limit: result.limit,
-    } as GetAllOutput<GetAllStudentDtoOutput>;
-  }
-
   async updateProfilePhotoByStudent(
     file: Express.Multer.File,
     studentId: string,
@@ -387,7 +360,25 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     }
   }
 
-  async getDocument(fileKey: string) {
+  /**
+   * Documento da declaração de interesse — só do cursinho de quem pede.
+   *
+   * ⚠️ **O cursinho no filtro, antes do cache.** A chave vinha da URL e bastava
+   * a permissão: colaborador de qualquer cursinho baixava RG e comprovantes de
+   * estudante de outro. O cache fica DEPOIS da checagem — senão o arquivo
+   * cacheado para o dono seria servido a quem não é.
+   *
+   * ⚠️ 404, e não 403: não confirmar que o documento existe em outro cursinho.
+   */
+  async getDocument(fileKey: string, userId: string) {
+    const cursinho = await this.partnerPrepCourseService.getByUserId(userId);
+    const doCursinho = await this.documentRepository.pertenceAoCursinho(
+      fileKey,
+      cursinho.id,
+    );
+    if (!doCursinho) {
+      throw new HttpException('Documento não encontrado', HttpStatus.NOT_FOUND);
+    }
     //cache
     const cachedFile = await this.cache.wrap<{
       buffer: string;

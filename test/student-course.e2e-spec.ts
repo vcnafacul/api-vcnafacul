@@ -1,4 +1,6 @@
 import { faker } from '@faker-js/faker';
+import { DocumentStudent } from 'src/modules/prepCourse/studentCourse/documents/document-students.entity';
+import { DocumentStudentRepository } from 'src/modules/prepCourse/studentCourse/documents/document-students.repository';
 import { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -14,7 +16,6 @@ import { CoursePeriodService } from 'src/modules/prepCourse/coursePeriod/course-
 import { InscriptionCourseService } from 'src/modules/prepCourse/InscriptionCourse/inscription-course.service';
 import { LogPartnerRepository } from 'src/modules/prepCourse/partnerPrepCourse/log-partner/log-partner.repository';
 import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
-import { GetAllStudentDtoInput } from 'src/modules/prepCourse/studentCourse/dtos/get-all-student.dto.input';
 import { StatusApplication } from 'src/modules/prepCourse/studentCourse/enums/stastusApplication';
 import { LogStudent } from 'src/modules/prepCourse/studentCourse/log-student/log-student.entity';
 import { LogStudentRepository } from 'src/modules/prepCourse/studentCourse/log-student/log-student.repository';
@@ -378,47 +379,6 @@ describe('StudentCourse (e2e)', () => {
         expect(res.body.id).not.toBeNull();
       });
   }, 30000);
-
-  it('get all student course by partner course', async () => {
-    const { representative, partnerPrepCourse, token } =
-      await createPartnerPrepCourse();
-
-    const inscriptionCourseDto = CreateInscriptionCourseDTOInputFaker();
-    const inscription = await inscriptionCourseService.create(
-      inscriptionCourseDto,
-      representative.id,
-    );
-
-    for (let index = 0; index < 10; index++) {
-      const userDto = CreateUserDtoInputFaker();
-      await userService.create(userDto);
-      const user = await userRepository.findOneBy({ email: userDto.email });
-
-      const student = createStudentCourseDTOInputFaker(user.id, inscription.id);
-      await studentCourseService.create(student);
-    }
-    const dto: GetAllStudentDtoInput = {
-      partnerPrepCourse: partnerPrepCourse.id,
-      page: 1,
-      limit: 1000,
-    };
-
-    let baseUrl = '/student-course?';
-
-    Object.keys(dto).forEach((key) => {
-      baseUrl = baseUrl + `${key}=${dto[key]}&`;
-    });
-
-    await request(app.getHttpServer())
-      .get(baseUrl)
-      .set({
-        Authorization: `Bearer ${token}`,
-      })
-      .expect(200)
-      .expect((res) => {
-        expect(res.body.data.length).toBe(10);
-      });
-  }, 100000);
 
   it('student should enroll in two different prep courses', async () => {
     const repPart1 = await createPartnerPrepCourse();
@@ -3543,6 +3503,68 @@ describe('StudentCourse (e2e)', () => {
       .set({ Authorization: `Bearer ${tokenA}` })
       .expect(404);
   }, 100000);
+
+  describe('⚠️ isolamento entre cursinhos — leitura de dado pessoal (card 01, PR 1)', () => {
+    /*
+      A permissão é de colaborador de cursinho; sem escopo, ela valia em todos.
+      O cursinho A tenta ler dado de estudante do B: 404, como no `details`.
+    */
+    it('GET student-course não existe mais — listava contatos do cursinho da QUERY', async () => {
+      const cursinhoA = await createPartnerPrepCourse();
+      const cursinhoB = await createPartnerPrepCourse();
+      await matricularEstudantes(
+        cursinhoB.representative.id,
+        cursinhoB.inscription.id,
+        1,
+      );
+
+      await request(app.getHttpServer())
+        .get('/student-course')
+        .query({
+          partnerPrepCourse: cursinhoB.partnerPrepCourse.id,
+          page: 1,
+          limit: 10,
+        })
+        .set({ Authorization: `Bearer ${cursinhoA.token}` })
+        .expect(404);
+    }, 100000);
+
+    async function documentoDoCursinhoB() {
+      const cursinhoA = await createPartnerPrepCourse();
+      const cursinhoB = await createPartnerPrepCourse();
+      const [studentB] = await matricularEstudantes(
+        cursinhoB.representative.id,
+        cursinhoB.inscription.id,
+        1,
+      );
+      const key = `doc-${Date.now()}-${Math.random()}`;
+      const documento = new DocumentStudent();
+      documento.name = 'rg.pdf';
+      documento.key = key;
+      documento.exprires = new Date(Date.now() + 1000 * 60 * 60 * 24);
+      documento.studentCourse = studentB;
+      await app.get(DocumentStudentRepository).create(documento);
+      return { cursinhoA, cursinhoB, key };
+    }
+
+    it('documento de estudante de outro cursinho responde 404', async () => {
+      const { cursinhoA, key } = await documentoDoCursinhoB();
+
+      await request(app.getHttpServer())
+        .get(`/student-course/document/${key}`)
+        .set({ Authorization: `Bearer ${cursinhoA.token}` })
+        .expect(404);
+    }, 100000);
+
+    it('o próprio cursinho continua baixando o documento', async () => {
+      const { cursinhoB, key } = await documentoDoCursinhoB();
+
+      await request(app.getHttpServer())
+        .get(`/student-course/document/${key}`)
+        .set({ Authorization: `Bearer ${cursinhoB.token}` })
+        .expect(200);
+    }, 100000);
+  });
 
   it('details deve mascarar contatos e documentos conforme o papel', async () => {
     const { representative, inscription } = await createPartnerPrepCourse();

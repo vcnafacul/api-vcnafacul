@@ -31,11 +31,8 @@ import { UserDtoOutput } from 'src/modules/user/dto/user.dto.output';
 import { User } from 'src/modules/user/user.entity';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
-import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { CreateStudentCourseInput } from './dtos/create-student-course.dto.input';
 import { CreateStudentCourseOutput } from './dtos/create-student-course.dto.output';
-import { GetAllStudentDtoInput } from './dtos/get-all-student.dto.input';
-import { GetAllStudentDtoOutput } from './dtos/get-all-student.dto.output';
 import { GetEnrolledDtoOutput } from './dtos/get-enrolled.dto.output';
 import { GetEnrolleds } from './dtos/get-enrolleds';
 import { ScheduleEnrolledDtoInput } from './dtos/schedule-enrolled.dto.input';
@@ -107,16 +104,6 @@ export class StudentCourseController {
     await this.service.sendEmailDeclaredInterestById(id);
   }
 
-  @Get()
-  @ApiBearerAuth()
-  @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
-  async findAllByStudent(
-    @Query() query: GetAllStudentDtoInput,
-  ): Promise<GetAllOutput<GetAllStudentDtoOutput>> {
-    return await this.service.findAll(query);
-  }
-
   @Patch('declared-interest')
   @ApiResponse({
     status: 200,
@@ -173,9 +160,13 @@ export class StudentCourseController {
   })
   public async getDocument(
     @Param('fileKey') fileKey: string,
+    @Req() req: Request,
     @Res() res: Response,
   ) {
-    const { buffer, contentType } = await this.service.getDocument(fileKey);
+    const { buffer, contentType } = await this.service.getDocument(
+      fileKey,
+      (req.user as User).id,
+    );
 
     return res.status(HttpStatus.OK).json({
       buffer: buffer,
