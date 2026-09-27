@@ -20,10 +20,12 @@ import {
 } from './dtos/registrar-aparelho.dto';
 import { PushService } from './push.service';
 
-export const THROTTLE_TESTE = { default: { ttl: 60000, limit: 5 } };
 export const THROTTLE_REMOVER = { default: { ttl: 60000, limit: 20 } };
 
-/** Aparelhos do usuário e "enviar teste para mim" (série `pwa-push`, BE-04). */
+/**
+ * Aparelhos do usuário (série `pwa-push`, BE-04). O "enviar teste para mim"
+ * foi para o `PushAdminController`: só quem tem `enviarNotificacao` dispara.
+ */
 @ApiTags('Push')
 @Controller('push')
 export class PushController {
@@ -64,15 +66,5 @@ export class PushController {
   @UseGuards(JwtAuthGuard)
   async meus(@Req() req: Request) {
     return this.pushService.aparelhosDoUsuario((req.user as User).id);
-  }
-
-  @Post('test')
-  @HttpCode(HttpStatus.OK)
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
-  @Throttle(THROTTLE_TESTE)
-  @ApiResponse({ status: 200, description: '{ successCount, failureCount }' })
-  async teste(@Req() req: Request) {
-    return this.pushService.enviarTeste((req.user as User).id);
   }
 }
