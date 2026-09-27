@@ -31,11 +31,8 @@ import { UserDtoOutput } from 'src/modules/user/dto/user.dto.output';
 import { User } from 'src/modules/user/user.entity';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
-import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { CreateStudentCourseInput } from './dtos/create-student-course.dto.input';
 import { CreateStudentCourseOutput } from './dtos/create-student-course.dto.output';
-import { GetAllStudentDtoInput } from './dtos/get-all-student.dto.input';
-import { GetAllStudentDtoOutput } from './dtos/get-all-student.dto.output';
 import { GetEnrolledDtoOutput } from './dtos/get-enrolled.dto.output';
 import { GetEnrolleds } from './dtos/get-enrolleds';
 import { ScheduleEnrolledDtoInput } from './dtos/schedule-enrolled.dto.input';
@@ -84,7 +81,14 @@ export class StudentCourseController {
   async confirmEnrolled(
     @Param('id') id: string,
     @Param('classId') classId: string,
+    @Req() req: Request,
   ): Promise<void> {
+    // ⚠️ A turma também: sem ela, o cursinho matricula o próprio aluno numa
+    // turma de outro.
+    await this.service.garantirDoCursinho((req.user as User).id, {
+      estudanteId: id,
+      turmaId: classId,
+    });
     return await this.service.confirmEnrolled(id, classId);
   }
 
@@ -103,18 +107,14 @@ export class StudentCourseController {
       limit: THROTTLE_CONFIG.WAITING_LIST.limit,
     },
   })
-  async sendEmailDeclaredInterestById(@Param('id') id: string): Promise<void> {
+  async sendEmailDeclaredInterestById(
+    @Param('id') id: string,
+    @Req() req: Request,
+  ): Promise<void> {
+    await this.service.garantirDoCursinho((req.user as User).id, {
+      estudanteId: id,
+    });
     await this.service.sendEmailDeclaredInterestById(id);
-  }
-
-  @Get()
-  @ApiBearerAuth()
-  @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
-  async findAllByStudent(
-    @Query() query: GetAllStudentDtoInput,
-  ): Promise<GetAllOutput<GetAllStudentDtoOutput>> {
-    return await this.service.findAll(query);
   }
 
   @Patch('declared-interest')
@@ -173,9 +173,13 @@ export class StudentCourseController {
   })
   public async getDocument(
     @Param('fileKey') fileKey: string,
+    @Req() req: Request,
     @Res() res: Response,
   ) {
-    const { buffer, contentType } = await this.service.getDocument(fileKey);
+    const { buffer, contentType } = await this.service.getDocument(
+      fileKey,
+      (req.user as User).id,
+    );
 
     return res.status(HttpStatus.OK).json({
       buffer: buffer,
@@ -238,7 +242,11 @@ export class StudentCourseController {
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async updateIsFree(
     @Body() dto: { idStudentCourse: string; isFree: boolean },
+    @Req() req: Request,
   ): Promise<void> {
+    await this.service.garantirDoCursinho((req.user as User).id, {
+      estudanteId: dto.idStudentCourse,
+    });
     await this.service.updateIsFreeInfo(dto.idStudentCourse, dto.isFree);
   }
 
@@ -248,7 +256,11 @@ export class StudentCourseController {
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async updateEnrolledInfo(
     @Body() dto: { idStudentCourse: string; enrolled: boolean },
+    @Req() req: Request,
   ): Promise<void> {
+    await this.service.garantirDoCursinho((req.user as User).id, {
+      estudanteId: dto.idStudentCourse,
+    });
     await this.service.updateSelectEnrolled(dto.idStudentCourse, dto.enrolled);
   }
 
@@ -257,7 +269,14 @@ export class StudentCourseController {
   @UseGuards(PermissionsGuard)
   @HttpCode(200) // Define explicitamente o código de status
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
-  async scheduleEnrolled(@Body() dto: ScheduleEnrolledDtoInput): Promise<void> {
+  async scheduleEnrolled(
+    @Body() dto: ScheduleEnrolledDtoInput,
+    @Req() req: Request,
+  ): Promise<void> {
+    // Uma checagem só, no PS: os convocados saem todos dele.
+    await this.service.garantirDoCursinho((req.user as User).id, {
+      processoId: dto.inscriptionId,
+    });
     await this.service.scheduleEnrolled(dto);
   }
 
@@ -269,7 +288,11 @@ export class StudentCourseController {
   async resetStudent(
     @Body()
     { studentId }: { studentId: string },
+    @Req() req: Request,
   ): Promise<void> {
+    await this.service.garantirDoCursinho((req.user as User).id, {
+      estudanteId: studentId,
+    });
     await this.service.resetStudent(studentId);
   }
 
@@ -280,7 +303,11 @@ export class StudentCourseController {
   @HttpCode(200) // Define explicitamente o código de status
   async rejectStudent(
     @Body() { studentId, reason }: { studentId: string; reason: string },
+    @Req() req: Request,
   ): Promise<void> {
+    await this.service.garantirDoCursinho((req.user as User).id, {
+      estudanteId: studentId,
+    });
     await this.service.rejectStudent(studentId, reason);
   }
 
@@ -288,7 +315,16 @@ export class StudentCourseController {
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
-  async updateClass(@Body() dto: UpdateClassDTOInput): Promise<void> {
+  async updateClass(
+    @Body() dto: UpdateClassDTOInput,
+    @Req() req: Request,
+  ): Promise<void> {
+    // ⚠️ A turma também: sem ela, o cursinho move o próprio aluno para uma
+    // turma de outro.
+    await this.service.garantirDoCursinho((req.user as User).id, {
+      estudanteId: dto.studentId,
+      turmaId: dto.classId,
+    });
     await this.service.updateClass(dto.studentId, dto.classId);
   }
 
@@ -374,7 +410,11 @@ export class StudentCourseController {
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
   async cancelEnrolled(
     @Body() { studentId, reason }: { studentId: string; reason: string },
+    @Req() req: Request,
   ): Promise<void> {
+    await this.service.garantirDoCursinho((req.user as User).id, {
+      estudanteId: studentId,
+    });
     return await this.service.cancelEnrolled(studentId, reason);
   }
 
@@ -382,7 +422,13 @@ export class StudentCourseController {
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
-  async activeEnrolled(@Body() { studentId }: { studentId: string }) {
+  async activeEnrolled(
+    @Body() { studentId }: { studentId: string },
+    @Req() req: Request,
+  ) {
+    await this.service.garantirDoCursinho((req.user as User).id, {
+      estudanteId: studentId,
+    });
     return await this.service.activeEnrolled(studentId);
   }
 
@@ -395,6 +441,9 @@ export class StudentCourseController {
     @UploadedFile() file: Express.Multer.File,
     @Req() req: Request,
   ) {
+    await this.service.garantirDoCursinho((req.user as User).id, {
+      estudanteId: req.body.studentId,
+    });
     return await this.service.updateProfilePhotoByStudent(
       file,
       req.body.studentId,

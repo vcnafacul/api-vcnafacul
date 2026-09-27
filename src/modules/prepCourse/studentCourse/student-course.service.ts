@@ -36,7 +36,6 @@ import {
   GetAllInput,
   Sort,
 } from 'src/shared/modules/base/interfaces/get-all.input';
-import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import {
   cancelledStudentsByClassIdKey,
   presenceByClassIdKey,
@@ -52,7 +51,8 @@ import { maskEmail } from 'src/utils/maskEmail';
 import { maskPhone } from 'src/utils/maskPhone';
 import { maskRg } from 'src/utils/maskRg';
 import { parseUserAgentForDisplay } from 'src/shared/utils/parse-user-agent';
-import { IsNull, Not } from 'typeorm';
+import { EntityTarget, IsNull, Not, ObjectLiteral } from 'typeorm';
+import { Class } from '../class/class.entity';
 import { ClassRepository } from '../class/class.repository';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
 import { GetSubscribersDtoOutput } from '../InscriptionCourse/dtos/get-subscribers.dto.output';
@@ -67,11 +67,6 @@ import { DocumentStudentRepository } from './documents/document-students.reposit
 import { CreateLegalGuardianInput } from './dtos/create-legal-guardian.dto.input';
 import { CreateStudentCourseInput } from './dtos/create-student-course.dto.input';
 import { CreateStudentCourseOutput } from './dtos/create-student-course.dto.output';
-import { GetAllStudentDtoInput } from './dtos/get-all-student.dto.input';
-import {
-  GetAllStudentDtoOutput,
-  toGetAllStudentDtoOutput,
-} from './dtos/get-all-student.dto.output';
 import {
   GetEnrolledDtoOutput,
   StudentsDtoOutput,
@@ -224,27 +219,6 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     await this.emailService.sendCreateUser(user, token);
   }
 
-  async findAll({
-    page,
-    limit,
-    partnerPrepCourse,
-  }: GetAllStudentDtoInput): Promise<GetAllOutput<GetAllStudentDtoOutput>> {
-    const result = await this.repository.findAllBy({
-      where: { partnerPrepCourse },
-      limit: limit,
-      page: page,
-    });
-
-    return {
-      data: result.data.map((studentCourse) =>
-        toGetAllStudentDtoOutput(studentCourse),
-      ),
-      page: result.page,
-      totalItems: result.totalItems,
-      limit: result.limit,
-    } as GetAllOutput<GetAllStudentDtoOutput>;
-  }
-
   async updateProfilePhotoByStudent(
     file: Express.Multer.File,
     studentId: string,
@@ -279,6 +253,47 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
     await this.repository.update(student);
     return fileKey;
+  }
+
+  /**
+   * Garante que estudante, turma e/ou processo seletivo são do cursinho de
+   * quem chama — senão **404** (card `isolamento-entre-cursinhos/01`).
+   *
+   * ⚠️ **Por que na fronteira, e não dentro de cada método.** As rotas de
+   * gestão exigiam só a permissão, e a permissão é de colaborador de UM
+   * cursinho: sem esta checagem ela valia em todos. Mas `confirmEnrolled`,
+   * `cancelEnrolled`, `activeEnrolled` e `updateClass` também são chamados por
+   * outros fluxos e pelos testes, sem usuário nenhum — mudar a assinatura
+   * deles espalharia a mudança. Cada rota chama isto antes de agir, e há um
+   * e2e por rota provando que chama.
+   *
+   * ⚠️ 404 e não 403, e a mesma mensagem para "de outro cursinho" e "não
+   * existe": não confirmar que o registro existe em outro cursinho.
+   */
+  async garantirDoCursinho(
+    userId: string,
+    alvo: { estudanteId?: string; turmaId?: string; processoId?: string },
+  ): Promise<void> {
+    const cursinho = await this.partnerPrepCourseService.getByUserId(userId);
+    // As mensagens são as que cada rota já devolvia para "não existe" — o
+    // client não percebe diferença entre inexistente e de outro cursinho.
+    const checagens: [
+      EntityTarget<ObjectLiteral>,
+      string | undefined,
+      string,
+    ][] = [
+      [StudentCourse, alvo.estudanteId, 'Estudante não encontrado'],
+      [Class, alvo.turmaId, 'Turma não encontrada'],
+      [InscriptionCourse, alvo.processoId, 'Processo Seletivo nao encontrado'],
+    ];
+    for (const [entidade, id, mensagem] of checagens) {
+      if (
+        id &&
+        !(await this.repository.doCursinho(entidade, id, cursinho.id))
+      ) {
+        throw new HttpException(mensagem, HttpStatus.NOT_FOUND);
+      }
+    }
   }
 
   /**
@@ -387,7 +402,25 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     }
   }
 
-  async getDocument(fileKey: string) {
+  /**
+   * Documento da declaração de interesse — só do cursinho de quem pede.
+   *
+   * ⚠️ **O cursinho no filtro, antes do cache.** A chave vinha da URL e bastava
+   * a permissão: colaborador de qualquer cursinho baixava RG e comprovantes de
+   * estudante de outro. O cache fica DEPOIS da checagem — senão o arquivo
+   * cacheado para o dono seria servido a quem não é.
+   *
+   * ⚠️ 404, e não 403: não confirmar que o documento existe em outro cursinho.
+   */
+  async getDocument(fileKey: string, userId: string) {
+    const cursinho = await this.partnerPrepCourseService.getByUserId(userId);
+    const doCursinho = await this.documentRepository.pertenceAoCursinho(
+      fileKey,
+      cursinho.id,
+    );
+    if (!doCursinho) {
+      throw new HttpException('Documento não encontrado', HttpStatus.NOT_FOUND);
+    }
     //cache
     const cachedFile = await this.cache.wrap<{
       buffer: string;

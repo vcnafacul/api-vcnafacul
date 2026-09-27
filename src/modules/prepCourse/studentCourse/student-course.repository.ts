@@ -7,7 +7,12 @@ import {
 import { ExportJoin } from './export-columns';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { NodeRepository } from 'src/shared/modules/node/node.repository';
-import { EntityManager, SelectQueryBuilder } from 'typeorm';
+import {
+  EntityManager,
+  EntityTarget,
+  ObjectLiteral,
+  SelectQueryBuilder,
+} from 'typeorm';
 import { StatusApplication } from './enums/stastusApplication';
 import { StudentCourse } from './student-course.entity';
 import { Period } from 'src/modules/user/enum/period';
@@ -319,6 +324,26 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
     }
 
     return queryBuilder.skip(offset).take(limit).getMany();
+  }
+
+  /**
+   * O registro `id` (estudante, turma ou processo seletivo — os três têm
+   * `partner_prep_course_id`) é DESTE cursinho? `false` também se não existir:
+   * quem chama responde 404 nos dois casos, de propósito.
+   */
+  async doCursinho(
+    entidade: EntityTarget<ObjectLiteral>,
+    id: string,
+    partnerPrepCourseId: string,
+  ): Promise<boolean> {
+    const total = await this.repository.manager
+      .getRepository(entidade)
+      .createQueryBuilder('registro')
+      .innerJoin('registro.partnerPrepCourse', 'cursinho')
+      .where('registro.id = :id', { id })
+      .andWhere('cursinho.id = :partnerPrepCourseId', { partnerPrepCourseId })
+      .getCount();
+    return total > 0;
   }
 
   override async findOneBy(where: object): Promise<StudentCourse> {
