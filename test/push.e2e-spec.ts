@@ -1,4 +1,6 @@
 import { INestApplication } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import * as request from 'supertest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { createHash, randomUUID } from 'crypto';
@@ -37,6 +39,9 @@ describe('PushService (e2e)', () => {
   let userRepository: UserRepository;
   let roleService: RoleService;
   let dataSource: DataSource;
+  let jwtService: JwtService;
+  /** A flag `PUSH_ENABLED`, trocável por teste. */
+  let pushLigado = true;
 
   /** Token → resposta do FCM. Sem entrada = sucesso. */
   const respostaDoFcm = new Map<string, string>();
@@ -76,7 +81,7 @@ describe('PushService (e2e)', () => {
     jest
       .spyOn(env, 'get')
       .mockImplementation((k: any) =>
-        k === 'PUSH_ENABLED' ? true : getOriginal(k),
+        k === 'PUSH_ENABLED' ? pushLigado : getOriginal(k),
       );
 
     push = moduleFixture.get(PushService);
@@ -85,6 +90,7 @@ describe('PushService (e2e)', () => {
     userRepository = moduleFixture.get(UserRepository);
     roleService = moduleFixture.get(RoleService);
     dataSource = moduleFixture.get(DataSource);
+    jwtService = moduleFixture.get(JwtService);
   });
 
   afterAll(async () => {
@@ -94,6 +100,7 @@ describe('PushService (e2e)', () => {
   beforeEach(async () => {
     sendEachForMulticast.mockClear();
     respostaDoFcm.clear();
+    pushLigado = true;
     await dataSource.getRepository(PushDevice).clear();
   });
 
@@ -245,5 +252,230 @@ describe('PushService (e2e)', () => {
     expect(ativos.map((a) => a.id).sort()).toEqual(
       [vivo.id, instavel.id].sort(),
     );
+  });
+
+  describe('endpoints de aparelho (BE-04)', () => {
+    const http = () => request(app.getHttpServer());
+    const bearer = async (userId: string) =>
+      `Bearer ${await jwtService.signAsync({ user: { id: userId } }, { expiresIn: '1h' })}`;
+    const linhasDoToken = (token: string) =>
+      dataSource.getRepository(PushDevice).find({
+        where: { token },
+      });
+    const corpo = (token: string) => ({
+      token,
+      platform: 'android',
+      standalone: true,
+      userAgent: 'Chrome/Android',
+    });
+
+    it('sem JWT → 401 no registrar, no listar e no teste', async () => {
+      await http().post('/push/devices').send(corpo('t')).expect(401);
+      await http().get('/push/devices/me').expect(401);
+      await http().post('/push/test').expect(401);
+    });
+
+    it('registrar duas vezes o mesmo token não duplica', async () => {
+      const u = await novoUsuario();
+      const auth = await bearer(u.id);
+      const token = `tok-${randomUUID()}`;
+
+      await http()
+        .post('/push/devices')
+        .set('Authorization', auth)
+        .send(corpo(token))
+        .expect(204);
+      const [primeira] = await linhasDoToken(token);
+      await http()
+        .post('/push/devices')
+        .set('Authorization', auth)
+        .send(corpo(token))
+        .expect(204);
+
+      const linhas = await linhasDoToken(token);
+      expect(linhas).toHaveLength(1);
+      expect(linhas[0]).toMatchObject({
+        id: primeira.id,
+        userId: u.id,
+        platform: 'android',
+        standalone: true,
+        userAgent: 'Chrome/Android',
+      });
+    });
+
+    it('⚠️ registros simultâneos do mesmo token não estouram o índice único', async () => {
+      const u = await novoUsuario();
+      const auth = await bearer(u.id);
+      const token = `tok-${randomUUID()}`;
+
+      const respostas = await Promise.all(
+        Array.from({ length: 5 }, () =>
+          http()
+            .post('/push/devices')
+            .set('Authorization', auth)
+            .send(corpo(token)),
+        ),
+      );
+
+      expect(respostas.map((r) => r.status)).toEqual([204, 204, 204, 204, 204]);
+      expect(await linhasDoToken(token)).toHaveLength(1);
+    });
+
+    it('⚠️ token registrado por A e depois por B passa a ser só de B', async () => {
+      const [a, b] = await Promise.all([novoUsuario(), novoUsuario()]);
+      const token = `tok-${randomUUID()}`;
+
+      await http()
+        .post('/push/devices')
+        .set('Authorization', await bearer(a.id))
+        .send(corpo(token))
+        .expect(204);
+      await http()
+        .post('/push/devices')
+        .set('Authorization', await bearer(b.id))
+        .send(corpo(token))
+        .expect(204);
+
+      expect(await tokensDe({ type: 'users', userIds: [a.id] })).toEqual([]);
+      expect(await tokensDe({ type: 'users', userIds: [b.id] })).toEqual([
+        token,
+      ]);
+    });
+
+    it('DELETE sem JWT remove; token inexistente também responde 204', async () => {
+      const u = await novoUsuario();
+      const token = `tok-${randomUUID()}`;
+      await http()
+        .post('/push/devices')
+        .set('Authorization', await bearer(u.id))
+        .send(corpo(token))
+        .expect(204);
+
+      await http().delete('/push/devices').send({ token }).expect(204);
+      await http()
+        .delete('/push/devices')
+        .send({ token: 'nunca-existiu' })
+        .expect(204);
+
+      expect(await tokensDe({ type: 'users', userIds: [u.id] })).toEqual([]);
+    });
+
+    it('⚠️ registrar de novo um token removido RESTAURA a mesma linha', async () => {
+      const u = await novoUsuario();
+      const auth = await bearer(u.id);
+      const token = `tok-${randomUUID()}`;
+      await http()
+        .post('/push/devices')
+        .set('Authorization', auth)
+        .send(corpo(token))
+        .expect(204);
+      const [original] = await linhasDoToken(token);
+      await http().delete('/push/devices').send({ token }).expect(204);
+
+      await http()
+        .post('/push/devices')
+        .set('Authorization', auth)
+        .send(corpo(token))
+        .expect(204);
+
+      const linhas = await linhasDoToken(token);
+      expect(linhas).toHaveLength(1);
+      expect(linhas[0].id).toBe(original.id);
+      expect(linhas[0].deletedAt).toBeNull();
+    });
+
+    it('GET /push/devices/me lista só os aparelhos ativos do próprio usuário', async () => {
+      const [u, outro] = await Promise.all([novoUsuario(), novoUsuario()]);
+      const ativo = await novoAparelho(u.id);
+      await novoAparelho(u.id, true);
+      await novoAparelho(outro.id);
+
+      const { body } = await http()
+        .get('/push/devices/me')
+        .set('Authorization', await bearer(u.id))
+        .expect(200);
+
+      expect(body.map((d) => d.id)).toEqual([ativo.id]);
+      expect(body[0].token).toBeUndefined();
+      expect(body[0].tokenHash).toBeUndefined();
+    });
+
+    it('POST /push/test envia para os aparelhos do próprio usuário', async () => {
+      const [u, outro] = await Promise.all([novoUsuario(), novoUsuario()]);
+      const d1 = await novoAparelho(u.id);
+      const d2 = await novoAparelho(u.id);
+      await novoAparelho(outro.id);
+
+      const { body } = await http()
+        .post('/push/test')
+        .set('Authorization', await bearer(u.id))
+        .expect(200);
+
+      expect(body).toEqual({ successCount: 2, failureCount: 0 });
+      const [mensagem] = sendEachForMulticast.mock.calls[0];
+      expect(mensagem.tokens.sort()).toEqual([d1.token, d2.token].sort());
+      expect(mensagem.data).toMatchObject({ url: '/', tag: 'teste' });
+    });
+
+    it('PUSH_ENABLED=false → 503 no registrar e no teste; o DELETE continua funcionando', async () => {
+      const u = await novoUsuario();
+      const auth = await bearer(u.id);
+      const d = await novoAparelho(u.id);
+      pushLigado = false;
+
+      await http()
+        .post('/push/devices')
+        .set('Authorization', auth)
+        .send(corpo('x'))
+        .expect(503);
+      await http().post('/push/test').set('Authorization', auth).expect(503);
+      await http().delete('/push/devices').send({ token: d.token }).expect(204);
+
+      expect(await tokensDe({ type: 'users', userIds: [u.id] })).toEqual([]);
+    });
+
+    it('validação: token vazio ou plataforma fora do enum → 400; userAgent longo é cortado', async () => {
+      const u = await novoUsuario();
+      const auth = await bearer(u.id);
+
+      await http()
+        .post('/push/devices')
+        .set('Authorization', auth)
+        .send({ token: '' })
+        .expect(400);
+      await http()
+        .post('/push/devices')
+        .set('Authorization', auth)
+        .send({ token: 't', platform: 'windows-phone' })
+        .expect(400);
+      await http().delete('/push/devices').send({}).expect(400);
+
+      const token = `tok-${randomUUID()}`;
+      await http()
+        .post('/push/devices')
+        .set('Authorization', auth)
+        .send({ token, userAgent: 'x'.repeat(2000) })
+        .expect(204);
+      const [linha] = await linhasDoToken(token);
+      expect(linha.userAgent).toHaveLength(512);
+      expect(linha.platform).toBe('other');
+    });
+
+    it('⚠️ "sair de todos os dispositivos" desativa os aparelhos do usuário', async () => {
+      const [u, outro] = await Promise.all([novoUsuario(), novoUsuario()]);
+      await novoAparelho(u.id);
+      await novoAparelho(u.id);
+      const doOutro = await novoAparelho(outro.id);
+
+      await http()
+        .post('/user/logout-all')
+        .set('Authorization', await bearer(u.id))
+        .expect(200);
+
+      expect(await tokensDe({ type: 'users', userIds: [u.id] })).toEqual([]);
+      expect(await tokensDe({ type: 'users', userIds: [outro.id] })).toEqual([
+        doOutro.token,
+      ]);
+    });
   });
 });

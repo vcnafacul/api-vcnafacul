@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
+import { randomUUID } from 'crypto';
 import { EntityManager, In } from 'typeorm';
 import { BaseRepository } from '../../shared/modules/base/base.repository';
-import { PushDevice } from './push-device.entity';
+import { PlataformaDoAparelho, PushDevice } from './push-device.entity';
 import { PublicoDoEnvio } from './push-notification.entity';
 
 /** O mínimo que o envio precisa de cada aparelho. */
@@ -62,5 +63,88 @@ export class PushDeviceRepository extends BaseRepository<PushDevice> {
   async desativar(ids: string[]): Promise<void> {
     if (!ids.length) return;
     await this.repository.update({ id: In(ids) }, { deletedAt: new Date() });
+  }
+
+  /**
+   * Upsert pelo `token_hash`, num único `INSERT … ON DUPLICATE KEY UPDATE`.
+   *
+   * ⚠️ **Atômico de propósito.** "Procura e depois grava" perde a corrida
+   * quando o client registra duas vezes seguidas (login + abertura do app): as
+   * duas leituras não acham nada e a segunda gravação estoura o índice único.
+   *
+   * No conflito, o mesmo registro: passa para o usuário atual (troca de conta
+   * no mesmo navegador), é **reativado** (`deleted_at = NULL`) e renova o
+   * `last_seen_at`.
+   */
+  async registrar(dados: {
+    userId: string;
+    token: string;
+    tokenHash: string;
+    platform: PlataformaDoAparelho;
+    standalone: boolean;
+    userAgent: string | null;
+  }): Promise<void> {
+    const agora = new Date();
+    await this.repository
+      .createQueryBuilder()
+      .insert()
+      .into(PushDevice)
+      .values({
+        id: randomUUID(),
+        ...dados,
+        lastSeenAt: agora,
+        deletedAt: null,
+      })
+      .orUpdate(
+        [
+          'user_id',
+          'token',
+          'platform',
+          'standalone',
+          'user_agent',
+          'last_seen_at',
+          'deleted_at',
+          'updated_at',
+        ],
+        ['token_hash'],
+      )
+      .execute();
+  }
+
+  async desativarPorHash(tokenHash: string): Promise<void> {
+    await this.repository
+      .createQueryBuilder()
+      .update(PushDevice)
+      .set({ deletedAt: new Date() })
+      .where('token_hash = :tokenHash', { tokenHash })
+      .andWhere('deleted_at IS NULL')
+      .execute();
+  }
+
+  /** "Sair de todos os dispositivos" leva os avisos junto (FE-05). */
+  async desativarDoUsuario(userId: string): Promise<void> {
+    await this.repository
+      .createQueryBuilder()
+      .update(PushDevice)
+      .set({ deletedAt: new Date() })
+      .where('user_id = :userId', { userId })
+      .andWhere('deleted_at IS NULL')
+      .execute();
+  }
+
+  async ativosDoUsuario(userId: string): Promise<PushDevice[]> {
+    return this.repository
+      .createQueryBuilder('device')
+      .select([
+        'device.id',
+        'device.platform',
+        'device.standalone',
+        'device.userAgent',
+        'device.lastSeenAt',
+      ])
+      .where('device.userId = :userId', { userId })
+      .andWhere('device.deletedAt IS NULL')
+      .orderBy('device.lastSeenAt', 'DESC')
+      .getMany();
   }
 }

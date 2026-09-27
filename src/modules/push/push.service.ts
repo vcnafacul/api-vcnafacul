@@ -15,8 +15,12 @@ import {
   StatusDoEnvio,
 } from './push-notification.entity';
 import { PushNotificationRepository } from './push-notification.repository';
+import { RegistrarAparelhoDtoInput } from './dtos/registrar-aparelho.dto';
+import { PlataformaDoAparelho, PushDevice } from './push-device.entity';
 import {
   ERROS_DE_TOKEN_MORTO,
+  PAYLOAD_DE_TESTE,
+  hashDoToken,
   PushPayload,
   emLotes,
   validarPayload,
@@ -186,5 +190,43 @@ export class PushService {
       this.logger.log(`${mortos.length} aparelho(s) com token morto removidos`);
     }
     return { successCount, failureCount };
+  }
+
+  // ─── Aparelhos (BE-04) ───────────────────────────────────────────────────
+
+  async registrarAparelho(
+    userId: string,
+    dto: RegistrarAparelhoDtoInput,
+  ): Promise<void> {
+    this.garantirHabilitado();
+    await this.devices.registrar({
+      userId,
+      token: dto.token,
+      tokenHash: hashDoToken(dto.token),
+      platform: dto.platform ?? PlataformaDoAparelho.other,
+      standalone: dto.standalone ?? false,
+      userAgent: dto.userAgent || null,
+    });
+  }
+
+  /**
+   * ⚠️ **Sem usuário e sem checar a flag.** O logout forçado (sessão expirada)
+   * não tem JWT válido, e desligar o push não pode impedir ninguém de parar de
+   * receber. Quem tem o token é o próprio aparelho.
+   */
+  async removerAparelho(token: string): Promise<void> {
+    await this.devices.desativarPorHash(hashDoToken(token));
+  }
+
+  async aparelhosDoUsuario(userId: string): Promise<PushDevice[]> {
+    return this.devices.ativosDoUsuario(userId);
+  }
+
+  async desativarAparelhosDoUsuario(userId: string): Promise<void> {
+    await this.devices.desativarDoUsuario(userId);
+  }
+
+  async enviarTeste(userId: string): Promise<ResultadoDoEnvio> {
+    return this.sendToUsers([userId], PAYLOAD_DE_TESTE);
   }
 }
