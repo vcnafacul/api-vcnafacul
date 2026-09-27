@@ -137,6 +137,16 @@ export class Role extends BaseEntity {
   @Column({ name: Permissions.excluirQuestao, default: false })
   excluirQuestao: boolean;
 
+  /**
+   * Enviar notificação push pela tela admin (série `pwa-push`, BE-03/BE-06).
+   *
+   * ⚠️ **Permissão de plataforma.** O público pode ser "todos", então é
+   * concedida de propósito, a quem fala pelo projeto. Estender a coordenadores
+   * de cursinho exige escopar o público (decisão nº 2 do README da série).
+   */
+  @Column({ name: Permissions.enviarNotificacao, default: false })
+  enviarNotificacao: boolean;
+
   @OneToMany(() => User, (user) => user.role)
   users: User[];
 

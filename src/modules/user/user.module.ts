@@ -1,3 +1,4 @@
+import { PushModule } from '../push/push.module';
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { EnvModule } from 'src/shared/modules/env/env.module';
@@ -30,7 +31,7 @@ import { GoogleStrategy } from './google/google.strategy';
 
 @Module({
   controllers: [UserController, GoogleAuthController],
-  imports: [AuditLogModule, EnvModule, HttpModule],
+  imports: [AuditLogModule, EnvModule, HttpModule, PushModule],
   providers: [
     UserService,
     ResumoDoUsuarioService,
