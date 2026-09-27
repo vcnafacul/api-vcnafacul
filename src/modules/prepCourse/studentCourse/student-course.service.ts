@@ -51,7 +51,8 @@ import { maskEmail } from 'src/utils/maskEmail';
 import { maskPhone } from 'src/utils/maskPhone';
 import { maskRg } from 'src/utils/maskRg';
 import { parseUserAgentForDisplay } from 'src/shared/utils/parse-user-agent';
-import { IsNull, Not } from 'typeorm';
+import { EntityTarget, IsNull, Not, ObjectLiteral } from 'typeorm';
+import { Class } from '../class/class.entity';
 import { ClassRepository } from '../class/class.repository';
 import { CollaboratorRepository } from '../collaborator/collaborator.repository';
 import { GetSubscribersDtoOutput } from '../InscriptionCourse/dtos/get-subscribers.dto.output';
@@ -252,6 +253,47 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
     await this.repository.update(student);
     return fileKey;
+  }
+
+  /**
+   * Garante que estudante, turma e/ou processo seletivo são do cursinho de
+   * quem chama — senão **404** (card `isolamento-entre-cursinhos/01`).
+   *
+   * ⚠️ **Por que na fronteira, e não dentro de cada método.** As rotas de
+   * gestão exigiam só a permissão, e a permissão é de colaborador de UM
+   * cursinho: sem esta checagem ela valia em todos. Mas `confirmEnrolled`,
+   * `cancelEnrolled`, `activeEnrolled` e `updateClass` também são chamados por
+   * outros fluxos e pelos testes, sem usuário nenhum — mudar a assinatura
+   * deles espalharia a mudança. Cada rota chama isto antes de agir, e há um
+   * e2e por rota provando que chama.
+   *
+   * ⚠️ 404 e não 403, e a mesma mensagem para "de outro cursinho" e "não
+   * existe": não confirmar que o registro existe em outro cursinho.
+   */
+  async garantirDoCursinho(
+    userId: string,
+    alvo: { estudanteId?: string; turmaId?: string; processoId?: string },
+  ): Promise<void> {
+    const cursinho = await this.partnerPrepCourseService.getByUserId(userId);
+    // As mensagens são as que cada rota já devolvia para "não existe" — o
+    // client não percebe diferença entre inexistente e de outro cursinho.
+    const checagens: [
+      EntityTarget<ObjectLiteral>,
+      string | undefined,
+      string,
+    ][] = [
+      [StudentCourse, alvo.estudanteId, 'Estudante não encontrado'],
+      [Class, alvo.turmaId, 'Turma não encontrada'],
+      [InscriptionCourse, alvo.processoId, 'Processo Seletivo nao encontrado'],
+    ];
+    for (const [entidade, id, mensagem] of checagens) {
+      if (
+        id &&
+        !(await this.repository.doCursinho(entidade, id, cursinho.id))
+      ) {
+        throw new HttpException(mensagem, HttpStatus.NOT_FOUND);
+      }
+    }
   }
 
   /**

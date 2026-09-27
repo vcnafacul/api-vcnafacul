@@ -81,7 +81,14 @@ export class StudentCourseController {
   async confirmEnrolled(
     @Param('id') id: string,
     @Param('classId') classId: string,
+    @Req() req: Request,
   ): Promise<void> {
+    // ⚠️ A turma também: sem ela, o cursinho matricula o próprio aluno numa
+    // turma de outro.
+    await this.service.garantirDoCursinho((req.user as User).id, {
+      estudanteId: id,
+      turmaId: classId,
+    });
     return await this.service.confirmEnrolled(id, classId);
   }
 
@@ -100,7 +107,13 @@ export class StudentCourseController {
       limit: THROTTLE_CONFIG.WAITING_LIST.limit,
     },
   })
-  async sendEmailDeclaredInterestById(@Param('id') id: string): Promise<void> {
+  async sendEmailDeclaredInterestById(
+    @Param('id') id: string,
+    @Req() req: Request,
+  ): Promise<void> {
+    await this.service.garantirDoCursinho((req.user as User).id, {
+      estudanteId: id,
+    });
     await this.service.sendEmailDeclaredInterestById(id);
   }
 
@@ -229,7 +242,11 @@ export class StudentCourseController {
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async updateIsFree(
     @Body() dto: { idStudentCourse: string; isFree: boolean },
+    @Req() req: Request,
   ): Promise<void> {
+    await this.service.garantirDoCursinho((req.user as User).id, {
+      estudanteId: dto.idStudentCourse,
+    });
     await this.service.updateIsFreeInfo(dto.idStudentCourse, dto.isFree);
   }
 
@@ -239,7 +256,11 @@ export class StudentCourseController {
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async updateEnrolledInfo(
     @Body() dto: { idStudentCourse: string; enrolled: boolean },
+    @Req() req: Request,
   ): Promise<void> {
+    await this.service.garantirDoCursinho((req.user as User).id, {
+      estudanteId: dto.idStudentCourse,
+    });
     await this.service.updateSelectEnrolled(dto.idStudentCourse, dto.enrolled);
   }
 
@@ -248,7 +269,14 @@ export class StudentCourseController {
   @UseGuards(PermissionsGuard)
   @HttpCode(200) // Define explicitamente o código de status
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
-  async scheduleEnrolled(@Body() dto: ScheduleEnrolledDtoInput): Promise<void> {
+  async scheduleEnrolled(
+    @Body() dto: ScheduleEnrolledDtoInput,
+    @Req() req: Request,
+  ): Promise<void> {
+    // Uma checagem só, no PS: os convocados saem todos dele.
+    await this.service.garantirDoCursinho((req.user as User).id, {
+      processoId: dto.inscriptionId,
+    });
     await this.service.scheduleEnrolled(dto);
   }
 
@@ -260,7 +288,11 @@ export class StudentCourseController {
   async resetStudent(
     @Body()
     { studentId }: { studentId: string },
+    @Req() req: Request,
   ): Promise<void> {
+    await this.service.garantirDoCursinho((req.user as User).id, {
+      estudanteId: studentId,
+    });
     await this.service.resetStudent(studentId);
   }
 
@@ -271,7 +303,11 @@ export class StudentCourseController {
   @HttpCode(200) // Define explicitamente o código de status
   async rejectStudent(
     @Body() { studentId, reason }: { studentId: string; reason: string },
+    @Req() req: Request,
   ): Promise<void> {
+    await this.service.garantirDoCursinho((req.user as User).id, {
+      estudanteId: studentId,
+    });
     await this.service.rejectStudent(studentId, reason);
   }
 

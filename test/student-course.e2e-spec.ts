@@ -3566,6 +3566,178 @@ describe('StudentCourse (e2e)', () => {
     }, 100000);
   });
 
+  describe('⚠️ isolamento entre cursinhos — processo seletivo (card 01, PR 2)', () => {
+    /*
+      Rotas de `gerenciarProcessoSeletivo` que recebiam o id do estudante,
+      da turma ou do PS e agiam sem conferir o cursinho. O A tenta agir no B:
+      404, e nada muda no registro do B.
+    */
+    async function doisCursinhos(status?: StatusApplication) {
+      const cursinhoA = await createPartnerPrepCourse();
+      const cursinhoB = await createPartnerPrepCourse();
+      const { id } = await createStudent(cursinhoB.inscription.id);
+      const estudanteB = await studentCourseService.findOneBy({ id });
+      if (status) {
+        estudanteB.applicationStatus = status;
+        await studentCourseRepository.update(estudanteB);
+      }
+      return { cursinhoA, cursinhoB, estudanteB };
+    }
+
+    const releitura = (id: string) => studentCourseService.findOneBy({ id });
+
+    it('reset-student', async () => {
+      const { cursinhoA, estudanteB } = await doisCursinhos();
+      estudanteB.selectEnrolled = true;
+      await studentCourseRepository.update(estudanteB);
+
+      await request(app.getHttpServer())
+        .patch('/student-course/reset-student')
+        .set({ Authorization: `Bearer ${cursinhoA.token}` })
+        .send({ studentId: estudanteB.id })
+        .expect(404);
+      expect((await releitura(estudanteB.id)).selectEnrolled).toBe(true);
+    }, 100000);
+
+    it('reject-student', async () => {
+      const { cursinhoA, estudanteB } = await doisCursinhos();
+
+      await request(app.getHttpServer())
+        .patch('/student-course/reject-student')
+        .set({ Authorization: `Bearer ${cursinhoA.token}` })
+        .send({ studentId: estudanteB.id, reason: 'x' })
+        .expect(404);
+      expect((await releitura(estudanteB.id)).applicationStatus).toBe(
+        StatusApplication.UnderReview,
+      );
+    }, 100000);
+
+    it('update-is-free', async () => {
+      const { cursinhoA, estudanteB } = await doisCursinhos();
+      const antes = estudanteB.isFree;
+
+      await request(app.getHttpServer())
+        .patch('/student-course/update-is-free')
+        .set({ Authorization: `Bearer ${cursinhoA.token}` })
+        .send({ idStudentCourse: estudanteB.id, isFree: !antes })
+        .expect(404);
+      expect((await releitura(estudanteB.id)).isFree).toBe(antes);
+    }, 100000);
+
+    it('update-select-enrolled', async () => {
+      const { cursinhoA, estudanteB } = await doisCursinhos();
+
+      await request(app.getHttpServer())
+        .patch('/student-course/update-select-enrolled')
+        .set({ Authorization: `Bearer ${cursinhoA.token}` })
+        .send({ idStudentCourse: estudanteB.id, enrolled: true })
+        .expect(404);
+      expect((await releitura(estudanteB.id)).selectEnrolled).toBe(false);
+    }, 100000);
+
+    // Convocado dentro do prazo: é o estado em que o reenvio de fato dispara
+    // o email — sem as datas, a rota recusaria com 400 por outro motivo.
+    async function convocadoNoPrazo() {
+      const casos = await doisCursinhos(StatusApplication.CalledForEnrollment);
+      casos.estudanteB.selectEnrolledAt = new Date(Date.now() - 864e5);
+      casos.estudanteB.limitEnrolledAt = new Date(Date.now() + 864e5 * 7);
+      await studentCourseRepository.update(casos.estudanteB);
+      return casos;
+    }
+
+    it('GET :id/declared-interest (reenvio do email de convocação)', async () => {
+      const { cursinhoA, estudanteB } = await convocadoNoPrazo();
+
+      await request(app.getHttpServer())
+        .get(`/student-course/${estudanteB.id}/declared-interest`)
+        .set({ Authorization: `Bearer ${cursinhoA.token}` })
+        .expect(404);
+    }, 100000);
+
+    it('o próprio cursinho continua reenviando o email', async () => {
+      const { cursinhoB, estudanteB } = await convocadoNoPrazo();
+
+      await request(app.getHttpServer())
+        .get(`/student-course/${estudanteB.id}/declared-interest`)
+        .set({ Authorization: `Bearer ${cursinhoB.token}` })
+        .expect(200);
+    }, 100000);
+
+    it('confirm-enrolled: estudante de outro cursinho', async () => {
+      const { cursinhoA, estudanteB } = await doisCursinhos(
+        StatusApplication.DeclaredInterest,
+      );
+      const turmaA = await createClass(cursinhoA.representative.id);
+
+      await request(app.getHttpServer())
+        .patch(
+          `/student-course/confirm-enrolled/${estudanteB.id}/class/${turmaA.id}`,
+        )
+        .set({ Authorization: `Bearer ${cursinhoA.token}` })
+        .expect(404);
+      expect((await releitura(estudanteB.id)).applicationStatus).toBe(
+        StatusApplication.DeclaredInterest,
+      );
+    }, 100000);
+
+    it('⚠️ confirm-enrolled: estudante do próprio cursinho numa turma de OUTRO', async () => {
+      const { cursinhoA, cursinhoB } = await doisCursinhos();
+      const { id } = await createStudent(cursinhoA.inscription.id);
+      const estudanteA = await studentCourseService.findOneBy({ id });
+      estudanteA.applicationStatus = StatusApplication.DeclaredInterest;
+      await studentCourseRepository.update(estudanteA);
+      const turmaB = await createClass(cursinhoB.representative.id);
+
+      await request(app.getHttpServer())
+        .patch(
+          `/student-course/confirm-enrolled/${estudanteA.id}/class/${turmaB.id}`,
+        )
+        .set({ Authorization: `Bearer ${cursinhoA.token}` })
+        .expect(404);
+      expect((await releitura(estudanteA.id)).applicationStatus).toBe(
+        StatusApplication.DeclaredInterest,
+      );
+    }, 100000);
+
+    it('schedule-enrolled: PS de outro cursinho — ninguém é convocado', async () => {
+      const { cursinhoA, cursinhoB, estudanteB } = await doisCursinhos();
+      estudanteB.selectEnrolled = true;
+      await studentCourseRepository.update(estudanteB);
+
+      await request(app.getHttpServer())
+        .post('/student-course/schedule-enrolled')
+        .set({ Authorization: `Bearer ${cursinhoA.token}` })
+        .send({
+          inscriptionId: cursinhoB.inscription.id,
+          data_start: new Date().toISOString(),
+          data_end: new Date(Date.now() + 864e5 * 7).toISOString(),
+        })
+        .expect(404);
+      expect((await releitura(estudanteB.id)).applicationStatus).toBe(
+        StatusApplication.UnderReview,
+      );
+    }, 100000);
+
+    it('o próprio cursinho continua convocando o seu PS', async () => {
+      const { cursinhoB, estudanteB } = await doisCursinhos();
+      estudanteB.selectEnrolled = true;
+      await studentCourseRepository.update(estudanteB);
+
+      await request(app.getHttpServer())
+        .post('/student-course/schedule-enrolled')
+        .set({ Authorization: `Bearer ${cursinhoB.token}` })
+        .send({
+          inscriptionId: cursinhoB.inscription.id,
+          data_start: new Date().toISOString(),
+          data_end: new Date(Date.now() + 864e5 * 7).toISOString(),
+        })
+        .expect(200);
+      expect((await releitura(estudanteB.id)).applicationStatus).toBe(
+        StatusApplication.CalledForEnrollment,
+      );
+    }, 100000);
+  });
+
   it('details deve mascarar contatos e documentos conforme o papel', async () => {
     const { representative, inscription } = await createPartnerPrepCourse();
     const [studentId] = await matricularEstudantes(
