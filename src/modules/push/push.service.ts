@@ -2,6 +2,7 @@ import {
   Injectable,
   Logger,
   ServiceUnavailableException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { EnvService } from 'src/shared/modules/env/env.service';
 import { FirebaseService } from 'src/shared/modules/firebase/firebase.service';
@@ -80,6 +81,7 @@ export class PushService {
     payload: PushPayload,
     publico: PublicoDoEnvio,
     sentById?: string,
+    opcoes: { recusarPublicoVazio?: boolean } = {},
   ): Promise<{
     envio: PushNotification;
     disparar: () => Promise<PushNotification>;
@@ -89,6 +91,12 @@ export class PushService {
 
     const { aparelhos, targetUsers, targetDevices } =
       await this.resolverPublico(publico);
+    // Antes de gravar: um envio para ninguém não entra no histórico.
+    if (opcoes.recusarPublicoVazio && targetDevices === 0) {
+      throw new UnprocessableEntityException(
+        'Ninguém nesse público ativou as notificações',
+      );
+    }
 
     const envio = await this.notifications.salvar(
       Object.assign(new PushNotification(), {
