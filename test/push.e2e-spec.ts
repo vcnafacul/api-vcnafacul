@@ -124,6 +124,19 @@ describe('PushService (e2e)', () => {
     );
   };
 
+  /** Usuário com `enviarNotificacao` — o único que pode "enviar teste". */
+  const novoRemetente = async () => {
+    const role = await roleService.create({
+      name: `Push remetente ${randomUUID()}`,
+      base: false,
+      enviarNotificacao: true,
+    } as CreateRoleDtoInput);
+    const u = await novoUsuario();
+    u.role = role;
+    await userRepository.update(u);
+    return u;
+  };
+
   const novoAparelho = async (userId: string, apagado = false) => {
     const token = `tok-${randomUUID()}`;
     const d = Object.assign(new PushDevice(), {
@@ -402,8 +415,18 @@ describe('PushService (e2e)', () => {
       expect(body[0].tokenHash).toBeUndefined();
     });
 
+    it('⚠️ POST /push/test sem a permissão enviarNotificacao → 403', async () => {
+      const u = await novoUsuario();
+      await novoAparelho(u.id);
+      await http()
+        .post('/push/test')
+        .set('Authorization', await bearer(u.id))
+        .expect(403);
+      expect(sendEachForMulticast).not.toHaveBeenCalled();
+    });
+
     it('POST /push/test envia para os aparelhos do próprio usuário', async () => {
-      const [u, outro] = await Promise.all([novoUsuario(), novoUsuario()]);
+      const [u, outro] = await Promise.all([novoRemetente(), novoUsuario()]);
       const d1 = await novoAparelho(u.id);
       const d2 = await novoAparelho(u.id);
       await novoAparelho(outro.id);
@@ -420,7 +443,7 @@ describe('PushService (e2e)', () => {
     });
 
     it('PUSH_ENABLED=false → 503 no registrar e no teste; o DELETE continua funcionando', async () => {
-      const u = await novoUsuario();
+      const u = await novoRemetente();
       const auth = await bearer(u.id);
       const d = await novoAparelho(u.id);
       pushLigado = false;

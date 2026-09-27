@@ -1,8 +1,8 @@
 import {
-  PushController,
-  THROTTLE_REMOVER,
+  PushAdminController,
   THROTTLE_TESTE,
-} from './push.controller';
+} from './admin/push-admin.controller';
+import { PushController, THROTTLE_REMOVER } from './push.controller';
 
 /*
   O throttler é desligado nos e2e (`app.module`, `isTestEnv`), então o limite
@@ -15,7 +15,7 @@ const limiteDe = (handler: (...args: never[]) => unknown) => ({
 
 describe('PushController — limites de requisição', () => {
   it('POST /push/test: 5 por minuto', () => {
-    expect(limiteDe(PushController.prototype.teste)).toEqual({
+    expect(limiteDe(PushAdminController.prototype.teste)).toEqual({
       limit: THROTTLE_TESTE.default.limit,
       ttl: THROTTLE_TESTE.default.ttl,
     });

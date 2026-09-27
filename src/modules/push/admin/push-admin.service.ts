@@ -89,6 +89,10 @@ export class PushAdminService {
     };
   }
 
+  async enviarTeste(userId: string) {
+    return this.push.enviarTeste(userId);
+  }
+
   async historico(page: number, limit: number) {
     const r = await this.notifications.historico(page, limit);
     return { ...r, data: r.data.map(resumoDoEnvio) };
