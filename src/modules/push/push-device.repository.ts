@@ -147,4 +147,30 @@ export class PushDeviceRepository extends BaseRepository<PushDevice> {
       .orderBy('device.lastSeenAt', 'DESC')
       .getMany();
   }
+
+  // ─── Limpeza diária (BE-07) ──────────────────────────────────────────────
+
+  /** Desativa os aparelhos que não aparecem desde `limite`. Devolve quantos. */
+  async desativarSemUsoDesde(limite: Date, agora: Date): Promise<number> {
+    const r = await this.repository
+      .createQueryBuilder()
+      .update(PushDevice)
+      .set({ deletedAt: agora })
+      .where('deleted_at IS NULL')
+      .andWhere('last_seen_at < :limite', { limite })
+      .execute();
+    return r.affected ?? 0;
+  }
+
+  /** Apaga DE VERDADE o que foi desativado antes de `limite`. Devolve quantos. */
+  async apagarDesativadosAntes(limite: Date): Promise<number> {
+    const r = await this.repository
+      .createQueryBuilder()
+      .delete()
+      .from(PushDevice)
+      .where('deleted_at IS NOT NULL')
+      .andWhere('deleted_at < :limite', { limite })
+      .execute();
+    return r.affected ?? 0;
+  }
 }

@@ -5,6 +5,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { createHash, randomUUID } from 'crypto';
 import { AppModule } from 'src/app.module';
+import { PushCleanupTask } from 'src/modules/push/push-cleanup.task';
 import { PushDevice } from 'src/modules/push/push-device.entity';
 import { PushDeviceRepository } from 'src/modules/push/push-device.repository';
 import {
@@ -476,6 +477,70 @@ describe('PushService (e2e)', () => {
       expect(await tokensDe({ type: 'users', userIds: [outro.id] })).toEqual([
         doOutro.token,
       ]);
+    });
+  });
+
+  describe('limpeza diária (BE-07)', () => {
+    const DIA = 24 * 60 * 60 * 1000;
+    const agora = new Date();
+    const diasAtras = (n: number) => new Date(agora.getTime() - n * DIA);
+
+    const aparelhoCom = async (
+      userId: string,
+      campos: { lastSeenAt: Date; deletedAt?: Date | null },
+    ) => {
+      const d = await novoAparelho(userId);
+      await dataSource.getRepository(PushDevice).update(d.id, {
+        lastSeenAt: campos.lastSeenAt,
+        deletedAt: campos.deletedAt ?? null,
+      });
+      return d.id;
+    };
+    const buscar = (id: string) =>
+      dataSource.getRepository(PushDevice).findOneBy({ id });
+
+    it('59 dias sem uso → mantém; 61 → desativa; desativado há 31 → apaga; há 29 → mantém', async () => {
+      const u = await novoUsuario();
+      const usado59 = await aparelhoCom(u.id, { lastSeenAt: diasAtras(59) });
+      const parado61 = await aparelhoCom(u.id, { lastSeenAt: diasAtras(61) });
+      const desativado31 = await aparelhoCom(u.id, {
+        lastSeenAt: diasAtras(90),
+        deletedAt: diasAtras(31),
+      });
+      const desativado29 = await aparelhoCom(u.id, {
+        lastSeenAt: diasAtras(90),
+        deletedAt: diasAtras(29),
+      });
+
+      const r = await app.get(PushCleanupTask).limpar(agora);
+
+      expect(r).toEqual({ desativados: 1, apagados: 1 });
+      expect((await buscar(usado59)).deletedAt).toBeNull();
+      expect((await buscar(parado61)).deletedAt).not.toBeNull();
+      expect(await buscar(desativado31)).toBeNull();
+      expect(await buscar(desativado29)).not.toBeNull();
+    });
+
+    it('⚠️ rodar duas vezes dá no mesmo (sem lock)', async () => {
+      const u = await novoUsuario();
+      const parado = await aparelhoCom(u.id, { lastSeenAt: diasAtras(61) });
+      const task = app.get(PushCleanupTask);
+
+      await task.limpar(agora);
+      const desativadoEm = (await buscar(parado)).deletedAt;
+      const segunda = await task.limpar(agora);
+
+      expect(segunda).toEqual({ desativados: 0, apagados: 0 });
+      expect((await buscar(parado)).deletedAt).toEqual(desativadoEm);
+    });
+
+    it('o aparelho recém-desativado não é apagado na mesma rodada', async () => {
+      const u = await novoUsuario();
+      const parado = await aparelhoCom(u.id, { lastSeenAt: diasAtras(400) });
+
+      await app.get(PushCleanupTask).limpar(agora);
+
+      expect(await buscar(parado)).not.toBeNull();
     });
   });
 });
