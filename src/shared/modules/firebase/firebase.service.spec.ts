@@ -9,9 +9,11 @@ import { FirebaseService } from './firebase.service';
 jest.mock('firebase-admin', () => {
   const fakeAuth = { name: 'auth' };
   const fakeFirestore = { name: 'firestore' };
+  const fakeMessaging = { name: 'messaging' };
   const fakeApp = {
     auth: jest.fn().mockReturnValue(fakeAuth),
     firestore: jest.fn().mockReturnValue(fakeFirestore),
+    messaging: jest.fn().mockReturnValue(fakeMessaging),
   };
   return {
     apps: [],
@@ -118,5 +120,26 @@ describe('FirebaseService', () => {
     service.onModuleInit();
 
     expect(() => service.firestore()).toThrow(ServiceUnavailableException);
+  });
+
+  it('expõe messaging() do app inicializado e isEnabled() = true', () => {
+    const service = new FirebaseService(buildEnv());
+    service.onModuleInit();
+
+    expect(service.messaging()).toEqual({ name: 'messaging' });
+    expect(service.isEnabled()).toBe(true);
+  });
+
+  it('⚠️ sem env, messaging() lança ServiceUnavailableException e isEnabled() = false', () => {
+    const service = new FirebaseService(
+      buildEnv({
+        FIREBASE_PROJECT_ID: '',
+        FIREBASE_SERVICE_ACCOUNT_BASE64: '',
+      }),
+    );
+    service.onModuleInit();
+
+    expect(() => service.messaging()).toThrow(ServiceUnavailableException);
+    expect(service.isEnabled()).toBe(false);
   });
 });

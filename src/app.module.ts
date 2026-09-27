@@ -44,7 +44,7 @@ import { PlacesModule } from './modules/places/places.module';
 import { EssayModule } from './modules/essay/essay.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ChatModule } from './modules/chat/chat.module';
-import { FirebaseModule } from './modules/chat/firebase/firebase.module';
+import { FirebaseModule } from './shared/modules/firebase/firebase.module';
 
 /**
  * Desabilita ThrottlerGuard em ambiente de teste para evitar erros 429
