@@ -7,6 +7,11 @@ import {
 import * as admin from 'firebase-admin';
 import { EnvService } from 'src/shared/modules/env/env.service';
 
+/**
+ * App do Firebase Admin compartilhado por chat (auth + firestore) e push
+ * (messaging). Saiu de `modules/chat/firebase` quando o push passou a usar o
+ * mesmo app.
+ */
 @Injectable()
 export class FirebaseService implements OnModuleInit {
   private readonly logger = new Logger(FirebaseService.name);
@@ -20,7 +25,7 @@ export class FirebaseService implements OnModuleInit {
 
     if (!projectId || !saB64) {
       this.logger.warn(
-        'Firebase env vars ausentes — chat desabilitado neste ambiente',
+        'Firebase env vars ausentes — chat e push desabilitados neste ambiente',
       );
       return;
     }
@@ -39,7 +44,7 @@ export class FirebaseService implements OnModuleInit {
   private ensureInitialized(): admin.app.App {
     if (!this.app) {
       throw new ServiceUnavailableException(
-        'Chat de suporte indisponível: Firebase não configurado',
+        'Firebase não configurado neste ambiente',
       );
     }
     return this.app;
@@ -51,5 +56,15 @@ export class FirebaseService implements OnModuleInit {
 
   firestore() {
     return this.ensureInitialized().firestore();
+  }
+
+  /** Envio de push (FCM HTTP v1). Usado pelo módulo `push`. */
+  messaging(): admin.messaging.Messaging {
+    return this.ensureInitialized().messaging();
+  }
+
+  /** Sem as env do Firebase a api sobe mesmo assim, só sem chat e push. */
+  isEnabled(): boolean {
+    return !!this.app;
   }
 }

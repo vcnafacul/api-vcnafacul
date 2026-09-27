@@ -47,3 +47,29 @@ describe('RoleService.create — permissões provas cursinho', () => {
     expect(role.visualizarProvasCursinho).toBe(false);
   });
 });
+
+describe('RoleService — enviarNotificacao (pwa-push BE-03)', () => {
+  it('create persiste enviarNotificacao = true', async () => {
+    const { service } = makeService();
+    const role = await service.create(baseDto({ enviarNotificacao: true }));
+    expect(role.enviarNotificacao).toBe(true);
+  });
+
+  it('⚠️ sem o campo, a permissão nasce desligada', async () => {
+    const { service } = makeService();
+    const role = await service.create(baseDto());
+    expect(role.enviarNotificacao).toBe(false);
+  });
+
+  it('update liga e desliga enviarNotificacao', async () => {
+    const { service, roleRepository } = makeService();
+    const existente = { id: 'r1', name: 'Admin', enviarNotificacao: false };
+    roleRepository.findOneBy.mockResolvedValue(existente);
+
+    await service.update({ ...baseDto(), id: 'r1', enviarNotificacao: true });
+    expect(existente.enviarNotificacao).toBe(true);
+
+    await service.update({ ...baseDto(), id: 'r1', enviarNotificacao: false });
+    expect(existente.enviarNotificacao).toBe(false);
+  });
+});

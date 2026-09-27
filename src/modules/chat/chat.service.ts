@@ -16,7 +16,7 @@ import { StudentCourseRepository } from 'src/modules/prepCourse/studentCourse/st
 import { UserRepository } from 'src/modules/user/user.repository';
 import { ConversationMetadata, SenderType } from './chat.types';
 import { OpenConversationDto } from './dtos/open-conversation.dto';
-import { FirebaseService } from './firebase/firebase.service';
+import { FirebaseService } from 'src/shared/modules/firebase/firebase.service';
 
 const COOLDOWN_MS = 15 * 60 * 1000;
 const MAX_CONTENT = 1000;

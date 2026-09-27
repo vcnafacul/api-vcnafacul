@@ -4,7 +4,7 @@ import { StudentCourseRepository } from 'src/modules/prepCourse/studentCourse/st
 import { CollaboratorRepository } from 'src/modules/prepCourse/collaborator/collaborator.repository';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { ChatService } from './chat.service';
-import { FirebaseService } from './firebase/firebase.service';
+import { FirebaseService } from 'src/shared/modules/firebase/firebase.service';
 
 describe('ChatService', () => {
   let service: ChatService;

@@ -114,6 +114,7 @@ export class RoleService extends BaseService<Role> {
       [Permissions.gerenciarCategoriasCursinho]:
         roleDto.gerenciarCategoriasCursinho,
       [Permissions.excluirQuestao]: roleDto.excluirQuestao,
+      [Permissions.enviarNotificacao]: roleDto.enviarNotificacao,
     });
 
     const role = new Role();
@@ -185,6 +186,7 @@ export class RoleService extends BaseService<Role> {
       [Permissions.gerenciarCategoriasCursinho]:
         roleDto.gerenciarCategoriasCursinho,
       [Permissions.excluirQuestao]: roleDto.excluirQuestao,
+      [Permissions.enviarNotificacao]: roleDto.enviarNotificacao,
     });
 
     role.name = roleDto.name;

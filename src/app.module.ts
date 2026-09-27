@@ -44,7 +44,9 @@ import { PlacesModule } from './modules/places/places.module';
 import { EssayModule } from './modules/essay/essay.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ChatModule } from './modules/chat/chat.module';
-import { FirebaseModule } from './modules/chat/firebase/firebase.module';
+import { FirebaseModule } from './shared/modules/firebase/firebase.module';
+import { PushAdminModule } from './modules/push/admin/push-admin.module';
+import { PushModule } from './modules/push/push.module';
 
 /**
  * Desabilita ThrottlerGuard em ambiente de teste para evitar erros 429
@@ -122,6 +124,8 @@ const throttlerProvider: Provider = isTestEnv
     EssayModule,
     DashboardModule,
     FirebaseModule,
+    PushModule,
+    PushAdminModule,
     ChatModule,
   ],
   controllers: [AppController],
