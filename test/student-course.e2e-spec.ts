@@ -3738,6 +3738,103 @@ describe('StudentCourse (e2e)', () => {
     }, 100000);
   });
 
+  describe('⚠️ isolamento entre cursinhos — estudantes e turmas (card 01, PR 3)', () => {
+    async function matriculadoNoB() {
+      const cursinhoA = await createPartnerPrepCourse();
+      const cursinhoB = await createPartnerPrepCourse();
+      const [estudanteB] = await matricularEstudantes(
+        cursinhoB.representative.id,
+        cursinhoB.inscription.id,
+        1,
+      );
+      return { cursinhoA, cursinhoB, estudanteB };
+    }
+    const releitura = (id: string) => studentCourseService.findOneBy({ id });
+
+    it('enrollment-cancelled', async () => {
+      const { cursinhoA, estudanteB } = await matriculadoNoB();
+
+      await request(app.getHttpServer())
+        .patch('/student-course/enrollment-cancelled')
+        .set({ Authorization: `Bearer ${cursinhoA.token}` })
+        .send({ studentId: estudanteB, reason: 'x' })
+        .expect(404);
+      expect((await releitura(estudanteB)).applicationStatus).toBe(
+        StatusApplication.Enrolled,
+      );
+    }, 100000);
+
+    it('active-enrolled', async () => {
+      const { cursinhoA, estudanteB } = await matriculadoNoB();
+      await studentCourseService.cancelEnrolled(estudanteB, 'preparo');
+
+      await request(app.getHttpServer())
+        .patch('/student-course/active-enrolled')
+        .set({ Authorization: `Bearer ${cursinhoA.token}` })
+        .send({ studentId: estudanteB })
+        .expect(404);
+      expect((await releitura(estudanteB)).applicationStatus).toBe(
+        StatusApplication.EnrollmentCancelled,
+      );
+    }, 100000);
+
+    it('profile-image', async () => {
+      const { cursinhoA, estudanteB } = await matriculadoNoB();
+      const fotoAntes = (await releitura(estudanteB)).photo;
+
+      await request(app.getHttpServer())
+        .patch('/student-course/profile-image')
+        .set({ Authorization: `Bearer ${cursinhoA.token}` })
+        .field('studentId', estudanteB)
+        .attach('file', Buffer.from('imagem fake'), 'foto.jpg')
+        .expect(404);
+      expect((await releitura(estudanteB)).photo).toBe(fotoAntes);
+    }, 100000);
+
+    it('class: estudante de outro cursinho', async () => {
+      const { cursinhoA, estudanteB } = await matriculadoNoB();
+      const turmaDoB = (await releitura(estudanteB)).class.id;
+      const turmaA = await createClass(cursinhoA.representative.id);
+
+      await request(app.getHttpServer())
+        .patch('/student-course/class')
+        .set({ Authorization: `Bearer ${cursinhoA.token}` })
+        .send({ studentId: estudanteB, classId: turmaA.id })
+        .expect(404);
+      expect((await releitura(estudanteB)).class.id).toBe(turmaDoB);
+    }, 100000);
+
+    it('⚠️ class: estudante do próprio cursinho para uma turma de OUTRO', async () => {
+      const { cursinhoA, cursinhoB } = await matriculadoNoB();
+      const [estudanteA] = await matricularEstudantes(
+        cursinhoA.representative.id,
+        cursinhoA.inscription.id,
+        1,
+      );
+      const turmaDoA = (await releitura(estudanteA)).class.id;
+      const turmaB = await createClass(cursinhoB.representative.id);
+
+      await request(app.getHttpServer())
+        .patch('/student-course/class')
+        .set({ Authorization: `Bearer ${cursinhoA.token}` })
+        .send({ studentId: estudanteA, classId: turmaB.id })
+        .expect(404);
+      expect((await releitura(estudanteA)).class.id).toBe(turmaDoA);
+    }, 100000);
+
+    it('o próprio cursinho continua trocando a turma do seu estudante', async () => {
+      const { cursinhoB, estudanteB } = await matriculadoNoB();
+      const outraTurmaDoB = await createClass(cursinhoB.representative.id);
+
+      await request(app.getHttpServer())
+        .patch('/student-course/class')
+        .set({ Authorization: `Bearer ${cursinhoB.token}` })
+        .send({ studentId: estudanteB, classId: outraTurmaDoB.id })
+        .expect(200);
+      expect((await releitura(estudanteB)).class.id).toBe(outraTurmaDoB.id);
+    }, 100000);
+  });
+
   it('details deve mascarar contatos e documentos conforme o papel', async () => {
     const { representative, inscription } = await createPartnerPrepCourse();
     const [studentId] = await matricularEstudantes(
