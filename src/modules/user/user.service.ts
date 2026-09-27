@@ -141,7 +141,15 @@ export class UserService extends BaseService<User> {
         );
       }
       this.logger.error(`Erro ao criar usuário: ${error}`);
-      if (error.code === '23505') {
+      /*
+        ⚠️ **`ER_DUP_ENTRY`, e não `23505`** (o código do Postgres, que nunca
+        chega: o banco é MySQL/MariaDB). O email repetido comum já é barrado
+        pelo `@EmailUnique` do DTO; este é o que sobra — dois cadastros iguais
+        ao mesmo tempo passam juntos pelo validador, e o índice único decide.
+        Com o código errado, essa corrida virava 500. Mesma checagem do
+        `google-auth.service` e do `convite-colaborador.service`.
+      */
+      if (error?.code === 'ER_DUP_ENTRY') {
         throw new HttpException('Email já cadastrado', HttpStatus.CONFLICT);
       }
       throw error;
