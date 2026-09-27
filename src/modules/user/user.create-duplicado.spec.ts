@@ -50,6 +50,7 @@ describe('UserService.createUser — email duplicado no banco', () => {
       {} as any, // cache
       {} as any, // refreshTokenService
       {} as any, // profileDetector
+      {} as any, // pushService
     );
     return { service };
   }

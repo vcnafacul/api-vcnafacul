@@ -1,3 +1,4 @@
+import { PushService } from '../push/push.service';
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AggregatePeriodDtoInput } from 'src/shared/dtos/aggregate-period.dto.input';
@@ -53,6 +54,7 @@ export class UserService extends BaseService<User> {
     private readonly cache: CacheService,
     private readonly refreshTokenService: RefreshTokenService,
     private readonly profileDetector: ProfileDetectorService,
+    private readonly pushService: PushService,
   ) {
     super(userRepository);
   }
@@ -613,6 +615,9 @@ export class UserService extends BaseService<User> {
    */
   async logoutAll(userId: string): Promise<void> {
     await this.refreshTokenService.revokeAllUserTokens(userId);
+    // "Sair de tudo" inclui os avisos: senão o celular que ficou logado
+    // continuaria recebendo push da conta (série pwa-push, FE-05).
+    await this.pushService.desativarAparelhosDoUsuario(userId);
     this.logger.log(`Todos os tokens do usuário ${userId} foram revogados`);
   }
 

@@ -2,6 +2,7 @@ import {
   Injectable,
   Logger,
   ServiceUnavailableException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { EnvService } from 'src/shared/modules/env/env.service';
 import { FirebaseService } from 'src/shared/modules/firebase/firebase.service';
@@ -15,8 +16,12 @@ import {
   StatusDoEnvio,
 } from './push-notification.entity';
 import { PushNotificationRepository } from './push-notification.repository';
+import { RegistrarAparelhoDtoInput } from './dtos/registrar-aparelho.dto';
+import { PlataformaDoAparelho, PushDevice } from './push-device.entity';
 import {
   ERROS_DE_TOKEN_MORTO,
+  PAYLOAD_DE_TESTE,
+  hashDoToken,
   PushPayload,
   emLotes,
   validarPayload,
@@ -76,6 +81,7 @@ export class PushService {
     payload: PushPayload,
     publico: PublicoDoEnvio,
     sentById?: string,
+    opcoes: { recusarPublicoVazio?: boolean } = {},
   ): Promise<{
     envio: PushNotification;
     disparar: () => Promise<PushNotification>;
@@ -85,6 +91,12 @@ export class PushService {
 
     const { aparelhos, targetUsers, targetDevices } =
       await this.resolverPublico(publico);
+    // Antes de gravar: um envio para ninguém não entra no histórico.
+    if (opcoes.recusarPublicoVazio && targetDevices === 0) {
+      throw new UnprocessableEntityException(
+        'Ninguém nesse público ativou as notificações',
+      );
+    }
 
     const envio = await this.notifications.salvar(
       Object.assign(new PushNotification(), {
@@ -186,5 +198,43 @@ export class PushService {
       this.logger.log(`${mortos.length} aparelho(s) com token morto removidos`);
     }
     return { successCount, failureCount };
+  }
+
+  // ─── Aparelhos (BE-04) ───────────────────────────────────────────────────
+
+  async registrarAparelho(
+    userId: string,
+    dto: RegistrarAparelhoDtoInput,
+  ): Promise<void> {
+    this.garantirHabilitado();
+    await this.devices.registrar({
+      userId,
+      token: dto.token,
+      tokenHash: hashDoToken(dto.token),
+      platform: dto.platform ?? PlataformaDoAparelho.other,
+      standalone: dto.standalone ?? false,
+      userAgent: dto.userAgent || null,
+    });
+  }
+
+  /**
+   * ⚠️ **Sem usuário e sem checar a flag.** O logout forçado (sessão expirada)
+   * não tem JWT válido, e desligar o push não pode impedir ninguém de parar de
+   * receber. Quem tem o token é o próprio aparelho.
+   */
+  async removerAparelho(token: string): Promise<void> {
+    await this.devices.desativarPorHash(hashDoToken(token));
+  }
+
+  async aparelhosDoUsuario(userId: string): Promise<PushDevice[]> {
+    return this.devices.ativosDoUsuario(userId);
+  }
+
+  async desativarAparelhosDoUsuario(userId: string): Promise<void> {
+    await this.devices.desativarDoUsuario(userId);
+  }
+
+  async enviarTeste(userId: string): Promise<ResultadoDoEnvio> {
+    return this.sendToUsers([userId], PAYLOAD_DE_TESTE);
   }
 }

@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { createHash } from 'crypto';
 
 export const LIMITE_TITULO = 100;
 export const LIMITE_CORPO = 500;
@@ -71,3 +72,16 @@ export function emLotes<T>(itens: T[], tamanho = TAMANHO_DO_LOTE): T[][] {
   }
   return lotes;
 }
+
+/** Chave única do aparelho: o token do FCM não tem tamanho garantido (BE-02). */
+export function hashDoToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+/** O "enviar teste para mim" (BE-04). Tag fixa: testes seguidos se substituem. */
+export const PAYLOAD_DE_TESTE = {
+  title: 'Notificações ativadas! 🎉',
+  body: 'Você vai receber os avisos do Você na Facul neste aparelho.',
+  url: '/',
+  tag: 'teste',
+};
