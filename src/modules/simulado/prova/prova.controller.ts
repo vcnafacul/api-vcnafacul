@@ -55,6 +55,7 @@ export class ProvaController {
     Permissions.visualizarProvas,
     Permissions.criarQuestao,
     Permissions.validarQuestao,
+    Permissions.editarQuestoesCursinho,
   ])
   public async getMissingNumbers(@Param('id') id: string) {
     return await this.provaService.getMissingNumbers(id);

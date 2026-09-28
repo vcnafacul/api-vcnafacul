@@ -26,6 +26,17 @@ import { UpdateStatusDTOInput } from '../dtos/update-questao-status.dto.input';
 import { Status } from '../enum/status.enum';
 import { QuestaoService } from './questao.service';
 
+/**
+ * Quem vê o banco de questões: o projeto e o cursinho (tickets/023, card 01).
+ * `editarQuestoesCursinho` implica a de ver ao salvar o papel, e entra aqui
+ * também para não depender disso.
+ */
+const VER_QUESTOES = [
+  Permissions.visualizarQuestao,
+  Permissions.visualizarQuestoesCursinho,
+  Permissions.editarQuestoesCursinho,
+];
+
 @ApiTags('Questao')
 @Controller('mssimulado/questoes')
 export class QuestaoController {
@@ -44,7 +55,7 @@ export class QuestaoController {
     },
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
+  @SetMetadata(PermissionsGuard.name, VER_QUESTOES)
   public async questoes(@Query() query: QuestaoDTOInput) {
     return await this.questaoService.getAllQuestoes(query);
   }
@@ -64,7 +75,7 @@ export class QuestaoController {
   })
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, [
-    Permissions.visualizarQuestao,
+    ...VER_QUESTOES,
     Permissions.cadastrarProvas,
   ])
   public async questoesInfo() {
@@ -111,7 +122,10 @@ export class QuestaoController {
     description: 'upload de asset inline para rich text',
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.criarQuestao,
+    Permissions.editarQuestoesCursinho,
+  ])
   @UseInterceptors(FileInterceptor('file'))
   public async uploadAsset(@UploadedFile() file: Express.Multer.File) {
     return await this.questaoService.uploadAsset(file);
@@ -124,7 +138,10 @@ export class QuestaoController {
     description: 'atualiza classificação de questão',
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.criarQuestao,
+    Permissions.editarQuestoesCursinho,
+  ])
   public async updateClassificacao(
     @Param('id') id: string,
     @Body() body: unknown,
@@ -139,7 +156,10 @@ export class QuestaoController {
     description: 'atualiza conteúdo de questão',
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.criarQuestao,
+    Permissions.editarQuestoesCursinho,
+  ])
   public async updateContent(@Param('id') id: string, @Body() body: unknown) {
     return await this.questaoService.updateContent(id, body);
   }
@@ -161,7 +181,10 @@ export class QuestaoController {
       'congela a questão e cria a sucessora já editada; as provas passam a usar a nova',
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.criarQuestao,
+    Permissions.editarQuestoesCursinho,
+  ])
   public async novaVersao(
     @Param('id') id: string,
     @Body() body: object,
@@ -180,6 +203,7 @@ export class QuestaoController {
   @SetMetadata(PermissionsGuard.name, [
     Permissions.criarQuestao,
     Permissions.validarQuestao,
+    Permissions.editarQuestoesCursinho,
   ])
   @UseInterceptors(FileInterceptor('file'))
   public async updateImageAlternativa(
@@ -204,6 +228,7 @@ export class QuestaoController {
   @SetMetadata(PermissionsGuard.name, [
     Permissions.criarQuestao,
     Permissions.validarQuestao,
+    Permissions.editarQuestoesCursinho,
   ])
   @UseInterceptors(FileInterceptor('file'))
   public async uploadImage(
@@ -225,7 +250,10 @@ export class QuestaoController {
     description: 'cria uma cópia editável da questão, com lastro',
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.criarQuestao,
+    Permissions.editarQuestoesCursinho,
+  ])
   public async duplicar(@Param('id') id: string, @Req() req: Request) {
     return await this.questaoService.duplicar(id, req.user as User);
   }
@@ -241,7 +269,7 @@ export class QuestaoController {
     description: 'a cadeia de versões, as cópias diretas e a origem',
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
+  @SetMetadata(PermissionsGuard.name, VER_QUESTOES)
   public async linhagem(@Param('id') id: string) {
     return await this.questaoService.linhagem(id);
   }
@@ -253,6 +281,7 @@ export class QuestaoController {
   @SetMetadata(PermissionsGuard.name, [
     Permissions.criarQuestao,
     Permissions.validarQuestao,
+    Permissions.editarQuestoesCursinho,
   ])
   public async adicionarEmProva(
     @Param('id') id: string,
@@ -273,6 +302,7 @@ export class QuestaoController {
   @SetMetadata(PermissionsGuard.name, [
     Permissions.criarQuestao,
     Permissions.validarQuestao,
+    Permissions.editarQuestoesCursinho,
   ])
   public async removerDeProva(
     @Param('id') id: string,
@@ -293,6 +323,7 @@ export class QuestaoController {
   @SetMetadata(PermissionsGuard.name, [
     Permissions.criarQuestao,
     Permissions.validarQuestao,
+    Permissions.editarQuestoesCursinho,
   ])
   public async definirProvaBase(
     @Param('id') id: string,
@@ -374,6 +405,7 @@ export class QuestaoController {
   @SetMetadata(PermissionsGuard.name, [
     Permissions.criarQuestao,
     Permissions.validarQuestao,
+    Permissions.editarQuestoesCursinho,
   ])
   public async createQuestion(@Body() questao: unknown) {
     return await this.questaoService.createQuestion(questao);
@@ -422,7 +454,7 @@ export class QuestaoController {
     description: 'busca logs de questão',
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
+  @SetMetadata(PermissionsGuard.name, VER_QUESTOES)
   public async getLogs(@Param('id') id: string) {
     return await this.questaoService.getLogs(id);
   }
@@ -467,7 +499,7 @@ export class QuestaoController {
     description: 'busca histórico de questão',
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
+  @SetMetadata(PermissionsGuard.name, VER_QUESTOES)
   public async history(@Param('id') id: string) {
     return await this.questaoService.getHistory(id);
   }
