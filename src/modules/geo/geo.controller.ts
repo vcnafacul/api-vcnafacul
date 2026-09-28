@@ -60,7 +60,11 @@ export class GeoController {
     return this.geoService.findPublic(type);
   }
 
+  /** Dash: entidade completa, com dados pessoais e qualquer status. O mapa usa o `/public`. */
   @Get()
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.validarCursinho)
   async findAllByFilter(
     @Query() filterDto: ListGeoDTOInput,
   ): Promise<GetAllDtoOutput<Geolocation>> {
