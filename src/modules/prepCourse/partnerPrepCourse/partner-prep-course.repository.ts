@@ -3,7 +3,7 @@ import { InjectEntityManager } from '@nestjs/typeorm';
 import { BaseRepository } from 'src/shared/modules/base/base.repository';
 import { GetAllWhereInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
-import { EntityManager } from 'typeorm';
+import { EntityManager, In } from 'typeorm';
 import { PartnerPrepCourse } from './partner-prep-course.entity';
 
 @Injectable()
@@ -161,5 +161,18 @@ export class PartnerPrepCourseRepository extends BaseRepository<PartnerPrepCours
       ])
       .where({ id })
       .getOne();
+  }
+
+  /**
+   * Nome de cada cursinho (o do mapa, `geo.name`), numa consulta só
+   * (tickets/023, card 07 — selo "Prova do cursinho X"). Sem N+1.
+   */
+  async nomesPorId(ids: string[]): Promise<Map<string, string>> {
+    if (!ids.length) return new Map();
+    const cursinhos = await this.repository.find({
+      where: { id: In(ids) },
+      relations: ['geo'],
+    });
+    return new Map(cursinhos.map((c) => [c.id, c.geo?.name ?? '']));
   }
 }
