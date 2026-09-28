@@ -179,3 +179,52 @@ describe('ProvaService.createProva — cursinhoId opcional', () => {
     expect(sent.cursinhoId).toBeNull();
   });
 });
+
+describe('ProvaService — receberNovasVersoes (023 · 05)', () => {
+  const montar = () => {
+    const axios = {
+      post: jest.fn().mockResolvedValue({ _id: 'p1' }),
+      patch: jest.fn().mockResolvedValue({ receberNovasVersoes: true }),
+    };
+    const service = new ProvaService(
+      { create: () => axios } as any,
+      { get: () => 'x' } as any,
+      { uploadFile: jest.fn() } as any,
+      {} as any,
+    );
+    return { service, axios };
+  };
+  const dto = (receberNovasVersoes?: unknown) =>
+    ({
+      ano: '2024',
+      aplicacao: '1',
+      categoria: 'c',
+      receberNovasVersoes,
+    }) as any;
+
+  it.each([
+    [undefined, false],
+    ['false', false],
+    ['true', true],
+    [true, true],
+  ])('criar com %p manda %p ao ms', async (entrada, esperado) => {
+    const { service, axios } = montar();
+    await service.createProva(dto(entrada), undefined, undefined, 'u');
+    expect(axios.post.mock.calls[0][1].receberNovasVersoes).toBe(esperado);
+  });
+
+  it('alterar manda o valor e o ator no header', async () => {
+    const { service, axios } = montar();
+    const ator = {
+      userId: 'u',
+      cursinhoId: 'c',
+      admin: false,
+      editorCursinho: true,
+    };
+    await service.alterarReceberNovasVersoes('p1', true, ator);
+    const [url, corpo, header] = axios.patch.mock.calls[0];
+    expect(url).toBe('v1/prova/p1/receber-novas-versoes');
+    expect(corpo).toEqual({ valor: true });
+    expect(JSON.parse(header['x-ator'])).toEqual(ator);
+  });
+});

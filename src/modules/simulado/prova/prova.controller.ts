@@ -21,13 +21,44 @@ import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { User } from 'src/modules/user/user.entity';
 import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
+import { AtorService } from '../ator/ator.service';
+import { ReceberNovasVersoesDTOInput } from './dtos/receber-novas-versoes.dto.input';
 import { ProvaService } from './prova.service';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('Simulado - Prova')
 @Controller('mssimulado/prova')
 export class ProvaController {
-  constructor(private readonly provaService: ProvaService) {}
+  constructor(
+    private readonly provaService: ProvaService,
+    private readonly atorService: AtorService,
+  ) {}
+
+  /**
+   * "Aplicar novas versões automaticamente" (tickets/023, card 05). A rota
+   * abre para quem cadastra prova e para o editor do cursinho; quem só
+   * permite o dono é o ms (`podeComporProva`).
+   */
+  @Patch(':id/receber-novas-versoes')
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'aplicar novas versões na prova' })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.cadastrarProvas,
+    Permissions.cadastrarProvasCursinho,
+    Permissions.editarQuestoesCursinho,
+  ])
+  public async alterarReceberNovasVersoes(
+    @Param('id') id: string,
+    @Body() dto: ReceberNovasVersoesDTOInput,
+    @Req() req: Request,
+  ) {
+    return await this.provaService.alterarReceberNovasVersoes(
+      id,
+      dto.valor,
+      await this.atorService.resolver((req.user as User).id),
+    );
+  }
 
   @Get()
   @ApiBearerAuth()

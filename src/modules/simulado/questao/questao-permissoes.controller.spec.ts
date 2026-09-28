@@ -85,4 +85,14 @@ describe('banco de questões — quem entra em cada rota (023 · 01)', () => {
   it('GET prova/missing/:id: o editor do cursinho escolhe o número', () => {
     expect(prova['GET missing/:id']).toContain(P.editarQuestoesCursinho);
   });
+
+  it('PATCH prova/:id/receber-novas-versoes (023 · 05): quem cadastra prova e o editor', () => {
+    expect(prova['PATCH :id/receber-novas-versoes']).toEqual(
+      expect.arrayContaining([
+        P.cadastrarProvas,
+        P.cadastrarProvasCursinho,
+        P.editarQuestoesCursinho,
+      ]),
+    );
+  });
 });

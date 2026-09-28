@@ -7,6 +7,7 @@ import {
 } from 'src/shared/services/axios/http-service-axios.factory';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { CreateProvaDTORequest } from '../dtos/prova-create.dto.request';
+import { Ator, headerDoAtor } from '../ator/ator';
 import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
 
 @Injectable()
@@ -21,6 +22,22 @@ export class ProvaService {
   ) {
     this.axios = this.httpServiceFactory.create(
       this.envService.get('SIMULADO_URL'),
+    );
+  }
+
+  /**
+   * Liga/desliga o "aplicar novas versões automaticamente" da prova
+   * (tickets/023, card 05). Quem decide se pode é o ms (só o dono), pelo ator.
+   */
+  public async alterarReceberNovasVersoes(
+    id: string,
+    valor: boolean,
+    ator: Ator,
+  ) {
+    return await this.axios.patch(
+      `v1/prova/${encodeURIComponent(id)}/receber-novas-versoes`,
+      { valor },
+      headerDoAtor(ator),
     );
   }
 
@@ -69,6 +86,9 @@ export class ProvaService {
     // eventualmente enviar.
     request.criadorId = criadorId;
     request.cursinhoId = cursinhoId;
+    request.receberNovasVersoes =
+      prova.receberNovasVersoes === true ||
+      prova.receberNovasVersoes === 'true';
     return await this.axios.post(`v1/prova`, request);
   }
 
