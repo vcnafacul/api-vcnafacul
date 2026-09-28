@@ -43,6 +43,30 @@ export class ProvaService {
     );
   }
 
+  /** As atualizações disponíveis das questões da prova (tickets/023, card 13). */
+  public async listarAtualizacoes(id: string, ator: Ator) {
+    return await this.axios.get(
+      `v1/prova/${encodeURIComponent(id)}/atualizacoes`,
+      headerDoAtor(ator),
+    );
+  }
+
+  /**
+   * Aplica versões novas na prova e nos simulados dela (tickets/023, card
+   * 14). Quem só deixa o dono, e valida a cadeia, é o ms.
+   */
+  public async aplicarAtualizacoes(
+    id: string,
+    trocas: { de: string; para: string }[],
+    ator: Ator,
+  ) {
+    return await this.axios.post(
+      `v1/prova/${encodeURIComponent(id)}/atualizacoes`,
+      { trocas: trocas.map(({ de, para }) => ({ de, para })) },
+      headerDoAtor(ator),
+    );
+  }
+
   public async createProva(
     prova: CreateProvaDTOInput,
     file: any,

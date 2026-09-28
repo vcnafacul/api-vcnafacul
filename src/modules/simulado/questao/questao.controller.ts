@@ -118,15 +118,15 @@ export class QuestaoController {
       },
     },
   })
-  // @UseGuards(PermissionsGuard)
-  // @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
+  /*
+    ⚠️ tickets/023, card 16: estava SEM guard (comentado) — qualquer pessoa,
+    mesmo sem login, lia a questão inteira, com gabarito e as provas em que
+    ela está. Agora exige ver o banco (projeto ou cursinho).
+  */
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, VER_QUESTOES)
   public async getById(@Param('id') id: string, @Req() req: Request) {
-    // Sem guard aqui ainda não há `req.user` (card 16 põe o guard): sem ator,
-    // o ms responde `podeComporProva: false` em tudo.
-    return await this.questaoService.getById(
-      id,
-      req.user ? await this.ator(req) : undefined,
-    );
+    return await this.questaoService.getById(id, await this.ator(req));
   }
 
   @Post('assets')
