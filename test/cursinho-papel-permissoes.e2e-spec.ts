@@ -10,6 +10,7 @@ import { GeoRepository } from 'src/modules/geo/geo.repository';
 import { GeoService } from 'src/modules/geo/geo.service';
 import { LogGeoRepository } from 'src/modules/geo/log-geo/log-geo.repository';
 import { LogPartnerRepository } from 'src/modules/prepCourse/partnerPrepCourse/log-partner/log-partner.repository';
+import { PartnerPrepCourseRepository } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.repository';
 import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
 import { PERMISSION_FIELD_MAP } from 'src/modules/role/permissions/permission-field-map';
 import { Role } from 'src/modules/role/role.entity';
@@ -210,6 +211,33 @@ describe('Papel de cursinho só recebe permissões de cursinho (e2e)', () => {
     );
     expect(res.body.message).toContain('são da plataforma');
     expect((await doBanco(criado.id))!.criarQuestao).toBe(true); // não apagou calado
+  });
+
+  it('023 · 01: o cursinho dá as permissões novas do banco de questões', async () => {
+    const { auth } = await cursinho();
+    const res = await criar(
+      auth,
+      papel({ editarQuestoesCursinho: true }),
+    ).expect(201);
+    expect(await doBanco(res.body.id)).toMatchObject({
+      editarQuestoesCursinho: true,
+      visualizarQuestoesCursinho: true, // implies
+      criarQuestao: false,
+    });
+  });
+
+  it('023 · 07: nomesPorId resolve o nome (geo) de vários cursinhos numa consulta', async () => {
+    const [a, b] = [await cursinho(), await cursinho()];
+    const repo = app.get(PartnerPrepCourseRepository);
+    const [pa, pb] = await Promise.all([
+      repo.findOneByUserId(a.gestor.id),
+      repo.findOneByUserId(b.gestor.id),
+    ]);
+    const nomes = await repo.nomesPorId([pa.id, pb.id, 'nao-existe']);
+    expect(nomes.get(pa.id)).toBe(pa.geo.name);
+    expect(nomes.get(pb.id)).toBe(pb.geo.name);
+    expect(nomes.has('nao-existe')).toBe(false);
+    expect((await repo.nomesPorId([])).size).toBe(0);
   });
 
   it('a rota da plataforma (dashRoles) continua dando qualquer permissão', async () => {

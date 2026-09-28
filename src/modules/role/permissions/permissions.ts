@@ -32,4 +32,6 @@ export enum Permissions {
   gerenciarCategoriasCursinho = 'gerenciar_categorias_cursinho',
   excluirQuestao = 'excluir_questao',
   enviarNotificacao = 'enviar_notificacao',
+  visualizarQuestoesCursinho = 'visualizar_questoes_cursinho',
+  editarQuestoesCursinho = 'editar_questoes_cursinho',
 }

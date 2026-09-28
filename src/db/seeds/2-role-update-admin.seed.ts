@@ -51,6 +51,8 @@ export class RoleUpdateAdminSeedService {
         gerenciarCategoriasCursinho: true,
         excluirQuestao: true,
         enviarNotificacao: true,
+        visualizarQuestoesCursinho: true,
+        editarQuestoesCursinho: true,
       });
 
       this.logger.log('Role admin atualizada com sucesso');

@@ -16,6 +16,8 @@ import {
 } from '../dtos/history-question.dto.output';
 import { QuestaoDTOInput } from '../dtos/questao.dto.input';
 import { Status } from '../enum/status.enum';
+import { Ator, headerDoAtor, semAtor } from '../ator/ator';
+import { CursinhoNomeService } from '../prova/cursinho/cursinho-nome.service';
 
 @Injectable()
 export class QuestaoService {
@@ -29,6 +31,7 @@ export class QuestaoService {
     private readonly auditLod: AuditLogService,
     private readonly userService: UserService,
     private readonly cache: CacheService,
+    private readonly cursinhoNome?: CursinhoNomeService,
   ) {
     this.axios = this.httpServiceFactory.create(
       this.envService.get('SIMULADO_URL'),
@@ -36,8 +39,21 @@ export class QuestaoService {
   }
 
   // getbyId
-  public async getById(id: string) {
-    return await this.axios.get(`v1/questao/${id}`);
+  /**
+   * ⚠️ Com o ator (023 · 07): o ms devolve `podeComporProva` em cada prova do
+   * `provasContendo`; aqui entra o nome do cursinho dono.
+   */
+  public async getById(id: string, ator?: Ator) {
+    const questao = await this.axios.get<any>(
+      `v1/questao/${id}`,
+      ator ? headerDoAtor(ator) : undefined,
+    );
+    if (questao?.provasContendo && this.cursinhoNome) {
+      questao.provasContendo = await this.cursinhoNome.comNome(
+        questao.provasContendo,
+      );
+    }
+    return questao;
   }
 
   public async getAllQuestoes(query: QuestaoDTOInput) {
@@ -50,8 +66,16 @@ export class QuestaoService {
     return await this.axios.get(baseUrl);
   }
 
-  public async questoesInfo() {
-    return await this.axios.get(`v1/questao/infos`);
+  /** Com o ator e o nome do cursinho dono de cada prova (023 · 07). */
+  public async questoesInfo(ator: Ator) {
+    const infos = await this.axios.get<any>(
+      `v1/questao/infos`,
+      headerDoAtor(ator),
+    );
+    if (infos?.provas && this.cursinhoNome) {
+      infos.provas = await this.cursinhoNome.comNome(infos.provas);
+    }
+    return infos;
   }
 
   public async questoesUpdateStatus(
@@ -66,14 +90,20 @@ export class QuestaoService {
     });
   }
 
-  public async questoesUpdate(questao: unknown) {
-    return await this.axios.patch(`v1/questao`, questao);
+  /** ⚠️ Compõe prova (pode trocar de prova e o número) — leva o ator (023 · 02). */
+  public async questoesUpdate(questao: unknown, ator: Ator) {
+    return await this.axios.patch(
+      `v1/questao`,
+      semAtor(questao),
+      headerDoAtor(ator),
+    );
   }
 
-  public async createQuestion(questao: unknown) {
-    const questSend = questao as CreateQuestaoMsSimuladoDTOInput;
+  /** ⚠️ Com `prova`, cria já dentro dela — leva o ator (023 · 02). */
+  public async createQuestion(questao: unknown, ator: Ator) {
+    const questSend = semAtor(questao) as CreateQuestaoMsSimuladoDTOInput;
 
-    return await this.axios.post(`v1/questao`, questSend);
+    return await this.axios.post(`v1/questao`, questSend, headerDoAtor(ator));
   }
 
   public async uploadImage(
@@ -235,17 +265,20 @@ export class QuestaoService {
   public async adicionarEmProva(
     id: string,
     body: { provaId: string; numero: number },
-    user: User,
+    ator: Ator,
   ) {
-    return await this.axios.post(`v1/questao/${id}/provas`, {
-      ...body,
-      userId: user.id,
-    });
+    return await this.axios.post(
+      `v1/questao/${id}/provas`,
+      { ...semAtor(body), userId: ator.userId },
+      headerDoAtor(ator),
+    );
   }
 
-  public async removerDeProva(id: string, provaId: string, user: User) {
+  /** O `?userId=` fica até o ms ler o ator do header (card 03). */
+  public async removerDeProva(id: string, provaId: string, ator: Ator) {
     return await this.axios.delete(
-      `v1/questao/${id}/provas/${provaId}?userId=${user.id}`,
+      `v1/questao/${id}/provas/${provaId}?userId=${ator.userId}`,
+      headerDoAtor(ator),
     );
   }
 
@@ -260,8 +293,16 @@ export class QuestaoService {
     });
   }
 
-  public async updateClassificacao(id: string, body: unknown) {
-    return await this.axios.patch<any>(`v1/questao/${id}/classification`, body);
+  /**
+   * ⚠️ Leva o ator (023 · 02): trocar o número é compor a prova (card 03), e
+   * mudar área/frente1 em prova oficial é só do projeto (card 17).
+   */
+  public async updateClassificacao(id: string, body: unknown, ator: Ator) {
+    return await this.axios.patch<any>(
+      `v1/questao/${id}/classification`,
+      semAtor(body),
+      headerDoAtor(ator),
+    );
   }
 
   public async updateContent(id: string, body: unknown) {
