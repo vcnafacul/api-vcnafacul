@@ -20,6 +20,8 @@ describe('AtorService (tickets/023, card 02)', () => {
       cursinhoId: null,
       admin: true,
       editorCursinho: false,
+      validadorProjeto: false,
+      validadorCursinho: false,
     });
   });
 
@@ -69,5 +71,26 @@ describe('header e corpo', () => {
     expect(semAtor({ a: 1, ator: { admin: true } })).toEqual({ a: 1 });
     expect(semAtor(null)).toBeNull();
     expect(semAtor([1])).toEqual([1]);
+  });
+});
+
+describe('AtorService — validadores (024 · 02)', () => {
+  it('⚠️ validadorProjeto é só validarQuestao; criarQuestao é admin mas não valida', async () => {
+    const soCria = await make({ criarQuestao: true }, null).resolver('u1');
+    expect(soCria).toMatchObject({ admin: true, validadorProjeto: false });
+    const valida = await make({ validarQuestao: true }, null).resolver('u1');
+    expect(valida).toMatchObject({ validadorProjeto: true });
+  });
+
+  it('validadorCursinho vem de validarQuestoesCursinho', async () => {
+    const ator = await make({ validarQuestoesCursinho: true }, 'c1').resolver(
+      'u1',
+    );
+    expect(ator).toMatchObject({
+      cursinhoId: 'c1',
+      validadorCursinho: true,
+      admin: false,
+      editorCursinho: false,
+    });
   });
 });

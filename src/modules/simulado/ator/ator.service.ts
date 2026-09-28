@@ -22,6 +22,8 @@ export class AtorService {
       cursinhoId,
       admin: !!(role?.criarQuestao || role?.validarQuestao),
       editorCursinho: !!role?.editarQuestoesCursinho,
+      validadorProjeto: !!role?.validarQuestao,
+      validadorCursinho: !!role?.validarQuestoesCursinho,
     };
   }
 }

@@ -25,6 +25,7 @@ import { UpdateImageAlternativaDTOInput } from '../dtos/update-image-alternativa
 import { UpdateStatusDTOInput } from '../dtos/update-questao-status.dto.input';
 import { Status } from '../enum/status.enum';
 import { AtorService } from '../ator/ator.service';
+import { SinalizarRevisaoDTOInput } from '../dtos/sinalizar-revisao.dto.input';
 import { QuestaoService } from './questao.service';
 
 /**
@@ -357,6 +358,31 @@ export class QuestaoController {
   }
 
   /**
+   * Sinalizar para revisão (tickets/024, card 04) — o caminho de quem não pode
+   * recusar a questão (ela está em provas de outros).
+   */
+  @Post(':id/revisao')
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'sinaliza a questão para revisão' })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.validarQuestao,
+    Permissions.validarQuestoesCursinho,
+    Permissions.editarQuestoesCursinho,
+  ])
+  public async sinalizarRevisao(
+    @Param('id') id: string,
+    @Body() body: SinalizarRevisaoDTOInput,
+    @Req() req: Request,
+  ) {
+    return await this.questaoService.sinalizarRevisao(
+      id,
+      body.motivo,
+      await this.ator(req),
+    );
+  }
+
+  /**
    * ⚠️ **`:status` só casa com número** (o `Status` é 0, 1 ou 2). Sem isso,
    * qualquer `PATCH :id/<literal>` que a api não declare cai aqui e vira
    * `Cast to Number ... "NaN"` no ms — foi como a falta da `nova-versao` se
@@ -375,7 +401,11 @@ export class QuestaoController {
     },
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.validarQuestao)
+  // tickets/024, card 02: o validador do cursinho também — a regra é do ms.
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.validarQuestao,
+    Permissions.validarQuestoesCursinho,
+  ])
   public async questoesUpdateStatus(
     @Param('id') id: string,
     @Param('status') status: Status,
@@ -385,7 +415,7 @@ export class QuestaoController {
     return await this.questaoService.questoesUpdateStatus(
       id,
       status,
-      req.user as User,
+      await this.ator(req),
       body.message,
     );
   }

@@ -14,6 +14,14 @@ export type Ator = {
   admin: boolean;
   /** `editarQuestoesCursinho`. */
   editorCursinho: boolean;
+  /**
+   * Quem valida (aprova/recusa) questão — tickets/024, card 02.
+   * ⚠️ `validadorProjeto` é só `validarQuestao`: o `admin` acima inclui
+   * `criarQuestao`, que é critério de COMPOSIÇÃO, não de validação.
+   */
+  validadorProjeto?: boolean;
+  /** `validarQuestoesCursinho` — aprova qualquer pendente; recusa com regra. */
+  validadorCursinho?: boolean;
 };
 
 export const HEADER_ATOR = 'x-ator';

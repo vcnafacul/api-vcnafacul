@@ -162,7 +162,7 @@ describe('QuestaoController — a rota summary vence o :id', () => {
     expect(service.questoesUpdateStatus).toHaveBeenCalledWith(
       '665f0c1a2b3c4d5e6f00abc2',
       '1',
-      { id: 'u' },
+      undefined, // o ator (024 · 02) — o AtorService de mentira devolve undefined
       'ok',
     );
   });
