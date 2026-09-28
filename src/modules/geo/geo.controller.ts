@@ -1,8 +1,12 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   HttpStatus,
+  Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Put,
@@ -15,6 +19,8 @@ import {
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { GetAllDtoOutput } from 'src/shared/dtos/get-all.dto.output';
+import { Throttle } from '@nestjs/throttler';
+import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { Permissions } from '../role/permissions/permissions';
 import { User } from '../user/user.entity';
@@ -28,6 +34,9 @@ import { SearchGeoDtoInput } from './dto/search-geo.input';
 import { UpdateGeoDTOInput } from './dto/update-geo.dto.input';
 import { Geolocation } from './geo.entity';
 import { GeoService } from './geo.service';
+
+/** Confirmar/desfazer: evita script alternando para inflar o contador. */
+export const THROTTLE_CONFIRMACAO = { default: { ttl: 60000, limit: 30 } };
 
 @ApiTags('Geolocation')
 @Controller('geo')
@@ -123,5 +132,46 @@ export class GeoController {
   @Post('report-map-home')
   async reportMapHome(@Body() request: ReportMapHome) {
     return await this.geoService.reportMapHome(request);
+  }
+
+  // ─── "Informação correta" (tickets/022, card 03) ─────────────────────────
+  // ⚠️ Sem colisão literal × :param: o geo não tem `GET /:id`, e as rotas com
+  // `:id` aqui têm dois segmentos (o `report-map-home` tem um).
+
+  @Get('confirmation/me')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: 'ids dos cursinhos que eu confirmei (válidas)',
+    type: [String],
+  })
+  async minhasConfirmacoes(@Req() req: Request): Promise<string[]> {
+    return this.geoService.minhasConfirmacoes((req.user as User).id);
+  }
+
+  @Post(':id/confirmation')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Throttle(THROTTLE_CONFIRMACAO)
+  @ApiResponse({ status: 404, description: 'Não existe ou não está aprovado' })
+  async confirmar(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: Request,
+  ): Promise<void> {
+    await this.geoService.confirmarInformacao(id, (req.user as User).id);
+  }
+
+  @Delete(':id/confirmation')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Throttle(THROTTLE_CONFIRMACAO)
+  async desfazer(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: Request,
+  ): Promise<void> {
+    await this.geoService.desfazerConfirmacao(id, (req.user as User).id);
   }
 }

@@ -117,7 +117,8 @@ describe('GET /geo/public (e2e)', () => {
     // Se alguém acrescentar coluna na entidade, este teste obriga a decidir se
     // ela é pública (e entra na lista branca) ou não.
     expect(Object.keys(body[0]).sort()).toEqual(
-      [...CAMPOS_PUBLICOS_GEO].sort(),
+      // `confirmations` é calculado (card 03), não coluna da entidade.
+      [...CAMPOS_PUBLICOS_GEO, 'confirmations'].sort(),
     );
     const texto = JSON.stringify(body);
     expect(texto).not.toContain('quem.cadastrou@exemplo.com');

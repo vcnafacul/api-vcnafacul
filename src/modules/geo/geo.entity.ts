@@ -104,6 +104,23 @@ export class Geolocation extends BaseEntity {
 
   @Column({ default: TypeGeo.PREP_COURSE })
   public type: TypeGeo;
+
+  /**
+   * Última mudança de CONTEÚDO (endereço, contato…) pelo `updateGeo` — não
+   * muda em report nem em troca de status (tickets/022, card 03).
+   *
+   * ⚠️ Existe porque o `updated_at` de `geolocations` nunca muda depois da
+   * criação (coluna comum, sem `ON UPDATE`). Serve à validade das confirmações
+   * e à "Última atualização" da busca. `datetime(3)`: ver `GeoConfirmation`.
+   */
+  @Column({
+    name: 'info_updated_at',
+    type: 'datetime',
+    precision: 3,
+    nullable: true,
+  })
+  public infoUpdatedAt?: Date | null;
+
   @OneToMany(() => LogGeo, (logGeo) => logGeo.geo)
   public logs: LogGeo[];
 }

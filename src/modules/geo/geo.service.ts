@@ -21,9 +21,19 @@ import { UpdateGeoDTOInput } from './dto/update-geo.dto.input';
 import { StatusLogGeo } from './enum/status-log-geo';
 import { TypeGeo } from './enum/typeGeo';
 import { Geolocation } from './geo.entity';
+import { GeoConfirmationRepository } from './confirmation/geo-confirmation.repository';
 import { GeoRepository } from './geo.repository';
 import { LogGeo } from './log-geo/log-geo.entity';
 import { LogGeoRepository } from './log-geo/log-geo.repository';
+
+/** Mudanças nestes campos não invalidam as confirmações (card 03). */
+const CAMPOS_QUE_NAO_SAO_CONTEUDO = new Set([
+  'id',
+  'userFullName',
+  'userPhone',
+  'userConnection',
+  'userEmail',
+]);
 
 /** 5 min: é o endpoint mais chamado da home; aprovar/editar invalida antes. */
 export const TTL_GEO_PUBLICO = 5 * 60 * 1000;
@@ -38,6 +48,7 @@ export class GeoService extends BaseService<Geolocation> {
     private readonly emailService: EmailService,
     private readonly log: LogGeoRepository,
     private readonly cache: CacheService,
+    private readonly confirmacoes: GeoConfirmationRepository,
   ) {
     super(geoRepository);
   }
@@ -90,9 +101,37 @@ export class GeoService extends BaseService<Geolocation> {
     return this.cache.wrap(
       CHAVE_GEO_PUBLICO(type),
       async () =>
-        (await this.geoRepository.aprovadosPublicos(type)).map(paraGeoPublico),
+        (await this.geoRepository.aprovadosPublicos(type)).map(
+          ({ geo, confirmations }) => paraGeoPublico(geo, confirmations),
+        ),
       TTL_GEO_PUBLICO,
     );
+  }
+
+  // ─── Confirmação "informação correta" (tickets/022, card 03) ─────────────
+
+  /** Só cursinho/universidade APROVADO recebe confirmação; o resto é 404. */
+  private async garantirAprovado(geoId: string): Promise<void> {
+    const geo = await this.geoRepository.findOneBy({ id: geoId });
+    if (!geo || geo.status !== Status.Approved) {
+      throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
+    }
+  }
+
+  async confirmarInformacao(geoId: string, userId: string): Promise<void> {
+    await this.garantirAprovado(geoId);
+    await this.confirmacoes.confirmar(geoId, userId, new Date());
+    await this.invalidarPublico();
+  }
+
+  async desfazerConfirmacao(geoId: string, userId: string): Promise<void> {
+    await this.garantirAprovado(geoId);
+    await this.confirmacoes.desfazer(geoId, userId);
+    await this.invalidarPublico();
+  }
+
+  async minhasConfirmacoes(userId: string): Promise<string[]> {
+    return this.confirmacoes.validasDoUsuario(userId);
   }
 
   /** Aprovar e editar mudam o que o público vê: a lista sai do cache. */
@@ -129,6 +168,14 @@ export class GeoService extends BaseService<Geolocation> {
     });
     if (Object.keys(changes).length === 0) {
       return false;
+    }
+    /*
+      Mudou conteúdo público (endereço, contato…) → as confirmações antigas
+      deixam de valer (card 03). Dados de quem cadastrou não contam: não
+      aparecem para ninguém.
+    */
+    if (Object.keys(changes).some((k) => !CAMPOS_QUE_NAO_SAO_CONTEUDO.has(k))) {
+      oldGeo.infoUpdatedAt = new Date();
     }
 
     await this.geoRepository.update(oldGeo);
