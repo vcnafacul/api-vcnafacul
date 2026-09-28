@@ -53,11 +53,30 @@ describe('GET /geo/public (e2e)', () => {
     if (app) await app.close();
   });
 
+  /*
+    ⚠️ Nada de apagar a tabela inteira: na suíte completa, outras suítes têm
+    `partner_prep_course` apontando para `geolocations` (FK) — o `DELETE FROM
+    geolocations` estourava e derrubava todos os testes daqui no CI. Cada
+    teste apaga só o que criou, e as asserções olham só para os próprios ids.
+  */
+  const criados: string[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const meus = (lista: any[]) => lista.filter((g) => criados.includes(g.id));
+
   beforeEach(async () => {
-    await dataSource.query('DELETE FROM log_geo');
-    await dataSource.query('DELETE FROM geolocations');
     // O cache é em memória nos testes: esvazia entre um teste e outro.
     await (geoService as any).invalidarPublico();
+  });
+
+  afterEach(async () => {
+    if (!criados.length) return;
+    await dataSource.query('DELETE FROM log_geo WHERE geo_id IN (?)', [
+      criados,
+    ]);
+    await dataSource.query('DELETE FROM geolocations WHERE id IN (?)', [
+      criados,
+    ]);
+    criados.length = 0;
   });
 
   const http = () => request(app.getHttpServer());
@@ -80,7 +99,9 @@ describe('GET /geo/public (e2e)', () => {
       type: TypeGeo.PREP_COURSE,
       ...campos,
     });
-    return dataSource.getRepository(Geolocation).save(geo);
+    const salvo = await dataSource.getRepository(Geolocation).save(geo);
+    criados.push(salvo.id);
+    return salvo;
   };
 
   const novoUsuario = async () => {
@@ -99,7 +120,7 @@ describe('GET /geo/public (e2e)', () => {
 
     const { body } = await http().get('/geo/public?status=0').expect(200);
 
-    expect(body.map((g) => g.id)).toEqual([aprovado.id]);
+    expect(meus(body).map((g) => g.id)).toEqual([aprovado.id]);
   });
 
   it('⚠️ as chaves são EXATAMENTE a lista branca (sem user*, logs, report*, status)', async () => {
@@ -112,7 +133,8 @@ describe('GET /geo/public (e2e)', () => {
       }),
     );
 
-    const { body } = await http().get('/geo/public').expect(200);
+    const { body: lista } = await http().get('/geo/public').expect(200);
+    const body = meus(lista);
 
     // Se alguém acrescentar coluna na entidade, este teste obriga a decidir se
     // ela é pública (e entra na lista branca) ou não.
@@ -138,9 +160,11 @@ describe('GET /geo/public (e2e)', () => {
       .expect(200);
     const todos = await http().get('/geo/public').expect(200);
 
-    expect(soCursinhos.body.map((g) => g.id)).toEqual([cursinho.id]);
-    expect(soUniversidades.body.map((g) => g.id)).toEqual([universidade.id]);
-    expect(todos.body).toHaveLength(2);
+    expect(meus(soCursinhos.body).map((g) => g.id)).toEqual([cursinho.id]);
+    expect(meus(soUniversidades.body).map((g) => g.id)).toEqual([
+      universidade.id,
+    ]);
+    expect(meus(todos.body)).toHaveLength(2);
   });
 
   it('type inválido → 400', async () => {
@@ -150,7 +174,7 @@ describe('GET /geo/public (e2e)', () => {
   it('⚠️ aprovar um pendente aparece na hora (o cache é invalidado)', async () => {
     const pendente = await novoGeo({ status: Status.Pending });
     const antes = await http().get('/geo/public').expect(200); // popula o cache
-    expect(antes.body).toHaveLength(0);
+    expect(meus(antes.body)).toHaveLength(0);
 
     await geoService.validateGeolocation(
       { geoId: pendente.id, status: Status.Approved } as any,
@@ -158,7 +182,7 @@ describe('GET /geo/public (e2e)', () => {
     );
 
     const depois = await http().get('/geo/public').expect(200);
-    expect(depois.body.map((g) => g.id)).toEqual([pendente.id]);
+    expect(meus(depois.body).map((g) => g.id)).toEqual([pendente.id]);
   });
 
   it('⚠️ editar um aprovado aparece na hora (o cache é invalidado)', async () => {
@@ -171,7 +195,7 @@ describe('GET /geo/public (e2e)', () => {
     );
 
     const { body } = await http().get('/geo/public').expect(200);
-    expect(body[0].name).toBe('Nome Novo');
+    expect(meus(body)[0].name).toBe('Nome Novo');
   });
 
   it('o GET /geo (dash) continua como estava — fechá-lo é o card 01b', async () => {

@@ -13,7 +13,7 @@ import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import * as request from 'supertest';
-import { DataSource } from 'typeorm';
+import { DataSource, In } from 'typeorm';
 import { CreateUserDtoInputFaker } from './faker/create-user.dto.input.faker';
 import { createNestAppTest } from './utils/createNestAppTest';
 
@@ -54,11 +54,30 @@ describe('Confirmação de informação do cursinho (e2e)', () => {
     if (app) await app.close();
   });
 
+  /*
+    ⚠️ Nada de apagar as tabelas inteiras: na suíte completa, outras suítes têm
+    `partner_prep_course` apontando para `geolocations` (FK). Cada teste apaga
+    só o que criou (as confirmações vão junto, por cascade).
+  */
+  const criados: string[] = [];
+  const confirmacoesDe = (ids: string[]) =>
+    dataSource
+      .getRepository(GeoConfirmation)
+      .count({ where: { geoId: In(ids) } });
+
   beforeEach(async () => {
-    await dataSource.query('DELETE FROM geo_confirmations');
-    await dataSource.query('DELETE FROM log_geo');
-    await dataSource.query('DELETE FROM geolocations');
     await (geoService as any).invalidarPublico();
+  });
+
+  afterEach(async () => {
+    if (!criados.length) return;
+    await dataSource.query('DELETE FROM log_geo WHERE geo_id IN (?)', [
+      criados,
+    ]);
+    await dataSource.query('DELETE FROM geolocations WHERE id IN (?)', [
+      criados,
+    ]);
+    criados.length = 0;
   });
 
   const http = () => request(app.getHttpServer());
@@ -75,8 +94,8 @@ describe('Confirmação de informação do cursinho (e2e)', () => {
     return { ...u, auth: await bearer(u.id) };
   };
 
-  const novoGeo = (campos: Partial<Geolocation> = {}) =>
-    dataSource.getRepository(Geolocation).save(
+  const novoGeo = async (campos: Partial<Geolocation> = {}) => {
+    const salvo = await dataSource.getRepository(Geolocation).save(
       Object.assign(new Geolocation(), {
         name: `Cursinho ${randomUUID().slice(0, 6)}`,
         latitude: -22.9,
@@ -95,6 +114,9 @@ describe('Confirmação de informação do cursinho (e2e)', () => {
         ...campos,
       }),
     );
+    criados.push(salvo.id);
+    return salvo;
+  };
 
   const contagemPublica = async (geoId: string) => {
     const { body } = await http().get('/geo/public').expect(200);
@@ -118,7 +140,7 @@ describe('Confirmação de informação do cursinho (e2e)', () => {
     await confirmar(geo.id, u.auth).expect(200);
     await confirmar(geo.id, u.auth).expect(200);
 
-    expect(await dataSource.getRepository(GeoConfirmation).count()).toBe(1);
+    expect(await confirmacoesDe([geo.id])).toBe(1);
     expect(await contagemPublica(geo.id)).toBe(1); // cache invalidado
     expect(await minhas(u.auth)).toEqual([geo.id]);
   });
@@ -146,7 +168,7 @@ describe('Confirmação de informação do cursinho (e2e)', () => {
     await confirmar(rejeitado.id, u.auth).expect(404);
     await confirmar(randomUUID(), u.auth).expect(404);
     await confirmar('nao-e-uuid', u.auth).expect(400);
-    expect(await dataSource.getRepository(GeoConfirmation).count()).toBe(0);
+    expect(await confirmacoesDe([pendente.id, rejeitado.id])).toBe(0);
   });
 
   it('desfazer remove, e o contador volta', async () => {
@@ -222,6 +244,6 @@ describe('Confirmação de informação do cursinho (e2e)', () => {
     const u = await novoUsuario();
     await confirmar(geo.id, u.auth).expect(200);
     await dataSource.query('DELETE FROM geolocations WHERE id = ?', [geo.id]);
-    expect(await dataSource.getRepository(GeoConfirmation).count()).toBe(0);
+    expect(await confirmacoesDe([geo.id])).toBe(0);
   });
 });
