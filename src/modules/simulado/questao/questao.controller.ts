@@ -25,6 +25,7 @@ import { UpdateImageAlternativaDTOInput } from '../dtos/update-image-alternativa
 import { UpdateStatusDTOInput } from '../dtos/update-questao-status.dto.input';
 import { Status } from '../enum/status.enum';
 import { AtorService } from '../ator/ator.service';
+import { SinalizarRevisaoDTOInput } from '../dtos/sinalizar-revisao.dto.input';
 import { QuestaoService } from './questao.service';
 
 /**
@@ -353,6 +354,31 @@ export class QuestaoController {
       id,
       body,
       req.user as User,
+    );
+  }
+
+  /**
+   * Sinalizar para revisão (tickets/024, card 04) — o caminho de quem não pode
+   * recusar a questão (ela está em provas de outros).
+   */
+  @Post(':id/revisao')
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'sinaliza a questão para revisão' })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.validarQuestao,
+    Permissions.validarQuestoesCursinho,
+    Permissions.editarQuestoesCursinho,
+  ])
+  public async sinalizarRevisao(
+    @Param('id') id: string,
+    @Body() body: SinalizarRevisaoDTOInput,
+    @Req() req: Request,
+  ) {
+    return await this.questaoService.sinalizarRevisao(
+      id,
+      body.motivo,
+      await this.ator(req),
     );
   }
 

@@ -28,6 +28,7 @@ describe('GET mssimulado/questoes/:id exige ver o banco (e2e)', () => {
   let userService: UserService;
   let userRepository: UserRepository;
   let getById: jest.SpyInstance;
+  let sinalizar: jest.SpyInstance;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -48,6 +49,9 @@ describe('GET mssimulado/questoes/:id exige ver o banco (e2e)', () => {
     getById = jest
       .spyOn(moduleFixture.get(QuestaoService), 'getById')
       .mockResolvedValue({ _id: 'q1' } as never);
+    sinalizar = jest
+      .spyOn(moduleFixture.get(QuestaoService), 'sinalizarRevisao')
+      .mockResolvedValue(undefined as never);
   });
 
   afterAll(async () => {
@@ -93,5 +97,41 @@ describe('GET mssimulado/questoes/:id exige ver o banco (e2e)', () => {
       .expect(200);
     expect(getById.mock.calls[0][0]).toBe('q1');
     expect(getById.mock.calls[0][1]).toMatchObject({ admin: false });
+  });
+
+  describe('POST :id/revisao (024 · 04)', () => {
+    const sinalizarRota = () =>
+      request(app.getHttpServer()).post('/mssimulado/questoes/q1/revisao');
+
+    beforeEach(() => sinalizar.mockClear());
+
+    it('validador do cursinho com motivo → 201, com o ator', async () => {
+      await sinalizarRota()
+        .set('Authorization', await comPapel({ validarQuestoesCursinho: true }))
+        .send({ motivo: 'Gabarito errado na C' })
+        .expect(201);
+      expect(sinalizar.mock.calls[0][1]).toBe('Gabarito errado na C');
+      expect(sinalizar.mock.calls[0][2]).toMatchObject({
+        validadorCursinho: true,
+      });
+    });
+
+    it('motivo curto → 400 e o ms nem é chamado', async () => {
+      await sinalizarRota()
+        .set('Authorization', await comPapel({ validarQuestoesCursinho: true }))
+        .send({ motivo: 'ruim' })
+        .expect(400);
+      expect(sinalizar).not.toHaveBeenCalled();
+    });
+
+    it('só ver o banco → 403', async () => {
+      await sinalizarRota()
+        .set(
+          'Authorization',
+          await comPapel({ visualizarQuestoesCursinho: true }),
+        )
+        .send({ motivo: 'Gabarito errado na C' })
+        .expect(403);
+    });
   });
 });
