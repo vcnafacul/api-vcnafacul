@@ -39,7 +39,7 @@ export class RoleRepository extends BaseRepository<Role> {
   async findOneByIdWithPartner(id: string): Promise<Role> {
     return await this.repository.findOne({
       where: { id },
-      relations: ['partnerPrepCourse'],
+      relations: ['partnerPrepCourse', 'roleBase'],
       cache: false,
     });
   }
