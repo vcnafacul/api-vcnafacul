@@ -53,6 +53,7 @@ export class RoleUpdateAdminSeedService {
         enviarNotificacao: true,
         visualizarQuestoesCursinho: true,
         editarQuestoesCursinho: true,
+        validarQuestoesCursinho: true,
       });
 
       this.logger.log('Role admin atualizada com sucesso');

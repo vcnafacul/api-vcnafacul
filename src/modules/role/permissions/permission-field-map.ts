@@ -36,4 +36,5 @@ export const PERMISSION_FIELD_MAP: Record<Permissions, string> = {
   [Permissions.enviarNotificacao]: 'enviarNotificacao',
   [Permissions.visualizarQuestoesCursinho]: 'visualizarQuestoesCursinho',
   [Permissions.editarQuestoesCursinho]: 'editarQuestoesCursinho',
+  [Permissions.validarQuestoesCursinho]: 'validarQuestoesCursinho',
 };

@@ -118,6 +118,7 @@ export class RoleService extends BaseService<Role> {
       [Permissions.visualizarQuestoesCursinho]:
         roleDto.visualizarQuestoesCursinho,
       [Permissions.editarQuestoesCursinho]: roleDto.editarQuestoesCursinho,
+      [Permissions.validarQuestoesCursinho]: roleDto.validarQuestoesCursinho,
     });
 
     const role = new Role();
@@ -193,6 +194,7 @@ export class RoleService extends BaseService<Role> {
       [Permissions.visualizarQuestoesCursinho]:
         roleDto.visualizarQuestoesCursinho,
       [Permissions.editarQuestoesCursinho]: roleDto.editarQuestoesCursinho,
+      [Permissions.validarQuestoesCursinho]: roleDto.validarQuestoesCursinho,
     });
 
     role.name = roleDto.name;

@@ -240,6 +240,19 @@ describe('Papel de cursinho só recebe permissões de cursinho (e2e)', () => {
     expect((await repo.nomesPorId([])).size).toBe(0);
   });
 
+  it('024 · 01: o cursinho dá a permissão de validar questões', async () => {
+    const { auth } = await cursinho();
+    const res = await criar(
+      auth,
+      papel({ validarQuestoesCursinho: true }),
+    ).expect(201);
+    expect(await doBanco(res.body.id)).toMatchObject({
+      validarQuestoesCursinho: true,
+      visualizarQuestoesCursinho: true,
+      validarQuestao: false,
+    });
+  });
+
   it('a rota da plataforma (dashRoles) continua dando qualquer permissão', async () => {
     const { auth } = await cursinho(); // o gestor tem o papel admin
     await request(app.getHttpServer())

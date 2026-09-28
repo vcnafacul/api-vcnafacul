@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumberString, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsNumberString, IsOptional, IsString } from 'class-validator';
 import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 import { Status } from '../enum/status.enum';
 
@@ -29,4 +29,10 @@ export class QuestaoDTOInput extends GetAllDtoInput {
   @IsString()
   @IsOptional()
   text: string = '';
+
+  /** Só as sinalizadas para revisão (tickets/024, card 04). */
+  @ApiProperty({ required: false, enum: ['true'] })
+  @IsOptional()
+  @IsIn(['true'])
+  reported?: 'true';
 }
