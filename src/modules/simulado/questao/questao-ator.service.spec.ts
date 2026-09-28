@@ -136,3 +136,29 @@ describe('leituras com o ator e o nome do cursinho (023 · 07)', () => {
     expect(infos.provas[0].cursinhoNome).toBe('X');
   });
 });
+
+describe('questoesUpdateStatus leva o ator (024 · 02)', () => {
+  it('header x-ator e userId do ator', async () => {
+    const axios = { patch: jest.fn().mockResolvedValue({}) };
+    const service = new QuestaoService(
+      {} as any,
+      { create: () => axios } as any,
+      { get: () => 'http://ms' } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
+    const ator: Ator = {
+      userId: 'u',
+      cursinhoId: 'c',
+      admin: false,
+      editorCursinho: false,
+      validadorCursinho: true,
+    };
+    await service.questoesUpdateStatus('q1', 2 as any, ator, 'motivo');
+    const [url, corpo, h] = axios.patch.mock.calls[0];
+    expect(url).toBe('v1/questao/q1/2');
+    expect(corpo).toEqual({ message: 'motivo', userId: 'u' });
+    expect(JSON.parse(h['x-ator'])).toEqual(ator);
+  });
+});

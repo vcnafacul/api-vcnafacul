@@ -375,7 +375,11 @@ export class QuestaoController {
     },
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.validarQuestao)
+  // tickets/024, card 02: o validador do cursinho também — a regra é do ms.
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.validarQuestao,
+    Permissions.validarQuestoesCursinho,
+  ])
   public async questoesUpdateStatus(
     @Param('id') id: string,
     @Param('status') status: Status,
@@ -385,7 +389,7 @@ export class QuestaoController {
     return await this.questaoService.questoesUpdateStatus(
       id,
       status,
-      req.user as User,
+      await this.ator(req),
       body.message,
     );
   }

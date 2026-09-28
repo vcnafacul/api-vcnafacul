@@ -70,8 +70,14 @@ describe('banco de questões — quem entra em cada rota (023 · 01)', () => {
     expect(questao[rota]).not.toContain(P.visualizarQuestoesCursinho);
   });
 
+  it('PATCH :id/:status (024 · 02): o validador do projeto e o do cursinho', () => {
+    expect(questao['PATCH :id/:status(\\d+)']).toEqual([
+      P.validarQuestao,
+      P.validarQuestoesCursinho,
+    ]);
+  });
+
   it.each([
-    'PATCH :id/:status(\\d+)',
     'PATCH /',
     'DELETE :id',
     'GET :id/exclusao',

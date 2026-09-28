@@ -78,16 +78,22 @@ export class QuestaoService {
     return infos;
   }
 
+  /**
+   * ⚠️ Leva o ator (tickets/024, card 02): quem pode aprovar/recusar o quê é
+   * o ms quem decide (card 03) — o validador do cursinho não recusa questão
+   * que está em prova de outros.
+   */
   public async questoesUpdateStatus(
     id: string,
     status: Status,
-    user: User,
+    ator: Ator,
     message?: string,
   ) {
-    return await this.axios.patch(`v1/questao/${id}/${status}`, {
-      message,
-      userId: user.id,
-    });
+    return await this.axios.patch(
+      `v1/questao/${id}/${status}`,
+      { message, userId: ator.userId },
+      headerDoAtor(ator),
+    );
   }
 
   /** ⚠️ Compõe prova (pode trocar de prova e o número) — leva o ator (023 · 02). */
