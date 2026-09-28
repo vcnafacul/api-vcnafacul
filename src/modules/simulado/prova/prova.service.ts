@@ -43,6 +43,14 @@ export class ProvaService {
     );
   }
 
+  /** As atualizações disponíveis das questões da prova (tickets/023, card 13). */
+  public async listarAtualizacoes(id: string, ator: Ator) {
+    return await this.axios.get(
+      `v1/prova/${encodeURIComponent(id)}/atualizacoes`,
+      headerDoAtor(ator),
+    );
+  }
+
   public async createProva(
     prova: CreateProvaDTOInput,
     file: any,

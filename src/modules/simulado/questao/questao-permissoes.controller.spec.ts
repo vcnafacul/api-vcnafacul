@@ -108,4 +108,8 @@ describe('banco de questões — quem entra em cada rota (023 · 01)', () => {
       ]),
     );
   });
+
+  it('GET prova/:id/atualizacoes (023 · 13): as mesmas de ler a prova', () => {
+    expect(prova['GET :id/atualizacoes']).toEqual(prova['GET :id']);
+  });
 });

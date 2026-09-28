@@ -26,6 +26,18 @@ import { ReceberNovasVersoesDTOInput } from './dtos/receber-novas-versoes.dto.in
 import { ProvaService } from './prova.service';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 
+/**
+ * Quem lê uma prova (tickets/023, card 07, R1): quem vê as provas ou o banco,
+ * do projeto ou do cursinho. As escritas continuam barradas no ms.
+ */
+const LER_PROVA = [
+  Permissions.visualizarProvas,
+  Permissions.visualizarProvasCursinho,
+  Permissions.visualizarQuestao,
+  Permissions.visualizarQuestoesCursinho,
+  Permissions.editarQuestoesCursinho,
+];
+
 @ApiTags('Simulado - Prova')
 @Controller('mssimulado/prova')
 export class ProvaController {
@@ -126,6 +138,29 @@ export class ProvaController {
     return await this.provaService.getSyncReport();
   }
 
+  /**
+   * "Buscar atualizações" da prova (tickets/023, card 13). Ler é livre para
+   * quem vê a prova — as mesmas permissões do `GET :id`; a resposta traz
+   * `podeComporProva`, que diz se a tela oferece "aplicar".
+   */
+  @Get(':id/atualizacoes')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'atualizações das questões da prova',
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, LER_PROVA)
+  public async listarAtualizacoes(
+    @Param('id') id: string,
+    @Req() req: Request,
+  ) {
+    return await this.provaService.listarAtualizacoes(
+      id,
+      await this.atorService.resolver((req.user as User).id),
+    );
+  }
+
   @Get(':id')
   @ApiBearerAuth()
   @ApiResponse({
@@ -139,13 +174,7 @@ export class ProvaController {
     no ms. Antes era só `visualizarProvas`, e o `showProva` do cursinho já
     chamava esta rota.
   */
-  @SetMetadata(PermissionsGuard.name, [
-    Permissions.visualizarProvas,
-    Permissions.visualizarProvasCursinho,
-    Permissions.visualizarQuestao,
-    Permissions.visualizarQuestoesCursinho,
-    Permissions.editarQuestoesCursinho,
-  ])
+  @SetMetadata(PermissionsGuard.name, LER_PROVA)
   public async getProvaById(@Param('id') id: string, @Req() req: Request) {
     return await this.provaService.getProvaById(
       id,

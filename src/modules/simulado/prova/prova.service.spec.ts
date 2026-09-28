@@ -257,3 +257,24 @@ describe('ProvaService.getProvaById com dono (023 · 07)', () => {
     expect(p.cursinhoNome).toBe('Cursinho A');
   });
 });
+
+describe('ProvaService.listarAtualizacoes (023 · 13)', () => {
+  it('pede ao ms com o ator no header', async () => {
+    const axios = { get: jest.fn().mockResolvedValue({ atualizacoes: [] }) };
+    const service = new ProvaService(
+      { create: () => axios } as any,
+      { get: () => 'x' } as any,
+      {} as any,
+      {} as any,
+    );
+    const ator = {
+      userId: 'u',
+      cursinhoId: 'A',
+      admin: false,
+      editorCursinho: true,
+    };
+    await service.listarAtualizacoes('p1', ator);
+    expect(axios.get.mock.calls[0][0]).toBe('v1/prova/p1/atualizacoes');
+    expect(JSON.parse(axios.get.mock.calls[0][1]['x-ator'])).toEqual(ator);
+  });
+});
