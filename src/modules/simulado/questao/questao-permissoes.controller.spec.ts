@@ -35,6 +35,7 @@ const P = Permissions;
 describe('banco de questões — quem entra em cada rota (023 · 01)', () => {
   it.each([
     'GET /',
+    'GET :id',
     'GET infos',
     'GET :id/linhagem',
     'GET :id/logs',
@@ -84,5 +85,39 @@ describe('banco de questões — quem entra em cada rota (023 · 01)', () => {
 
   it('GET prova/missing/:id: o editor do cursinho escolhe o número', () => {
     expect(prova['GET missing/:id']).toContain(P.editarQuestoesCursinho);
+  });
+
+  it('PATCH prova/:id/receber-novas-versoes (023 · 05): quem cadastra prova e o editor', () => {
+    expect(prova['PATCH :id/receber-novas-versoes']).toEqual(
+      expect.arrayContaining([
+        P.cadastrarProvas,
+        P.cadastrarProvasCursinho,
+        P.editarQuestoesCursinho,
+      ]),
+    );
+  });
+
+  it('GET prova/:id (023 · 07): ler a prova é livre para quem vê o banco ou as provas do cursinho', () => {
+    expect(prova['GET :id']).toEqual(
+      expect.arrayContaining([
+        P.visualizarProvas,
+        P.visualizarProvasCursinho,
+        P.visualizarQuestao,
+        P.visualizarQuestoesCursinho,
+        P.editarQuestoesCursinho,
+      ]),
+    );
+  });
+
+  it('GET prova/:id/atualizacoes (023 · 13): as mesmas de ler a prova', () => {
+    expect(prova['GET :id/atualizacoes']).toEqual(prova['GET :id']);
+  });
+
+  it('POST prova/:id/atualizacoes (023 · 14): quem cadastra prova e o editor', () => {
+    expect(prova['POST :id/atualizacoes']).toEqual([
+      P.cadastrarProvas,
+      P.cadastrarProvasCursinho,
+      P.editarQuestoesCursinho,
+    ]);
   });
 });

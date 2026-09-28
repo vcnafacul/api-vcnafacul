@@ -7,6 +7,8 @@ import {
 } from 'src/shared/services/axios/http-service-axios.factory';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { CreateProvaDTORequest } from '../dtos/prova-create.dto.request';
+import { Ator, headerDoAtor } from '../ator/ator';
+import { CursinhoNomeService } from './cursinho/cursinho-nome.service';
 import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
 
 @Injectable()
@@ -18,9 +20,50 @@ export class ProvaService {
     private readonly envService: EnvService,
     @Inject('BlobService') private readonly blobService: BlobService,
     private readonly cache: CacheService,
+    private readonly cursinhoNome?: CursinhoNomeService,
   ) {
     this.axios = this.httpServiceFactory.create(
       this.envService.get('SIMULADO_URL'),
+    );
+  }
+
+  /**
+   * Liga/desliga o "aplicar novas versões automaticamente" da prova
+   * (tickets/023, card 05). Quem decide se pode é o ms (só o dono), pelo ator.
+   */
+  public async alterarReceberNovasVersoes(
+    id: string,
+    valor: boolean,
+    ator: Ator,
+  ) {
+    return await this.axios.patch(
+      `v1/prova/${encodeURIComponent(id)}/receber-novas-versoes`,
+      { valor },
+      headerDoAtor(ator),
+    );
+  }
+
+  /** As atualizações disponíveis das questões da prova (tickets/023, card 13). */
+  public async listarAtualizacoes(id: string, ator: Ator) {
+    return await this.axios.get(
+      `v1/prova/${encodeURIComponent(id)}/atualizacoes`,
+      headerDoAtor(ator),
+    );
+  }
+
+  /**
+   * Aplica versões novas na prova e nos simulados dela (tickets/023, card
+   * 14). Quem só deixa o dono, e valida a cadeia, é o ms.
+   */
+  public async aplicarAtualizacoes(
+    id: string,
+    trocas: { de: string; para: string }[],
+    ator: Ator,
+  ) {
+    return await this.axios.post(
+      `v1/prova/${encodeURIComponent(id)}/atualizacoes`,
+      { trocas: trocas.map(({ de, para }) => ({ de, para })) },
+      headerDoAtor(ator),
     );
   }
 
@@ -69,11 +112,25 @@ export class ProvaService {
     // eventualmente enviar.
     request.criadorId = criadorId;
     request.cursinhoId = cursinhoId;
+    request.receberNovasVersoes =
+      prova.receberNovasVersoes === true ||
+      prova.receberNovasVersoes === 'true';
     return await this.axios.post(`v1/prova`, request);
   }
 
-  public async getProvaById(id: string) {
-    return await this.axios.get(`v1/prova/${id}`);
+  /**
+   * Com o ator: o ms devolve dono, proteção e `podeComporProva`; aqui entra o
+   * nome do cursinho dono (tickets/023, card 07).
+   */
+  public async getProvaById(id: string, ator?: Ator) {
+    const prova = await this.axios.get<any>(
+      `v1/prova/${id}`,
+      ator ? headerDoAtor(ator) : undefined,
+    );
+    if (prova?.cursinhoId && this.cursinhoNome) {
+      return (await this.cursinhoNome.comNome([prova]))[0];
+    }
+    return prova;
   }
 
   /**

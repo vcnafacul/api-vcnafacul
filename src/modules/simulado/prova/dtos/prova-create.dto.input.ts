@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNumberString, IsOptional, IsString } from 'class-validator';
+import {
+  IsEnum,
+  IsIn,
+  IsNumberString,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { EdicaoProva } from '../../enum/edicao-prova.enum';
 
 export class CreateProvaDTOInput {
@@ -34,4 +40,13 @@ export class CreateProvaDTOInput {
   @IsOptional()
   @IsString()
   nomeSimulado?: string;
+
+  /**
+   * "Aplicar novas versões automaticamente" (tickets/023, card 05). Ausente =
+   * `false`. Vem do multipart, então chega como string.
+   */
+  @ApiProperty({ required: false, default: false })
+  @IsOptional()
+  @IsIn(['true', 'false', true, false])
+  receberNovasVersoes?: string | boolean;
 }

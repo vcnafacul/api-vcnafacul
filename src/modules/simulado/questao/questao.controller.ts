@@ -24,6 +24,7 @@ import { QuestaoDTOInput } from '../dtos/questao.dto.input';
 import { UpdateImageAlternativaDTOInput } from '../dtos/update-image-alternativa.dto.input';
 import { UpdateStatusDTOInput } from '../dtos/update-questao-status.dto.input';
 import { Status } from '../enum/status.enum';
+import { AtorService } from '../ator/ator.service';
 import { QuestaoService } from './questao.service';
 
 /**
@@ -40,7 +41,15 @@ const VER_QUESTOES = [
 @ApiTags('Questao')
 @Controller('mssimulado/questoes')
 export class QuestaoController {
-  constructor(private readonly questaoService: QuestaoService) {}
+  constructor(
+    private readonly questaoService: QuestaoService,
+    private readonly atorService: AtorService,
+  ) {}
+
+  /** Quem está agindo, do JWT (tickets/023, card 02). */
+  private ator(req: Request) {
+    return this.atorService.resolver((req.user as User).id);
+  }
 
   @Get()
   @ApiBearerAuth()
@@ -78,8 +87,8 @@ export class QuestaoController {
     ...VER_QUESTOES,
     Permissions.cadastrarProvas,
   ])
-  public async questoesInfo() {
-    return await this.questaoService.questoesInfo();
+  public async questoesInfo(@Req() req: Request) {
+    return await this.questaoService.questoesInfo(await this.ator(req));
   }
 
   // ⚠️ `summary` fica ANTES do `@Get(':id')`, e a ordem é significativa: no
@@ -109,10 +118,15 @@ export class QuestaoController {
       },
     },
   })
-  // @UseGuards(PermissionsGuard)
-  // @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
-  public async getById(@Param('id') id: string) {
-    return await this.questaoService.getById(id);
+  /*
+    ⚠️ tickets/023, card 16: estava SEM guard (comentado) — qualquer pessoa,
+    mesmo sem login, lia a questão inteira, com gabarito e as provas em que
+    ela está. Agora exige ver o banco (projeto ou cursinho).
+  */
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, VER_QUESTOES)
+  public async getById(@Param('id') id: string, @Req() req: Request) {
+    return await this.questaoService.getById(id, await this.ator(req));
   }
 
   @Post('assets')
@@ -145,8 +159,13 @@ export class QuestaoController {
   public async updateClassificacao(
     @Param('id') id: string,
     @Body() body: unknown,
+    @Req() req: Request,
   ) {
-    return await this.questaoService.updateClassificacao(id, body);
+    return await this.questaoService.updateClassificacao(
+      id,
+      body,
+      await this.ator(req),
+    );
   }
 
   @Patch(':id/content')
@@ -291,7 +310,7 @@ export class QuestaoController {
     return await this.questaoService.adicionarEmProva(
       id,
       body,
-      req.user as User,
+      await this.ator(req),
     );
   }
 
@@ -312,7 +331,7 @@ export class QuestaoController {
     return await this.questaoService.removerDeProva(
       id,
       provaId,
-      req.user as User,
+      await this.ator(req),
     );
   }
 
@@ -385,8 +404,11 @@ export class QuestaoController {
   })
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.validarQuestao)
-  public async questoesUpdate(@Body() question: unknown) {
-    return await this.questaoService.questoesUpdate(question);
+  public async questoesUpdate(@Body() question: unknown, @Req() req: Request) {
+    return await this.questaoService.questoesUpdate(
+      question,
+      await this.ator(req),
+    );
   }
 
   @Post()
@@ -407,8 +429,11 @@ export class QuestaoController {
     Permissions.validarQuestao,
     Permissions.editarQuestoesCursinho,
   ])
-  public async createQuestion(@Body() questao: unknown) {
-    return await this.questaoService.createQuestion(questao);
+  public async createQuestion(@Body() questao: unknown, @Req() req: Request) {
+    return await this.questaoService.createQuestion(
+      questao,
+      await this.ator(req),
+    );
   }
 
   @Get(':id/image')

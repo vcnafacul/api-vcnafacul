@@ -30,4 +30,23 @@ describe('CursinhoResolverService', () => {
       service.resolveCursinhoIdByUserId('u1'),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
+
+  describe('resolveCursinhoIdOuNull (023 · 02)', () => {
+    it('colaborador ativo → id do cursinho', async () => {
+      const { service } = make({ partnerPrepCourse: { id: 'curs-1' } });
+      await expect(service.resolveCursinhoIdOuNull('u1')).resolves.toBe(
+        'curs-1',
+      );
+    });
+
+    it('⚠️ sem colaborador → null, sem 403 (admin puro)', async () => {
+      const { service } = make(null);
+      await expect(service.resolveCursinhoIdOuNull('u1')).resolves.toBeNull();
+    });
+
+    it('colaborador sem cursinho → null', async () => {
+      const { service } = make({ partnerPrepCourse: null });
+      await expect(service.resolveCursinhoIdOuNull('u1')).resolves.toBeNull();
+    });
+  });
 });

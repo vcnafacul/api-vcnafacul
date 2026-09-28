@@ -4,6 +4,7 @@ import * as request from 'supertest';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { QuestaoController } from './questao.controller';
+import { AtorService } from '../ator/ator.service';
 import { QuestaoService } from './questao.service';
 
 /**
@@ -40,12 +41,21 @@ describe('QuestaoController — a rota summary vence o :id', () => {
     questoesUpdateStatus: jest.fn().mockResolvedValue({}),
   };
 
-  const passaTudo = { canActivate: () => true };
+  // Como o PermissionsGuard de verdade, deixa `req.user` (o ator sai dele).
+  const passaTudo = {
+    canActivate: (ctx: any) => {
+      ctx.switchToHttp().getRequest().user = { id: 'u' };
+      return true;
+    },
+  };
 
   beforeAll(async () => {
     const modulo = await Test.createTestingModule({
       controllers: [QuestaoController],
-      providers: [{ provide: QuestaoService, useValue: service }],
+      providers: [
+        { provide: QuestaoService, useValue: service },
+        { provide: AtorService, useValue: { resolver: jest.fn() } },
+      ],
     })
       .overrideGuard(JwtAuthGuard)
       .useValue(passaTudo)
@@ -88,7 +98,8 @@ describe('QuestaoController — a rota summary vence o :id', () => {
       .get('/mssimulado/questoes/65ecc850a528b39d273e7900')
       .expect(200);
 
-    expect(service.getById).toHaveBeenCalledWith('65ecc850a528b39d273e7900');
+    // 2º argumento: o ator (023 · 07/16).
+    expect(service.getById.mock.calls[0][0]).toBe('65ecc850a528b39d273e7900');
     expect(service.getSummary).not.toHaveBeenCalled();
   });
 
@@ -137,7 +148,7 @@ describe('QuestaoController — a rota summary vence o :id', () => {
     expect(service.novaVersao).toHaveBeenCalledWith(
       '665f0c1a2b3c4d5e6f00abc2',
       { enunciado: 'novo' },
-      undefined,
+      { id: 'u' }, // o req.user que o guard deixa
     );
     expect(service.questoesUpdateStatus).not.toHaveBeenCalled();
   });
@@ -151,7 +162,7 @@ describe('QuestaoController — a rota summary vence o :id', () => {
     expect(service.questoesUpdateStatus).toHaveBeenCalledWith(
       '665f0c1a2b3c4d5e6f00abc2',
       '1',
-      undefined,
+      { id: 'u' },
       'ok',
     );
   });
