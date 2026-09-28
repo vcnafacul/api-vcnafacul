@@ -95,4 +95,16 @@ describe('banco de questões — quem entra em cada rota (023 · 01)', () => {
       ]),
     );
   });
+
+  it('GET prova/:id (023 · 07): ler a prova é livre para quem vê o banco ou as provas do cursinho', () => {
+    expect(prova['GET :id']).toEqual(
+      expect.arrayContaining([
+        P.visualizarProvas,
+        P.visualizarProvasCursinho,
+        P.visualizarQuestao,
+        P.visualizarQuestoesCursinho,
+        P.editarQuestoesCursinho,
+      ]),
+    );
+  });
 });

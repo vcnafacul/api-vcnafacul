@@ -8,6 +8,7 @@ import {
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { CreateProvaDTORequest } from '../dtos/prova-create.dto.request';
 import { Ator, headerDoAtor } from '../ator/ator';
+import { CursinhoNomeService } from './cursinho/cursinho-nome.service';
 import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
 
 @Injectable()
@@ -19,6 +20,7 @@ export class ProvaService {
     private readonly envService: EnvService,
     @Inject('BlobService') private readonly blobService: BlobService,
     private readonly cache: CacheService,
+    private readonly cursinhoNome?: CursinhoNomeService,
   ) {
     this.axios = this.httpServiceFactory.create(
       this.envService.get('SIMULADO_URL'),
@@ -92,8 +94,19 @@ export class ProvaService {
     return await this.axios.post(`v1/prova`, request);
   }
 
-  public async getProvaById(id: string) {
-    return await this.axios.get(`v1/prova/${id}`);
+  /**
+   * Com o ator: o ms devolve dono, proteção e `podeComporProva`; aqui entra o
+   * nome do cursinho dono (tickets/023, card 07).
+   */
+  public async getProvaById(id: string, ator?: Ator) {
+    const prova = await this.axios.get<any>(
+      `v1/prova/${id}`,
+      ator ? headerDoAtor(ator) : undefined,
+    );
+    if (prova?.cursinhoId && this.cursinhoNome) {
+      return (await this.cursinhoNome.comNome([prova]))[0];
+    }
+    return prova;
   }
 
   /**

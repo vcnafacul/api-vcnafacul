@@ -92,7 +92,11 @@ describe('QuestaoController — a rota summary vence o :id', () => {
       .get('/mssimulado/questoes/65ecc850a528b39d273e7900')
       .expect(200);
 
-    expect(service.getById).toHaveBeenCalledWith('65ecc850a528b39d273e7900');
+    // 2º argumento: o ator (023 · 07) — sem login aqui, undefined.
+    expect(service.getById).toHaveBeenCalledWith(
+      '65ecc850a528b39d273e7900',
+      undefined,
+    );
     expect(service.getSummary).not.toHaveBeenCalled();
   });
 

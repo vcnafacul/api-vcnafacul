@@ -87,8 +87,8 @@ export class QuestaoController {
     ...VER_QUESTOES,
     Permissions.cadastrarProvas,
   ])
-  public async questoesInfo() {
-    return await this.questaoService.questoesInfo();
+  public async questoesInfo(@Req() req: Request) {
+    return await this.questaoService.questoesInfo(await this.ator(req));
   }
 
   // ⚠️ `summary` fica ANTES do `@Get(':id')`, e a ordem é significativa: no
@@ -120,8 +120,13 @@ export class QuestaoController {
   })
   // @UseGuards(PermissionsGuard)
   // @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
-  public async getById(@Param('id') id: string) {
-    return await this.questaoService.getById(id);
+  public async getById(@Param('id') id: string, @Req() req: Request) {
+    // Sem guard aqui ainda não há `req.user` (card 16 põe o guard): sem ator,
+    // o ms responde `podeComporProva: false` em tudo.
+    return await this.questaoService.getById(
+      id,
+      req.user ? await this.ator(req) : undefined,
+    );
   }
 
   @Post('assets')

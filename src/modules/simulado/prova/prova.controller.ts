@@ -133,9 +133,24 @@ export class ProvaController {
     description: 'busca prova por id',
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarProvas)
-  public async getProvaById(@Param('id') id: string) {
-    return await this.provaService.getProvaById(id);
+  /*
+    ⚠️ tickets/023, card 07 (R1): ler a prova de outro cursinho é livre para
+    quem vê o banco ou as provas do cursinho — as escritas continuam barradas
+    no ms. Antes era só `visualizarProvas`, e o `showProva` do cursinho já
+    chamava esta rota.
+  */
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.visualizarProvas,
+    Permissions.visualizarProvasCursinho,
+    Permissions.visualizarQuestao,
+    Permissions.visualizarQuestoesCursinho,
+    Permissions.editarQuestoesCursinho,
+  ])
+  public async getProvaById(@Param('id') id: string, @Req() req: Request) {
+    return await this.provaService.getProvaById(
+      id,
+      await this.atorService.resolver((req.user as User).id),
+    );
   }
 
   @Post()

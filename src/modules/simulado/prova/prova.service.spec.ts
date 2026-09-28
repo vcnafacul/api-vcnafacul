@@ -228,3 +228,32 @@ describe('ProvaService — receberNovasVersoes (023 · 05)', () => {
     expect(JSON.parse(header['x-ator'])).toEqual(ator);
   });
 });
+
+describe('ProvaService.getProvaById com dono (023 · 07)', () => {
+  it('header do ator e o nome do cursinho dono', async () => {
+    const axios = {
+      get: jest.fn().mockResolvedValue({ _id: 'p', cursinhoId: 'A' }),
+    };
+    const cursinhoNome = {
+      comNome: jest.fn(async (ps: any[]) =>
+        ps.map((p) => ({ ...p, cursinhoNome: 'Cursinho A' })),
+      ),
+    };
+    const service = new ProvaService(
+      { create: () => axios } as any,
+      { get: () => 'x' } as any,
+      {} as any,
+      {} as any,
+      cursinhoNome as any,
+    );
+    const ator = {
+      userId: 'u',
+      cursinhoId: 'B',
+      admin: false,
+      editorCursinho: true,
+    };
+    const p = await service.getProvaById('p', ator);
+    expect(JSON.parse(axios.get.mock.calls[0][1]['x-ator'])).toEqual(ator);
+    expect(p.cursinhoNome).toBe('Cursinho A');
+  });
+});
