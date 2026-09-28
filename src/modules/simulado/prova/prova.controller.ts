@@ -22,6 +22,7 @@ import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { User } from 'src/modules/user/user.entity';
 import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
 import { AtorService } from '../ator/ator.service';
+import { AplicarAtualizacoesDTOInput } from './dtos/aplicar-atualizacoes.dto.input';
 import { ReceberNovasVersoesDTOInput } from './dtos/receber-novas-versoes.dto.input';
 import { ProvaService } from './prova.service';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
@@ -157,6 +158,32 @@ export class ProvaController {
   ) {
     return await this.provaService.listarAtualizacoes(
       id,
+      await this.atorService.resolver((req.user as User).id),
+    );
+  }
+
+  /**
+   * Aplicar as atualizações escolhidas (tickets/023, card 14). A rota abre
+   * para quem cadastra prova e para o editor do cursinho; só o dono passa no
+   * ms.
+   */
+  @Post(':id/atualizacoes')
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'aplica versões novas na prova' })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.cadastrarProvas,
+    Permissions.cadastrarProvasCursinho,
+    Permissions.editarQuestoesCursinho,
+  ])
+  public async aplicarAtualizacoes(
+    @Param('id') id: string,
+    @Body() dto: AplicarAtualizacoesDTOInput,
+    @Req() req: Request,
+  ) {
+    return await this.provaService.aplicarAtualizacoes(
+      id,
+      dto.trocas,
       await this.atorService.resolver((req.user as User).id),
     );
   }
