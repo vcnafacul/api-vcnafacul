@@ -35,6 +35,7 @@ const P = Permissions;
 describe('banco de questões — quem entra em cada rota (023 · 01)', () => {
   it.each([
     'GET /',
+    'GET :id',
     'GET infos',
     'GET :id/linhagem',
     'GET :id/logs',
