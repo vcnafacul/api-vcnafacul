@@ -228,3 +228,80 @@ describe('ProvaService — receberNovasVersoes (023 · 05)', () => {
     expect(JSON.parse(header['x-ator'])).toEqual(ator);
   });
 });
+
+describe('ProvaService.getProvaById com dono (023 · 07)', () => {
+  it('header do ator e o nome do cursinho dono', async () => {
+    const axios = {
+      get: jest.fn().mockResolvedValue({ _id: 'p', cursinhoId: 'A' }),
+    };
+    const cursinhoNome = {
+      comNome: jest.fn(async (ps: any[]) =>
+        ps.map((p) => ({ ...p, cursinhoNome: 'Cursinho A' })),
+      ),
+    };
+    const service = new ProvaService(
+      { create: () => axios } as any,
+      { get: () => 'x' } as any,
+      {} as any,
+      {} as any,
+      cursinhoNome as any,
+    );
+    const ator = {
+      userId: 'u',
+      cursinhoId: 'B',
+      admin: false,
+      editorCursinho: true,
+    };
+    const p = await service.getProvaById('p', ator);
+    expect(JSON.parse(axios.get.mock.calls[0][1]['x-ator'])).toEqual(ator);
+    expect(p.cursinhoNome).toBe('Cursinho A');
+  });
+});
+
+describe('ProvaService.listarAtualizacoes (023 · 13)', () => {
+  it('pede ao ms com o ator no header', async () => {
+    const axios = { get: jest.fn().mockResolvedValue({ atualizacoes: [] }) };
+    const service = new ProvaService(
+      { create: () => axios } as any,
+      { get: () => 'x' } as any,
+      {} as any,
+      {} as any,
+    );
+    const ator = {
+      userId: 'u',
+      cursinhoId: 'A',
+      admin: false,
+      editorCursinho: true,
+    };
+    await service.listarAtualizacoes('p1', ator);
+    expect(axios.get.mock.calls[0][0]).toBe('v1/prova/p1/atualizacoes');
+    expect(JSON.parse(axios.get.mock.calls[0][1]['x-ator'])).toEqual(ator);
+  });
+});
+
+describe('ProvaService.aplicarAtualizacoes (023 · 14)', () => {
+  it('manda só {de, para} de cada troca, com o ator no header', async () => {
+    const axios = { post: jest.fn().mockResolvedValue({ trocadas: 1 }) };
+    const service = new ProvaService(
+      { create: () => axios } as any,
+      { get: () => 'x' } as any,
+      {} as any,
+      {} as any,
+    );
+    const ator = {
+      userId: 'u',
+      cursinhoId: 'A',
+      admin: false,
+      editorCursinho: true,
+    };
+    await service.aplicarAtualizacoes(
+      'p1',
+      [{ de: 'a', para: 'b', extra: 'x' } as any],
+      ator,
+    );
+    const [url, corpo, header] = axios.post.mock.calls[0];
+    expect(url).toBe('v1/prova/p1/atualizacoes');
+    expect(corpo).toEqual({ trocas: [{ de: 'a', para: 'b' }] });
+    expect(JSON.parse(header['x-ator'])).toEqual(ator);
+  });
+});

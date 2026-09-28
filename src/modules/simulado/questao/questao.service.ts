@@ -17,6 +17,7 @@ import {
 import { QuestaoDTOInput } from '../dtos/questao.dto.input';
 import { Status } from '../enum/status.enum';
 import { Ator, headerDoAtor, semAtor } from '../ator/ator';
+import { CursinhoNomeService } from '../prova/cursinho/cursinho-nome.service';
 
 @Injectable()
 export class QuestaoService {
@@ -30,6 +31,7 @@ export class QuestaoService {
     private readonly auditLod: AuditLogService,
     private readonly userService: UserService,
     private readonly cache: CacheService,
+    private readonly cursinhoNome?: CursinhoNomeService,
   ) {
     this.axios = this.httpServiceFactory.create(
       this.envService.get('SIMULADO_URL'),
@@ -37,8 +39,21 @@ export class QuestaoService {
   }
 
   // getbyId
-  public async getById(id: string) {
-    return await this.axios.get(`v1/questao/${id}`);
+  /**
+   * ⚠️ Com o ator (023 · 07): o ms devolve `podeComporProva` em cada prova do
+   * `provasContendo`; aqui entra o nome do cursinho dono.
+   */
+  public async getById(id: string, ator?: Ator) {
+    const questao = await this.axios.get<any>(
+      `v1/questao/${id}`,
+      ator ? headerDoAtor(ator) : undefined,
+    );
+    if (questao?.provasContendo && this.cursinhoNome) {
+      questao.provasContendo = await this.cursinhoNome.comNome(
+        questao.provasContendo,
+      );
+    }
+    return questao;
   }
 
   public async getAllQuestoes(query: QuestaoDTOInput) {
@@ -51,8 +66,16 @@ export class QuestaoService {
     return await this.axios.get(baseUrl);
   }
 
-  public async questoesInfo() {
-    return await this.axios.get(`v1/questao/infos`);
+  /** Com o ator e o nome do cursinho dono de cada prova (023 · 07). */
+  public async questoesInfo(ator: Ator) {
+    const infos = await this.axios.get<any>(
+      `v1/questao/infos`,
+      headerDoAtor(ator),
+    );
+    if (infos?.provas && this.cursinhoNome) {
+      infos.provas = await this.cursinhoNome.comNome(infos.provas);
+    }
+    return infos;
   }
 
   public async questoesUpdateStatus(

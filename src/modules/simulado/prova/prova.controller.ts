@@ -22,9 +22,22 @@ import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { User } from 'src/modules/user/user.entity';
 import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
 import { AtorService } from '../ator/ator.service';
+import { AplicarAtualizacoesDTOInput } from './dtos/aplicar-atualizacoes.dto.input';
 import { ReceberNovasVersoesDTOInput } from './dtos/receber-novas-versoes.dto.input';
 import { ProvaService } from './prova.service';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
+
+/**
+ * Quem lê uma prova (tickets/023, card 07, R1): quem vê as provas ou o banco,
+ * do projeto ou do cursinho. As escritas continuam barradas no ms.
+ */
+const LER_PROVA = [
+  Permissions.visualizarProvas,
+  Permissions.visualizarProvasCursinho,
+  Permissions.visualizarQuestao,
+  Permissions.visualizarQuestoesCursinho,
+  Permissions.editarQuestoesCursinho,
+];
 
 @ApiTags('Simulado - Prova')
 @Controller('mssimulado/prova')
@@ -126,6 +139,55 @@ export class ProvaController {
     return await this.provaService.getSyncReport();
   }
 
+  /**
+   * "Buscar atualizações" da prova (tickets/023, card 13). Ler é livre para
+   * quem vê a prova — as mesmas permissões do `GET :id`; a resposta traz
+   * `podeComporProva`, que diz se a tela oferece "aplicar".
+   */
+  @Get(':id/atualizacoes')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'atualizações das questões da prova',
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, LER_PROVA)
+  public async listarAtualizacoes(
+    @Param('id') id: string,
+    @Req() req: Request,
+  ) {
+    return await this.provaService.listarAtualizacoes(
+      id,
+      await this.atorService.resolver((req.user as User).id),
+    );
+  }
+
+  /**
+   * Aplicar as atualizações escolhidas (tickets/023, card 14). A rota abre
+   * para quem cadastra prova e para o editor do cursinho; só o dono passa no
+   * ms.
+   */
+  @Post(':id/atualizacoes')
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'aplica versões novas na prova' })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.cadastrarProvas,
+    Permissions.cadastrarProvasCursinho,
+    Permissions.editarQuestoesCursinho,
+  ])
+  public async aplicarAtualizacoes(
+    @Param('id') id: string,
+    @Body() dto: AplicarAtualizacoesDTOInput,
+    @Req() req: Request,
+  ) {
+    return await this.provaService.aplicarAtualizacoes(
+      id,
+      dto.trocas,
+      await this.atorService.resolver((req.user as User).id),
+    );
+  }
+
   @Get(':id')
   @ApiBearerAuth()
   @ApiResponse({
@@ -133,9 +195,18 @@ export class ProvaController {
     description: 'busca prova por id',
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarProvas)
-  public async getProvaById(@Param('id') id: string) {
-    return await this.provaService.getProvaById(id);
+  /*
+    ⚠️ tickets/023, card 07 (R1): ler a prova de outro cursinho é livre para
+    quem vê o banco ou as provas do cursinho — as escritas continuam barradas
+    no ms. Antes era só `visualizarProvas`, e o `showProva` do cursinho já
+    chamava esta rota.
+  */
+  @SetMetadata(PermissionsGuard.name, LER_PROVA)
+  public async getProvaById(@Param('id') id: string, @Req() req: Request) {
+    return await this.provaService.getProvaById(
+      id,
+      await this.atorService.resolver((req.user as User).id),
+    );
   }
 
   @Post()

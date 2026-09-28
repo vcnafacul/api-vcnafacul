@@ -87,8 +87,8 @@ export class QuestaoController {
     ...VER_QUESTOES,
     Permissions.cadastrarProvas,
   ])
-  public async questoesInfo() {
-    return await this.questaoService.questoesInfo();
+  public async questoesInfo(@Req() req: Request) {
+    return await this.questaoService.questoesInfo(await this.ator(req));
   }
 
   // ⚠️ `summary` fica ANTES do `@Get(':id')`, e a ordem é significativa: no
@@ -118,10 +118,15 @@ export class QuestaoController {
       },
     },
   })
-  // @UseGuards(PermissionsGuard)
-  // @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
-  public async getById(@Param('id') id: string) {
-    return await this.questaoService.getById(id);
+  /*
+    ⚠️ tickets/023, card 16: estava SEM guard (comentado) — qualquer pessoa,
+    mesmo sem login, lia a questão inteira, com gabarito e as provas em que
+    ela está. Agora exige ver o banco (projeto ou cursinho).
+  */
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, VER_QUESTOES)
+  public async getById(@Param('id') id: string, @Req() req: Request) {
+    return await this.questaoService.getById(id, await this.ator(req));
   }
 
   @Post('assets')
