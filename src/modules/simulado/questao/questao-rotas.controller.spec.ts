@@ -4,6 +4,7 @@ import * as request from 'supertest';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { QuestaoController } from './questao.controller';
+import { AtorService } from '../ator/ator.service';
 import { QuestaoService } from './questao.service';
 
 /**
@@ -45,7 +46,10 @@ describe('QuestaoController — a rota summary vence o :id', () => {
   beforeAll(async () => {
     const modulo = await Test.createTestingModule({
       controllers: [QuestaoController],
-      providers: [{ provide: QuestaoService, useValue: service }],
+      providers: [
+        { provide: QuestaoService, useValue: service },
+        { provide: AtorService, useValue: { resolver: jest.fn() } },
+      ],
     })
       .overrideGuard(JwtAuthGuard)
       .useValue(passaTudo)
