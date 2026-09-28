@@ -162,3 +162,29 @@ describe('questoesUpdateStatus leva o ator (024 · 02)', () => {
     expect(JSON.parse(h['x-ator'])).toEqual(ator);
   });
 });
+
+describe('sinalizarRevisao leva o ator (024 · 04)', () => {
+  it('só o motivo no corpo, o ator no header', async () => {
+    const axios = { post: jest.fn().mockResolvedValue({}) };
+    const service = new QuestaoService(
+      {} as any,
+      { create: () => axios } as any,
+      { get: () => 'http://ms' } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
+    const ator: Ator = {
+      userId: 'u',
+      cursinhoId: 'c',
+      admin: false,
+      editorCursinho: false,
+      validadorCursinho: true,
+    };
+    await service.sinalizarRevisao('q1', 'Gabarito errado', ator);
+    const [url, corpo, h] = axios.post.mock.calls[0];
+    expect(url).toBe('v1/questao/q1/revisao');
+    expect(corpo).toEqual({ motivo: 'Gabarito errado' });
+    expect(JSON.parse(h['x-ator'])).toEqual(ator);
+  });
+});

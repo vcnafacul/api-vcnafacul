@@ -79,6 +79,18 @@ export class QuestaoService {
   }
 
   /**
+   * Sinalizar para revisão (tickets/024, card 04): quem não pode recusar pede
+   * à equipe da plataforma que decida. Só o motivo segue; o ator vai no header.
+   */
+  public async sinalizarRevisao(id: string, motivo: string, ator: Ator) {
+    return await this.axios.post(
+      `v1/questao/${encodeURIComponent(id)}/revisao`,
+      { motivo },
+      headerDoAtor(ator),
+    );
+  }
+
+  /**
    * ⚠️ Leva o ator (tickets/024, card 02): quem pode aprovar/recusar o quê é
    * o ms quem decide (card 03) — o validador do cursinho não recusa questão
    * que está em prova de outros.

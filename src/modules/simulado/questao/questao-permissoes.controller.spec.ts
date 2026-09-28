@@ -126,4 +126,12 @@ describe('banco de questões — quem entra em cada rota (023 · 01)', () => {
       P.editarQuestoesCursinho,
     ]);
   });
+
+  it('POST :id/revisao (024 · 04): validadores e o editor do cursinho', () => {
+    expect(questao['POST :id/revisao']).toEqual([
+      P.validarQuestao,
+      P.validarQuestoesCursinho,
+      P.editarQuestoesCursinho,
+    ]);
+  });
 });
