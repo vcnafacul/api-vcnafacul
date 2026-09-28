@@ -73,3 +73,34 @@ describe('RoleService — enviarNotificacao (pwa-push BE-03)', () => {
     expect(existente.enviarNotificacao).toBe(false);
   });
 });
+
+describe('RoleService — permissões de questões do cursinho (023 · 01)', () => {
+  it('editarQuestoesCursinho implica visualizarQuestoesCursinho', async () => {
+    const { service } = makeService();
+    const role = await service.create(
+      baseDto({ editarQuestoesCursinho: true }),
+    );
+    expect(role.editarQuestoesCursinho).toBe(true);
+    expect(role.visualizarQuestoesCursinho).toBe(true);
+  });
+
+  it('⚠️ sem os campos, as duas nascem desligadas', async () => {
+    const { service } = makeService();
+    const role = await service.create(baseDto());
+    expect(role.editarQuestoesCursinho).toBe(false);
+    expect(role.visualizarQuestoesCursinho).toBe(false);
+  });
+
+  it('só ver não dá editar', async () => {
+    const { service, roleRepository } = makeService();
+    const existente = { id: 'r1', name: 'Prof' } as Record<string, unknown>;
+    roleRepository.findOneBy.mockResolvedValue(existente);
+    await service.update({
+      ...baseDto(),
+      id: 'r1',
+      visualizarQuestoesCursinho: true,
+    });
+    expect(existente.visualizarQuestoesCursinho).toBe(true);
+    expect(existente.editarQuestoesCursinho).toBe(false);
+  });
+});

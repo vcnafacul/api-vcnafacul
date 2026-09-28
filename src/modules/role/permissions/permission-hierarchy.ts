@@ -83,6 +83,26 @@ export const PERMISSION_HIERARCHY: PermissionGroup[] = [
     ],
   },
   {
+    // tickets/023, card 01: o banco de questões do lado do cursinho. Compor
+    // prova (adicionar/remover questão) só nas provas do próprio cursinho —
+    // quem barra é o ms-simulado (card 03), não a permissão.
+    key: 'questoes_cursinho',
+    label: 'Banco de questões (Cursinho)',
+    permissions: [
+      {
+        key: Permissions.editarQuestoesCursinho,
+        label: 'Editar questões e montar as provas do cursinho',
+        type: PermissionType.prepCourse,
+        implies: [Permissions.visualizarQuestoesCursinho],
+      },
+      {
+        key: Permissions.visualizarQuestoesCursinho,
+        label: 'Ver o banco de questões (cursinho)',
+        type: PermissionType.prepCourse,
+      },
+    ],
+  },
+  {
     key: 'categorias_cursinho',
     label: 'Categorias (Cursinho)',
     permissions: [

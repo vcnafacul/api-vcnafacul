@@ -147,6 +147,23 @@ export class Role extends BaseEntity {
   @Column({ name: Permissions.enviarNotificacao, default: false })
   enviarNotificacao: boolean;
 
+  /**
+   * Ver o banco de questões, do lado do cursinho (tickets/023, card 01).
+   * O `visualizarQuestao` é do projeto.
+   */
+  @Column({ name: Permissions.visualizarQuestoesCursinho, default: false })
+  visualizarQuestoesCursinho: boolean;
+
+  /**
+   * Criar e editar questões e compor as provas **do próprio cursinho**
+   * (tickets/023, card 01). Implica `visualizarQuestoesCursinho`.
+   *
+   * ⚠️ A permissão só abre as rotas: quem barra a prova de outro cursinho e a
+   * oficial é o ms-simulado (`podeComporProva`, card 03).
+   */
+  @Column({ name: Permissions.editarQuestoesCursinho, default: false })
+  editarQuestoesCursinho: boolean;
+
   @OneToMany(() => User, (user) => user.role)
   users: User[];
 

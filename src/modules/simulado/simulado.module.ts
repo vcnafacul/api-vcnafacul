@@ -36,6 +36,8 @@ import { MateriaProxyController } from './materia/materia.controller';
 import { MateriaProxyService } from './materia/materia.service';
 import { HistoricoController } from './historico/historico.controller';
 import { HistoricoService } from './historico/historico.service';
+import { AtorService } from './ator/ator.service';
+import { CursinhoNomeService } from './prova/cursinho/cursinho-nome.service';
 import { CursinhoProvaController } from './prova/cursinho/cursinho-prova.controller';
 import { CursinhoResolverService } from './prova/cursinho/cursinho-resolver.service';
 import { ProvaController } from './prova/prova.controller';
@@ -105,6 +107,8 @@ import { SubjectProxyService } from './subject/subject.service';
     CollaboratorRepository,
     StudentCourseRepository,
     CursinhoResolverService,
+    AtorService,
+    CursinhoNomeService,
     CartaoRespostaHttpService,
     CartaoRespostaResultadosService,
     OmrCacheService,

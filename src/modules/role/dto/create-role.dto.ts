@@ -116,4 +116,12 @@ export class CreateRoleDtoInput {
   @IsBoolean()
   @IsOptional()
   enviarNotificacao?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  visualizarQuestoesCursinho?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  editarQuestoesCursinho?: boolean;
 }

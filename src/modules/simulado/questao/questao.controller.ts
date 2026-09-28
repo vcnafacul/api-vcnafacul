@@ -24,12 +24,32 @@ import { QuestaoDTOInput } from '../dtos/questao.dto.input';
 import { UpdateImageAlternativaDTOInput } from '../dtos/update-image-alternativa.dto.input';
 import { UpdateStatusDTOInput } from '../dtos/update-questao-status.dto.input';
 import { Status } from '../enum/status.enum';
+import { AtorService } from '../ator/ator.service';
 import { QuestaoService } from './questao.service';
+
+/**
+ * Quem vê o banco de questões: o projeto e o cursinho (tickets/023, card 01).
+ * `editarQuestoesCursinho` implica a de ver ao salvar o papel, e entra aqui
+ * também para não depender disso.
+ */
+const VER_QUESTOES = [
+  Permissions.visualizarQuestao,
+  Permissions.visualizarQuestoesCursinho,
+  Permissions.editarQuestoesCursinho,
+];
 
 @ApiTags('Questao')
 @Controller('mssimulado/questoes')
 export class QuestaoController {
-  constructor(private readonly questaoService: QuestaoService) {}
+  constructor(
+    private readonly questaoService: QuestaoService,
+    private readonly atorService: AtorService,
+  ) {}
+
+  /** Quem está agindo, do JWT (tickets/023, card 02). */
+  private ator(req: Request) {
+    return this.atorService.resolver((req.user as User).id);
+  }
 
   @Get()
   @ApiBearerAuth()
@@ -44,7 +64,7 @@ export class QuestaoController {
     },
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
+  @SetMetadata(PermissionsGuard.name, VER_QUESTOES)
   public async questoes(@Query() query: QuestaoDTOInput) {
     return await this.questaoService.getAllQuestoes(query);
   }
@@ -64,11 +84,11 @@ export class QuestaoController {
   })
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, [
-    Permissions.visualizarQuestao,
+    ...VER_QUESTOES,
     Permissions.cadastrarProvas,
   ])
-  public async questoesInfo() {
-    return await this.questaoService.questoesInfo();
+  public async questoesInfo(@Req() req: Request) {
+    return await this.questaoService.questoesInfo(await this.ator(req));
   }
 
   // ⚠️ `summary` fica ANTES do `@Get(':id')`, e a ordem é significativa: no
@@ -98,10 +118,15 @@ export class QuestaoController {
       },
     },
   })
-  // @UseGuards(PermissionsGuard)
-  // @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
-  public async getById(@Param('id') id: string) {
-    return await this.questaoService.getById(id);
+  /*
+    ⚠️ tickets/023, card 16: estava SEM guard (comentado) — qualquer pessoa,
+    mesmo sem login, lia a questão inteira, com gabarito e as provas em que
+    ela está. Agora exige ver o banco (projeto ou cursinho).
+  */
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, VER_QUESTOES)
+  public async getById(@Param('id') id: string, @Req() req: Request) {
+    return await this.questaoService.getById(id, await this.ator(req));
   }
 
   @Post('assets')
@@ -111,7 +136,10 @@ export class QuestaoController {
     description: 'upload de asset inline para rich text',
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.criarQuestao,
+    Permissions.editarQuestoesCursinho,
+  ])
   @UseInterceptors(FileInterceptor('file'))
   public async uploadAsset(@UploadedFile() file: Express.Multer.File) {
     return await this.questaoService.uploadAsset(file);
@@ -124,12 +152,20 @@ export class QuestaoController {
     description: 'atualiza classificação de questão',
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.criarQuestao,
+    Permissions.editarQuestoesCursinho,
+  ])
   public async updateClassificacao(
     @Param('id') id: string,
     @Body() body: unknown,
+    @Req() req: Request,
   ) {
-    return await this.questaoService.updateClassificacao(id, body);
+    return await this.questaoService.updateClassificacao(
+      id,
+      body,
+      await this.ator(req),
+    );
   }
 
   @Patch(':id/content')
@@ -139,7 +175,10 @@ export class QuestaoController {
     description: 'atualiza conteúdo de questão',
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.criarQuestao,
+    Permissions.editarQuestoesCursinho,
+  ])
   public async updateContent(@Param('id') id: string, @Body() body: unknown) {
     return await this.questaoService.updateContent(id, body);
   }
@@ -161,7 +200,10 @@ export class QuestaoController {
       'congela a questão e cria a sucessora já editada; as provas passam a usar a nova',
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.criarQuestao,
+    Permissions.editarQuestoesCursinho,
+  ])
   public async novaVersao(
     @Param('id') id: string,
     @Body() body: object,
@@ -180,6 +222,7 @@ export class QuestaoController {
   @SetMetadata(PermissionsGuard.name, [
     Permissions.criarQuestao,
     Permissions.validarQuestao,
+    Permissions.editarQuestoesCursinho,
   ])
   @UseInterceptors(FileInterceptor('file'))
   public async updateImageAlternativa(
@@ -204,6 +247,7 @@ export class QuestaoController {
   @SetMetadata(PermissionsGuard.name, [
     Permissions.criarQuestao,
     Permissions.validarQuestao,
+    Permissions.editarQuestoesCursinho,
   ])
   @UseInterceptors(FileInterceptor('file'))
   public async uploadImage(
@@ -225,7 +269,10 @@ export class QuestaoController {
     description: 'cria uma cópia editável da questão, com lastro',
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.criarQuestao,
+    Permissions.editarQuestoesCursinho,
+  ])
   public async duplicar(@Param('id') id: string, @Req() req: Request) {
     return await this.questaoService.duplicar(id, req.user as User);
   }
@@ -241,7 +288,7 @@ export class QuestaoController {
     description: 'a cadeia de versões, as cópias diretas e a origem',
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
+  @SetMetadata(PermissionsGuard.name, VER_QUESTOES)
   public async linhagem(@Param('id') id: string) {
     return await this.questaoService.linhagem(id);
   }
@@ -253,6 +300,7 @@ export class QuestaoController {
   @SetMetadata(PermissionsGuard.name, [
     Permissions.criarQuestao,
     Permissions.validarQuestao,
+    Permissions.editarQuestoesCursinho,
   ])
   public async adicionarEmProva(
     @Param('id') id: string,
@@ -262,7 +310,7 @@ export class QuestaoController {
     return await this.questaoService.adicionarEmProva(
       id,
       body,
-      req.user as User,
+      await this.ator(req),
     );
   }
 
@@ -273,6 +321,7 @@ export class QuestaoController {
   @SetMetadata(PermissionsGuard.name, [
     Permissions.criarQuestao,
     Permissions.validarQuestao,
+    Permissions.editarQuestoesCursinho,
   ])
   public async removerDeProva(
     @Param('id') id: string,
@@ -282,7 +331,7 @@ export class QuestaoController {
     return await this.questaoService.removerDeProva(
       id,
       provaId,
-      req.user as User,
+      await this.ator(req),
     );
   }
 
@@ -293,6 +342,7 @@ export class QuestaoController {
   @SetMetadata(PermissionsGuard.name, [
     Permissions.criarQuestao,
     Permissions.validarQuestao,
+    Permissions.editarQuestoesCursinho,
   ])
   public async definirProvaBase(
     @Param('id') id: string,
@@ -354,8 +404,11 @@ export class QuestaoController {
   })
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.validarQuestao)
-  public async questoesUpdate(@Body() question: unknown) {
-    return await this.questaoService.questoesUpdate(question);
+  public async questoesUpdate(@Body() question: unknown, @Req() req: Request) {
+    return await this.questaoService.questoesUpdate(
+      question,
+      await this.ator(req),
+    );
   }
 
   @Post()
@@ -374,9 +427,13 @@ export class QuestaoController {
   @SetMetadata(PermissionsGuard.name, [
     Permissions.criarQuestao,
     Permissions.validarQuestao,
+    Permissions.editarQuestoesCursinho,
   ])
-  public async createQuestion(@Body() questao: unknown) {
-    return await this.questaoService.createQuestion(questao);
+  public async createQuestion(@Body() questao: unknown, @Req() req: Request) {
+    return await this.questaoService.createQuestion(
+      questao,
+      await this.ator(req),
+    );
   }
 
   @Get(':id/image')
@@ -422,7 +479,7 @@ export class QuestaoController {
     description: 'busca logs de questão',
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
+  @SetMetadata(PermissionsGuard.name, VER_QUESTOES)
   public async getLogs(@Param('id') id: string) {
     return await this.questaoService.getLogs(id);
   }
@@ -467,7 +524,7 @@ export class QuestaoController {
     description: 'busca histórico de questão',
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarQuestao)
+  @SetMetadata(PermissionsGuard.name, VER_QUESTOES)
   public async history(@Param('id') id: string) {
     return await this.questaoService.getHistory(id);
   }

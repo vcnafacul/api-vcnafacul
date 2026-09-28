@@ -37,6 +37,12 @@ import {
   motivosParaNaoAtribuir,
   TEXTO_DO_MOTIVO,
 } from './atribuicao-de-funcao';
+import {
+  camposDeProjetoAcimaDaBase,
+  comCamposDeProjetoDaBase,
+  ehPerfilBaseDaPlataforma,
+  textoDePermissaoDeProjeto,
+} from './permissoes-do-cursinho';
 
 @Injectable()
 export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
@@ -401,7 +407,28 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
     if (!partnerPrepCourse) {
       throw new HttpException('Cursinho não encontrado', HttpStatus.NOT_FOUND);
     }
-    const role = await this.roleService.create(dto, partnerPrepCourse);
+    // tickets/023, card 00: permissão de projeto só herdada de um perfil base.
+    let base: Role | null = null;
+    if (dto.roleBase) {
+      base = await this.roleService.findOneByIdWithPartner(dto.roleBase);
+      if (!ehPerfilBaseDaPlataforma(base)) {
+        throw new HttpException(
+          'Perfil base inválido: escolha um dos perfis base da plataforma.',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
+    const acima = camposDeProjetoAcimaDaBase(dto, base);
+    if (acima.length) {
+      throw new HttpException(
+        textoDePermissaoDeProjeto(acima),
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const role = await this.roleService.create(
+      comCamposDeProjetoDaBase(dto, base),
+      partnerPrepCourse,
+    );
 
     const logPartner = new LogPartner();
     logPartner.partnerId = partnerPrepCourse.id;
@@ -516,7 +543,19 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
         HttpStatus.BAD_REQUEST,
       );
     }
-    const updatedRole = await this.roleService.update(dto);
+    // tickets/023, card 00. ⚠️ Papel que já tem permissão de projeto além do
+    // base (criado antes desta proteção) é recusado até a plataforma limpar:
+    // nem mantém por omissão, nem apaga em silêncio.
+    const acima = camposDeProjetoAcimaDaBase(dto, role.roleBase);
+    if (acima.length) {
+      throw new HttpException(
+        textoDePermissaoDeProjeto(acima),
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const updatedRole = await this.roleService.update(
+      comCamposDeProjetoDaBase(dto, role.roleBase),
+    );
 
     const logPartner = new LogPartner();
     logPartner.partnerId = partnerPrepCourse.id;

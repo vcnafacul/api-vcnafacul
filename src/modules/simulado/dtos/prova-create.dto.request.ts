@@ -12,4 +12,5 @@ export class CreateProvaDTORequest {
   // Campos internos, injetados pelo api-vcnafacul (não vêm do cliente).
   criadorId: string;
   cursinhoId: string | null = null;
+  receberNovasVersoes = false;
 }
