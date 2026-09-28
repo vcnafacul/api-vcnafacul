@@ -124,4 +124,8 @@ export class CreateRoleDtoInput {
   @IsBoolean()
   @IsOptional()
   editarQuestoesCursinho?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  validarQuestoesCursinho?: boolean;
 }

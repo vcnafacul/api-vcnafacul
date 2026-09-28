@@ -104,3 +104,22 @@ describe('RoleService — permissões de questões do cursinho (023 · 01)', () 
     expect(existente.editarQuestoesCursinho).toBe(false);
   });
 });
+
+describe('RoleService — validarQuestoesCursinho (024 · 01)', () => {
+  it('validar implica ver o banco', async () => {
+    const { service } = makeService();
+    const role = await service.create(
+      baseDto({ validarQuestoesCursinho: true }),
+    );
+    expect(role.validarQuestoesCursinho).toBe(true);
+    expect(role.visualizarQuestoesCursinho).toBe(true);
+    expect(role.editarQuestoesCursinho).toBe(false);
+  });
+
+  it('sem o campo, nasce desligada', async () => {
+    const { service } = makeService();
+    expect((await service.create(baseDto())).validarQuestoesCursinho).toBe(
+      false,
+    );
+  });
+});

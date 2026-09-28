@@ -96,6 +96,14 @@ export const PERMISSION_HIERARCHY: PermissionGroup[] = [
         implies: [Permissions.visualizarQuestoesCursinho],
       },
       {
+        // tickets/024, card 01: o cursinho ajuda a validar o banco da
+        // comunidade. Aprovar é livre; recusar tem regra (ms, card 03).
+        key: Permissions.validarQuestoesCursinho,
+        label: 'Validar questões (aprovar e recusar)',
+        type: PermissionType.prepCourse,
+        implies: [Permissions.visualizarQuestoesCursinho],
+      },
+      {
         key: Permissions.visualizarQuestoesCursinho,
         label: 'Ver o banco de questões (cursinho)',
         type: PermissionType.prepCourse,

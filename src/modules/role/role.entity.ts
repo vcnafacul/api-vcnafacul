@@ -164,6 +164,17 @@ export class Role extends BaseEntity {
   @Column({ name: Permissions.editarQuestoesCursinho, default: false })
   editarQuestoesCursinho: boolean;
 
+  /**
+   * Aprovar e recusar questões do banco da comunidade, do lado do cursinho
+   * (tickets/024, card 01). Implica ver.
+   *
+   * ⚠️ Aprovar qualquer pendente; recusar só o que não atrapalha ninguém (a
+   * questão está só nas provas do cursinho, ou em nenhuma) — quem decide é o
+   * ms (card 03).
+   */
+  @Column({ name: Permissions.validarQuestoesCursinho, default: false })
+  validarQuestoesCursinho: boolean;
+
   @OneToMany(() => User, (user) => user.role)
   users: User[];
 

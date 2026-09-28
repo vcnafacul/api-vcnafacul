@@ -34,4 +34,5 @@ export enum Permissions {
   enviarNotificacao = 'enviar_notificacao',
   visualizarQuestoesCursinho = 'visualizar_questoes_cursinho',
   editarQuestoesCursinho = 'editar_questoes_cursinho',
+  validarQuestoesCursinho = 'validar_questoes_cursinho',
 }
