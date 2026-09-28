@@ -2,12 +2,14 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { randomUUID } from 'crypto';
+import { JwtService } from '@nestjs/jwt';
 import { AppModule } from 'src/app.module';
 import { CAMPOS_PUBLICOS_GEO } from 'src/modules/geo/dto/public-geo.dto.output';
 import { TypeGeo } from 'src/modules/geo/enum/typeGeo';
 import { Geolocation } from 'src/modules/geo/geo.entity';
 import { GeoService } from 'src/modules/geo/geo.service';
 import { LogGeo } from 'src/modules/geo/log-geo/log-geo.entity';
+import { Role } from 'src/modules/role/role.entity';
 import { Status } from 'src/modules/simulado/enum/status.enum';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
@@ -31,6 +33,7 @@ describe('GET /geo/public (e2e)', () => {
   let geoService: GeoService;
   let userService: UserService;
   let userRepository: UserRepository;
+  let jwtService: JwtService;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -47,6 +50,7 @@ describe('GET /geo/public (e2e)', () => {
     geoService = moduleFixture.get(GeoService);
     userService = moduleFixture.get(UserService);
     userRepository = moduleFixture.get(UserRepository);
+    jwtService = moduleFixture.get(JwtService);
   });
 
   afterAll(async () => {
@@ -198,8 +202,38 @@ describe('GET /geo/public (e2e)', () => {
     expect(meus(body)[0].name).toBe('Nome Novo');
   });
 
-  it('o GET /geo (dash) continua como estava — fechá-lo é o card 01b', async () => {
-    await novoGeo();
-    await http().get('/geo?page=1&limit=10&status=1').expect(200);
+  describe('GET /geo (dash) — card 01b', () => {
+    const comPermissao = async (validarCursinho: boolean) => {
+      const u = await novoUsuario();
+      u.role = await dataSource
+        .getRepository(Role)
+        .save({ name: `geo-${randomUUID().slice(0, 8)}`, validarCursinho });
+      await userRepository.update(u);
+      const token = await jwtService.signAsync({ user: { id: u.id } });
+      return `Bearer ${token}`;
+    };
+    const listar = () => http().get('/geo?page=1&limit=10&status=1');
+
+    it('sem token → 401', async () => {
+      await listar().expect(401);
+    });
+
+    it('sem validarCursinho → 403', async () => {
+      await listar()
+        .set('Authorization', await comPermissao(false))
+        .expect(403);
+    });
+
+    it('com validarCursinho → 200, entidade completa como antes', async () => {
+      const geo = await novoGeo({ status: Status.Pending });
+      const { body } = await http()
+        .get('/geo')
+        .query({ page: 1, limit: 10, status: Status.Pending, text: geo.name })
+        .set('Authorization', await comPermissao(true))
+        .expect(200);
+      const meu = meus(body.data)[0];
+      expect(meu.id).toBe(geo.id);
+      expect(meu.userEmail).toBe('quem.cadastrou@exemplo.com');
+    });
   });
 });
