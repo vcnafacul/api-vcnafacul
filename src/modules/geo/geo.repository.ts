@@ -6,6 +6,7 @@ import { Brackets, EntityManager } from 'typeorm';
 import { BaseRepository } from '../../shared/modules/base/base.repository';
 import { Status } from '../simulado/enum/status.enum';
 import { CAMPOS_PUBLICOS_GEO } from './dto/public-geo.dto.output';
+import { CONDICAO_VALIDA } from './confirmation/geo-confirmation.repository';
 import { TypeGeo } from './enum/typeGeo';
 import { Geolocation } from './geo.entity';
 
@@ -136,14 +137,43 @@ export class GeoRepository extends BaseRepository<Geolocation> {
    * Aprovados, só com as colunas públicas (sem `logs`, sem `user*`). É a
    * fonte do `GET /geo/public` — o mapa da home e a busca.
    */
-  async aprovadosPublicos(type?: TypeGeo): Promise<Geolocation[]> {
+  async aprovadosPublicos(
+    type?: TypeGeo,
+  ): Promise<{ geo: Geolocation; confirmations: number }[]> {
     const qb = this.repository
       .createQueryBuilder('geo')
       .select(CAMPOS_PUBLICOS_GEO.map((c) => `geo.${c}`))
+      /*
+        Confirmações válidas (card 03) numa subconsulta correlacionada: uma
+        query só, sem N+1. Não conta quem apagou a conta.
+      */
+      .addSelect(
+        (sub) =>
+          sub
+            .select('COUNT(*)')
+            .from('geo_confirmations', 'c')
+            .innerJoin('users', 'u', 'u.id = c.user_id')
+            .where('c.geo_id = geo.id')
+            .andWhere('u.deleted_at IS NULL')
+            .andWhere(
+              CONDICAO_VALIDA.replace(
+                'g.info_updated_at',
+                'geo.info_updated_at',
+              ),
+            ),
+        'confirmations',
+      )
       .where('geo.status = :status', { status: Status.Approved })
       .andWhere('geo.deletedAt IS NULL')
       .orderBy('geo.name', 'ASC');
     if (type !== undefined) qb.andWhere('geo.type = :type', { type });
-    return qb.getMany();
+    const { entities, raw } = await qb.getRawAndEntities();
+    const contagem = new Map(
+      raw.map((r) => [r.geo_id as string, Number(r.confirmations) || 0]),
+    );
+    return entities.map((geo) => ({
+      geo,
+      confirmations: contagem.get(geo.id) ?? 0,
+    }));
   }
 }

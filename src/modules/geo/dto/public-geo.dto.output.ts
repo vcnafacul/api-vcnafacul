@@ -37,6 +37,7 @@ export const CAMPOS_PUBLICOS_GEO = [
   'tiktok',
   'createdAt',
   'updatedAt',
+  'infoUpdatedAt',
 ] as const;
 
 export type CampoPublicoGeo = (typeof CAMPOS_PUBLICOS_GEO)[number];
@@ -70,13 +71,21 @@ export class PublicGeoDtoOutput {
   @ApiProperty({ required: false }) tiktok?: string;
   @ApiProperty() createdAt: Date;
   @ApiProperty() updatedAt: Date;
+  /** Última mudança de conteúdo (card 03); `null` se nunca foi editado. */
+  @ApiProperty({ nullable: true }) infoUpdatedAt: Date | null;
+  /** Confirmações "informação correta" que ainda valem (card 03). */
+  @ApiProperty() confirmations: number;
 }
 
 /** Copia só os campos da lista branca — nunca espalha a entidade. */
-export function paraGeoPublico(geo: Geolocation): PublicGeoDtoOutput {
-  const saida = {} as Record<CampoPublicoGeo, unknown>;
+export function paraGeoPublico(
+  geo: Geolocation,
+  confirmations = 0,
+): PublicGeoDtoOutput {
+  const saida = {} as Record<CampoPublicoGeo | 'confirmations', unknown>;
   for (const campo of CAMPOS_PUBLICOS_GEO) {
     saida[campo] = (geo as unknown as Record<string, unknown>)[campo] ?? null;
   }
+  saida.confirmations = confirmations;
   return saida as unknown as PublicGeoDtoOutput;
 }

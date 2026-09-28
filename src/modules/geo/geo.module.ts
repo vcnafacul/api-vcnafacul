@@ -6,6 +6,7 @@ import { EmailService } from 'src/shared/services/email/email.service';
 import { AuditLogModule } from '../audit-log/audit-log.module';
 import { RoleModule } from '../role/role.module';
 import { UserModule } from '../user/user.module';
+import { GeoConfirmationRepository } from './confirmation/geo-confirmation.repository';
 import { GeoController } from './geo.controller';
 import { GeoRepository } from './geo.repository';
 import { GeoService } from './geo.service';
@@ -18,6 +19,7 @@ import { GeoExistValidator } from './validator/geo-exist.validator';
   providers: [
     GeoService,
     GeoRepository,
+    GeoConfirmationRepository,
     EmailService,
     GeoExistValidator,
     LogGeoRepository,
