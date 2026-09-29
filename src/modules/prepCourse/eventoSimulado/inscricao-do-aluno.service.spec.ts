@@ -30,10 +30,16 @@ describe('InscricaoDoAlunoService (026 · 03)', () => {
       cursinhosEmQueEstaMatriculado: jest.fn().mockResolvedValue(['A']),
       ehAlunoMatriculadoNo: jest.fn().mockResolvedValue(true),
     };
+    const push = { confirmar: jest.fn() };
     return {
-      service: new InscricaoDoAlunoService(eventos as never, alunos as never),
+      service: new InscricaoDoAlunoService(
+        eventos as never,
+        alunos as never,
+        push as never,
+      ),
       eventos,
       alunos,
+      push,
     };
   };
 
@@ -62,6 +68,17 @@ describe('InscricaoDoAlunoService (026 · 03)', () => {
       'troca',
     );
     expect(eventos.trocarProva).toHaveBeenCalledWith('i1', 'p-es');
+  });
+
+  it('confirma pelo push com o nome da prova e o resultado', async () => {
+    const { service, push } = montar();
+    await service.inscrever('u1', 'e1', 'p-es');
+    expect(push.confirmar).toHaveBeenCalledWith(
+      'u1',
+      expect.objectContaining({ id: 'e1' }),
+      'p-es',
+      'nova',
+    );
   });
 
   it('⚠️ corrida: o UNIQUE barra a segunda e ela vira troca, não erro', async () => {
