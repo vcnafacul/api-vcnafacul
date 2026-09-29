@@ -4,7 +4,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { randomUUID } from 'crypto';
 import { AppModule } from 'src/app.module';
+import { AvisoDeAberturaTask } from 'src/modules/prepCourse/eventoSimulado/aviso-de-abertura.task';
 import { ProvasDoMsService } from 'src/modules/prepCourse/eventoSimulado/provas-do-ms.service';
+import { PushService } from 'src/modules/push/push.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import * as request from 'supertest';
 import { DataSource } from 'typeorm';
@@ -22,6 +24,14 @@ describe('Eventos de simulado (e2e)', () => {
   let db: DataSource;
   let jwt: JwtService;
   const provasNoMs = new Map<string, { nome: string; cursinhoId: string }>();
+  // Push "ligado" e sem FCM: guarda para quem e o quê seria enviado.
+  const push = {
+    garantirHabilitado: jest.fn(),
+    sendToUsers: jest.fn().mockResolvedValue({ enviados: 0, falhas: 0 }),
+  };
+  let aviso: AvisoDeAberturaTask;
+  // simuladoId → quem "fez" pelo cartão (o ms é dublê).
+  const participantes = new Map<string, string[]>();
 
   const ids = {
     users: [] as string[],
@@ -41,18 +51,25 @@ describe('Eventos de simulado (e2e)', () => {
       .useValue({ sendMessage: jest.fn() })
       .overrideGuard(ThrottlerGuard)
       .useValue({ canActivate: () => true })
+      .overrideProvider(PushService)
+      .useValue(push)
       .overrideProvider(ProvasDoMsService)
       .useValue({
         buscar: async (id: string) => {
           const p = provasNoMs.get(id);
           return p ? { id, ...p, simuladoIds: [`sim-${id}`] } : null;
         },
+        participantesPorCartao: async (simuladoIds: string[]) =>
+          Object.fromEntries(
+            simuladoIds.map((s) => [s, participantes.get(s) ?? []]),
+          ),
       })
       .compile();
     app = createNestAppTest(mod);
     await app.init();
     db = mod.get(DataSource);
     jwt = mod.get(JwtService);
+    aviso = mod.get(AvisoDeAberturaTask);
   });
 
   afterAll(async () => {
@@ -271,6 +288,341 @@ describe('Eventos de simulado (e2e)', () => {
         .set('Authorization', await bearer(gestor))
         .send(corpo([espanhol], { nome: 'Renomeado' }))
         .expect(200);
+    });
+  });
+
+  describe('inscrição do aluno (card 03)', () => {
+    let A: string;
+    let ingles: string;
+    let espanhol: string;
+    let aberto: string;
+    let agendado: string;
+
+    const aluno = async (cursinhoId: string, status = 'Matriculado') => {
+      const u = await usuario();
+      const id = randomUUID();
+      await db.query(
+        `INSERT INTO student_course (id, cpf, email, user_id, partner_prep_course_id, applicationStatus)
+         VALUES (?, '000', 'a@a', ?, ?, ?)`,
+        [id, u, cursinhoId, status],
+      );
+      ids.alunos.push(id);
+      return u;
+    };
+
+    beforeAll(async () => {
+      A = await cursinho();
+      const gestor = await colaborador(A, ['cadastrar_provas_cursinho']);
+      ingles = prova(A, 'Simulado Inglês');
+      espanhol = prova(A, 'Simulado Espanhol');
+      const auth = await bearer(gestor);
+      const r1 = await request(app.getHttpServer())
+        .post('/eventos-simulado/cursinho')
+        .set('Authorization', auth)
+        .send(corpo([ingles, espanhol]))
+        .expect(201);
+      aberto = r1.body.id;
+      const r2 = await request(app.getHttpServer())
+        .post('/eventos-simulado/cursinho')
+        .set('Authorization', auth)
+        .send(
+          corpo([ingles], {
+            nome: 'Futuro',
+            inscricoesDe: new Date(Date.now() + 86_400_000).toISOString(),
+            inscricoesAte: new Date(Date.now() + 2 * 86_400_000).toISOString(),
+          }),
+        )
+        .expect(201);
+      agendado = r2.body.id;
+      ids.eventos.push(aberto, agendado);
+    });
+
+    const meus = async (u: string) =>
+      (
+        await request(app.getHttpServer())
+          .get('/eventos-simulado/meus')
+          .set('Authorization', await bearer(u))
+          .expect(200)
+      ).body;
+
+    it('matriculado vê só o evento aberto; se inscreve, troca e desiste', async () => {
+      const u = await aluno(A);
+      const auth = await bearer(u);
+      const visiveis = await meus(u);
+      expect(visiveis.map((e: { id: string }) => e.id)).toEqual([aberto]);
+      expect(visiveis[0].minhaProvaId).toBeNull();
+
+      const r1 = await request(app.getHttpServer())
+        .put(`/eventos-simulado/${aberto}/inscricao`)
+        .set('Authorization', auth)
+        .send({ provaId: ingles })
+        .expect(200);
+      expect(r1.body.resultado).toBe('nova');
+
+      const r2 = await request(app.getHttpServer())
+        .put(`/eventos-simulado/${aberto}/inscricao`)
+        .set('Authorization', auth)
+        .send({ provaId: espanhol })
+        .expect(200);
+      expect(r2.body.resultado).toBe('troca');
+      expect((await meus(u))[0].minhaProvaId).toBe(espanhol);
+
+      const [{ total }] = await db.query(
+        'SELECT COUNT(*) AS total FROM simulado_evento_inscricao WHERE evento_id = ? AND user_id = ?',
+        [aberto, u],
+      );
+      expect(Number(total)).toBe(1);
+
+      await request(app.getHttpServer())
+        .delete(`/eventos-simulado/${aberto}/inscricao`)
+        .set('Authorization', auth)
+        .expect(204);
+      expect((await meus(u))[0].minhaProvaId).toBeNull();
+    });
+
+    it('evento agendado (fora da janela) → 404', async () => {
+      const u = await aluno(A);
+      await request(app.getHttpServer())
+        .put(`/eventos-simulado/${agendado}/inscricao`)
+        .set('Authorization', await bearer(u))
+        .send({ provaId: ingles })
+        .expect(404);
+    });
+
+    it.each([
+      ['inscrito não matriculado', 'Em Análise'],
+      ['matrícula cancelada', 'Matrícula Cancelada'],
+    ])('%s: não vê e recebe 403', async (_n, status) => {
+      const u = await aluno(A, status);
+      expect(await meus(u)).toEqual([]);
+      await request(app.getHttpServer())
+        .put(`/eventos-simulado/${aberto}/inscricao`)
+        .set('Authorization', await bearer(u))
+        .send({ provaId: ingles })
+        .expect(403);
+    });
+
+    it('matriculado de outro cursinho: não vê e recebe 403', async () => {
+      const B = await cursinho();
+      const u = await aluno(B);
+      expect(await meus(u)).toEqual([]);
+      await request(app.getHttpServer())
+        .put(`/eventos-simulado/${aberto}/inscricao`)
+        .set('Authorization', await bearer(u))
+        .send({ provaId: ingles })
+        .expect(403);
+    });
+
+    it('prova que não é do evento → 400; deslogado → 401', async () => {
+      const u = await aluno(A);
+      await request(app.getHttpServer())
+        .put(`/eventos-simulado/${aberto}/inscricao`)
+        .set('Authorization', await bearer(u))
+        .send({ provaId: '64b000000000000000000999' })
+        .expect(400);
+      await request(app.getHttpServer())
+        .get('/eventos-simulado/meus')
+        .expect(401);
+    });
+  });
+
+  describe('push do evento (card 04)', () => {
+    const matricular = async (cursinhoId: string, status = 'Matriculado') => {
+      const u = await usuario();
+      const id = randomUUID();
+      await db.query(
+        `INSERT INTO student_course (id, cpf, email, user_id, partner_prep_course_id, applicationStatus)
+         VALUES (?, '000', 'a@a', ?, ?, ?)`,
+        [id, u, cursinhoId, status],
+      );
+      ids.alunos.push(id);
+      return u;
+    };
+
+    const criarEvento = async (
+      gestor: string,
+      provaIds: string[],
+      over = {},
+    ) => {
+      const r = await request(app.getHttpServer())
+        .post('/eventos-simulado/cursinho')
+        .set('Authorization', await bearer(gestor))
+        .send(corpo(provaIds, over))
+        .expect(201);
+      ids.eventos.push(r.body.id);
+      return r.body.id as string;
+    };
+
+    const avisosDo = (eventoId: string) =>
+      push.sendToUsers.mock.calls.filter(
+        ([, p]) => p.tag === `evento-${eventoId}`,
+      );
+
+    it('⚠️ abertura: uma vez só, mesmo com duas rodadas em paralelo, e só para matriculados', async () => {
+      const A = await cursinho();
+      const gestor = await colaborador(A, ['cadastrar_provas_cursinho']);
+      const matriculado = await matricular(A);
+      await matricular(A, 'Em Análise');
+      const deOutro = await matricular(await cursinho());
+      const eventoId = await criarEvento(gestor, [prova(A, 'Prova')]);
+
+      await Promise.all([aviso.avisar(), aviso.avisar()]);
+      await aviso.avisar();
+
+      const avisos = avisosDo(eventoId);
+      expect(avisos).toHaveLength(1);
+      expect(avisos[0][0]).toEqual([matriculado]);
+      expect(avisos[0][0]).not.toContain(deOutro);
+    });
+
+    it('editar a janela depois do aviso não reenvia; agendado não avisa', async () => {
+      const A = await cursinho();
+      const gestor = await colaborador(A, ['cadastrar_provas_cursinho']);
+      await matricular(A);
+      const p = prova(A, 'Prova');
+      const aberto = await criarEvento(gestor, [p]);
+      const futuro = await criarEvento(gestor, [p], {
+        inscricoesDe: new Date(Date.now() + 86_400_000).toISOString(),
+        inscricoesAte: new Date(Date.now() + 2 * 86_400_000).toISOString(),
+      });
+      await aviso.avisar();
+
+      await request(app.getHttpServer())
+        .put(`/eventos-simulado/cursinho/${aberto}`)
+        .set('Authorization', await bearer(gestor))
+        .send(
+          corpo([p], {
+            inscricoesAte: new Date(Date.now() + 5 * 86_400_000).toISOString(),
+          }),
+        )
+        .expect(200);
+      await aviso.avisar();
+
+      expect(avisosDo(aberto)).toHaveLength(1);
+      expect(avisosDo(futuro)).toHaveLength(0);
+    });
+
+    it('confirmação: nova e troca enviam para o aluno; igual e desistência não', async () => {
+      const A = await cursinho();
+      const gestor = await colaborador(A, ['cadastrar_provas_cursinho']);
+      const en = prova(A, 'Simulado Inglês');
+      const es = prova(A, 'Simulado Espanhol');
+      const eventoId = await criarEvento(gestor, [en, es]);
+      const u = await matricular(A);
+      const auth = await bearer(u);
+      const confirmacoes = () =>
+        push.sendToUsers.mock.calls.filter(
+          ([, p]) => p.tag === `inscricao-${eventoId}`,
+        );
+      const inscrever = (provaId: string) =>
+        request(app.getHttpServer())
+          .put(`/eventos-simulado/${eventoId}/inscricao`)
+          .set('Authorization', auth)
+          .send({ provaId })
+          .expect(200);
+
+      await inscrever(en);
+      await inscrever(en);
+      await inscrever(es);
+      await request(app.getHttpServer())
+        .delete(`/eventos-simulado/${eventoId}/inscricao`)
+        .set('Authorization', auth)
+        .expect(204);
+
+      expect(confirmacoes().map(([para, p]) => [para, p.title])).toEqual([
+        [[u], '✅ Inscrição confirmada'],
+        [[u], '🔁 Prova alterada'],
+      ]);
+    });
+
+    it('⚠️ push fora do ar não derruba a inscrição', async () => {
+      const A = await cursinho();
+      const gestor = await colaborador(A, ['cadastrar_provas_cursinho']);
+      const eventoId = await criarEvento(gestor, [prova(A, 'Prova')]);
+      const u = await matricular(A);
+      push.sendToUsers.mockRejectedValueOnce(new Error('FCM fora'));
+      await request(app.getHttpServer())
+        .put(`/eventos-simulado/${eventoId}/inscricao`)
+        .set('Authorization', await bearer(u))
+        .send({})
+        .expect(200);
+    });
+  });
+
+  describe('engajamento (card 05)', () => {
+    it('inscritos por prova, quem fez, quem faltou e quem fez sem se inscrever', async () => {
+      const A = await cursinho();
+      const gestor = await colaborador(A, ['cadastrar_provas_cursinho']);
+      const leitor = await colaborador(A, ['visualizar_provas_cursinho']);
+      const en = prova(A, 'Simulado Inglês');
+      const es = prova(A, 'Simulado Espanhol');
+      const criado = await request(app.getHttpServer())
+        .post('/eventos-simulado/cursinho')
+        .set('Authorization', await bearer(gestor))
+        .send(corpo([en, es]))
+        .expect(201);
+      ids.eventos.push(criado.body.id);
+
+      const matricular = async () => {
+        const u = await usuario();
+        const id = randomUUID();
+        await db.query(
+          `INSERT INTO student_course (id, cpf, email, user_id, partner_prep_course_id, applicationStatus)
+           VALUES (?, '000', 'a@a', ?, ?, 'Matriculado')`,
+          [id, u, A],
+        );
+        ids.alunos.push(id);
+        return u;
+      };
+      const [veio, faltou, semInscricao] = [
+        await matricular(),
+        await matricular(),
+        await matricular(),
+      ];
+      for (const [u, p] of [
+        [veio, en],
+        [faltou, es],
+      ]) {
+        await request(app.getHttpServer())
+          .put(`/eventos-simulado/${criado.body.id}/inscricao`)
+          .set('Authorization', await bearer(u))
+          .send({ provaId: p })
+          .expect(200);
+      }
+      participantes.set(`sim-${en}`, [veio, semInscricao]);
+
+      const r = await request(app.getHttpServer())
+        .get(`/eventos-simulado/cursinho/${criado.body.id}/engajamento`)
+        .set('Authorization', await bearer(leitor))
+        .expect(200);
+
+      expect(r.body.porProva).toEqual([
+        {
+          provaId: en,
+          nome: 'Simulado Inglês',
+          inscritos: 1,
+          fizeram: 1,
+          naoVieram: 0,
+        },
+        {
+          provaId: es,
+          nome: 'Simulado Espanhol',
+          inscritos: 1,
+          fizeram: 0,
+          naoVieram: 1,
+        },
+      ]);
+      expect(r.body).toMatchObject({
+        totalInscritos: 2,
+        inscritosQueFizeram: 1,
+        engajamento: 0.5,
+      });
+      expect(
+        r.body.inscritos.map((i: { fez: boolean }) => i.fez).sort(),
+      ).toEqual([false, true]);
+      expect(r.body.fizeramSemInscricao).toEqual([
+        { nome: 'Ana Teste', provaId: en },
+      ]);
     });
   });
 });

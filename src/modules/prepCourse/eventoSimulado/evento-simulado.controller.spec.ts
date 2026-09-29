@@ -7,7 +7,11 @@ describe('EventoSimuladoController — permissões', () => {
   const p = EventoSimuladoController.prototype;
   const meta = (h: unknown) => Reflect.getMetadata(PermissionsGuard.name, h);
 
-  it('listar: ver OU cadastrar provas do cursinho', () => {
+  it('listar e engajamento: ver OU cadastrar provas do cursinho', () => {
+    expect(meta(p.engajamentoDoEvento)).toEqual([
+      Permissions.visualizarProvasCursinho,
+      Permissions.cadastrarProvasCursinho,
+    ]);
     expect(meta(p.listar)).toEqual([
       Permissions.visualizarProvasCursinho,
       Permissions.cadastrarProvasCursinho,
