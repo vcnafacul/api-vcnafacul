@@ -2,6 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { randomUUID } from 'crypto';
+import { JwtService } from '@nestjs/jwt';
 import { AppModule } from 'src/app.module';
 import { ImpactoDoCursinhoService } from 'src/modules/prepCourse/paginaCursinho/impacto-do-cursinho.service';
 import { StudentCourseRepository } from 'src/modules/prepCourse/studentCourse/student-course.repository';
@@ -24,6 +25,7 @@ describe('Página do cursinho (e2e)', () => {
   let impacto: ImpactoDoCursinhoService;
   let students: StudentCourseRepository;
   let inscricoes: InscriptionCourseRepository;
+  let jwt: JwtService;
 
   const ids = {
     users: [] as string[],
@@ -32,6 +34,7 @@ describe('Página do cursinho (e2e)', () => {
     inscricoes: [] as string[],
     alunos: [] as string[],
     paginas: [] as string[],
+    colaboradores: [] as string[],
   };
 
   beforeAll(async () => {
@@ -49,6 +52,7 @@ describe('Página do cursinho (e2e)', () => {
     impacto = mod.get(ImpactoDoCursinhoService);
     students = mod.get(StudentCourseRepository);
     inscricoes = mod.get(InscriptionCourseRepository);
+    jwt = mod.get(JwtService);
   });
 
   afterAll(async () => {
@@ -56,6 +60,7 @@ describe('Página do cursinho (e2e)', () => {
       if (lista.length)
         await db.query(`DELETE FROM ${tabela} WHERE id IN (?)`, [lista]);
     };
+    await apaga('collaborators', ids.colaboradores);
     await apaga('cursinho_pagina', ids.paginas);
     await apaga('student_course', ids.alunos);
     await apaga('inscription_course', ids.inscricoes);
@@ -173,6 +178,97 @@ describe('Página do cursinho (e2e)', () => {
           .expect(404);
         expect(res.body.message).toBe('Página não encontrada');
       }
+    });
+  });
+
+  const colaborador = async (
+    cursinhoId: string,
+    userId: string,
+    ativo = true,
+  ) => {
+    const id = randomUUID();
+    await db.query(
+      `INSERT INTO collaborators (id, user_id, partner_prep_course_id, actived) VALUES (?, ?, ?, ?)`,
+      [id, userId, cursinhoId, ativo ? 1 : 0],
+    );
+    ids.colaboradores.push(id);
+  };
+
+  const bearer = async (userId: string) =>
+    `Bearer ${await jwt.signAsync({ user: { id: userId } })}`;
+
+  describe('links internos (card 05)', () => {
+    const sufixo = randomUUID().slice(0, 8);
+    let A: string;
+    let B: string;
+    const rota = (slug = `internos-${sufixo}`) =>
+      `/cursinho-pagina/${slug}/links-internos`;
+
+    beforeAll(async () => {
+      A = await cursinho('Cursinho com internos');
+      B = await cursinho('Outro cursinho');
+      await pagina(A, `internos-${sufixo}`, true, [
+        { tipo: 'publico', titulo: 'Site', url: 'https://site.org' },
+        { tipo: 'interno', titulo: 'Drive', url: 'https://drive.interno' },
+      ]);
+    });
+
+    it('deslogado → 401', async () => {
+      await request(app.getHttpServer()).get(rota()).expect(401);
+    });
+
+    it('colaborador ativo do A → só os internos do A', async () => {
+      const u = await usuario();
+      await colaborador(A, u);
+      const res = await request(app.getHttpServer())
+        .get(rota())
+        .set('Authorization', await bearer(u))
+        .expect(200);
+      expect(res.body).toEqual([
+        { titulo: 'Drive', url: 'https://drive.interno' },
+      ]);
+    });
+
+    it('aluno matriculado do A → ok', async () => {
+      const u = await usuario();
+      await aluno(A, u, 'Matriculado');
+      await request(app.getHttpServer())
+        .get(rota())
+        .set('Authorization', await bearer(u))
+        .expect(200);
+    });
+
+    it.each([
+      ['colaborador do B', async (u: string) => colaborador(B, u)],
+      [
+        'colaborador inativo do A',
+        async (u: string) => colaborador(A, u, false),
+      ],
+      [
+        'inscrito não matriculado do A',
+        async (u: string) => aluno(A, u, 'Em Análise'),
+      ],
+      [
+        'matrícula cancelada no A',
+        async (u: string) => aluno(A, u, 'Matrícula Cancelada'),
+      ],
+      ['logado sem vínculo nenhum', async () => undefined],
+    ])('%s → 403', async (_n, vincular) => {
+      const u = await usuario();
+      await vincular(u);
+      await request(app.getHttpServer())
+        .get(rota())
+        .set('Authorization', await bearer(u))
+        .expect(403);
+    });
+
+    it('página inexistente → 404', async () => {
+      const u = await usuario();
+      await colaborador(A, u);
+      await request(app.getHttpServer())
+        .get(rota(`nao-existe-${sufixo}`))
+        .set('Authorization', await bearer(u))
+        .expect(404);
     });
   });
 

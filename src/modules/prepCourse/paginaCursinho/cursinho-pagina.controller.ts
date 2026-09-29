@@ -1,5 +1,9 @@
-import { Controller, Get, Param } from '@nestjs/common';
-import { ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Request } from 'express';
+import { User } from 'src/modules/user/user.entity';
+import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
+import { LinksInternosService } from './links-internos.service';
 import { PaginaPublicaService } from './pagina-publica.service';
 
 /**
@@ -8,7 +12,10 @@ import { PaginaPublicaService } from './pagina-publica.service';
 @ApiTags('Página do cursinho')
 @Controller('cursinho-pagina')
 export class CursinhoPaginaController {
-  constructor(private readonly publica: PaginaPublicaService) {}
+  constructor(
+    private readonly publica: PaginaPublicaService,
+    private readonly internos: LinksInternosService,
+  ) {}
 
   @Get(':slug')
   @ApiResponse({
@@ -18,5 +25,21 @@ export class CursinhoPaginaController {
   })
   async porSlug(@Param('slug') slug: string) {
     return await this.publica.porSlug(slug);
+  }
+
+  /**
+   * ⚠️ Rota separada da pública (card 05): a resposta depende de quem pede,
+   * então não pode entrar no cache da página.
+   */
+  @Get(':slug/links-internos')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description:
+      'links internos — só colaborador ativo ou aluno matriculado do cursinho',
+  })
+  @UseGuards(JwtAuthGuard)
+  async linksInternos(@Param('slug') slug: string, @Req() req: Request) {
+    return await this.internos.doSlug(slug, (req.user as User).id);
   }
 }

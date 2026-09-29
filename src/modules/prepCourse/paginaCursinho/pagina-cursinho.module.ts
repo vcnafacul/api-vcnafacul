@@ -8,6 +8,7 @@ import { PartnerPrepCourseModule } from '../partnerPrepCourse/partner-prep-cours
 import { StudentCourseModule } from '../studentCourse/student-course.module';
 import { CursinhoPaginaController } from './cursinho-pagina.controller';
 import { ImpactoDoCursinhoService } from './impacto-do-cursinho.service';
+import { LinksInternosService } from './links-internos.service';
 import { PaginaPublicaService } from './pagina-publica.service';
 
 /**
@@ -29,6 +30,7 @@ import { PaginaPublicaService } from './pagina-publica.service';
   providers: [
     ImpactoDoCursinhoService,
     PaginaPublicaService,
+    LinksInternosService,
     HttpServiceAxiosFactory,
   ],
   exports: [ImpactoDoCursinhoService],
