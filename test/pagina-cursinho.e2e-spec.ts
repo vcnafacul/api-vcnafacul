@@ -4,6 +4,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 import { randomUUID } from 'crypto';
 import { JwtService } from '@nestjs/jwt';
 import { AppModule } from 'src/app.module';
+import { CollaboratorService } from 'src/modules/prepCourse/collaborator/collaborator.service';
 import { ImpactoDoCursinhoService } from 'src/modules/prepCourse/paginaCursinho/impacto-do-cursinho.service';
 import { StudentCourseRepository } from 'src/modules/prepCourse/studentCourse/student-course.repository';
 import { InscriptionCourseRepository } from 'src/modules/prepCourse/InscriptionCourse/inscription-course.repository';
@@ -26,6 +27,7 @@ describe('Página do cursinho (e2e)', () => {
   let students: StudentCourseRepository;
   let inscricoes: InscriptionCourseRepository;
   let jwt: JwtService;
+  let colaboradores: CollaboratorService;
 
   const ids = {
     users: [] as string[],
@@ -53,6 +55,7 @@ describe('Página do cursinho (e2e)', () => {
     students = mod.get(StudentCourseRepository);
     inscricoes = mod.get(InscriptionCourseRepository);
     jwt = mod.get(JwtService);
+    colaboradores = mod.get(CollaboratorService);
   });
 
   afterAll(async () => {
@@ -269,6 +272,35 @@ describe('Página do cursinho (e2e)', () => {
         .get(rota(`nao-existe-${sufixo}`))
         .set('Authorization', await bearer(u))
         .expect(404);
+    });
+  });
+
+  describe('cache dos colaboradores da página', () => {
+    it('ativar e desativar aparecem na hora, com a página em cache', async () => {
+      const sufixo = randomUUID().slice(0, 8);
+      const A = await cursinho('Cursinho do cache');
+      await pagina(A, `cache-${sufixo}`, true);
+      const u = await usuario();
+      const colabId = randomUUID();
+      await db.query(
+        `INSERT INTO collaborators (id, user_id, partner_prep_course_id, actived) VALUES (?, ?, ?, 0)`,
+        [colabId, u, A],
+      );
+      ids.colaboradores.push(colabId);
+      const nomes = async () =>
+        (
+          await request(app.getHttpServer())
+            .get(`/cursinho-pagina/cache-${sufixo}`)
+            .expect(200)
+        ).body.colaboradores.map((c: { name: string }) => c.name);
+
+      expect(await nomes()).toEqual([]); // página e lista entram no cache
+
+      await colaboradores.changeActive(colabId);
+      expect(await nomes()).toEqual(['Ana Teste']);
+
+      await colaboradores.changeActive(colabId);
+      expect(await nomes()).toEqual([]);
     });
   });
 
