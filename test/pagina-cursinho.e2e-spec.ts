@@ -7,6 +7,7 @@ import { ImpactoDoCursinhoService } from 'src/modules/prepCourse/paginaCursinho/
 import { StudentCourseRepository } from 'src/modules/prepCourse/studentCourse/student-course.repository';
 import { InscriptionCourseRepository } from 'src/modules/prepCourse/InscriptionCourse/inscription-course.repository';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
+import * as request from 'supertest';
 import { DataSource } from 'typeorm';
 import { createNestAppTest } from './utils/createNestAppTest';
 
@@ -30,6 +31,7 @@ describe('Página do cursinho (e2e)', () => {
     cursinhos: [] as string[],
     inscricoes: [] as string[],
     alunos: [] as string[],
+    paginas: [] as string[],
   };
 
   beforeAll(async () => {
@@ -54,6 +56,7 @@ describe('Página do cursinho (e2e)', () => {
       if (lista.length)
         await db.query(`DELETE FROM ${tabela} WHERE id IN (?)`, [lista]);
     };
+    await apaga('cursinho_pagina', ids.paginas);
     await apaga('student_course', ids.alunos);
     await apaga('inscription_course', ids.inscricoes);
     await apaga('partner_prep_course', ids.cursinhos);
@@ -113,6 +116,65 @@ describe('Página do cursinho (e2e)', () => {
     );
     ids.alunos.push(id);
   };
+
+  const pagina = async (
+    cursinhoId: string,
+    slug: string,
+    active: boolean,
+    links: { tipo: string; titulo: string; url: string }[] = [],
+  ) => {
+    const id = randomUUID();
+    await db.query(
+      `INSERT INTO cursinho_pagina (id, partner_prep_course_id, slug, quem_somos, active)
+       VALUES (?, ?, ?, 'Somos um cursinho', ?)`,
+      [id, cursinhoId, slug, active ? 1 : 0],
+    );
+    ids.paginas.push(id);
+    for (const [ordem, l] of links.entries()) {
+      await db.query(
+        `INSERT INTO cursinho_link (id, pagina_id, tipo, titulo, url, ordem) VALUES (?, ?, ?, ?, ?, ?)`,
+        [randomUUID(), id, l.tipo, l.titulo, l.url, ordem],
+      );
+    }
+    return id;
+  };
+
+  describe('página pública (card 04)', () => {
+    const sufixo = randomUUID().slice(0, 8);
+
+    it('ativa → 200 com a lista branca e sem links internos', async () => {
+      const A = await cursinho('Cursinho Público');
+      await pagina(A, `publica-${sufixo}`, true, [
+        { tipo: 'publico', titulo: 'Site', url: 'https://site.org' },
+        { tipo: 'interno', titulo: 'Drive', url: 'https://drive.interno' },
+      ]);
+
+      const res = await request(app.getHttpServer())
+        .get(`/cursinho-pagina/publica-${sufixo}`)
+        .expect(200);
+
+      expect(res.body).toMatchObject({
+        cursinhoId: A,
+        nome: 'Cursinho Público',
+        localizacao: 'São Paulo - SP',
+        quemSomos: 'Somos um cursinho',
+        linksPublicos: [{ titulo: 'Site', url: 'https://site.org' }],
+      });
+      expect(JSON.stringify(res.body)).not.toContain('drive.interno');
+      expect(JSON.stringify(res.body)).not.toContain('e@e'); // user_email do geo
+    });
+
+    it('desativada e inexistente → o mesmo 404', async () => {
+      const B = await cursinho('Cursinho Desativado');
+      await pagina(B, `desativada-${sufixo}`, false);
+      for (const slug of [`desativada-${sufixo}`, `nao-existe-${sufixo}`]) {
+        const res = await request(app.getHttpServer())
+          .get(`/cursinho-pagina/${slug}`)
+          .expect(404);
+        expect(res.body.message).toBe('Página não encontrada');
+      }
+    });
+  });
 
   describe('números por cursinho (card 03)', () => {
     it('cada número conta só o cursinho pedido; teste fica de fora', async () => {

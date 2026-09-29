@@ -32,6 +32,15 @@ export class CursinhoPaginaRepository extends BaseRepository<CursinhoPagina> {
     return this.comLinks({ slug });
   }
 
+  /** Para a página pública (card 04): com o cursinho e o geo dele. */
+  findBySlugComCursinho(slug: string) {
+    return this.repository.findOne({
+      where: { slug },
+      relations: { links: true, partnerPrepCourse: { geo: true } },
+      order: { links: { ordem: 'ASC' } },
+    });
+  }
+
   async slugEmUso(slug: string, excetoPaginaId?: string): Promise<boolean> {
     const where = excetoPaginaId ? { slug, id: Not(excetoPaginaId) } : { slug };
     return (await this.repository.count({ where })) > 0;

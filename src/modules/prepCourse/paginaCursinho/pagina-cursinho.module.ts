@@ -6,7 +6,9 @@ import { CollaboratorModule } from '../collaborator/collaborator.module';
 import { InscriptionCourseModule } from '../InscriptionCourse/inscription-course.module';
 import { PartnerPrepCourseModule } from '../partnerPrepCourse/partner-prep-course.module';
 import { StudentCourseModule } from '../studentCourse/student-course.module';
+import { CursinhoPaginaController } from './cursinho-pagina.controller';
 import { ImpactoDoCursinhoService } from './impacto-do-cursinho.service';
+import { PaginaPublicaService } from './pagina-publica.service';
 
 /**
  * A página pública do cursinho (tickets/025, cards 03–05).
@@ -23,7 +25,12 @@ import { ImpactoDoCursinhoService } from './impacto-do-cursinho.service';
     StudentCourseModule,
     InscriptionCourseModule,
   ],
-  providers: [ImpactoDoCursinhoService, HttpServiceAxiosFactory],
+  controllers: [CursinhoPaginaController],
+  providers: [
+    ImpactoDoCursinhoService,
+    PaginaPublicaService,
+    HttpServiceAxiosFactory,
+  ],
   exports: [ImpactoDoCursinhoService],
 })
 export class PaginaCursinhoModule {}
