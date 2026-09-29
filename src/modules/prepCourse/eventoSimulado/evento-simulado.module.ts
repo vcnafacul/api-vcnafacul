@@ -11,6 +11,7 @@ import { EventoSimuladoRepository } from './evento-simulado.repository';
 import { GestaoDoEventoService } from './gestao-do-evento.service';
 import { InscricaoDoAlunoService } from './inscricao-do-aluno.service';
 import { AvisoDeAberturaTask } from './aviso-de-abertura.task';
+import { EngajamentoDoEventoService } from './engajamento-do-evento.service';
 import { PushDoEventoService } from './push-do-evento.service';
 import { ProvasDoMsService } from './provas-do-ms.service';
 
@@ -32,6 +33,7 @@ import { ProvasDoMsService } from './provas-do-ms.service';
     InscricaoDoAlunoService,
     PushDoEventoService,
     AvisoDeAberturaTask,
+    EngajamentoDoEventoService,
     ProvasDoMsService,
     HttpServiceAxiosFactory,
   ],

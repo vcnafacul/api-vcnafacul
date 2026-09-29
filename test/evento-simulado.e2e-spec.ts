@@ -30,6 +30,8 @@ describe('Eventos de simulado (e2e)', () => {
     sendToUsers: jest.fn().mockResolvedValue({ enviados: 0, falhas: 0 }),
   };
   let aviso: AvisoDeAberturaTask;
+  // simuladoId → quem "fez" pelo cartão (o ms é dublê).
+  const participantes = new Map<string, string[]>();
 
   const ids = {
     users: [] as string[],
@@ -57,6 +59,10 @@ describe('Eventos de simulado (e2e)', () => {
           const p = provasNoMs.get(id);
           return p ? { id, ...p, simuladoIds: [`sim-${id}`] } : null;
         },
+        participantesPorCartao: async (simuladoIds: string[]) =>
+          Object.fromEntries(
+            simuladoIds.map((s) => [s, participantes.get(s) ?? []]),
+          ),
       })
       .compile();
     app = createNestAppTest(mod);
@@ -540,6 +546,83 @@ describe('Eventos de simulado (e2e)', () => {
         .set('Authorization', await bearer(u))
         .send({})
         .expect(200);
+    });
+  });
+
+  describe('engajamento (card 05)', () => {
+    it('inscritos por prova, quem fez, quem faltou e quem fez sem se inscrever', async () => {
+      const A = await cursinho();
+      const gestor = await colaborador(A, ['cadastrar_provas_cursinho']);
+      const leitor = await colaborador(A, ['visualizar_provas_cursinho']);
+      const en = prova(A, 'Simulado Inglês');
+      const es = prova(A, 'Simulado Espanhol');
+      const criado = await request(app.getHttpServer())
+        .post('/eventos-simulado/cursinho')
+        .set('Authorization', await bearer(gestor))
+        .send(corpo([en, es]))
+        .expect(201);
+      ids.eventos.push(criado.body.id);
+
+      const matricular = async () => {
+        const u = await usuario();
+        const id = randomUUID();
+        await db.query(
+          `INSERT INTO student_course (id, cpf, email, user_id, partner_prep_course_id, applicationStatus)
+           VALUES (?, '000', 'a@a', ?, ?, 'Matriculado')`,
+          [id, u, A],
+        );
+        ids.alunos.push(id);
+        return u;
+      };
+      const [veio, faltou, semInscricao] = [
+        await matricular(),
+        await matricular(),
+        await matricular(),
+      ];
+      for (const [u, p] of [
+        [veio, en],
+        [faltou, es],
+      ]) {
+        await request(app.getHttpServer())
+          .put(`/eventos-simulado/${criado.body.id}/inscricao`)
+          .set('Authorization', await bearer(u))
+          .send({ provaId: p })
+          .expect(200);
+      }
+      participantes.set(`sim-${en}`, [veio, semInscricao]);
+
+      const r = await request(app.getHttpServer())
+        .get(`/eventos-simulado/cursinho/${criado.body.id}/engajamento`)
+        .set('Authorization', await bearer(leitor))
+        .expect(200);
+
+      expect(r.body.porProva).toEqual([
+        {
+          provaId: en,
+          nome: 'Simulado Inglês',
+          inscritos: 1,
+          fizeram: 1,
+          naoVieram: 0,
+        },
+        {
+          provaId: es,
+          nome: 'Simulado Espanhol',
+          inscritos: 1,
+          fizeram: 0,
+          naoVieram: 1,
+        },
+      ]);
+      expect(r.body).toMatchObject({
+        totalInscritos: 2,
+        inscritosQueFizeram: 1,
+        engajamento: 0.5,
+      });
+      expect(
+        r.body.inscritos.map((i: { fez: boolean }) => i.fez).sort(),
+      ).toEqual([false, true]);
+      expect(r.body.fizeramSemInscricao).toEqual([
+        { nome: 'Ana Teste', provaId: en },
+      ]);
     });
   });
 });
