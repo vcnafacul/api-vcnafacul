@@ -5,6 +5,8 @@ import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { EnvService } from 'src/shared/modules/env/env.service';
 import { PartnerPrepCourseController } from './partner-prep-course.controller';
 import { PartnerPrepCourseService } from './partner-prep-course.service';
+import { CursinhoPaginaService } from './pagina/cursinho-pagina.service';
+import { Permissions } from 'src/modules/role/permissions/permissions';
 
 /**
  * As rotas novas do card 02 de `convite-de-colaborador` chegam no handler
@@ -23,6 +25,11 @@ describe('PartnerPrepCourseController — rotas da troca de função', () => {
     getById: jest.fn().mockResolvedValue({}),
   };
 
+  const paginaService = {
+    paraEdicao: jest.fn().mockResolvedValue({ slug: 'x' }),
+    salvar: jest.fn().mockResolvedValue({ slug: 'y' }),
+  };
+
   const passaTudo = {
     canActivate: (ctx: any) => {
       ctx.switchToHttp().getRequest().user = { id: 'gestor' };
@@ -35,6 +42,7 @@ describe('PartnerPrepCourseController — rotas da troca de função', () => {
       controllers: [PartnerPrepCourseController],
       providers: [
         { provide: PartnerPrepCourseService, useValue: service },
+        { provide: CursinhoPaginaService, useValue: paginaService },
         // O guard do convite (card 01) é um mixin que injeta o EnvService.
         { provide: EnvService, useValue: { get: jest.fn() } },
       ],
@@ -67,5 +75,39 @@ describe('PartnerPrepCourseController — rotas da troca de função', () => {
       .expect(200);
 
     expect(service.atribuirFuncao).toHaveBeenCalledWith('gestor', 'ana', 'r1');
+  });
+
+  // ---- tickets/025, card 01 ----
+
+  it('GET pagina chega no paraEdicao — não no :id', async () => {
+    await request(app.getHttpServer())
+      .get('/partner-prep-course/pagina')
+      .expect(200);
+    expect(paginaService.paraEdicao).toHaveBeenCalledWith('gestor');
+    expect(service.getById).not.toHaveBeenCalled();
+  });
+
+  it('PUT pagina repassa quem pede e o corpo', async () => {
+    const corpo = {
+      slug: 'y',
+      active: false,
+      linksPublicos: [],
+      linksInternos: [],
+    };
+    await request(app.getHttpServer())
+      .put('/partner-prep-course/pagina')
+      .send(corpo)
+      .expect(200);
+    expect(paginaService.salvar).toHaveBeenCalledWith('gestor', corpo);
+  });
+
+  it('⚠️ pagina: gerenciarPermissoesCursinho OU gerenciarEstudantes, na rota', () => {
+    const proto = PartnerPrepCourseController.prototype;
+    for (const handler of [proto.getPagina, proto.salvarPagina]) {
+      expect(Reflect.getMetadata(PermissionsGuard.name, handler)).toEqual([
+        Permissions.gerenciarPermissoesCursinho,
+        Permissions.gerenciarEstudantes,
+      ]);
+    }
   });
 });

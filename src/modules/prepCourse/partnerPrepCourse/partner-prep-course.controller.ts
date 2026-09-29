@@ -31,11 +31,16 @@ import { PrepCourseDtoOutput } from './dtos/get-all-prep-course.dto.outoput';
 import { GetOnePrepCourseByIdDtoOutput } from './dtos/get-one-prep-course-by-id.dto.output';
 import { PartnerPrepCourseService } from './partner-prep-course.service';
 import { AtribuirFuncaoDtoInput } from './dtos/atribuir-funcao.input.dto';
+import { CursinhoPaginaService } from './pagina/cursinho-pagina.service';
+import { SalvarPaginaDtoInput } from './pagina/dtos/salvar-pagina.dto';
 
 @ApiTags('PartnerPrepCourse')
 @Controller('partner-prep-course')
 export class PartnerPrepCourseController {
-  constructor(private readonly service: PartnerPrepCourseService) {}
+  constructor(
+    private readonly service: PartnerPrepCourseService,
+    private readonly paginaService: CursinhoPaginaService,
+  ) {}
 
   @Post()
   @ApiBearerAuth()
@@ -165,6 +170,41 @@ export class PartnerPrepCourseController {
       dto.userId,
       dto.roleId,
     );
+  }
+
+  // ---- Página do cursinho (tickets/025, card 01) ----
+  // ⚠️ Literal `pagina` antes do `GET :id` deste controller.
+
+  @Get('pagina')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description:
+      'página pública do cursinho do usuário, para edição (cria desativada na 1ª vez)',
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.gerenciarPermissoesCursinho,
+    Permissions.gerenciarEstudantes,
+  ])
+  async getPagina(@Req() req: Request) {
+    return await this.paginaService.paraEdicao((req.user as User).id);
+  }
+
+  @Put('pagina')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description:
+      'salva a página do cursinho do usuário (slug, Quem somos, ativação, links)',
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.gerenciarPermissoesCursinho,
+    Permissions.gerenciarEstudantes,
+  ])
+  async salvarPagina(@Req() req: Request, @Body() dto: SalvarPaginaDtoInput) {
+    return await this.paginaService.salvar((req.user as User).id, dto);
   }
 
   @Get('logos')
