@@ -39,6 +39,7 @@ import { PartnerPrepCourseExistValidator } from './validator/partner-pret-course
     PartnerPrepCourseService,
     PartnerPrepCourseRepository,
     LogPartnerRepository,
+    CursinhoPaginaRepository,
   ],
 })
 export class PartnerPrepCourseModule {}
