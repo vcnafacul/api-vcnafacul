@@ -22,6 +22,20 @@ export class ProvasDoMsService {
     this.ms = factory.create(env.get('SIMULADO_URL'));
   }
 
+  /**
+   * Quem fez cada simulado pelo cartão, desde `desde` (card 05).
+   * ⚠️ Sem `try`: sem o ms não há como calcular — quem chama decide.
+   */
+  async participantesPorCartao(
+    simuladoIds: string[],
+    desde: Date,
+  ): Promise<Record<string, string[]>> {
+    return this.ms.post<Record<string, string[]>>(
+      'v1/historico/participantes-por-cartao',
+      { simuladoIds, desde: desde.toISOString() },
+    );
+  }
+
   /** `null` quando a prova não existe (ou o id é inválido). */
   async buscar(id: string): Promise<ProvaDoMs | null> {
     try {

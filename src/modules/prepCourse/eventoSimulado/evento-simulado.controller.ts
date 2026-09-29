@@ -19,6 +19,7 @@ import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { InscreverDtoInput } from './dtos/inscrever.dto';
 import { SalvarEventoDtoInput } from './dtos/salvar-evento.dto';
+import { EngajamentoDoEventoService } from './engajamento-do-evento.service';
 import { GestaoDoEventoService } from './gestao-do-evento.service';
 import { InscricaoDoAlunoService } from './inscricao-do-aluno.service';
 
@@ -35,6 +36,7 @@ export class EventoSimuladoController {
   constructor(
     private readonly gestao: GestaoDoEventoService,
     private readonly inscricao: InscricaoDoAlunoService,
+    private readonly engajamento: EngajamentoDoEventoService,
   ) {}
 
   @Get('cursinho')
@@ -47,6 +49,21 @@ export class EventoSimuladoController {
   ])
   async listar(@Req() req: Request) {
     return await this.gestao.listar((req.user as User).id);
+  }
+
+  @Get('cursinho/:id/engajamento')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'inscritos, quem fez, quem faltou e quem fez sem se inscrever',
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.visualizarProvasCursinho,
+    Permissions.cadastrarProvasCursinho,
+  ])
+  async engajamentoDoEvento(@Req() req: Request, @Param('id') id: string) {
+    return await this.engajamento.doEvento((req.user as User).id, id);
   }
 
   @Post('cursinho')
