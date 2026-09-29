@@ -273,4 +273,139 @@ describe('Eventos de simulado (e2e)', () => {
         .expect(200);
     });
   });
+
+  describe('inscrição do aluno (card 03)', () => {
+    let A: string;
+    let ingles: string;
+    let espanhol: string;
+    let aberto: string;
+    let agendado: string;
+
+    const aluno = async (cursinhoId: string, status = 'Matriculado') => {
+      const u = await usuario();
+      const id = randomUUID();
+      await db.query(
+        `INSERT INTO student_course (id, cpf, email, user_id, partner_prep_course_id, applicationStatus)
+         VALUES (?, '000', 'a@a', ?, ?, ?)`,
+        [id, u, cursinhoId, status],
+      );
+      ids.alunos.push(id);
+      return u;
+    };
+
+    beforeAll(async () => {
+      A = await cursinho();
+      const gestor = await colaborador(A, ['cadastrar_provas_cursinho']);
+      ingles = prova(A, 'Simulado Inglês');
+      espanhol = prova(A, 'Simulado Espanhol');
+      const auth = await bearer(gestor);
+      const r1 = await request(app.getHttpServer())
+        .post('/eventos-simulado/cursinho')
+        .set('Authorization', auth)
+        .send(corpo([ingles, espanhol]))
+        .expect(201);
+      aberto = r1.body.id;
+      const r2 = await request(app.getHttpServer())
+        .post('/eventos-simulado/cursinho')
+        .set('Authorization', auth)
+        .send(
+          corpo([ingles], {
+            nome: 'Futuro',
+            inscricoesDe: new Date(Date.now() + 86_400_000).toISOString(),
+            inscricoesAte: new Date(Date.now() + 2 * 86_400_000).toISOString(),
+          }),
+        )
+        .expect(201);
+      agendado = r2.body.id;
+      ids.eventos.push(aberto, agendado);
+    });
+
+    const meus = async (u: string) =>
+      (
+        await request(app.getHttpServer())
+          .get('/eventos-simulado/meus')
+          .set('Authorization', await bearer(u))
+          .expect(200)
+      ).body;
+
+    it('matriculado vê só o evento aberto; se inscreve, troca e desiste', async () => {
+      const u = await aluno(A);
+      const auth = await bearer(u);
+      const visiveis = await meus(u);
+      expect(visiveis.map((e: { id: string }) => e.id)).toEqual([aberto]);
+      expect(visiveis[0].minhaProvaId).toBeNull();
+
+      const r1 = await request(app.getHttpServer())
+        .put(`/eventos-simulado/${aberto}/inscricao`)
+        .set('Authorization', auth)
+        .send({ provaId: ingles })
+        .expect(200);
+      expect(r1.body.resultado).toBe('nova');
+
+      const r2 = await request(app.getHttpServer())
+        .put(`/eventos-simulado/${aberto}/inscricao`)
+        .set('Authorization', auth)
+        .send({ provaId: espanhol })
+        .expect(200);
+      expect(r2.body.resultado).toBe('troca');
+      expect((await meus(u))[0].minhaProvaId).toBe(espanhol);
+
+      const [{ total }] = await db.query(
+        'SELECT COUNT(*) AS total FROM simulado_evento_inscricao WHERE evento_id = ? AND user_id = ?',
+        [aberto, u],
+      );
+      expect(Number(total)).toBe(1);
+
+      await request(app.getHttpServer())
+        .delete(`/eventos-simulado/${aberto}/inscricao`)
+        .set('Authorization', auth)
+        .expect(204);
+      expect((await meus(u))[0].minhaProvaId).toBeNull();
+    });
+
+    it('evento agendado (fora da janela) → 404', async () => {
+      const u = await aluno(A);
+      await request(app.getHttpServer())
+        .put(`/eventos-simulado/${agendado}/inscricao`)
+        .set('Authorization', await bearer(u))
+        .send({ provaId: ingles })
+        .expect(404);
+    });
+
+    it.each([
+      ['inscrito não matriculado', 'Em Análise'],
+      ['matrícula cancelada', 'Matrícula Cancelada'],
+    ])('%s: não vê e recebe 403', async (_n, status) => {
+      const u = await aluno(A, status);
+      expect(await meus(u)).toEqual([]);
+      await request(app.getHttpServer())
+        .put(`/eventos-simulado/${aberto}/inscricao`)
+        .set('Authorization', await bearer(u))
+        .send({ provaId: ingles })
+        .expect(403);
+    });
+
+    it('matriculado de outro cursinho: não vê e recebe 403', async () => {
+      const B = await cursinho();
+      const u = await aluno(B);
+      expect(await meus(u)).toEqual([]);
+      await request(app.getHttpServer())
+        .put(`/eventos-simulado/${aberto}/inscricao`)
+        .set('Authorization', await bearer(u))
+        .send({ provaId: ingles })
+        .expect(403);
+    });
+
+    it('prova que não é do evento → 400; deslogado → 401', async () => {
+      const u = await aluno(A);
+      await request(app.getHttpServer())
+        .put(`/eventos-simulado/${aberto}/inscricao`)
+        .set('Authorization', await bearer(u))
+        .send({ provaId: '64b000000000000000000999' })
+        .expect(400);
+      await request(app.getHttpServer())
+        .get('/eventos-simulado/meus')
+        .expect(401);
+    });
+  });
 });

@@ -780,6 +780,19 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
     return parseInt(count, 10);
   }
 
+  /** tickets/026: os cursinhos em que o aluno está MATRICULADO. */
+  async cursinhosEmQueEstaMatriculado(userId: string): Promise<string[]> {
+    const linhas = await this.repository
+      .createQueryBuilder('entity')
+      .select('DISTINCT entity.partner_prep_course_id', 'cursinhoId')
+      .where('entity.user_id = :userId', { userId })
+      .andWhere('entity.applicationStatus = :status', {
+        status: StatusApplication.Enrolled,
+      })
+      .getRawMany<{ cursinhoId: string }>();
+    return linhas.map((l) => l.cursinhoId).filter(Boolean);
+  }
+
   /** tickets/025, card 05: aluno MATRICULADO naquele cursinho. */
   async ehAlunoMatriculadoNo(
     userId: string,
