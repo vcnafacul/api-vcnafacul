@@ -780,6 +780,24 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
     return parseInt(count, 10);
   }
 
+  /** tickets/025, card 05: aluno MATRICULADO naquele cursinho. */
+  async ehAlunoMatriculadoNo(
+    userId: string,
+    partnerPrepCourseId: string,
+  ): Promise<boolean> {
+    const n = await this.repository
+      .createQueryBuilder('entity')
+      .where('entity.user_id = :userId', { userId })
+      .andWhere('entity.partner_prep_course_id = :partnerPrepCourseId', {
+        partnerPrepCourseId,
+      })
+      .andWhere('entity.applicationStatus = :status', {
+        status: StatusApplication.Enrolled,
+      })
+      .getCount();
+    return n > 0;
+  }
+
   async existsByUserId(userId: string): Promise<boolean> {
     const count = await this.repository
       .createQueryBuilder('entity')
