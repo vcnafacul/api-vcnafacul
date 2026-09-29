@@ -67,6 +67,18 @@ export class ProvaService {
     );
   }
 
+  /**
+   * Duplica a prova do cursinho (tickets/027, card 02): mesmas questões,
+   * mesmos números, origem guardada. Quem decide se pode é o ms, pelo ator.
+   */
+  public async duplicar(id: string, nome: string, ator: Ator) {
+    return await this.axios.post(
+      `v1/prova/${encodeURIComponent(id)}/duplicar`,
+      { nome },
+      headerDoAtor(ator),
+    );
+  }
+
   public async createProva(
     prova: CreateProvaDTOInput,
     file: any,

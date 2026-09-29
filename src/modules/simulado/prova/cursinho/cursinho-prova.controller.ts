@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Param,
   Post,
   Query,
   Req,
@@ -17,6 +18,8 @@ import { Permissions } from 'src/modules/role/permissions/permissions';
 import { User } from 'src/modules/user/user.entity';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
+import { AtorService } from '../../ator/ator.service';
+import { DuplicarProvaDtoInput } from '../dtos/duplicar-prova.dto.input';
 import { CreateProvaDTOInput } from '../dtos/prova-create.dto.input';
 import { ProvaService } from '../prova.service';
 import { CursinhoResolverService } from './cursinho-resolver.service';
@@ -27,7 +30,30 @@ export class CursinhoProvaController {
   constructor(
     private readonly provaService: ProvaService,
     private readonly cursinhoResolver: CursinhoResolverService,
+    private readonly atorService: AtorService,
   ) {}
+
+  /**
+   * Duplica a prova do cursinho (tickets/027) — ex.: "Simulado Inglês" →
+   * "Simulado Espanhol", com as mesmas questões. O ms decide pelo ator (só
+   * prova do próprio cursinho); 403/409 chegam com a mensagem dele.
+   */
+  @Post(':id/duplicar')
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'duplica a prova do cursinho' })
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.cadastrarProvasCursinho)
+  public async duplicar(
+    @Param('id') id: string,
+    @Body() dto: DuplicarProvaDtoInput,
+    @Req() req: Request,
+  ) {
+    return await this.provaService.duplicar(
+      id,
+      dto.nome.trim(),
+      await this.atorService.resolver((req.user as User).id),
+    );
+  }
 
   @Get()
   @ApiBearerAuth()
