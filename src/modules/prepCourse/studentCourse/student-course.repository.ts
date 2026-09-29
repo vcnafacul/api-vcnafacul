@@ -743,19 +743,25 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .getMany();
   }
 
-  async countStudentsCurrentlyEnrolled(): Promise<number> {
-    const { count } = await this.repository
+  /** `cursinhoId` opcional: sem ele, a plataforma inteira (tickets/025). */
+  async countStudentsCurrentlyEnrolled(cursinhoId?: string): Promise<number> {
+    const qb = this.repository
       .createQueryBuilder('entity')
       .select('COUNT(DISTINCT entity.user_id)', 'count')
       .where('entity.applicationStatus = :status', {
         status: StatusApplication.Enrolled,
-      })
-      .getRawOne<{ count: string }>();
+      });
+    if (cursinhoId) {
+      qb.andWhere('entity.partner_prep_course_id = :cursinhoId', {
+        cursinhoId,
+      });
+    }
+    const { count } = await qb.getRawOne<{ count: string }>();
     return parseInt(count, 10);
   }
 
-  async countStudentsEffectivelyServed(): Promise<number> {
-    const { count } = await this.repository
+  async countStudentsEffectivelyServed(cursinhoId?: string): Promise<number> {
+    const qb = this.repository
       .createQueryBuilder('entity')
       .select('COUNT(DISTINCT entity.user_id)', 'count')
       .where('entity.applicationStatus IN (:...statuses)', {
@@ -764,9 +770,32 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
           StatusApplication.EnrollmentCancelled,
           StatusApplication.EnrollmentClosed,
         ],
-      })
-      .getRawOne<{ count: string }>();
+      });
+    if (cursinhoId) {
+      qb.andWhere('entity.partner_prep_course_id = :cursinhoId', {
+        cursinhoId,
+      });
+    }
+    const { count } = await qb.getRawOne<{ count: string }>();
     return parseInt(count, 10);
+  }
+
+  /** tickets/025, card 05: aluno MATRICULADO naquele cursinho. */
+  async ehAlunoMatriculadoNo(
+    userId: string,
+    partnerPrepCourseId: string,
+  ): Promise<boolean> {
+    const n = await this.repository
+      .createQueryBuilder('entity')
+      .where('entity.user_id = :userId', { userId })
+      .andWhere('entity.partner_prep_course_id = :partnerPrepCourseId', {
+        partnerPrepCourseId,
+      })
+      .andWhere('entity.applicationStatus = :status', {
+        status: StatusApplication.Enrolled,
+      })
+      .getCount();
+    return n > 0;
   }
 
   async existsByUserId(userId: string): Promise<boolean> {
