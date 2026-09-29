@@ -63,6 +63,16 @@ export class CollaboratorRepository extends BaseRepository<Collaborator> {
       .getOne();
   }
 
+  /** O cursinho do colaborador (id), sem carregar mais nada. */
+  async cursinhoDoColaborador(collaboratorId: string): Promise<string | null> {
+    const r = await this.repository
+      .createQueryBuilder('entity')
+      .select('entity.partner_prep_course_id', 'cursinhoId')
+      .where('entity.id = :collaboratorId', { collaboratorId })
+      .getRawOne<{ cursinhoId: string | null }>();
+    return r?.cursinhoId ?? null;
+  }
+
   /** tickets/025, card 05: colaborador ATIVO daquele cursinho. */
   async ehColaboradorAtivoDo(
     userId: string,

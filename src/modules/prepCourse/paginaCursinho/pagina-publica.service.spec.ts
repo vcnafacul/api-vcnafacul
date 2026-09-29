@@ -82,6 +82,15 @@ describe('PaginaPublicaService (025 · 04)', () => {
     expect(cache.wrap.mock.calls[0][0]).toBe('cursinho:pagina:meu');
   });
 
+  it('⚠️ colaboradores num cache próprio, por cursinho (o CollaboratorService limpa)', async () => {
+    const { service, cache } = montar(pagina());
+    await service.porSlug('meu');
+    expect(cache.wrap.mock.calls.map((c) => c[0])).toEqual([
+      'cursinho:pagina:meu',
+      'cursinho:colaboradores:A',
+    ]);
+  });
+
   it('⚠️ nunca leva links internos nem PII', async () => {
     const { service } = montar(pagina());
     const json = JSON.stringify(await service.porSlug('meu'));

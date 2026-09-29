@@ -20,6 +20,7 @@ describe('CollaboratorService — photo handling', () => {
   };
   let cache: { wrap: jest.Mock; set: jest.Mock; del: jest.Mock };
   let repository: {
+    cursinhoDoColaborador: jest.Mock;
     findOneByUserId: jest.Mock;
     findOneBy: jest.Mock;
     update: jest.Mock;
@@ -36,6 +37,7 @@ describe('CollaboratorService — photo handling', () => {
       findOneByUserId: jest.fn(),
       findOneBy: jest.fn(),
       update: jest.fn(),
+      cursinhoDoColaborador: jest.fn().mockResolvedValue('cursinho-A'),
     };
 
     const moduleRef: TestingModule = await Test.createTestingModule({
@@ -119,7 +121,12 @@ describe('CollaboratorService — photo handling', () => {
       await service.uploadImage(file, 'user-2');
 
       expect(blobService.deleteFile).not.toHaveBeenCalled();
-      expect(cache.del).not.toHaveBeenCalled();
+      // Sem foto antiga, nada de foto sai do cache (o `del` da página, sim).
+      expect(
+        cache.del.mock.calls.filter(([k]) =>
+          k.startsWith('collaborator:photo:'),
+        ),
+      ).toEqual([]);
       expect(blobService.uploadFile).toHaveBeenCalledWith(
         file,
         'docs-bucket',
@@ -245,6 +252,53 @@ describe('CollaboratorService — photo handling', () => {
         expect.any(Function),
         1000 * 60 * 60 * 24 * 30,
       );
+    });
+  });
+
+  describe('cache da página pública do cursinho (tickets/025)', () => {
+    const chave = 'cursinho:colaboradores:cursinho-A';
+
+    it('ativar/desativar limpa a lista de colaboradores da página', async () => {
+      repository.findOneBy.mockResolvedValue({
+        id: 'c-1',
+        actived: false,
+        user: { id: 'u' },
+      });
+      await service.changeActive('c-1');
+      expect(repository.cursinhoDoColaborador).toHaveBeenCalledWith('c-1');
+      expect(cache.del).toHaveBeenCalledWith(chave);
+    });
+
+    it('trocar a descrição também limpa', async () => {
+      repository.findOneBy.mockResolvedValue({ id: 'c-1', description: '' });
+      await service.changeDescription('c-1', 'Coordenação');
+      expect(cache.del).toHaveBeenCalledWith(chave);
+    });
+
+    it('trocar a foto também limpa', async () => {
+      repository.findOneByUserId.mockResolvedValue({ id: 'c-1', photo: null });
+      blobService.uploadFile.mockResolvedValue('nova.jpg');
+      blobService.getFile.mockResolvedValue({
+        buffer: 'b',
+        contentType: 'image/jpeg',
+      });
+      await service.uploadImage(
+        {
+          originalname: 'a.jpg',
+          mimetype: 'image/jpeg',
+          buffer: Buffer.from('x'),
+        } as never,
+        'u',
+      );
+      expect(cache.del).toHaveBeenCalledWith(chave);
+    });
+
+    it('falha ao limpar o cache não derruba a ação', async () => {
+      repository.findOneBy.mockResolvedValue({ id: 'c-1', description: '' });
+      repository.cursinhoDoColaborador.mockRejectedValue(new Error('db'));
+      await expect(
+        service.changeDescription('c-1', 'x'),
+      ).resolves.toBeDefined();
     });
   });
 });

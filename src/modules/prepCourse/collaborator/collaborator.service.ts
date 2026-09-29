@@ -10,6 +10,7 @@ import { UserRepository } from 'src/modules/user/user.repository';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { CacheService } from 'src/shared/modules/cache/cache.service';
+import { chaveDosColaboradoresDoCursinho } from './cache-dos-colaboradores';
 import { EnvService } from 'src/shared/modules/env/env.service';
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { Collaborator } from '../collaborator/collaborator.entity';
@@ -153,6 +154,7 @@ export class CollaboratorService extends BaseService<Collaborator> {
     }
     collaborator.photo = fileName;
     await this.repository.update(collaborator);
+    await this.limparCacheDaPagina(collaborator.id);
     const buffer = await this.blobService.getFile(
       fileName,
       this.envService.get('BUCKET_DOC'),
@@ -174,6 +176,7 @@ export class CollaboratorService extends BaseService<Collaborator> {
     await this.cache.del(`collaborator:photo:${collaborator.photo}`);
     collaborator.photo = null;
     await this.repository.update(collaborator);
+    await this.limparCacheDaPagina(collaborator.id);
     return true;
   }
 
@@ -189,6 +192,7 @@ export class CollaboratorService extends BaseService<Collaborator> {
       await this.userRepository.update(user);
     }
     await this.repository.update(collaborator);
+    await this.limparCacheDaPagina(collaborator.id);
     return collaborator;
   }
 
@@ -196,7 +200,25 @@ export class CollaboratorService extends BaseService<Collaborator> {
     const collaborator = await this.repository.findOneBy({ id });
     collaborator.description = description;
     await this.repository.update(collaborator);
+    await this.limparCacheDaPagina(collaborator.id);
     return collaborator;
+  }
+
+  /**
+   * A página pública do cursinho (tickets/025) guarda a lista de
+   * colaboradores em cache: ativar/desativar, foto e descrição têm de aparecer
+   * na hora. Best-effort — o cache expira sozinho de qualquer forma.
+   */
+  private async limparCacheDaPagina(collaboratorId: string): Promise<void> {
+    try {
+      const cursinhoId =
+        await this.repository.cursinhoDoColaborador(collaboratorId);
+      if (cursinhoId) {
+        await this.cache.del(chaveDosColaboradoresDoCursinho(cursinhoId));
+      }
+    } catch (err) {
+      this.logger.warn(`Cache da página não foi limpo: ${err}`);
+    }
   }
 
   async getPhoto(imageKey: string) {

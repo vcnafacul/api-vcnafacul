@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CacheService } from 'src/shared/modules/cache/cache.service';
+import { chaveDosColaboradoresDoCursinho } from '../collaborator/cache-dos-colaboradores';
 import { CollaboratorService } from '../collaborator/collaborator.service';
 import { TipoDeLink } from '../partnerPrepCourse/pagina/cursinho-link.entity';
 import { CursinhoPaginaRepository } from '../partnerPrepCourse/pagina/cursinho-pagina.repository';
@@ -62,16 +63,46 @@ export class PaginaPublicaService {
     private readonly cache: CacheService,
   ) {}
 
-  porSlug(slug: string): Promise<PaginaPublica> {
+  /**
+   * ⚠️ Dois caches: o da página (limpo no Salvar da edição) e o dos
+   * colaboradores (limpo pelo `CollaboratorService` ao ativar/desativar,
+   * trocar foto ou descrição). Juntos, ativar um colaborador esperava a
+   * página expirar.
+   */
+  async porSlug(slug: string): Promise<PaginaPublica> {
     // O 404 lança dentro do wrap: não entra no cache.
-    return this.cache.wrap(
+    const pagina = await this.cache.wrap(
       chaveDaPaginaPublica(slug),
       () => this.montar(slug),
       CINCO_MINUTOS,
     );
+    return {
+      ...pagina,
+      colaboradores: await this.colaboradoresDo(pagina.cursinhoId),
+    };
   }
 
-  private async montar(slug: string): Promise<PaginaPublica> {
+  private colaboradoresDo(
+    cursinhoId: string,
+  ): Promise<PaginaPublica['colaboradores']> {
+    return this.cache.wrap(
+      chaveDosColaboradoresDoCursinho(cursinhoId),
+      async () =>
+        // Só os ativos, e só nome/descrição/foto (o que a "Quem Somos" já mostra).
+        (await this.colaboradores.getCollaboratorByPrepPartner(cursinhoId))
+          .filter((c) => c.actived !== false)
+          .map(({ name, description, image }) => ({
+            name,
+            description,
+            image,
+          })),
+      CINCO_MINUTOS,
+    );
+  }
+
+  private async montar(
+    slug: string,
+  ): Promise<Omit<PaginaPublica, 'colaboradores'>> {
     const pagina = await this.paginas.findBySlugComCursinho(slug);
     // Inexistente e desativada dão o MESMO 404: não revela que a página existe.
     if (!pagina?.active || !pagina.partnerPrepCourse) {
@@ -79,10 +110,7 @@ export class PaginaPublicaService {
     }
     const cursinho = pagina.partnerPrepCourse;
     const geo = cursinho.geo;
-    const [colaboradores, impacto] = await Promise.all([
-      this.colaboradores.getCollaboratorByPrepPartner(cursinho.id),
-      this.impacto.numeros(cursinho.id),
-    ]);
+    const impacto = await this.impacto.numeros(cursinho.id);
     return {
       cursinhoId: cursinho.id,
       slug: pagina.slug,
@@ -96,10 +124,6 @@ export class PaginaPublicaService {
       linksPublicos: (pagina.links ?? [])
         .filter((l) => l.tipo === TipoDeLink.Publico)
         .map(({ titulo, url }) => ({ titulo, url })),
-      // Só os ativos, e só nome/descrição/foto (o que a "Quem Somos" já mostra).
-      colaboradores: colaboradores
-        .filter((c) => c.actived !== false)
-        .map(({ name, description, image }) => ({ name, description, image })),
       impacto,
     };
   }
