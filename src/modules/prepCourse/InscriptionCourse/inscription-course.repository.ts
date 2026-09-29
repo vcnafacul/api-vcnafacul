@@ -177,12 +177,18 @@ export class InscriptionCourseRepository extends LinkedListRepository<
       .getCount();
   }
 
-  async getTotalNonTest() {
-    return this.repository
+  /** `cursinhoId` opcional: sem ele, a plataforma inteira (tickets/025). */
+  async getTotalNonTest(cursinhoId?: string) {
+    const qb = this.repository
       .createQueryBuilder('entity')
       .where('entity.deletedAt IS NULL')
-      .andWhere('entity.isTest = :isTest', { isTest: false })
-      .getCount();
+      .andWhere('entity.isTest = :isTest', { isTest: false });
+    if (cursinhoId) {
+      qb.andWhere('entity.partner_prep_course_id = :cursinhoId', {
+        cursinhoId,
+      });
+    }
+    return qb.getCount();
   }
 
   async entityByStatus(status: Status) {
