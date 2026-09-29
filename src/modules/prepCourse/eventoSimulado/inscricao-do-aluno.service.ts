@@ -7,6 +7,7 @@ import {
 import { StudentCourseRepository } from '../studentCourse/student-course.repository';
 import { EventoSimulado } from './evento-simulado.entity';
 import { EventoSimuladoRepository } from './evento-simulado.repository';
+import { PushDoEventoService } from './push-do-evento.service';
 
 export type EventoParaOAluno = {
   id: string;
@@ -40,6 +41,7 @@ export class InscricaoDoAlunoService {
   constructor(
     private readonly eventos: EventoSimuladoRepository,
     private readonly alunos: StudentCourseRepository,
+    private readonly push: PushDoEventoService,
   ) {}
 
   async meus(userId: string): Promise<EventoParaOAluno[]> {
@@ -68,6 +70,10 @@ export class InscricaoDoAlunoService {
     }
 
     const resultado = await this.gravar(eventoId, userId, escolhida);
+    // Nova e troca avisam; igual não (card 04). Desistir não passa por aqui.
+    const nomeDaProva =
+      evento.provas.find((p) => p.provaId === escolhida)?.nomeDaProva ?? '';
+    await this.push.confirmar(userId, evento, nomeDaProva, resultado);
     return { evento: this.paraOAluno(evento, escolhida), resultado };
   }
 

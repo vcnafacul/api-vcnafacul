@@ -132,6 +132,55 @@ export class EventoSimuladoRepository extends BaseRepository<EventoSimulado> {
     await this.inscricoes.delete({ eventoId, userId });
   }
 
+  // ---- push de abertura (card 04) ----
+
+  /** Abertos, não excluídos e ainda sem aviso. */
+  findParaAvisar(agora = new Date()) {
+    return this.repository.find({
+      where: {
+        deletedAt: IsNull(),
+        avisoAberturaEnviadoEm: IsNull(),
+        inscricoesDe: LessThanOrEqual(agora),
+        inscricoesAte: MoreThan(agora),
+      },
+      relations: { partnerPrepCourse: { geo: true } },
+    });
+  }
+
+  /**
+   * ⚠️ Reserva atômica: só UM chamador consegue marcar (`affected = 1`) — duas
+   * rodadas ou duas instâncias nunca mandam o aviso duas vezes.
+   */
+  async reservarAviso(id: string, agora = new Date()): Promise<boolean> {
+    const r = await this.repository.update(
+      { id, avisoAberturaEnviadoEm: IsNull() },
+      { avisoAberturaEnviadoEm: agora },
+    );
+    return r.affected === 1;
+  }
+
+  // ---- engajamento (card 05) ----
+
+  inscricoesDoEvento(eventoId: string) {
+    return this.inscricoes.find({ where: { eventoId } });
+  }
+
+  /** Nome de exibição (social, se o aluno usa) de cada usuário pedido. */
+  async nomesDosUsuarios(userIds: string[]): Promise<Map<string, string>> {
+    if (!userIds.length) return new Map();
+    const linhas = await this._entityManager
+      .createQueryBuilder()
+      .select('u.id', 'id')
+      .addSelect(
+        "CONCAT(IF(u.useSocialName = 1 AND u.socialName IS NOT NULL, u.socialName, u.firstName), ' ', u.lastName)",
+        'nome',
+      )
+      .from('users', 'u')
+      .where('u.id IN (:...userIds)', { userIds })
+      .getRawMany<{ id: string; nome: string }>();
+    return new Map(linhas.map((l) => [l.id, l.nome]));
+  }
+
   async excluir(id: string): Promise<void> {
     await this.repository.update({ id }, { deletedAt: new Date() });
   }
