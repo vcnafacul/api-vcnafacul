@@ -28,6 +28,7 @@ import { CollaboratorModule } from './modules/prepCourse/collaborator/collaborat
 import { CoursePeriodModule } from './modules/prepCourse/coursePeriod/course-period.module';
 import { InscriptionCourseModule } from './modules/prepCourse/InscriptionCourse/inscription-course.module';
 import { PartnerPrepCourseModule } from './modules/prepCourse/partnerPrepCourse/partner-prep-course.module';
+import { PaginaCursinhoModule } from './modules/prepCourse/paginaCursinho/pagina-cursinho.module';
 import { ConviteColaboradorModule } from './modules/prepCourse/conviteColaborador/convite-colaborador.module';
 import { StudentCourseModule } from './modules/prepCourse/studentCourse/student-course.module';
 import { RoleModule } from './modules/role/role.module';
@@ -99,6 +100,7 @@ const throttlerProvider: Provider = isTestEnv
     RoleModule,
     GeoModule,
     PartnerPrepCourseModule,
+    PaginaCursinhoModule,
     ConviteColaboradorModule,
     CollaboratorModule,
     CoursePeriodModule,

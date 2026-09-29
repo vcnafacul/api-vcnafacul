@@ -63,6 +63,22 @@ export class CollaboratorRepository extends BaseRepository<Collaborator> {
       .getOne();
   }
 
+  /** tickets/025, card 05: colaborador ATIVO daquele cursinho. */
+  async ehColaboradorAtivoDo(
+    userId: string,
+    partnerPrepCourseId: string,
+  ): Promise<boolean> {
+    const n = await this.repository
+      .createQueryBuilder('entity')
+      .where('entity.user_id = :userId', { userId })
+      .andWhere('entity.partner_prep_course_id = :partnerPrepCourseId', {
+        partnerPrepCourseId,
+      })
+      .andWhere('entity.actived = :ativo', { ativo: true })
+      .getCount();
+    return n > 0;
+  }
+
   async findOneByUserId(id: string): Promise<Collaborator | null> {
     return await this.repository
       .createQueryBuilder('entity')
