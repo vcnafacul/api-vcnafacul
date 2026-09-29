@@ -8,6 +8,7 @@ import { BlobModule } from 'src/shared/services/blob/blob.module';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { CollaboratorModule } from '../collaborator/collaborator.module';
 import { LogPartnerRepository } from './log-partner/log-partner.repository';
+import { CursinhoPaginaRepository } from './pagina/cursinho-pagina.repository';
 import { PartnerPrepCourseController } from './partner-prep-course.controller';
 import { PartnerPrepCourseRepository } from './partner-prep-course.repository';
 import { PartnerPrepCourseService } from './partner-prep-course.service';
@@ -30,6 +31,7 @@ import { PartnerPrepCourseExistValidator } from './validator/partner-pret-course
     PartnerPrepCourseExistValidator,
     EmailService,
     LogPartnerRepository,
+    CursinhoPaginaRepository,
   ],
   exports: [
     PartnerPrepCourseService,
