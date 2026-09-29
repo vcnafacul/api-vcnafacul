@@ -2,7 +2,15 @@ export function buildEssayPrompt(
   themeTitle: string,
   motivationalText: string,
   essayText: string,
+  rotulosDasImagens: string[] = [],
 ): string {
+  const notaDasImagens = rotulosDasImagens.length
+    ? `\n\n(As imagens citadas acima como ${rotulosDasImagens
+        .map((r) => `[${r}]`)
+        .join(
+          ', ',
+        )} fazem parte do texto motivador e seguem anexadas a esta mensagem, na mesma ordem.)`
+    : '';
   return `Voce e um corretor especialista em redacoes do ENEM, treinado na matriz oficial de avaliacao do INEP.
 
 Sua tarefa e avaliar rigorosamente a redacao de um estudante com base nas 5 competencias do ENEM, utilizando criterios tecnicos, objetivos e consistentes.
@@ -11,7 +19,7 @@ Sua tarefa e avaliar rigorosamente a redacao de um estudante com base nas 5 comp
 ${themeTitle}
 
 ## Texto motivador
-${motivationalText}
+${motivationalText}${notaDasImagens}
 
 ## Redacao do estudante
 ${essayText}

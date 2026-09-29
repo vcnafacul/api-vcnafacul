@@ -515,10 +515,15 @@ export class EssayService {
     const startTime = Date.now();
 
     try {
+      const { texto, imagens } =
+        await this.themeService.textoMotivadorComImagens(
+          theme.motivationalText,
+        );
       const result: AICorrectionResult = await this.aiProvider.correctEssay(
         theme.title,
-        theme.motivationalText,
+        texto,
         essay.text,
+        imagens,
       );
 
       const comp = (n: number) =>

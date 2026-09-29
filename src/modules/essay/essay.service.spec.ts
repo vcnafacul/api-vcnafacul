@@ -43,6 +43,9 @@ describe('EssayService', () => {
     };
     themeService = {
       findById: jest.fn().mockResolvedValue(mockTheme),
+      textoMotivadorComImagens: jest
+        .fn()
+        .mockImplementation((texto) => ({ texto, imagens: [] })),
     };
     aiProvider = {
       correctEssay: jest.fn(),

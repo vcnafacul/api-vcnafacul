@@ -18,11 +18,19 @@ export interface AICorrectionResult {
   notaTotal: number;
 }
 
+/** Imagem do texto motivador, citada no texto como `[<rotulo>]`. */
+export interface ImagemParaIA {
+  rotulo: string;
+  mediaType: string;
+  base64: string;
+}
+
 export interface EssayAIProvider {
   correctEssay(
     themeTitle: string,
     motivationalText: string,
     essayText: string,
+    imagens?: ImagemParaIA[],
   ): Promise<AICorrectionResult>;
 }
 
