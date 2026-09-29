@@ -1,7 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import OpenAI from 'openai';
 import { EnvService } from '../../../shared/modules/env/env.service';
-import { AICorrectionResult, EssayAIProvider } from './essay-ai.interface';
+import {
+  AICorrectionResult,
+  EssayAIProvider,
+  ImagemParaIA,
+} from './essay-ai.interface';
 import { buildEssayPrompt } from './essay-prompt';
 
 @Injectable()
@@ -19,13 +23,30 @@ export class OpenAIEssayProvider implements EssayAIProvider {
     themeTitle: string,
     motivationalText: string,
     essayText: string,
+    imagens: ImagemParaIA[] = [],
   ): Promise<AICorrectionResult> {
-    const prompt = buildEssayPrompt(themeTitle, motivationalText, essayText);
+    const prompt = buildEssayPrompt(
+      themeTitle,
+      motivationalText,
+      essayText,
+      imagens.map((i) => i.rotulo),
+    );
 
     const response = await this.client.chat.completions.create({
       model: this.envService.get('ESSAY_AI_MODEL'),
       max_tokens: 2048,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            ...imagens.map((i) => ({
+              type: 'image_url' as const,
+              image_url: { url: `data:${i.mediaType};base64,${i.base64}` },
+            })),
+          ],
+        },
+      ],
     });
 
     const content = response.choices[0]?.message?.content;

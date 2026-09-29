@@ -100,10 +100,6 @@ export const envSchema = z.object({
     .default('http://localhost:3333/user/auth/google/callback'),
 
   // Essay AI
-  ESSAY_AI_ENABLED: z
-    .enum(['true', 'false'])
-    .default('true')
-    .transform((v) => v === 'true'),
   ESSAY_AI_PROVIDER: z.enum(['claude', 'openai']).default('openai'),
   ANTHROPIC_API_KEY: z.string().default(''),
   OPENAI_API_KEY: z.string().default(''),

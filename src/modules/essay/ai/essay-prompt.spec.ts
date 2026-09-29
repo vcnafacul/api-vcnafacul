@@ -19,4 +19,13 @@ describe('buildEssayPrompt', () => {
     expect(result).toContain('comentarioGeral');
     expect(result).toContain('trechosDestacados');
   });
+
+  it('com imagens, avisa que seguem anexadas e cita os marcadores', () => {
+    const prompt = buildEssayPrompt('T', 'Veja [Imagem 1]', 'R', ['Imagem 1']);
+    expect(prompt).toContain('[Imagem 1] fazem parte do texto motivador');
+  });
+
+  it('sem imagens, nada muda', () => {
+    expect(buildEssayPrompt('T', 'M', 'R')).not.toContain('anexadas');
+  });
 });

@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  NotFoundException,
   Param,
   Patch,
   Post,
@@ -62,6 +61,32 @@ export class EssayController {
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTemas)
   createTheme(@Body() dto: CreateEssayThemeDto, @Req() req: any) {
     return this.themeService.create(dto, req.user.id);
+  }
+
+  // ---- Imagens do texto motivador ----
+  // ⚠️ Antes de `theme/:id`: a ordem não importa para o GET (3 segmentos
+  // contra 2), mas deixa claro que `asset`/`assets` não é um id de tema.
+
+  @Post('theme/assets')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTemas)
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  uploadThemeAsset(@UploadedFile() file: Express.Multer.File) {
+    return this.themeService.uploadAsset(file);
+  }
+
+  @Get('theme/asset/:assetId')
+  @UseGuards(JwtAuthGuard)
+  async getThemeAsset(@Param('assetId') assetId: string, @Res() res: Response) {
+    const { buffer, contentType } = await this.themeService.getAsset(assetId);
+    // O id é um uuid: a imagem nunca muda sob a mesma chave.
+    res.set({
+      'Content-Type': contentType,
+      'Cache-Control': 'private, max-age=604800, immutable',
+    });
+    res.send(buffer);
   }
 
   @Get('theme/current')

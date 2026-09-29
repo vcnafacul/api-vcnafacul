@@ -13,7 +13,7 @@ export class EssaySettingsRepository {
   async getSettings(): Promise<EssaySettings> {
     let settings = await this.repo.findOne({ where: { id: 'default' } });
     if (!settings) {
-      settings = this.repo.create({ id: 'default', aiEnabled: true });
+      settings = this.repo.create({ id: 'default', aiEnabled: false });
       await this.repo.save(settings);
     }
     return settings;
