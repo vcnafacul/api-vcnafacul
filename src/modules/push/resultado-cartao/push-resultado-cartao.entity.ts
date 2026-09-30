@@ -57,6 +57,11 @@ export class PushResultadoCartao extends BaseEntity {
   @Column({ type: 'int', default: 0 })
   tentativas: number;
 
-  @Column({ name: 'proxima_tentativa_em', type: 'datetime' })
+  /**
+   * ⚠️ `datetime(3)`: sem fração, o MySQL ARREDONDA os milissegundos — um
+   * aviso das 12:00:00.700 vira 12:00:01 e a rodada das 12:00:00.800 ainda
+   * não o vê como vencido.
+   */
+  @Column({ name: 'proxima_tentativa_em', type: 'datetime', precision: 3 })
   proximaTentativaEm: Date;
 }
