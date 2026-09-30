@@ -334,6 +334,63 @@ describe('Class (e2e)', () => {
       .expect(404);
   }, 30000);
 
+  it('⚠️ turma de OUTRO cursinho: não edita nem exclui (404)', async () => {
+    const { user: dono } = await createPartnerFaker();
+    const { user: outro } = await createPartnerFaker();
+    const tokenDono = await jwtService.signAsync(
+      { user: { id: dono.id } },
+      { expiresIn: '2h' },
+    );
+    const tokenOutro = await jwtService.signAsync(
+      { user: { id: outro.id } },
+      { expiresIn: '2h' },
+    );
+    const criada = await request(app.getHttpServer())
+      .post('/class')
+      .set({ Authorization: `Bearer ${tokenDono}` })
+      .send(await createClassWithPeriod(dono.id, 'do dono'))
+      .expect(201);
+    const classId = criada.body.id;
+
+    await request(app.getHttpServer())
+      .patch('/class')
+      .send({ id: classId, name: 'Invadida' })
+      .set({ Authorization: `Bearer ${tokenOutro}` })
+      .expect(404);
+    await request(app.getHttpServer())
+      .delete(`/class/${classId}`)
+      .set({ Authorization: `Bearer ${tokenOutro}` })
+      .expect(404);
+
+    const intacta = await classRepository.findOneBy({ id: classId });
+    expect(intacta.name).toBe('do dono');
+    expect(intacta.deletedAt).toBeFalsy();
+  }, 30000);
+
+  it('⚠️ não move a turma para o período de OUTRO cursinho', async () => {
+    const { user: dono } = await createPartnerFaker();
+    const { user: outro } = await createPartnerFaker();
+    const tokenDono = await jwtService.signAsync(
+      { user: { id: dono.id } },
+      { expiresIn: '2h' },
+    );
+    const criada = await request(app.getHttpServer())
+      .post('/class')
+      .set({ Authorization: `Bearer ${tokenDono}` })
+      .send(await createClassWithPeriod(dono.id, 'turma'))
+      .expect(201);
+    const periodoAlheio = await coursePeriodService.create(
+      CreateCoursePeriodDtoInputFaker(),
+      outro.id,
+    );
+
+    await request(app.getHttpServer())
+      .patch('/class')
+      .send({ id: criada.body.id, coursePeriodId: periodoAlheio.id })
+      .set({ Authorization: `Bearer ${tokenDono}` })
+      .expect(400);
+  }, 30000);
+
   it('should list class with number of students', async () => {
     const { user } = await createPartnerFaker();
 

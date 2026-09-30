@@ -29,6 +29,9 @@ export class CoursePeriodController {
   constructor(private readonly service: CoursePeriodService) {}
 
   @Post()
+  // ⚠️ Escrita exige gerenciarTurmas — antes bastava estar logado.
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
   @ApiResponse({
     status: 201,
     description: 'Course period created successfully',
@@ -74,20 +77,26 @@ export class CoursePeriodController {
   }
 
   @Patch()
+  // ⚠️ Escrita exige gerenciarTurmas — antes bastava estar logado.
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
   @ApiResponse({
     status: 200,
     description: 'Course period updated successfully',
   })
-  async update(@Body() dto: UpdateCoursePeriodDtoInput) {
-    return await this.service.update(dto);
+  async update(@Body() dto: UpdateCoursePeriodDtoInput, @Req() req: Request) {
+    return await this.service.update(dto, (req.user as User).id);
   }
 
   @Delete(':id')
+  // ⚠️ Escrita exige gerenciarTurmas — antes bastava estar logado.
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
   @ApiResponse({
     status: 200,
     description: 'Course period deleted successfully',
   })
-  async delete(@Param('id') id: string) {
-    return await this.service.delete(id);
+  async delete(@Param('id') id: string, @Req() req: Request) {
+    return await this.service.excluirDoCursinho(id, (req.user as User).id);
   }
 }

@@ -35,6 +35,7 @@ describe('CoursePeriod (e2e)', () => {
   let emailService: EmailService;
   let jwtService: JwtService;
   let roleService: RoleService;
+  let semTurmas: Role;
   let partnerService: PartnerPrepCourseService;
   let coursePeriodRepository: CoursePeriodRepository;
   let geoService: GeoService;
@@ -129,6 +130,12 @@ describe('CoursePeriod (e2e)', () => {
       editarMateriasFrentes: false,
     };
     role = await roleService.create(roleDto);
+    // Mesmo cursinho, sem gerenciarTurmas: só pode ler períodos.
+    semTurmas = await roleService.create({
+      ...roleDto,
+      name: 'Test Role sem turmas',
+      gerenciarTurmas: false,
+    });
 
     await app.init();
   });
@@ -363,6 +370,84 @@ describe('CoursePeriod (e2e)', () => {
     await request(app.getHttpServer())
       .get(`/course-period/${createdPeriod.body.id}`)
       .set({ Authorization: `Bearer ${token2}` })
+      .expect(404);
+  }, 30000);
+
+  it('⚠️ sem gerenciarTurmas: não cria, edita nem exclui período (403)', async () => {
+    const { user } = await createPartnerFaker();
+    const token = await jwtService.signAsync(
+      { user: { id: user.id } },
+      { expiresIn: '2h' },
+    );
+    const criado = await request(app.getHttpServer())
+      .post('/course-period')
+      .send(CreateCoursePeriodDtoInputFaker())
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(201);
+
+    // Antes bastava estar logado para editar e excluir.
+    user.role = semTurmas;
+    await userRepository.update(user);
+
+    await request(app.getHttpServer())
+      .post('/course-period')
+      .send(CreateCoursePeriodDtoInputFaker())
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(403);
+    await request(app.getHttpServer())
+      .patch('/course-period')
+      .send({ id: criado.body.id, name: 'Invadido' })
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(403);
+    await request(app.getHttpServer())
+      .delete(`/course-period/${criado.body.id}`)
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(403);
+  }, 30000);
+
+  it('⚠️ período de OUTRO cursinho: não edita nem exclui (404)', async () => {
+    const { user: dono } = await createPartnerFaker();
+    const { user: outro } = await createPartnerFaker();
+    const tokenDono = await jwtService.signAsync(
+      { user: { id: dono.id } },
+      { expiresIn: '2h' },
+    );
+    const tokenOutro = await jwtService.signAsync(
+      { user: { id: outro.id } },
+      { expiresIn: '2h' },
+    );
+    const criado = await request(app.getHttpServer())
+      .post('/course-period')
+      .send(CreateCoursePeriodDtoInputFaker())
+      .set({ Authorization: `Bearer ${tokenDono}` })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .patch('/course-period')
+      .send({ id: criado.body.id, name: 'Invadido' })
+      .set({ Authorization: `Bearer ${tokenOutro}` })
+      .expect(404);
+    await request(app.getHttpServer())
+      .delete(`/course-period/${criado.body.id}`)
+      .set({ Authorization: `Bearer ${tokenOutro}` })
+      .expect(404);
+
+    const intacto = await request(app.getHttpServer())
+      .get(`/course-period/${criado.body.id}`)
+      .set({ Authorization: `Bearer ${tokenDono}` })
+      .expect(200);
+    expect(intacto.body.name).toBe(criado.body.name);
+  }, 30000);
+
+  it('período inexistente responde 404, não 500', async () => {
+    const { user } = await createPartnerFaker();
+    const token = await jwtService.signAsync(
+      { user: { id: user.id } },
+      { expiresIn: '2h' },
+    );
+    await request(app.getHttpServer())
+      .get('/course-period/nao-existe')
+      .set({ Authorization: `Bearer ${token}` })
       .expect(404);
   }, 30000);
 

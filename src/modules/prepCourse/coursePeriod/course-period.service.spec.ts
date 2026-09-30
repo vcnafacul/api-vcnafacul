@@ -1,4 +1,4 @@
-import { HttpException } from '@nestjs/common';
+import { HttpException, NotFoundException } from '@nestjs/common';
 import { CoursePeriodService } from './course-period.service';
 import { CoursePeriodRepository } from './course-period.repository';
 import { PartnerPrepCourseRepository } from '../partnerPrepCourse/partner-prep-course.repository';
@@ -96,30 +96,51 @@ describe('CoursePeriodService', () => {
   });
 
   describe('update', () => {
+    const doCursinho = () => {
+      partnerRepository.findOneByUserId.mockResolvedValue({ id: 'p1' } as any);
+      repository.findOneById.mockResolvedValue({
+        id: 'cp-1',
+        partnerPrepCourse: { id: 'p1' },
+      } as any);
+    };
+
     it('should update a course period', async () => {
+      doCursinho();
       repository.findOneBy.mockResolvedValue({
         id: 'cp-1',
         startDate: new Date('2026-01-01'),
         endDate: new Date('2026-06-30'),
       } as any);
 
-      await service.update({
-        id: 'cp-1',
-        name: 'Updated',
-      } as any);
+      await service.update({ id: 'cp-1', name: 'Updated' } as any, 'u1');
 
       expect(repository.update).toHaveBeenCalled();
     });
 
     it('should throw when course period not found', async () => {
-      repository.findOneBy.mockResolvedValue(null);
+      partnerRepository.findOneByUserId.mockResolvedValue({ id: 'p1' } as any);
+      repository.findOneById.mockResolvedValue(null);
 
-      await expect(service.update({ id: 'bad-id' } as any)).rejects.toThrow(
-        HttpException,
-      );
+      await expect(
+        service.update({ id: 'bad-id' } as any, 'u1'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('⚠️ período de OUTRO cursinho: 404 e não altera', async () => {
+      partnerRepository.findOneByUserId.mockResolvedValue({ id: 'p1' } as any);
+      repository.findOneById.mockResolvedValue({
+        id: 'cp-9',
+        partnerPrepCourse: { id: 'outro' },
+      } as any);
+
+      await expect(
+        service.update({ id: 'cp-9', name: 'x' } as any, 'u1'),
+      ).rejects.toThrow(NotFoundException);
+      expect(repository.update).not.toHaveBeenCalled();
     });
 
     it('should validate dates when updating', async () => {
+      doCursinho();
       repository.findOneBy.mockResolvedValue({
         id: 'cp-1',
         startDate: new Date('2026-01-01'),
@@ -127,39 +148,63 @@ describe('CoursePeriodService', () => {
       } as any);
 
       await expect(
-        service.update({
-          id: 'cp-1',
-          startDate: '2026-12-01',
-          endDate: '2026-01-01',
-        } as any),
+        service.update(
+          {
+            id: 'cp-1',
+            startDate: '2026-12-01',
+            endDate: '2026-01-01',
+          } as any,
+          'u1',
+        ),
       ).rejects.toThrow('Start date must be before end date');
     });
   });
 
-  describe('delete', () => {
+  describe('excluirDoCursinho', () => {
+    beforeEach(() => {
+      partnerRepository.findOneByUserId.mockResolvedValue({ id: 'p1' } as any);
+    });
+
     it('should delete a course period without classes', async () => {
       repository.findOneById.mockResolvedValue({
         id: 'cp-1',
+        partnerPrepCourse: { id: 'p1' },
         classes: [],
       } as any);
 
-      await service.delete('cp-1');
+      await service.excluirDoCursinho('cp-1', 'u1');
       expect(repository.delete).toHaveBeenCalledWith('cp-1');
     });
 
     it('should throw when course period not found', async () => {
       repository.findOneById.mockResolvedValue(null);
 
-      await expect(service.delete('bad-id')).rejects.toThrow(HttpException);
+      await expect(service.excluirDoCursinho('bad-id', 'u1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('⚠️ período de OUTRO cursinho: 404 e não exclui', async () => {
+      repository.findOneById.mockResolvedValue({
+        id: 'cp-9',
+        partnerPrepCourse: { id: 'outro' },
+        classes: [],
+      } as any);
+
+      await expect(service.excluirDoCursinho('cp-9', 'u1')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(repository.delete).not.toHaveBeenCalled();
     });
 
     it('should throw when course period has classes', async () => {
       repository.findOneById.mockResolvedValue({
         id: 'cp-1',
+        partnerPrepCourse: { id: 'p1' },
         classes: [{ id: 'class-1' }],
       } as any);
 
-      await expect(service.delete('cp-1')).rejects.toThrow(
+      await expect(service.excluirDoCursinho('cp-1', 'u1')).rejects.toThrow(
         'has classes, cannot be deleted',
       );
     });

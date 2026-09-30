@@ -79,24 +79,31 @@ export class CoursePeriodService extends BaseService<CoursePeriod> {
     };
   }
 
+  /**
+   * O período, só se for do cursinho de quem pede. De outro cursinho responde
+   * 404, igual a inexistente — confirmar que o id existe já seria vazar.
+   */
+  private async periodoDoCursinho(id: string, userId: string) {
+    const partnerPrepCourse =
+      await this.partnerRepository.findOneByUserId(userId);
+    const coursePeriod = await this.repository.findOneById(id);
+    if (
+      !partnerPrepCourse ||
+      !coursePeriod ||
+      coursePeriod.partnerPrepCourse?.id !== partnerPrepCourse.id
+    ) {
+      throw new NotFoundException(`Course period with id ${id} not found`);
+    }
+    return coursePeriod;
+  }
+
   async findOneById(
     id: string,
     userId: string,
   ): Promise<CoursePeriodDtoOutput> {
-    const partnerPrepCourse =
-      await this.partnerRepository.findOneByUserId(userId);
-    const coursePeriod = await this.repository.findOneById(id);
-
-    if (coursePeriod.partnerPrepCourse.id !== partnerPrepCourse?.id) {
-      throw new HttpException(
-        `Course period with id ${id} not found`,
-        HttpStatus.NOT_FOUND,
-      );
-    }
-
-    if (!coursePeriod) {
-      throw new NotFoundException(`Course period with id ${id} not found`);
-    }
+    // Antes lia `coursePeriod.partnerPrepCourse` antes de checar se existia:
+    // id inexistente dava 500.
+    const coursePeriod = await this.periodoDoCursinho(id, userId);
 
     return {
       id: coursePeriod.id,
@@ -117,7 +124,8 @@ export class CoursePeriodService extends BaseService<CoursePeriod> {
     };
   }
 
-  async update(dto: UpdateCoursePeriodDtoInput): Promise<void> {
+  async update(dto: UpdateCoursePeriodDtoInput, userId: string): Promise<void> {
+    await this.periodoDoCursinho(dto.id, userId);
     const coursePeriod = await this.repository.findOneBy({ id: dto.id });
 
     if (!coursePeriod) {
@@ -160,15 +168,9 @@ export class CoursePeriodService extends BaseService<CoursePeriod> {
     await this.repository.update(coursePeriod);
   }
 
-  async delete(id: string): Promise<void> {
-    const coursePeriod = await this.repository.findOneById(id);
-
-    if (!coursePeriod) {
-      throw new HttpException(
-        `Course period not found by id ${id}`,
-        HttpStatus.NOT_FOUND,
-      );
-    }
+  /** Exclusão pela rota: só período do cursinho de quem pede e sem turmas. */
+  async excluirDoCursinho(id: string, userId: string): Promise<void> {
+    const coursePeriod = await this.periodoDoCursinho(id, userId);
     if (coursePeriod.classes && coursePeriod.classes.length > 0) {
       throw new HttpException(
         `Course period with id ${id} has classes, cannot be deleted`,

@@ -56,8 +56,9 @@ export class ClassController {
   })
   async updatePartnerPrepCourse(
     @Body() dto: UpdateClassDTOInput,
+    @Req() req: Request,
   ): Promise<void> {
-    await this.service.update(dto);
+    await this.service.update(dto, (req.user as User).id);
   }
 
   @Get(':id')
@@ -98,8 +99,8 @@ export class ClassController {
     status: 200,
     description: 'deletar turma',
   })
-  async delete(@Param('id') id: string): Promise<void> {
-    await this.service.delete(id);
+  async delete(@Param('id') id: string, @Req() req: Request): Promise<void> {
+    await this.service.excluirDoCursinho(id, (req.user as User).id);
   }
 
   @Get()
