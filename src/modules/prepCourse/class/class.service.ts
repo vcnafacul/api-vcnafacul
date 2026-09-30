@@ -287,7 +287,29 @@ export class ClassService extends BaseService<Class> {
       });
   }
 
-  async update(dto: UpdateClassDTOInput): Promise<void> {
+  /**
+   * O cursinho de quem pede, e a garantia de que a turma é dele. De outro
+   * cursinho responde 404, igual a inexistente (mesmo critério do findOneById).
+   */
+  private async cursinhoDaTurma(id: string, userId: string) {
+    const naoEncontrada = new NotFoundException(
+      `Class with id ${id} not found`,
+    );
+    const partnerPrepCourse =
+      await this.partnerRepository.findOneByUserId(userId);
+    if (!partnerPrepCourse) throw naoEncontrada;
+    const doCursinho = await this.repository.findOneByIdWithPartner(id);
+    if (
+      !doCursinho ||
+      doCursinho.partnerPrepCourse?.id !== partnerPrepCourse.id
+    ) {
+      throw naoEncontrada;
+    }
+    return partnerPrepCourse;
+  }
+
+  async update(dto: UpdateClassDTOInput, userId: string): Promise<void> {
+    const partnerPrepCourse = await this.cursinhoDaTurma(dto.id, userId);
     const classEntity = await this.repository.findOneBy({ id: dto.id });
     if (!classEntity) {
       throw new HttpException(
@@ -304,14 +326,12 @@ export class ClassService extends BaseService<Class> {
       const coursePeriod = await this.coursePeriodRepository.findOneById(
         dto.coursePeriodId,
       );
-      if (!coursePeriod) {
-        throw new HttpException(
-          'Course period not found or does not belong to this partner',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      if (!coursePeriod) {
+      // A mensagem já dizia "does not belong to this partner", mas ninguém
+      // conferia: dava para mover a turma para o período de outro cursinho.
+      if (
+        !coursePeriod ||
+        coursePeriod.partnerPrepCourse?.id !== partnerPrepCourse.id
+      ) {
         throw new HttpException(
           'Course period not found or does not belong to this partner',
           HttpStatus.BAD_REQUEST,
@@ -340,7 +360,9 @@ export class ClassService extends BaseService<Class> {
     await this.repository.update(classEntity);
   }
 
-  async delete(id: string): Promise<void> {
+  /** Exclusão pela rota: só turma do cursinho de quem pede e sem alunos. */
+  async excluirDoCursinho(id: string, userId: string): Promise<void> {
+    await this.cursinhoDaTurma(id, userId);
     const classEntity = await this.repository.findOneBy({ id });
     if (!classEntity) {
       throw new HttpException(
