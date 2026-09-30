@@ -153,3 +153,67 @@ describe('StudentCourseRepository.findEnrolledForRelatorio', () => {
     );
   });
 });
+
+describe('StudentCourseRepository.findAllBy — busca por texto', () => {
+  const montar = () => {
+    const qb: any = {};
+    for (const m of [
+      'skip',
+      'take',
+      'leftJoinAndSelect',
+      'innerJoin',
+      'addSelect',
+      'where',
+      'andWhere',
+      'orderBy',
+    ]) {
+      qb[m] = jest.fn().mockReturnValue(qb);
+    }
+    qb.getMany = jest.fn().mockResolvedValue([]);
+    qb.getCount = jest.fn().mockResolvedValue(0);
+    const repository = { createQueryBuilder: jest.fn().mockReturnValue(qb) };
+    const entityManager = {
+      getRepository: jest.fn().mockReturnValue(repository),
+    };
+    const repo = new StudentCourseRepository(entityManager as any);
+    return { repo, qb };
+  };
+  const buscar = async (search: any) => {
+    const { repo, qb } = montar();
+    await repo.findAllBy({ page: 1, limit: 10, where: {}, search } as any);
+    const chamada = qb.andWhere.mock.calls.find(
+      ([sql]: [string]) => typeof sql === 'string' && sql.includes(':busca'),
+    );
+    return chamada as [string, { busca: string }] | undefined;
+  };
+
+  it('casa matrícula e o nome exibido (social OU civil, nunca os dois)', async () => {
+    const [sql, params] = (await buscar({
+      termo: 'ana',
+      incluirEmail: false,
+    }))!;
+    expect(sql).toContain('entity.cod_enrolled LIKE :busca');
+    expect(sql).toMatch(/users\.useSocialName = 1 AND .*users\.socialName/);
+    expect(sql).toMatch(
+      /users\.useSocialName = 0 OR users\.useSocialName IS NULL\) AND CONCAT\(users\.firstName/,
+    );
+    expect(params).toEqual({ busca: '%ana%' });
+  });
+
+  it('só busca por email quando quem pede vê o email sem máscara', async () => {
+    const [semEmail] = (await buscar({ termo: 'a', incluirEmail: false }))!;
+    expect(semEmail).not.toContain('users.email');
+    const [comEmail] = (await buscar({ termo: 'a', incluirEmail: true }))!;
+    expect(comEmail).toContain('users.email LIKE :busca');
+  });
+
+  it('% e _ digitados não viram curinga', async () => {
+    const [, params] = (await buscar({ termo: '10%_x', incluirEmail: false }))!;
+    expect(params.busca).toBe('%10\\%\\_x%');
+  });
+
+  it('termo vazio ou só espaços não filtra', async () => {
+    expect(await buscar({ termo: '   ', incluirEmail: true })).toBeUndefined();
+    expect(await buscar(undefined)).toBeUndefined();
+  });
+});

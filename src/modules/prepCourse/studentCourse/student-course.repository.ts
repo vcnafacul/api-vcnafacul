@@ -19,6 +19,13 @@ import { Period } from 'src/modules/user/enum/period';
 import { AggregateStudentCoursePeriodDtoOutput } from './dtos/aggregate-student-course-period.dto.output';
 import { buildFullSeries } from './handler/build-full-series';
 
+/** Busca por texto na listagem de matriculados (ver `applyEnrolledSearch`). */
+export interface BuscaDeMatriculados {
+  termo: string;
+  /** Só quem vê o email sem máscara (`gerenciarEstudantes`). */
+  incluirEmail: boolean;
+}
+
 @Injectable()
 export class StudentCourseRepository extends NodeRepository<StudentCourse> {
   // `class` e `birthday` NAO estao aqui de propósito: sao tratados em ramos
@@ -109,6 +116,38 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
   }
 
   /**
+   * Busca por texto da listagem de matriculados: matrícula, nome e — só para
+   * quem vê o email sem máscara — email.
+   *
+   * ⚠️ O nome casa com o que a tela MOSTRA: com `useSocialName`, só o nome
+   * social; sem ele, só o civil. Buscar o civil de quem usa o social revelaria
+   * a associação entre os dois.
+   *
+   * ⚠️ O email fica de fora para quem o vê mascarado: senão, digitar um email
+   * inteiro confirmaria quem é a pessoa por trás da máscara.
+   */
+  private static applyEnrolledSearch(
+    queryBuilder: SelectQueryBuilder<StudentCourse>,
+    search?: BuscaDeMatriculados,
+  ): SelectQueryBuilder<StudentCourse> {
+    const termo = search?.termo?.trim();
+    if (!termo) return queryBuilder;
+
+    // `%` e `_` digitados são texto, não curinga do LIKE.
+    const like = `%${termo.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+    const condicoes = [
+      'entity.cod_enrolled LIKE :busca',
+      `(users.useSocialName = 1 AND (users.socialName LIKE :busca OR CONCAT(users.socialName, ' ', users.lastName) LIKE :busca))`,
+      `((users.useSocialName = 0 OR users.useSocialName IS NULL) AND CONCAT(users.firstName, ' ', users.lastName) LIKE :busca)`,
+    ];
+    if (search.incluirEmail) condicoes.push('users.email LIKE :busca');
+
+    return queryBuilder.andWhere(`(${condicoes.join(' OR ')})`, {
+      busca: like,
+    });
+  }
+
+  /**
    * Aplica os filtros da listagem de matriculados (ano letivo + filtros do
    * grid) num query builder ja construido.
    *
@@ -117,13 +156,22 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
    */
   private applyEnrolledFilters(
     queryBuilder: SelectQueryBuilder<StudentCourse>,
-    { year, filters }: { year?: number; filters?: Filter[] },
+    {
+      year,
+      filters,
+      search,
+    }: { year?: number; filters?: Filter[]; search?: BuscaDeMatriculados },
   ): SelectQueryBuilder<StudentCourse> {
     if (year !== undefined && year !== null) {
       queryBuilder = queryBuilder.andWhere('course_period.year = :year', {
         year,
       });
     }
+
+    queryBuilder = StudentCourseRepository.applyEnrolledSearch(
+      queryBuilder,
+      search,
+    );
 
     if (!filters || filters.length === 0) {
       return queryBuilder;
@@ -176,8 +224,10 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
     orderBy,
     filters,
     year,
+    search,
   }: GetAllWhereInput & {
     year?: number;
+    search?: BuscaDeMatriculados;
   }): Promise<GetAllOutput<StudentCourse>> {
     let queryBuilder = this.repository
       .createQueryBuilder('entity')
@@ -214,10 +264,15 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
 
     // A montagem dos filtros e compartilhada com a exportacao: se cada fluxo
     // montasse o seu, o usuario veria X na tela e baixaria Y.
-    queryBuilder = this.applyEnrolledFilters(queryBuilder, { year, filters });
+    queryBuilder = this.applyEnrolledFilters(queryBuilder, {
+      year,
+      filters,
+      search,
+    });
     queryBuilderCount = this.applyEnrolledFilters(queryBuilderCount, {
       year,
       filters,
+      search,
     });
 
     queryBuilder = StudentCourseRepository.applyEnrolledOrder(
@@ -252,6 +307,7 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
     orderBy,
     filters,
     year,
+    search,
     offset,
     limit,
     joins,
@@ -260,6 +316,7 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
     orderBy?: { field: string; sort: 'ASC' | 'DESC' };
     filters?: Filter[];
     year?: number;
+    search?: BuscaDeMatriculados;
     offset: number;
     limit: number;
     joins?: Set<ExportJoin>;
@@ -311,7 +368,11 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       );
     }
 
-    queryBuilder = this.applyEnrolledFilters(queryBuilder, { year, filters });
+    queryBuilder = this.applyEnrolledFilters(queryBuilder, {
+      year,
+      filters,
+      search,
+    });
 
     // Mesma whitelist da listagem: a exportacao recebe o `sort[field]` pelos
     // mesmos query params, entao herdaria o mesmo problema.
