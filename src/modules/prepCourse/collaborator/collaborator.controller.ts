@@ -80,6 +80,13 @@ export class CollaboratorController {
     return await this.service.removeImage((req.user as User).id);
   }
 
+  @Delete(':id/photo')
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
+  async removeImageAdmin(@Param('id') collaboratorId: string) {
+    return await this.service.removeImageByCollaboratorId(collaboratorId);
+  }
+
   @Patch(':id/active')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarColaboradores)

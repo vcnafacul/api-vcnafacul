@@ -240,6 +240,44 @@ describe('CollaboratorService — photo handling', () => {
     });
   });
 
+  describe('removeImageByCollaboratorId (admin)', () => {
+    it('throws 404 when collaborator id is unknown', async () => {
+      repository.findOneBy.mockResolvedValue(null);
+      await expect(
+        service.removeImageByCollaboratorId('missing-id'),
+      ).rejects.toMatchObject({ status: 404 });
+    });
+
+    it('deletes the blob, invalidates cache and clears the photo', async () => {
+      const collaborator: any = { id: 'c-10', photo: 'collaborators/x.jpg' };
+      repository.findOneBy.mockResolvedValue(collaborator);
+
+      await expect(service.removeImageByCollaboratorId('c-10')).resolves.toBe(
+        true,
+      );
+
+      expect(blobService.deleteFile).toHaveBeenCalledWith(
+        'collaborators/x.jpg',
+        'docs-bucket',
+      );
+      expect(cache.del).toHaveBeenCalledWith(
+        'collaborator:photo:collaborators/x.jpg',
+      );
+      expect(repository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'c-10', photo: null }),
+      );
+    });
+
+    it('is a no-op when the collaborator has no photo', async () => {
+      repository.findOneBy.mockResolvedValue({ id: 'c-11', photo: null });
+      await expect(service.removeImageByCollaboratorId('c-11')).resolves.toBe(
+        true,
+      );
+      expect(blobService.deleteFile).not.toHaveBeenCalled();
+      expect(repository.update).not.toHaveBeenCalled();
+    });
+  });
+
   describe('getPhoto', () => {
     it('wraps cache with 30-day TTL', async () => {
       cache.wrap.mockResolvedValue({
