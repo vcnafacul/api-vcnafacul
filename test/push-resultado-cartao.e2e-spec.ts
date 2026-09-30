@@ -5,6 +5,8 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { AppModule } from 'src/app.module';
+import { EnvioDeResultadoTask } from 'src/modules/push/resultado-cartao/envio-de-resultado.task';
+import { PushService } from 'src/modules/push/push.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import * as request from 'supertest';
 import { DataSource } from 'typeorm';
@@ -18,6 +20,14 @@ describe('Push do resultado do cartão (e2e)', () => {
   let app: INestApplication;
   let db: DataSource;
   const historicos: string[] = [];
+  let task: EnvioDeResultadoTask;
+  const push = {
+    habilitado: true,
+    garantirHabilitado: jest.fn(() => {
+      if (!push.habilitado) throw new Error('off');
+    }),
+    sendToUsers: jest.fn().mockResolvedValue({ enviados: 1, falhas: 0 }),
+  };
 
   beforeAll(async () => {
     const mod: TestingModule = await Test.createTestingModule({
@@ -27,10 +37,14 @@ describe('Push do resultado do cartão (e2e)', () => {
       .useValue({ sendMessage: jest.fn() })
       .overrideGuard(ThrottlerGuard)
       .useValue({ canActivate: () => true })
+      .overrideProvider(PushService)
+      .useValue(push)
       .compile();
     app = createNestAppTest(mod);
     await app.init();
     db = mod.get(DataSource);
+    task = mod.get(EnvioDeResultadoTask);
+    task.pausa = async () => undefined; // sem esperar de verdade no teste
   });
 
   afterAll(async () => {
@@ -128,6 +142,114 @@ describe('Push do resultado do cartão (e2e)', () => {
         status: 'pendente',
         envios: 1,
         acertos: 62,
+      });
+    });
+  });
+
+  describe('envio calmo (card 03)', () => {
+    const status = async (ids: string[]) =>
+      (await db.query(
+        'SELECT historico_id, status, envios, tentativas FROM push_resultado_cartao WHERE historico_id IN (?)',
+        [ids],
+      )) as {
+        historico_id: string;
+        status: string;
+        envios: number;
+        tentativas: number;
+      }[];
+
+    beforeEach(async () => {
+      push.habilitado = true;
+      push.sendToUsers
+        .mockReset()
+        .mockResolvedValue({ enviados: 1, falhas: 0 });
+      // cada teste começa sem pendentes de outros testes
+      if (historicos.length)
+        await db.query(
+          "UPDATE push_resultado_cartao SET status = 'enviado' WHERE historico_id IN (?)",
+          [historicos],
+        );
+    });
+
+    it('⚠️ 100 de uma vez: saem em lotes de 20, cada um uma vez só, mesmo com rodadas em paralelo', async () => {
+      const ids = Array.from({ length: 100 }, novoHistorico);
+      for (const [i, h] of ids.entries()) {
+        await avisar(aviso(h, { userId: `aluno-${i}` })).expect(202);
+      }
+
+      expect(await task.rodar()).toBe(20);
+      expect(push.sendToUsers).toHaveBeenCalledTimes(20);
+
+      // o resto, com duas rodadas disputando ao mesmo tempo
+      for (let i = 0; i < 4; i++)
+        await Promise.all([task.rodar(), task.rodar()]);
+      expect(push.sendToUsers).toHaveBeenCalledTimes(100);
+      const destinatarios = push.sendToUsers.mock.calls.map(([u]) => u[0]);
+      expect(new Set(destinatarios).size).toBe(100);
+      expect(
+        (await status(ids)).every(
+          (l) => l.status === 'enviado' && l.envios === 1,
+        ),
+      ).toBe(true);
+    });
+
+    it('falha: reagenda; 3 falhas: desiste', async () => {
+      const h = novoHistorico();
+      await avisar(aviso(h)).expect(202);
+      push.sendToUsers.mockRejectedValue(new Error('FCM fora'));
+
+      await task.rodar();
+      expect((await status([h]))[0]).toMatchObject({
+        status: 'pendente',
+        tentativas: 1,
+      });
+
+      // as próximas tentativas vencem "no futuro"
+      await task.rodar(new Date(Date.now() + 2 * 60_000));
+      expect((await status([h]))[0]).toMatchObject({
+        status: 'pendente',
+        tentativas: 2,
+      });
+      await task.rodar(new Date(Date.now() + 10 * 60_000));
+      expect((await status([h]))[0]).toMatchObject({
+        status: 'falhou',
+        tentativas: 3,
+      });
+    });
+
+    it('push desligado (fora de prod): tira da fila como ignorado, sem enviar', async () => {
+      const h = novoHistorico();
+      await avisar(aviso(h)).expect(202);
+      push.habilitado = false;
+      expect(await task.rodar()).toBe(0);
+      expect(push.sendToUsers).not.toHaveBeenCalled();
+      expect((await status([h]))[0].status).toBe('ignorado');
+    });
+
+    it('⚠️ aviso novo DURANTE o envio: não se perde — sai de novo como "atualizado"', async () => {
+      const h = novoHistorico();
+      await avisar(aviso(h)).expect(202);
+      push.sendToUsers.mockImplementationOnce(async () => {
+        // chega a correção de leitura enquanto o primeiro push está saindo
+        await avisar(aviso(h, { acertos: 70 })).expect(202);
+        return { enviados: 1, falhas: 0 };
+      });
+
+      await task.rodar();
+      expect((await status([h]))[0]).toMatchObject({
+        status: 'pendente',
+        envios: 1,
+      });
+
+      await task.rodar();
+      const segundo = push.sendToUsers.mock.calls[1][1];
+      expect(segundo.title).toBe(
+        '📊 Resultado atualizado: Simulado de outubro',
+      );
+      expect(segundo.body).toContain('70 acertos');
+      expect((await status([h]))[0]).toMatchObject({
+        status: 'enviado',
+        envios: 2,
       });
     });
   });
