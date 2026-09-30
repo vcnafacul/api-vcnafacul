@@ -2090,6 +2090,54 @@ describe('StudentCourse (e2e)', () => {
     expect(student).toHaveProperty('class');
   }, 100000);
 
+  it('busca por texto casa matrícula, nome exibido e email', async () => {
+    const { representative } = await createPartnerPrepCourse();
+    const token = await jwtService.signAsync({
+      user: { id: representative.id },
+    });
+    const inscription = await inscriptionCourseService.create(
+      CreateInscriptionCourseDTOInputFaker(),
+      representative.id,
+    );
+    for (let i = 0; i < 3; i++) {
+      const { id } = await createStudent(inscription.id);
+      const student = await studentCourseService.findOneBy({ id });
+      student.applicationStatus = StatusApplication.DeclaredInterest;
+      await studentCourseRepository.update(student);
+      await confirmEnrollmentWithClass(student.id, representative.id);
+    }
+
+    const listar = (search?: string) =>
+      request(app.getHttpServer())
+        .get(
+          '/student-course/enrolled?inscriptionId=' +
+            inscription.id +
+            (search ? '&search=' + encodeURIComponent(search) : ''),
+        )
+        .set({ Authorization: `Bearer ${token}` })
+        .expect(200);
+
+    const todos = (await listar()).body.students.data;
+    expect(todos).toHaveLength(3);
+    const alvo = todos[0];
+
+    for (const termo of [
+      alvo.cod_enrolled,
+      alvo.name,
+      alvo.name.toUpperCase(),
+    ]) {
+      const { body } = await listar(termo);
+      expect(body.students.data.map((s) => s.id)).toContain(alvo.id);
+      expect(body.students.totalItems).toBe(body.students.data.length);
+    }
+
+    const porEmail = (await listar(alvo.email)).body.students.data;
+    expect(porEmail.map((s) => s.id)).toEqual([alvo.id]);
+
+    const nada = (await listar('zzz-ninguem-%_')).body.students;
+    expect(nada.totalItems).toBe(0);
+  }, 100000);
+
   //Filter: field, value, operator - Sort: field, sort - expected
   test.each([
     ['class', faker.company.name(), null, null, null, 1],

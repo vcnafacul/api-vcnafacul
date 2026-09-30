@@ -347,6 +347,7 @@ export class StudentCourseController {
       inscriptionCourseId: query.inscriptionId,
       year: query.year,
       applicationStatus: query.applicationStatus,
+      search: query.search,
     });
   }
 
@@ -379,6 +380,7 @@ export class StudentCourseController {
         inscriptionCourseId: query.inscriptionId,
         year: query.year,
         applicationStatus: query.applicationStatus,
+        search: query.search,
         // sem `columns`, o servico cai na selecao padrao — que sao as mesmas
         // colunas fixas de antes deste recurso
         columns: query.columns

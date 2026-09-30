@@ -1269,6 +1269,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     inscriptionCourseId,
     year,
     applicationStatus,
+    search,
   }: GetAllInput & {
     userId: string;
     filter?: Filter;
@@ -1276,12 +1277,19 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     inscriptionCourseId?: string;
     year?: number;
     applicationStatus?: StatusApplication;
+    search?: string;
   }): Promise<GetEnrolledDtoOutput> {
     const { partnerPrepCourse, where } = await this.buildEnrolledWhere({
       userId,
       inscriptionCourseId,
       applicationStatus,
     });
+
+    // Antes da consulta: a busca só olha o email de quem o vê sem máscara.
+    const user = await this.userService.findUserById(userId);
+    const role = await this.roleService.findOneById(user.role.id);
+    const manager = role.gerenciarEstudantes;
+    const admin = role.gerenciarProcessoSeletivo;
 
     const result = await this.repository.findAllBy({
       where,
@@ -1290,12 +1298,8 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       orderBy: sort,
       filters: filter ? [filter] : [],
       year,
+      search: search ? { termo: search, incluirEmail: !!manager } : undefined,
     });
-
-    const user = await this.userService.findUserById(userId);
-    const role = await this.roleService.findOneById(user.role.id);
-    const manager = role.gerenciarEstudantes;
-    const admin = role.gerenciarProcessoSeletivo;
 
     return {
       name: partnerPrepCourse.geo.name,
@@ -1425,6 +1429,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       year,
       applicationStatus,
       columns,
+      search,
     }: {
       userId: string;
       filter?: Filter;
@@ -1433,6 +1438,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       year?: number;
       applicationStatus?: StatusApplication;
       columns?: string[];
+      search?: string;
     },
     res: Response,
   ): Promise<void> {
@@ -1461,6 +1467,8 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         orderBy: sort,
         filters: filter ? [filter] : [],
         year,
+        // A planilha tem de bater com a tela, busca inclusa.
+        search: search ? { termo: search, incluirEmail: !!manager } : undefined,
         offset,
         limit: StudentCourseService.EXPORT_BATCH_SIZE,
         joins,

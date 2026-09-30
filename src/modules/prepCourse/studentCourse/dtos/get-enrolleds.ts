@@ -1,6 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 import {
   Filter,
   GetAllInput,
@@ -47,6 +53,16 @@ export class GetEnrolleds implements GetAllInput {
   @IsOptional()
   @IsEnum(StatusApplication)
   applicationStatus?: StatusApplication;
+
+  @ApiProperty({
+    required: false,
+    description:
+      'Busca por texto: matricula, nome exibido e (so para quem tem gerenciarEstudantes) email.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  search?: string;
 
   @ApiProperty({
     required: false,
