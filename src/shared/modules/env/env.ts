@@ -85,6 +85,10 @@ export const envSchema = z.object({
   // Form Service
   ADMIN_FORM_SECRET: z.string().default('dev-secret'),
 
+  // Aviso do ms-simulado com o resultado do cartão (tickets/028). ⚠️ Sem
+  // default útil: vazio = a rota recusa tudo. Tem de ser IGUAL no ms.
+  NOTIFICACAO_SECRET: z.string().default(''),
+
   // Google Places API
   GOOGLE_MAPS_API_KEY: z
     .string()
