@@ -169,6 +169,23 @@ export class CollaboratorService extends BaseService<Collaborator> {
 
   async removeImage(userId: string): Promise<boolean> {
     const collaborator = await this.repository.findOneByUserId(userId);
+    return this.removerFoto(collaborator);
+  }
+
+  /** O admin do cursinho remove a foto de um colaborador (par do upload admin). */
+  async removeImageByCollaboratorId(collaboratorId: string): Promise<boolean> {
+    const collaborator = await this.repository.findOneBy({
+      id: collaboratorId,
+    });
+    if (!collaborator) {
+      throw new HttpException('Collaborator not found', HttpStatus.NOT_FOUND);
+    }
+    // Sem foto não há o que apagar no bucket: idempotente.
+    if (!collaborator.photo) return true;
+    return this.removerFoto(collaborator);
+  }
+
+  private async removerFoto(collaborator: Collaborator): Promise<boolean> {
     await this.blobService.deleteFile(
       collaborator.photo,
       this.envService.get('BUCKET_DOC'),
