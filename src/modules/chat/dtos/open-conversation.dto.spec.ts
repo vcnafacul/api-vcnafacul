@@ -42,6 +42,23 @@ describe('OpenConversationDto', () => {
     expect(await validate(dto)).not.toHaveLength(0);
   });
 
+  it('accepts dto with declaredInterestInscriptionCourseId', async () => {
+    const dto = plainToInstance(OpenConversationDto, {
+      metadata: validMetadata,
+      declaredInterestInscriptionCourseId:
+        'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+    });
+    expect(await validate(dto)).toHaveLength(0);
+  });
+
+  it('rejects non-UUID declaredInterestInscriptionCourseId', async () => {
+    const dto = plainToInstance(OpenConversationDto, {
+      metadata: validMetadata,
+      declaredInterestInscriptionCourseId: 'not-a-uuid',
+    });
+    expect(await validate(dto)).not.toHaveLength(0);
+  });
+
   it('rejects non-UUID studentCourseId', async () => {
     const dto = plainToInstance(OpenConversationDto, {
       metadata: validMetadata,

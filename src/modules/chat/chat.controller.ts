@@ -76,6 +76,8 @@ export class ChatController {
       body.metadata,
       {
         inscriptionCourseId: body.inscriptionCourseId,
+        declaredInterestInscriptionCourseId:
+          body.declaredInterestInscriptionCourseId,
         studentCourseId: body.studentCourseId,
       },
     );

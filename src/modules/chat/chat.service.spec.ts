@@ -720,6 +720,26 @@ describe('ChatService', () => {
       });
     });
 
+    it('resolves context from declaredInterestInscriptionCourseId', async () => {
+      mockInscriptionCourseRepository.findOneWithPartnerPrep.mockResolvedValue({
+        partnerPrepCourse: { id: 'prep-ccc', geo: { name: 'Cursinho DEF' } },
+      });
+      const ctx = await service['resolveConversationContext']({
+        declaredInterestInscriptionCourseId: 'ic-uuid',
+      });
+      expect(
+        mockInscriptionCourseRepository.findOneWithPartnerPrep,
+      ).toHaveBeenCalledWith('ic-uuid');
+      expect(
+        mockStudentCourseRepository.findOneWithPartnerPrep,
+      ).not.toHaveBeenCalled();
+      expect(ctx).toEqual({
+        partnerPrepId: 'prep-ccc',
+        cursinhoName: 'Cursinho DEF',
+        originLabel: 'Declaração de interesse',
+      });
+    });
+
     it('resolves context from studentCourseId', async () => {
       mockStudentCourseRepository.findOneWithPartnerPrep.mockResolvedValue({
         partnerPrepCourse: { id: 'prep-bbb', geo: { name: 'Cursinho XYZ' } },

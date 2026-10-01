@@ -47,6 +47,15 @@ export class OpenConversationDto {
   })
   inscriptionCourseId?: string;
 
+  /** Id de InscriptionCourse vindo da página de declaração de interesse. */
+  @IsOptional()
+  @IsUUID()
+  @ApiProperty({
+    required: false,
+    example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+  })
+  declaredInterestInscriptionCourseId?: string;
+
   @IsOptional()
   @IsUUID()
   @ApiProperty({
