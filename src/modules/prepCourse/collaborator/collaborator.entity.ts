@@ -24,7 +24,7 @@ export class Collaborator extends BaseEntity {
 
   @ManyToOne(
     () => PartnerPrepCourse,
-    (partnerInscription) => partnerInscription.students,
+    (partnerPrepCourse) => partnerPrepCourse.members,
   )
   @JoinColumn({ name: 'partner_prep_course_id' })
   partnerPrepCourse: PartnerPrepCourse;

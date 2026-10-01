@@ -58,10 +58,10 @@ export class PrepCourseDtoOutput {
   thumbnail: string;
 
   @ApiProperty()
-  number_students: number;
+  numberStudents: number;
 
   @ApiProperty()
-  number_members: number;
+  numberMembers: number;
 
   @ApiProperty()
   createdAt: Date;

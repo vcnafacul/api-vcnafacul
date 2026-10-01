@@ -4,7 +4,15 @@ import { BaseRepository } from 'src/shared/modules/base/base.repository';
 import { GetAllWhereInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { EntityManager, In } from 'typeorm';
+import { Collaborator } from '../collaborator/collaborator.entity';
+import { StatusApplication } from '../studentCourse/enums/stastusApplication';
+import { StudentCourse } from '../studentCourse/student-course.entity';
 import { PartnerPrepCourse } from './partner-prep-course.entity';
+
+export interface ContagemDoCursinho {
+  numberStudents: number;
+  numberMembers: number;
+}
 
 @Injectable()
 export class PartnerPrepCourseRepository extends BaseRepository<PartnerPrepCourse> {
@@ -60,11 +68,6 @@ export class PartnerPrepCourseRepository extends BaseRepository<PartnerPrepCours
         'partner_prep_course.representative',
         'representative',
       )
-      .leftJoinAndSelect('partner_prep_course.members', 'members')
-      .addSelect('COALESCE(COUNT(members.id), 0)', 'numberMembers')
-      .leftJoin('partner_prep_course.students', 'student_course')
-      .addSelect('COALESCE(COUNT(student_course.id), 0)', 'numberStudents')
-      .orderBy('partner_prep_course.createdAt', 'DESC')
       .where('partner_prep_course.id = :id', { id })
       .getOne();
   }
@@ -174,5 +177,53 @@ export class PartnerPrepCourseRepository extends BaseRepository<PartnerPrepCours
       relations: ['geo'],
     });
     return new Map(cursinhos.map((c) => [c.id, c.geo?.name ?? '']));
+  }
+
+  /**
+   * Estudantes matriculados (mesma regra do `countStudentsCurrentlyEnrolled`:
+   * status `Matriculado`, um por usuário) e colaboradores ativos de cada
+   * cursinho, em duas consultas agregadas. Contado na leitura — sem contador
+   * persistido, então não há o que reconciliar.
+   */
+  async contagensPorCursinho(
+    ids: string[],
+  ): Promise<Map<string, ContagemDoCursinho>> {
+    const contagens = new Map<string, ContagemDoCursinho>(
+      ids.map((id) => [id, { numberStudents: 0, numberMembers: 0 }]),
+    );
+    if (!ids.length) return contagens;
+
+    const [estudantes, membros] = await Promise.all([
+      this._entityManager
+        .getRepository(StudentCourse)
+        .createQueryBuilder('sc')
+        .select('sc.partner_prep_course_id', 'id')
+        .addSelect('COUNT(DISTINCT sc.user_id)', 'total')
+        .where('sc.partner_prep_course_id IN (:...ids)', { ids })
+        .andWhere('sc.applicationStatus = :status', {
+          status: StatusApplication.Enrolled,
+        })
+        .andWhere('sc.deletedAt IS NULL')
+        .groupBy('sc.partner_prep_course_id')
+        .getRawMany<{ id: string; total: string }>(),
+      this._entityManager
+        .getRepository(Collaborator)
+        .createQueryBuilder('c')
+        .select('c.partner_prep_course_id', 'id')
+        .addSelect('COUNT(c.id)', 'total')
+        .where('c.partner_prep_course_id IN (:...ids)', { ids })
+        .andWhere('c.actived = :ativo', { ativo: true })
+        .andWhere('c.deletedAt IS NULL')
+        .groupBy('c.partner_prep_course_id')
+        .getRawMany<{ id: string; total: string }>(),
+    ]);
+
+    estudantes.forEach(({ id, total }) => {
+      contagens.get(id).numberStudents = Number(total);
+    });
+    membros.forEach(({ id, total }) => {
+      contagens.get(id).numberMembers = Number(total);
+    });
+    return contagens;
   }
 }
