@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { PushNotification } from '../push-notification.entity';
+import { PushDeviceRepository } from '../push-device.repository';
 import { PushNotificationRepository } from '../push-notification.repository';
 import { PushService } from '../push.service';
 import {
@@ -39,8 +40,13 @@ export class PushAdminService {
   constructor(
     private readonly push: PushService,
     private readonly notifications: PushNotificationRepository,
+    private readonly devices: PushDeviceRepository,
     private readonly auditLog: AuditLogService,
   ) {}
+
+  async buscarDestinatarios(texto: string) {
+    return this.devices.buscarDestinatarios(texto);
+  }
 
   async preview({ audience }: PreviewDoPublicoDtoInput) {
     this.push.garantirHabilitado();

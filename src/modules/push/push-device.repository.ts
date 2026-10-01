@@ -1,13 +1,25 @@
 import { Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
-import { EntityManager, In } from 'typeorm';
+import { Brackets, EntityManager, In } from 'typeorm';
 import { BaseRepository } from '../../shared/modules/base/base.repository';
+import { palavrasDaBusca } from '../user/busca-de-usuario';
+import { User } from '../user/user.entity';
 import { PlataformaDoAparelho, PushDevice } from './push-device.entity';
 import { PublicoDoEnvio } from './push-notification.entity';
 
 /** O mínimo que o envio precisa de cada aparelho. */
 export type AparelhoDoPublico = Pick<PushDevice, 'id' | 'token' | 'userId'>;
+
+/** Uma pessoa achada pela busca da tela admin, com quantos aparelhos ativos tem. */
+export type Destinatario = {
+  id: string;
+  name: string;
+  email: string;
+  devices: number;
+};
+
+export const LIMITE_DA_BUSCA = 10;
 
 @Injectable()
 export class PushDeviceRepository extends BaseRepository<PushDevice> {
@@ -57,6 +69,61 @@ export class PushDeviceRepository extends BaseRepository<PushDevice> {
     }
 
     return qb.getMany();
+  }
+
+  /**
+   * Busca de destinatários da tela admin: por nome, nome social ou e-mail,
+   * cada palavra tem de casar — a mesma regra da tela de usuários
+   * (`palavrasDaBusca`).
+   *
+   * ⚠️ `devices` conta só aparelhos ATIVOS: é o que diz a quem envia se a
+   * pessoa já ativou as notificações (o token chegou na api).
+   */
+  async buscarDestinatarios(texto: string): Promise<Destinatario[]> {
+    const palavras = palavrasDaBusca(texto);
+    if (!palavras.length) return [];
+
+    const qb = this._entityManager
+      .getRepository(User)
+      .createQueryBuilder('user')
+      .leftJoin(
+        PushDevice,
+        'device',
+        'device.user_id = user.id AND device.deleted_at IS NULL',
+      )
+      .select('user.id', 'id')
+      .addSelect('user.firstName', 'firstName')
+      .addSelect('user.lastName', 'lastName')
+      .addSelect('user.socialName', 'socialName')
+      .addSelect('user.email', 'email')
+      .addSelect('COUNT(device.id)', 'devices')
+      .where('user.deletedAt IS NULL')
+      .groupBy('user.id')
+      .orderBy('devices', 'DESC')
+      .addOrderBy('user.firstName', 'ASC')
+      .limit(LIMITE_DA_BUSCA);
+
+    palavras.forEach((palavra, i) => {
+      qb.andWhere(
+        new Brackets((b) =>
+          b
+            .where(`CONCAT(user.firstName, ' ', user.lastName) LIKE :p${i}`)
+            .orWhere(
+              `CONCAT(COALESCE(user.socialName, ''), ' ', user.lastName) LIKE :p${i}`,
+            )
+            .orWhere(`user.email LIKE :p${i}`),
+        ),
+        { [`p${i}`]: `%${palavra}%` },
+      );
+    });
+
+    const linhas = await qb.getRawMany();
+    return linhas.map((l) => ({
+      id: l.id,
+      name: `${l.socialName || l.firstName} ${l.lastName}`.trim(),
+      email: l.email,
+      devices: Number(l.devices),
+    }));
   }
 
   /** Soft delete dos aparelhos cujo token o FCM recusou. */

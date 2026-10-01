@@ -21,6 +21,7 @@ import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { Permissions } from '../../role/permissions/permissions';
 import { User } from '../../user/user.entity';
 import {
+  BuscarDestinatariosDtoInput,
   EnviarNotificacaoDtoInput,
   PreviewDoPublicoDtoInput,
 } from './enviar-notificacao.dto';
@@ -48,6 +49,19 @@ export class PushAdminController {
   @ApiResponse({ status: 200, description: '{ targetUsers, targetDevices }' })
   async preview(@Body() dto: PreviewDoPublicoDtoInput) {
     return this.admin.preview(dto);
+  }
+
+  /**
+   * Busca de "Pessoas específicas": por nome ou e-mail, como na tela de
+   * usuários, com quantos aparelhos ativos cada pessoa tem. Não usa o
+   * `GET /user` porque ele exige `alterarPermissao`.
+   */
+  @Get('recipients')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.enviarNotificacao)
+  @ApiResponse({ status: 200, description: '[{ id, name, email, devices }]' })
+  async destinatarios(@Query() { q }: BuscarDestinatariosDtoInput) {
+    return this.admin.buscarDestinatarios(q ?? '');
   }
 
   @Post('send')
