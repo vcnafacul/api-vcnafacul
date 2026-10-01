@@ -113,11 +113,12 @@ export const envSchema = z.object({
   FIREBASE_PROJECT_ID: z.string().default(''),
   FIREBASE_SERVICE_ACCOUNT_BASE64: z.string().default(''),
 
-  // Push (série pwa-push). Desligado por padrão; o link do clique é validado
-  // contra o FRONT_URL.
+  // Push (série pwa-push). Ligado por padrão em homol e prod — sem as env do
+  // Firebase continua desligado (`FirebaseService.isEnabled`). `false` é o
+  // interruptor de emergência. O link do clique é validado contra o FRONT_URL.
   PUSH_ENABLED: z
     .enum(['true', 'false'])
-    .default('false')
+    .default('true')
     .transform((v) => v === 'true'),
   PUSH_DEFAULT_ICON_URL: z.string().default(''),
 });

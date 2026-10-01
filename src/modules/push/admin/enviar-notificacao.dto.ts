@@ -73,6 +73,14 @@ export class EnviarNotificacaoDtoInput extends PreviewDoPublicoDtoInput {
   url?: string;
 }
 
+export class BuscarDestinatariosDtoInput {
+  @ApiProperty({ required: false, maxLength: 100 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  q?: string;
+}
+
 /**
  * DTO → público do serviço, só com os campos do tipo: é isto que vai para o
  * histórico, e um `roleIds` sobrando num envio para "todos" confundiria quem lê.

@@ -70,7 +70,12 @@ export class ChatService {
    * exibição no header e lista de conversas do suporte.
    */
   private async resolveConversationContext(
-    dto: Pick<OpenConversationDto, 'inscriptionCourseId' | 'studentCourseId'>,
+    dto: Pick<
+      OpenConversationDto,
+      | 'inscriptionCourseId'
+      | 'declaredInterestInscriptionCourseId'
+      | 'studentCourseId'
+    >,
   ): Promise<{
     partnerPrepId: string | null;
     cursinhoName: string | null;
@@ -87,6 +92,19 @@ export class ChatService {
         originLabel: 'Formulário de inscrição',
       };
     }
+    if (dto.declaredInterestInscriptionCourseId) {
+      const inscription =
+        await this.inscriptionCourseRepository.findOneWithPartnerPrep(
+          dto.declaredInterestInscriptionCourseId,
+        );
+      return {
+        partnerPrepId: inscription?.partnerPrepCourse?.id ?? null,
+        cursinhoName: inscription?.partnerPrepCourse?.geo?.name ?? null,
+        originLabel: 'Declaração de interesse',
+      };
+    }
+    // Clientes antigos enviavam o id da declaração de interesse como
+    // studentCourseId; mantido para não quebrar abas com versão em cache.
     if (dto.studentCourseId) {
       const studentCourse =
         await this.studentCourseRepository.findOneWithPartnerPrep(
@@ -162,7 +180,9 @@ export class ChatService {
     metadata: ConversationMetadata,
     context?: Pick<
       OpenConversationDto,
-      'inscriptionCourseId' | 'studentCourseId'
+      | 'inscriptionCourseId'
+      | 'declaredInterestInscriptionCourseId'
+      | 'studentCourseId'
     >,
   ): Promise<{ id: string }> {
     const db = this.firebase.firestore();

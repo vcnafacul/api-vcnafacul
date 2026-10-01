@@ -16,6 +16,7 @@ import {
 import { PushService } from 'src/modules/push/push.service';
 import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
 import { RoleService } from 'src/modules/role/role.service';
+import { User } from 'src/modules/user/user.entity';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
@@ -633,6 +634,77 @@ describe('PushService (e2e)', () => {
         await rota().expect(401);
         await rota().set('Authorization', semPermissao).expect(403);
       }
+    });
+
+    describe('GET /push/recipients', () => {
+      it('sem JWT → 401; sem a permissão → 403', async () => {
+        await http().get('/push/recipients?q=a').expect(401);
+        await http()
+          .get('/push/recipients?q=a')
+          .set('Authorization', semPermissao)
+          .expect(403);
+      });
+
+      it('acha por nome e por e-mail, com os aparelhos ATIVOS de cada um', async () => {
+        const marca = randomUUID().slice(0, 8);
+        const u = await novoUsuario(`busca-${marca}@teste.com`);
+        u.firstName = `Zuleica${marca}`;
+        u.lastName = 'Pereira';
+        await userRepository.update(u);
+        await novoAparelho(u.id);
+        await novoAparelho(u.id);
+        await novoAparelho(u.id, true);
+
+        const porNome = await http()
+          .get(
+            `/push/recipients?q=${encodeURIComponent(`Zuleica${marca} Pereira`)}`,
+          )
+          .set('Authorization', admin)
+          .expect(200);
+        expect(porNome.body).toEqual([
+          {
+            id: u.id,
+            name: `Zuleica${marca} Pereira`,
+            email: `busca-${marca}@teste.com`,
+            devices: 2,
+          },
+        ]);
+
+        const porEmail = await http()
+          .get(`/push/recipients?q=busca-${marca}`)
+          .set('Authorization', admin)
+          .expect(200);
+        expect(porEmail.body.map((d) => d.id)).toEqual([u.id]);
+      });
+
+      it('sem aparelho aparece com 0; busca vazia não lista a base', async () => {
+        const marca = randomUUID().slice(0, 8);
+        const u = await novoUsuario(`semaparelho-${marca}@teste.com`);
+        const { body } = await http()
+          .get(`/push/recipients?q=semaparelho-${marca}`)
+          .set('Authorization', admin)
+          .expect(200);
+        expect(body).toEqual([
+          expect.objectContaining({ id: u.id, devices: 0 }),
+        ]);
+
+        await http()
+          .get('/push/recipients?q=%20%20')
+          .set('Authorization', admin)
+          .expect(200, []);
+      });
+
+      it('⚠️ quem apagou a conta não aparece', async () => {
+        const marca = randomUUID().slice(0, 8);
+        const u = await novoUsuario(`apagado-${marca}@teste.com`);
+        await dataSource
+          .getRepository(User)
+          .update({ id: u.id }, { deletedAt: new Date() });
+        await http()
+          .get(`/push/recipients?q=apagado-${marca}`)
+          .set('Authorization', admin)
+          .expect(200, []);
+      });
     });
 
     it('⚠️ preview devolve os mesmos números que o envio efetivo', async () => {
