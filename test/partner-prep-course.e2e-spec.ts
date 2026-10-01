@@ -9,10 +9,13 @@ import { RoleUpdateAdminSeedService } from 'src/db/seeds/2-role-update-admin.see
 import { GeoRepository } from 'src/modules/geo/geo.repository';
 import { GeoService } from 'src/modules/geo/geo.service';
 import { LogGeoRepository } from 'src/modules/geo/log-geo/log-geo.repository';
+import { Collaborator } from 'src/modules/prepCourse/collaborator/collaborator.entity';
 import { InscriptionCourseService } from 'src/modules/prepCourse/InscriptionCourse/inscription-course.service';
 import { PartnerPrepCourseDtoInput } from 'src/modules/prepCourse/partnerPrepCourse/dtos/create-partner-prep-course.input.dto';
 import { LogPartnerRepository } from 'src/modules/prepCourse/partnerPrepCourse/log-partner/log-partner.repository';
 import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
+import { StatusApplication } from 'src/modules/prepCourse/studentCourse/enums/stastusApplication';
+import { StudentCourse } from 'src/modules/prepCourse/studentCourse/student-course.entity';
 import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
 import { Role } from 'src/modules/role/role.entity';
 import { RoleService } from 'src/modules/role/role.service';
@@ -25,6 +28,7 @@ import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import * as request from 'supertest';
+import { DataSource } from 'typeorm';
 import { CreateGeoDTOInputFaker } from './faker/create-geo.dto.input.faker';
 import { CreateInscriptionCourseDTOInputFaker } from './faker/create-inscription-course.dto.faker';
 import { CreateUserDtoInputFaker } from './faker/create-user.dto.input.faker';
@@ -53,6 +57,7 @@ describe('PartnerPrepCourse (e2e)', () => {
   let logPartnerRepository: LogPartnerRepository;
   let logGeoRepository: LogGeoRepository;
   let geoRepository: GeoRepository;
+  let dataSource: DataSource;
 
   const discordWebhookMock = {
     sendMessage: jest.fn(),
@@ -106,6 +111,7 @@ describe('PartnerPrepCourse (e2e)', () => {
       moduleFixture.get<LogPartnerRepository>(LogPartnerRepository);
     logGeoRepository = moduleFixture.get<LogGeoRepository>(LogGeoRepository);
     geoRepository = moduleFixture.get<GeoRepository>(GeoRepository);
+    dataSource = moduleFixture.get<DataSource>(DataSource);
 
     // Mock do geoService.create para evitar operações de email e log
     jest.spyOn(geoService, 'create').mockImplementation(async (dto) => {
@@ -301,4 +307,123 @@ describe('PartnerPrepCourse (e2e)', () => {
         expect(res.body.message[0]).toBe('Usuário não encontrado');
       });
   }, 30000);
+
+  describe('contagem de estudantes e membros', () => {
+    async function criarEstudante(
+      cursinhoId: string,
+      inscriptionId: string,
+      applicationStatus: StatusApplication,
+      opcoes: { userId?: string; deletedAt?: Date } = {},
+    ) {
+      const userId = opcoes.userId ?? (await createUserRepresentative()).id;
+      const repo = dataSource.getRepository(StudentCourse);
+      await repo.save(
+        repo.create({
+          userId,
+          cpf: '00000000000',
+          email: `aluno-${Date.now()}-${Math.random()}@example.com`,
+          applicationStatus,
+          deletedAt: opcoes.deletedAt,
+          partnerPrepCourse: { id: cursinhoId },
+          inscriptionCourse: { id: inscriptionId },
+        }),
+      );
+      return userId;
+    }
+
+    async function criarColaborador(cursinhoId: string, actived: boolean) {
+      const user = await createUserRepresentative();
+      const repo = dataSource.getRepository(Collaborator);
+      await repo.save(
+        repo.create({
+          user,
+          actived,
+          partnerPrepCourse: { id: cursinhoId },
+        }),
+      );
+    }
+
+    it('conta só matriculados (um por usuário) e colaboradores ativos', async () => {
+      const { partnerPrepCourse, inscription, token } =
+        await createPartnerPrepCourse();
+      const cursinhoId = partnerPrepCourse.id;
+
+      // Estudantes: 2 matriculados distintos. O mesmo usuário matriculado
+      // duas vezes conta uma; demais status e apagados não contam.
+      const repetido = await criarEstudante(
+        cursinhoId,
+        inscription.id,
+        StatusApplication.Enrolled,
+      );
+      await criarEstudante(
+        cursinhoId,
+        inscription.id,
+        StatusApplication.Enrolled,
+        {
+          userId: repetido,
+        },
+      );
+      await criarEstudante(
+        cursinhoId,
+        inscription.id,
+        StatusApplication.Enrolled,
+      );
+      await criarEstudante(
+        cursinhoId,
+        inscription.id,
+        StatusApplication.UnderReview,
+      );
+      await criarEstudante(
+        cursinhoId,
+        inscription.id,
+        StatusApplication.Rejected,
+      );
+      await criarEstudante(
+        cursinhoId,
+        inscription.id,
+        StatusApplication.EnrollmentCancelled,
+      );
+      await criarEstudante(
+        cursinhoId,
+        inscription.id,
+        StatusApplication.Enrolled,
+        {
+          deletedAt: new Date(),
+        },
+      );
+
+      // Membros: o representante (criado com o cursinho) + 1 ativo; inativo não conta.
+      await criarColaborador(cursinhoId, true);
+      await criarColaborador(cursinhoId, false);
+
+      const lista = await request(app.getHttpServer())
+        .get('/partner-prep-course?page=1&limit=1000')
+        .set({ Authorization: `Bearer ${token}` })
+        .expect(200);
+      const naLista = lista.body.data.find((c) => c.id === cursinhoId);
+      expect(naLista).toMatchObject({ numberStudents: 2, numberMembers: 2 });
+
+      const detalhe = await request(app.getHttpServer())
+        .get(`/partner-prep-course/${cursinhoId}`)
+        .set({ Authorization: `Bearer ${token}` })
+        .expect(200);
+      expect(detalhe.body).toMatchObject({
+        numberStudents: 2,
+        numberMembers: 2,
+      });
+    }, 30000);
+
+    it('cursinho sem estudantes devolve zero, não undefined', async () => {
+      const { partnerPrepCourse, token } = await createPartnerPrepCourse();
+
+      const detalhe = await request(app.getHttpServer())
+        .get(`/partner-prep-course/${partnerPrepCourse.id}`)
+        .set({ Authorization: `Bearer ${token}` })
+        .expect(200);
+      expect(detalhe.body).toMatchObject({
+        numberStudents: 0,
+        numberMembers: 1,
+      });
+    }, 30000);
+  });
 });

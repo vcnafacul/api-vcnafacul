@@ -182,6 +182,9 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
       const newPrep = await this.repository.findOneByIdRes(
         partnerPrepCourse.id,
       );
+      const contagem = (
+        await this.repository.contagensPorCursinho([newPrep.id])
+      ).get(newPrep.id);
       return {
         id: newPrep.id,
         geo: {
@@ -213,8 +216,8 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
         thumbnail: newPrep.thumbnail
           ? `data:image/webp;base64,${newPrep.thumbnail.toString('base64')}`
           : null,
-        numberStudents: newPrep.students?.length || 0,
-        numberMembers: newPrep.members?.length || 0,
+        numberStudents: contagem.numberStudents,
+        numberMembers: contagem.numberMembers,
         createdAt: newPrep.createdAt,
         updatedAt: newPrep.updatedAt,
       } as unknown as PrepCourseDtoOutput;
@@ -305,6 +308,9 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
       page: page,
       limit: limit,
     });
+    const contagens = await this.repository.contagensPorCursinho(
+      prepCourses.data.map((i) => i.id),
+    );
     return {
       data: prepCourses.data.map((i) =>
         Object.assign(new PrepCourseDtoOutput(), {
@@ -334,8 +340,8 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
           thumbnail: i.thumbnail
             ? `data:image/webp;base64,${i.thumbnail.toString('base64')}`
             : null,
-          numberStudents: i.students?.length || 0,
-          numberMembers: i.members?.length || 0,
+          numberStudents: contagens.get(i.id).numberStudents,
+          numberMembers: contagens.get(i.id).numberMembers,
           createdAt: i.createdAt,
           updatedAt: i.updatedAt,
         }),
@@ -348,6 +354,7 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
 
   async getOneById(id: string): Promise<GetOnePrepCourseByIdDtoOutput> {
     const prepCourses = await this.repository.findOneById(id);
+    const contagem = (await this.repository.contagensPorCursinho([id])).get(id);
     return Object.assign(new GetOnePrepCourseByIdDtoOutput(), {
       id: prepCourses.id,
       geo: prepCourses.geo,
@@ -364,8 +371,8 @@ export class PartnerPrepCourseService extends BaseService<PartnerPrepCourse> {
       },
       partnershipAgreement: prepCourses.partnershipAgreement,
       logo: prepCourses.logo,
-      numberMembers: prepCourses.members?.length || 0,
-      numberStudents: prepCourses.students?.length || 0,
+      numberMembers: contagem.numberMembers,
+      numberStudents: contagem.numberStudents,
       createdAt: prepCourses.createdAt,
       updatedAt: prepCourses.updatedAt,
     });
