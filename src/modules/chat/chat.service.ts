@@ -42,6 +42,43 @@ export class ChatService {
   ) {}
 
   /**
+   * Onde o suporte pode agir (tickets/031, card 01): o suporte do projeto
+   * (`supportAgent`) em todas as conversas; o colaborador do cursinho
+   * (`partnerPrepSupportAgent`) só nas do próprio cursinho.
+   *
+   * ⚠️ Antes disso, `message`/`close`/`read` aceitavam qualquer conversa para
+   * quem resolvia como "suporte" — bastava o id. As regras do Firestore só
+   * protegem a LEITURA; as escritas passam pela api (Admin SDK).
+   */
+  private async escopoDoSuporte(
+    userId: string,
+  ): Promise<{ global: boolean; partnerPrepId: string | null }> {
+    const user = await this.userRepository.findOneBy({ id: userId });
+    if (user?.role?.supportAgent) return { global: true, partnerPrepId: null };
+    const collaborator =
+      await this.collaboratorRepository.findOneByUserId(userId);
+    return {
+      global: false,
+      partnerPrepId: collaborator?.partnerPrepCourse?.id ?? null,
+    };
+  }
+
+  /** 403 se o suporte não pode agir nesta conversa (colaborador sem cursinho, ou de outro). */
+  private async garantirAcessoDoSuporte(
+    conv: { partnerPrepId?: string | null },
+    supportId: string,
+  ): Promise<void> {
+    const escopo = await this.escopoDoSuporte(supportId);
+    if (escopo.global) return;
+    if (
+      !escopo.partnerPrepId ||
+      (conv.partnerPrepId ?? null) !== escopo.partnerPrepId
+    ) {
+      throw new ForbiddenException('Sem permissão nesta conversa');
+    }
+  }
+
+  /**
    * Resolve o role e partnerPrepId para as claims do Firebase custom token.
    * Regra de segurança: partnerPrepSupportAgent=true SEM Collaborator válido
    * → role='student', partnerPrepId=null (evita acesso global por má configuração).
@@ -268,6 +305,15 @@ export class ChatService {
     targetUserId: string,
     content: string,
   ): Promise<{ conversationId: string; messageId: string }> {
+    // Só o suporte do projeto inicia conversa (tickets/031, R2). O colaborador
+    // escrevia na conversa aberta de qualquer estudante, ou criava uma sem
+    // cursinho que caía na inbox do projeto.
+    if (!(await this.escopoDoSuporte(supportAgentId)).global) {
+      throw new ForbiddenException(
+        'Apenas o suporte do projeto pode iniciar conversa',
+      );
+    }
+
     const target = await this.userRepository.findOneBy({ id: targetUserId });
     if (!target) {
       throw new NotFoundException('Estudante não encontrado');
@@ -400,12 +446,16 @@ export class ChatService {
     }
 
     const conv = convSnap.data()!;
-    if (conv.status !== 'open') {
-      throw new BadRequestException('Conversa fechada');
-    }
-
+    // Permissão antes do status: quem não pode agir não descobre nada dela.
     if (input.senderType === 'student' && conv.userId !== input.senderId) {
       throw new ForbiddenException('Sem permissão nesta conversa');
+    }
+    if (input.senderType === 'support') {
+      await this.garantirAcessoDoSuporte(conv, input.senderId);
+    }
+
+    if (conv.status !== 'open') {
+      throw new BadRequestException('Conversa fechada');
     }
 
     const messageRef = db.collection('messages').doc();
@@ -470,6 +520,9 @@ export class ChatService {
     if (actorType === 'student' && data.userId !== actorId) {
       throw new ForbiddenException('Sem permissão nesta conversa');
     }
+    if (actorType === 'support') {
+      await this.garantirAcessoDoSuporte(data, actorId);
+    }
 
     await ref.update({
       status: 'closed',
@@ -504,6 +557,9 @@ export class ChatService {
     }
     if (actorType === 'student' && snap.data()!.userId !== actorId) {
       throw new ForbiddenException('Sem permissão nesta conversa');
+    }
+    if (actorType === 'support') {
+      await this.garantirAcessoDoSuporte(snap.data()!, actorId);
     }
 
     const field =

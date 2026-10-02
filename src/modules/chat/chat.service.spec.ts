@@ -433,6 +433,9 @@ describe('ChatService', () => {
     });
 
     it('support sender increments unreadCountStudent', async () => {
+      mockUserRepo.findOneBy.mockResolvedValue({
+        role: { supportAgent: true },
+      });
       convDocRef.get.mockResolvedValue({
         exists: true,
         data: () => ({ status: 'open', userId: 'u1' }),
@@ -491,7 +494,10 @@ describe('ChatService', () => {
       expect(payload.closedAt).toBeDefined();
     });
 
-    it('closes conversation when support closes (any conv)', async () => {
+    it('closes conversation when support closes (suporte do projeto: qualquer conv)', async () => {
+      mockUserRepo.findOneBy.mockResolvedValue({
+        role: { supportAgent: true },
+      });
       convDocRef.get.mockResolvedValue({
         exists: true,
         data: () => ({ status: 'open', userId: 'OTHER' }),
@@ -545,6 +551,9 @@ describe('ChatService', () => {
     });
 
     it('resets support unread counter', async () => {
+      mockUserRepo.findOneBy.mockResolvedValue({
+        role: { supportAgent: true },
+      });
       await service.markRead('c1', 'agent-1', 'support');
       expect(convDocRef.update).toHaveBeenCalledWith({ unreadCountSupport: 0 });
     });
@@ -630,6 +639,13 @@ describe('ChatService', () => {
       // Match the existing reassignment pattern used elsewhere in this file
       // (see e.g. mockFirebase.firestore = () => ({...}) on line ~141).
       mockFirebase.firestore = () => mockFirestore;
+      // Quem inicia é o suporte do projeto; o escopo tem testes próprios.
+      jest
+        .spyOn(
+          service as unknown as { escopoDoSuporte: () => Promise<unknown> },
+          'escopoDoSuporte',
+        )
+        .mockResolvedValue({ global: true, partnerPrepId: null });
     });
 
     it('cria conversation + primeira mensagem quando não existe conv aberta', async () => {
@@ -813,6 +829,105 @@ describe('ChatService', () => {
         role: { supportAgent: false, partnerPrepSupportAgent: false },
       } as any);
       expect(claims).toEqual({ role: 'student', partnerPrepId: null });
+    });
+  });
+
+  describe('escopo do suporte (tickets/031, card 01)', () => {
+    let convDocRef: { get: jest.Mock; update: jest.Mock };
+    const txOps = { set: jest.fn(), update: jest.fn() };
+
+    const conversaDo = (partnerPrepId: string | null | undefined) =>
+      convDocRef.get.mockResolvedValue({
+        exists: true,
+        data: () => ({ status: 'open', userId: 'aluno', partnerPrepId }),
+      });
+    const colaboradorDo = (partnerPrepId: string | null) => {
+      mockUserRepo.findOneBy.mockResolvedValue({
+        role: { supportAgent: false, partnerPrepSupportAgent: true },
+      });
+      mockCollaboratorRepository.findOneByUserId.mockResolvedValue(
+        partnerPrepId ? { partnerPrepCourse: { id: partnerPrepId } } : null,
+      );
+    };
+    const enviar = () =>
+      service.sendMessage({
+        senderId: 'agente',
+        senderName: 'Agente',
+        senderType: 'support',
+        conversationId: 'c1',
+        content: 'oi',
+      });
+
+    beforeEach(() => {
+      convDocRef = {
+        get: jest.fn(),
+        update: jest.fn().mockResolvedValue(undefined),
+      };
+      mockFirebase.firestore = () => ({
+        collection: (name: string) =>
+          name === 'conversations'
+            ? { doc: () => convDocRef }
+            : { doc: () => ({ id: 'm1' }) },
+        runTransaction: jest.fn(async (cb) => cb(txOps)),
+      });
+    });
+
+    it.each([
+      ['enviar', () => enviar()],
+      ['fechar', () => service.closeConversation('c1', 'agente', 'support')],
+      ['marcar lida', () => service.markRead('c1', 'agente', 'support')],
+    ])(
+      '⚠️ colaborador do cursinho A não consegue %s conversa do B nem do projeto',
+      async (_acao, agir) => {
+        colaboradorDo('A');
+        for (const destino of ['B', null, undefined]) {
+          conversaDo(destino);
+          await expect(agir()).rejects.toThrow(/permissão/i);
+        }
+        expect(convDocRef.update).not.toHaveBeenCalled();
+        expect(txOps.set).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each([
+      ['enviar', () => enviar()],
+      ['fechar', () => service.closeConversation('c1', 'agente', 'support')],
+      ['marcar lida', () => service.markRead('c1', 'agente', 'support')],
+    ])('colaborador do A consegue %s conversa do A', async (_acao, agir) => {
+      colaboradorDo('A');
+      conversaDo('A');
+      await expect(agir()).resolves.not.toThrow();
+    });
+
+    it('colaborador sem cursinho não age em conversa nenhuma', async () => {
+      colaboradorDo(null);
+      conversaDo(null);
+      await expect(enviar()).rejects.toThrow(/permissão/i);
+    });
+
+    it('suporte do projeto age em conversa de qualquer cursinho', async () => {
+      mockUserRepo.findOneBy.mockResolvedValue({
+        role: { supportAgent: true },
+      });
+      conversaDo('B');
+      await expect(enviar()).resolves.toEqual({ id: 'm1' });
+      expect(mockCollaboratorRepository.findOneByUserId).not.toHaveBeenCalled();
+    });
+
+    it('conversa fechada de outro cursinho: 403 antes de dizer que está fechada', async () => {
+      colaboradorDo('A');
+      convDocRef.get.mockResolvedValue({
+        exists: true,
+        data: () => ({ status: 'closed', userId: 'aluno', partnerPrepId: 'B' }),
+      });
+      await expect(enviar()).rejects.toThrow(/permissão/i);
+    });
+
+    it('⚠️ colaborador não inicia conversa', async () => {
+      colaboradorDo('A');
+      await expect(
+        service.initiateConversation('agente', 'Agente', 'aluno', 'oi'),
+      ).rejects.toThrow(/suporte do projeto/i);
     });
   });
 });
