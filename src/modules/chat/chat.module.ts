@@ -4,6 +4,7 @@ import { UserModule } from '../user/user.module';
 import { CollaboratorModule } from '../prepCourse/collaborator/collaborator.module';
 import { StudentCourseModule } from '../prepCourse/studentCourse/student-course.module';
 import { InscriptionCourseModule } from '../prepCourse/InscriptionCourse/inscription-course.module';
+import { PushModule } from '../push/push.module';
 import { ChatController } from './chat.controller';
 import { ChatService } from './chat.service';
 import { ChatRateLimitGuard } from './guards/chat-rate-limit.guard';
@@ -15,6 +16,7 @@ import { ChatRateLimitGuard } from './guards/chat-rate-limit.guard';
     CollaboratorModule,
     StudentCourseModule,
     InscriptionCourseModule,
+    PushModule,
   ],
   controllers: [ChatController],
   providers: [ChatService, ChatRateLimitGuard],
