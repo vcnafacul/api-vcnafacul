@@ -16,13 +16,14 @@ import {
 import { PushService } from 'src/modules/push/push.service';
 import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
 import { RoleService } from 'src/modules/role/role.service';
+import { NotificacaoDoUsuario } from 'src/modules/push/central/notificacao-do-usuario.entity';
 import { User } from 'src/modules/user/user.entity';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
 import { FirebaseService } from 'src/shared/modules/firebase/firebase.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
-import { DataSource } from 'typeorm';
+import { DataSource, IsNull } from 'typeorm';
 import { CreateUserDtoInputFaker } from './faker/create-user.dto.input.faker';
 import { createNestAppTest } from './utils/createNestAppTest';
 
@@ -739,7 +740,11 @@ describe('PushService (e2e)', () => {
         .send(corpo(audience))
         .expect(202);
 
-      expect(preview.body).toEqual({ targetUsers: 2, targetDevices: 3 });
+      expect(preview.body).toEqual({
+        targetUsers: 2,
+        targetDevices: 3,
+        pessoas: 2,
+      });
       expect(envio.body).toMatchObject({
         targetUsers: 2,
         targetDevices: 3,
@@ -787,7 +792,95 @@ describe('PushService (e2e)', () => {
       });
     });
 
-    it('⚠️ público sem aparelho → 422 e NADA vai para o histórico', async () => {
+    describe('central do app (central-notificacoes, card 01)', () => {
+      const daCentral = (userId: string) =>
+        dataSource
+          .getRepository(NotificacaoDoUsuario)
+          .find({ where: { userId } });
+
+      it('⚠️ grava para TODAS as pessoas do público — com e sem aparelho; apagado não', async () => {
+        const role = await novaRole();
+        const [comPush, semPush, apagado] = await Promise.all([
+          novoUsuario(),
+          novoUsuario(),
+          novoUsuario(),
+        ]);
+        for (const u of [comPush, semPush, apagado]) {
+          u.role = role;
+          await userRepository.update(u);
+        }
+        await novoAparelho(comPush.id);
+        await dataSource
+          .getRepository(User)
+          .update({ id: apagado.id }, { deletedAt: new Date() });
+        const audience = { type: 'roles', roleIds: [role.id] };
+
+        const preview = await http()
+          .post('/push/audience/preview')
+          .set('Authorization', admin)
+          .send({ audience })
+          .expect(200);
+        expect(preview.body).toEqual({
+          targetUsers: 1,
+          targetDevices: 1,
+          pessoas: 2,
+        });
+
+        const { body } = await http()
+          .post('/push/send')
+          .set('Authorization', admin)
+          .send(corpo(audience))
+          .expect(202);
+        expect(body.pessoas).toBe(2);
+
+        for (const u of [comPush, semPush]) {
+          expect(await daCentral(u.id)).toEqual([
+            expect.objectContaining({
+              titulo: 'Aviso',
+              corpo: 'Corpo do aviso',
+              url: '/simulados',
+              pushNotificationId: body.id,
+              lidaEm: null,
+            }),
+          ]);
+        }
+        expect(await daCentral(apagado.id)).toEqual([]);
+      });
+
+      it('⚠️ público com conta mas sem aparelho → 202 (vê na central), sem chamar o FCM', async () => {
+        const email = `push-${randomUUID()}@teste.com`;
+        const u = await novoUsuario(email);
+        const { body } = await http()
+          .post('/push/send')
+          .set('Authorization', admin)
+          .send(corpo({ type: 'emails', emails: [email] }))
+          .expect(202);
+        expect(body).toMatchObject({ targetDevices: 0, pessoas: 1 });
+        await esperarTerminar(body.id);
+        expect(sendEachForMulticast).not.toHaveBeenCalled();
+        expect(await daCentral(u.id)).toHaveLength(1);
+      });
+
+      it('para "Todos" grava em lote, uma linha por conta', async () => {
+        const contas = await dataSource
+          .getRepository(User)
+          .count({ where: { deletedAt: IsNull() } });
+        const antes = await dataSource
+          .getRepository(NotificacaoDoUsuario)
+          .count();
+        const { body } = await http()
+          .post('/push/send')
+          .set('Authorization', admin)
+          .send(corpo({ type: 'all' }))
+          .expect(202);
+        expect(body.pessoas).toBe(contas);
+        expect(
+          await dataSource.getRepository(NotificacaoDoUsuario).count(),
+        ).toBe(antes + contas);
+      });
+    });
+
+    it('⚠️ público sem nenhuma conta → 422 e NADA vai para o histórico', async () => {
       const antes = await dataSource.getRepository(PushNotification).count();
 
       const r = await http()
@@ -842,7 +935,13 @@ describe('PushService (e2e)', () => {
 
     it('histórico paginado, do mais novo ao mais antigo, com autor sem dados pessoais', async () => {
       const repo = dataSource.getRepository(PushNotification);
-      await repo.clear();
+      // ⚠️ Sem `clear()` (TRUNCATE): a central referencia o envio por FK.
+      await dataSource
+        .getRepository(NotificacaoDoUsuario)
+        .createQueryBuilder()
+        .delete()
+        .execute();
+      await repo.createQueryBuilder().delete().execute();
       const base = Date.now();
       for (let i = 0; i < 3; i++) {
         await repo.save(

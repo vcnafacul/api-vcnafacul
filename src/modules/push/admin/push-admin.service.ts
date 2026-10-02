@@ -51,10 +51,7 @@ export class PushAdminService {
 
   async preview({ audience }: PreviewDoPublicoDtoInput) {
     this.push.garantirHabilitado();
-    const { targetUsers, targetDevices } = await this.push.resolverPublico(
-      paraPublico(audience),
-    );
-    return { targetUsers, targetDevices };
+    return this.push.alcance(paraPublico(audience));
   }
 
   /**
@@ -62,7 +59,7 @@ export class PushAdminService {
    * recebe o `202` com o id e acompanha pelo detalhe até `done`.
    */
   async enviar(dto: EnviarNotificacaoDtoInput, userId: string) {
-    const { envio, disparar } = await this.push.iniciarEnvio(
+    const { envio, disparar, pessoas } = await this.push.iniciarEnvio(
       { title: dto.title, body: dto.body, url: dto.url },
       paraPublico(dto.audience),
       userId,
@@ -92,6 +89,7 @@ export class PushAdminService {
       id: envio.id,
       targetUsers: envio.targetUsers,
       targetDevices: envio.targetDevices,
+      pessoas,
       status: envio.status,
     };
   }

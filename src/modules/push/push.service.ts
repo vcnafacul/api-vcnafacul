@@ -15,6 +15,7 @@ import {
   PushNotification,
   StatusDoEnvio,
 } from './push-notification.entity';
+import { CentralRepository } from './central/central.repository';
 import { PushNotificationRepository } from './push-notification.repository';
 import { RegistrarAparelhoDtoInput } from './dtos/registrar-aparelho.dto';
 import { PlataformaDoAparelho, PushDevice } from './push-device.entity';
@@ -43,6 +44,15 @@ export type PublicoResolvido = {
   targetDevices: number;
 };
 
+/** O que a tela admin mostra antes de enviar. */
+export type Alcance = {
+  /** Com push ativo (aparelho registrado). */
+  targetUsers: number;
+  targetDevices: number;
+  /** Todas as contas do público: quem vê na central do app. */
+  pessoas: number;
+};
+
 /**
  * Envio de push pelo FCM (série `pwa-push`, BE-05). Reutilizável por qualquer
  * módulo: a tela admin (BE-06), o "enviar teste" (BE-04) e, no futuro, os
@@ -61,6 +71,7 @@ export class PushService {
     private readonly firebase: FirebaseService,
     private readonly devices: PushDeviceRepository,
     private readonly notifications: PushNotificationRepository,
+    private readonly central: CentralRepository,
   ) {}
 
   garantirHabilitado(): void {
@@ -69,6 +80,14 @@ export class PushService {
         'Notificações push desativadas neste ambiente',
       );
     }
+  }
+
+  async alcance(publico: PublicoDoEnvio): Promise<Alcance> {
+    const [{ targetUsers, targetDevices }, pessoas] = await Promise.all([
+      this.resolverPublico(publico),
+      this.central.usuariosDoPublico(publico),
+    ]);
+    return { targetUsers, targetDevices, pessoas: pessoas.length };
   }
 
   async resolverPublico(publico: PublicoDoEnvio): Promise<PublicoResolvido> {
@@ -93,20 +112,25 @@ export class PushService {
   ): Promise<{
     envio: PushNotification;
     disparar: () => Promise<PushNotification>;
+    /** Quantas pessoas receberam na central do app. */
+    pessoas: number;
   }> {
     this.garantirHabilitado();
     validarPayload(payload, this.env.get('FRONT_URL'));
 
-    const { aparelhos, targetUsers, targetDevices } =
-      await this.resolverPublico(publico);
+    const [{ aparelhos, targetUsers, targetDevices }, pessoas] =
+      await Promise.all([
+        this.resolverPublico(publico),
+        this.central.usuariosDoPublico(publico),
+      ]);
     // Antes de gravar: um envio para ninguém não entra no histórico.
-    if (opcoes.recusarPublicoVazio && targetDevices === 0) {
-      throw new UnprocessableEntityException(
-        'Ninguém nesse público ativou as notificações',
-      );
+    // ⚠️ "Ninguém" = ninguém com CONTA (central-notificacoes, card 01): quem
+    // não ativou o push ainda vê na central do app.
+    if (opcoes.recusarPublicoVazio && pessoas.length === 0) {
+      throw new UnprocessableEntityException('Ninguém nesse público tem conta');
     }
 
-    const envio = await this.notifications.salvar(
+    const envio = await this.notifications.criarComCentral(
       Object.assign(new PushNotification(), {
         title: payload.title.trim(),
         body: payload.body.trim(),
@@ -119,6 +143,7 @@ export class PushService {
         successCount: 0,
         failureCount: 0,
       }),
+      pessoas,
     );
 
     const disparar = async () => {
@@ -142,7 +167,7 @@ export class PushService {
       return this.notifications.salvar(envio);
     };
 
-    return { envio, disparar };
+    return { envio, disparar, pessoas: pessoas.length };
   }
 
   async send(

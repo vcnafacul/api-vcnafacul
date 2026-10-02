@@ -17,10 +17,12 @@ function montar({
   habilitado = true,
   firebaseAtivo = true,
   resposta,
+  pessoas = ['u0', 'u1', 'u2', 'u3'],
 }: {
   lista?: Aparelho[];
   habilitado?: boolean;
   firebaseAtivo?: boolean;
+  pessoas?: string[];
   resposta?: (tokens: string[]) => {
     success: boolean;
     error?: { code: string };
@@ -59,14 +61,22 @@ function montar({
       e.id = e.id ?? 'envio-1';
       return e;
     }),
+    criarComCentral: jest.fn(async (e) => {
+      e.id = e.id ?? 'envio-1';
+      return e;
+    }),
+  };
+  const central = {
+    usuariosDoPublico: jest.fn().mockResolvedValue(pessoas),
   };
   const service = new PushService(
     env as any,
     firebase as any,
     devices as any,
     notifications as any,
+    central as any,
   );
-  return { service, sendEachForMulticast, devices, notifications };
+  return { service, sendEachForMulticast, devices, notifications, central };
 }
 
 const payload = { title: 'Aviso', body: 'Corpo', url: '/simulados' };
@@ -198,7 +208,7 @@ describe('PushService', () => {
     await expect(service.send(payload, { type: 'all' })).rejects.toThrow(
       ServiceUnavailableException,
     );
-    expect(notifications.salvar).not.toHaveBeenCalled();
+    expect(notifications.criarComCentral).not.toHaveBeenCalled();
   });
 
   it('link externo → 400 antes de gravar ou enviar', async () => {
@@ -210,7 +220,7 @@ describe('PushService', () => {
         { type: 'all' },
       ),
     ).rejects.toThrow('link');
-    expect(notifications.salvar).not.toHaveBeenCalled();
+    expect(notifications.criarComCentral).not.toHaveBeenCalled();
     expect(sendEachForMulticast).not.toHaveBeenCalled();
   });
 
@@ -224,6 +234,52 @@ describe('PushService', () => {
       type: 'users',
       userIds: ['u0'],
     });
-    expect(notifications.salvar).not.toHaveBeenCalled();
+    expect(notifications.criarComCentral).not.toHaveBeenCalled();
+  });
+
+  it('⚠️ central: o envio grava TODAS as pessoas do público, com ou sem aparelho', async () => {
+    const { service, notifications } = montar({
+      lista: aparelhos(1),
+      pessoas: ['u0', 'sem-aparelho'],
+    });
+
+    const { pessoas } = await service.iniciarEnvio(payload, { type: 'all' });
+
+    expect(pessoas).toBe(2);
+    expect(notifications.criarComCentral).toHaveBeenCalledWith(
+      expect.objectContaining({ targetUsers: 1, targetDevices: 1 }),
+      ['u0', 'sem-aparelho'],
+    );
+  });
+
+  it('⚠️ ninguém com aparelho mas com conta → não é 422 (vê na central)', async () => {
+    const { service } = montar({ lista: [], pessoas: ['u0'] });
+    await expect(
+      service.iniciarEnvio(payload, { type: 'all' }, undefined, {
+        recusarPublicoVazio: true,
+      }),
+    ).resolves.toMatchObject({ pessoas: 1 });
+  });
+
+  it('ninguém com conta → 422 e nada é gravado', async () => {
+    const { service, notifications } = montar({ lista: [], pessoas: [] });
+    await expect(
+      service.iniciarEnvio(payload, { type: 'all' }, undefined, {
+        recusarPublicoVazio: true,
+      }),
+    ).rejects.toThrow('Ninguém nesse público tem conta');
+    expect(notifications.criarComCentral).not.toHaveBeenCalled();
+  });
+
+  it('alcance: com push e na central', async () => {
+    const { service } = montar({
+      lista: aparelhos(3, 2),
+      pessoas: ['a', 'b', 'c'],
+    });
+    await expect(service.alcance({ type: 'all' })).resolves.toEqual({
+      targetUsers: 2,
+      targetDevices: 3,
+      pessoas: 3,
+    });
   });
 });

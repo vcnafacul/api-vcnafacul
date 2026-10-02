@@ -9,7 +9,12 @@ import { EnvioDeResultadoTask } from 'src/modules/push/resultado-cartao/envio-de
 import { PushService } from 'src/modules/push/push.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import * as request from 'supertest';
+import { randomUUID } from 'crypto';
+import { NotificacaoDoUsuario } from 'src/modules/push/central/notificacao-do-usuario.entity';
+import { UserRepository } from 'src/modules/user/user.repository';
+import { UserService } from 'src/modules/user/user.service';
 import { DataSource } from 'typeorm';
+import { CreateUserDtoInputFaker } from './faker/create-user.dto.input.faker';
 import { createNestAppTest } from './utils/createNestAppTest';
 
 jest.mock('src/shared/services/webhooks/discord.ts');
@@ -251,6 +256,46 @@ describe('Push do resultado do cartão (e2e)', () => {
         status: 'enviado',
         envios: 2,
       });
+    });
+  });
+
+  describe('central do app (central-notificacoes, card 01)', () => {
+    const novoAluno = async () => {
+      const dto = {
+        ...CreateUserDtoInputFaker(),
+        email: `central-${randomUUID()}@teste.com`,
+      };
+      await app.get(UserService).create(dto);
+      return app.get(UserRepository).findOneBy({ email: dto.email });
+    };
+    const daCentral = (userId: string) =>
+      db.getRepository(NotificacaoDoUsuario).find({ where: { userId } });
+
+    it('enviado → o resultado vai para a central do aluno, uma vez', async () => {
+      const aluno = await novoAluno();
+      await avisar(aviso(novoHistorico(), { userId: aluno.id })).expect(202);
+      await task.rodar();
+      await task.rodar();
+      const linhas = await daCentral(aluno.id);
+      expect(linhas).toHaveLength(1);
+      expect(linhas[0].pushNotificationId).toBeNull();
+      expect(linhas[0].corpo).toContain('61');
+    });
+
+    it('⚠️ push desligado → não envia, mas o aluno ainda vê na central', async () => {
+      const aluno = await novoAluno();
+      push.habilitado = false;
+      try {
+        await avisar(aviso(novoHistorico(), { userId: aluno.id })).expect(202);
+        await task.rodar();
+      } finally {
+        push.habilitado = true;
+      }
+      expect(push.sendToUsers).not.toHaveBeenCalledWith(
+        [aluno.id],
+        expect.anything(),
+      );
+      expect(await daCentral(aluno.id)).toHaveLength(1);
     });
   });
 });

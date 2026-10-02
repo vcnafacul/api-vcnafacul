@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { CentralRepository } from '../central/central.repository';
+import { PushPayload } from '../push.regras';
 import { PushService } from '../push.service';
 import { PushResultadoCartaoRepository } from './push-resultado-cartao.repository';
 import { textoDoResultado } from './texto-do-resultado';
@@ -29,7 +31,25 @@ export class EnvioDeResultadoTask {
   constructor(
     private readonly pendentes: PushResultadoCartaoRepository,
     private readonly push: PushService,
+    private readonly central: CentralRepository,
   ) {}
+
+  /**
+   * O resultado vai para a central do app no estado FINAL da linha (enviado,
+   * desistiu ou push desligado) — uma vez só, mesmo com as novas tentativas.
+   * ⚠️ Falha aqui não pode travar a fila do push: só loga.
+   */
+  private async paraCentral(userId: string, texto: PushPayload) {
+    try {
+      await this.central.gravar([userId], {
+        titulo: texto.title,
+        corpo: texto.body,
+        url: texto.url ?? null,
+      });
+    } catch (err) {
+      this.logger.error(`Central: resultado de ${userId} não gravou`, err);
+    }
+  }
 
   /** Separado para o teste não esperar de verdade. */
   pausa = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -55,6 +75,9 @@ export class EnvioDeResultadoTask {
       // Fora de prod o push não existe: tira da fila para ela não crescer.
       if (!this.habilitado()) {
         await this.pendentes.ignorarPendentes(lote.map((l) => l.id));
+        // Sem push, o aluno ainda vê o resultado na central.
+        for (const linha of lote)
+          await this.paraCentral(linha.userId, textoDoResultado(linha));
         return 0;
       }
 
@@ -62,14 +85,17 @@ export class EnvioDeResultadoTask {
       for (const [i, linha] of lote.entries()) {
         if (i > 0) await this.pausa(PAUSA_MS);
         if (!(await this.pendentes.reservar(linha.id, agora))) continue;
+        const texto = textoDoResultado(linha);
         try {
-          await this.push.sendToUsers([linha.userId], textoDoResultado(linha));
+          await this.push.sendToUsers([linha.userId], texto);
           await this.pendentes.marcarEnviado(linha.id);
+          await this.paraCentral(linha.userId, texto);
           enviados++;
         } catch (err) {
           const tentativas = linha.tentativas + 1;
           if (tentativas >= TENTATIVAS_MAX) {
             await this.pendentes.marcarFalhou(linha.id, tentativas);
+            await this.paraCentral(linha.userId, texto);
             this.logger.error(
               `Resultado ${linha.historicoId}: desisti após ${tentativas} tentativas`,
               err,
