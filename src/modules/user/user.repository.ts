@@ -116,6 +116,21 @@ export class UserRepository extends BaseRepository<User> {
       .getMany();
   }
 
+  /**
+   * Ids de quem atende o suporte do PROJETO (`role.supportAgent`) — quem
+   * recebe o push das mensagens das conversas do projeto (tickets/031).
+   */
+  async idsDoSuporteDoProjeto(): Promise<string[]> {
+    const linhas = await this.repository
+      .createQueryBuilder('user')
+      .innerJoin('user.role', 'role')
+      .select('user.id', 'id')
+      .where('role.supportAgent = :sim', { sim: true })
+      .andWhere('user.deletedAt IS NULL')
+      .getRawMany<{ id: string }>();
+    return linhas.map((l) => l.id);
+  }
+
   async findAllActive(): Promise<User[]> {
     return await this.repository
       .createQueryBuilder('user')

@@ -151,6 +151,25 @@ export class CollaboratorRepository extends BaseRepository<Collaborator> {
       .getOne();
   }
 
+  /**
+   * Ids dos colaboradores ATIVOS do cursinho com a permissão de suporte do
+   * cursinho — quem recebe o push das mensagens das conversas dele (tickets/031).
+   */
+  async idsDoSuporteDoCursinho(prepCourseId: string): Promise<string[]> {
+    const linhas = await this.repository
+      .createQueryBuilder('collaborator')
+      .innerJoin('collaborator.user', 'user')
+      .innerJoin('user.role', 'role')
+      .select('user.id', 'id')
+      .where('role.partnerPrepSupportAgent = :sim', { sim: true })
+      .andWhere('collaborator.partner_prep_course_id = :prepCourseId', {
+        prepCourseId,
+      })
+      .andWhere('collaborator.actived = :sim', { sim: true })
+      .getRawMany<{ id: string }>();
+    return linhas.map((l) => l.id);
+  }
+
   async findCollaboratorsByPermission(
     permission: Permissions,
     prepCourseId: string,

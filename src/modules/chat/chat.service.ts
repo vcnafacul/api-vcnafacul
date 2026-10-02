@@ -29,6 +29,29 @@ const TTL_DAYS = 7;
 export const INTERVALO_PUSH_DO_CHAT_MS = 10 * 60 * 1000;
 const TRECHO_DO_PUSH = 120;
 
+/** O começo da mensagem no corpo do push (cabe na notificação). */
+const trechoDoPush = (content: string) =>
+  content.length > TRECHO_DO_PUSH
+    ? `${content.slice(0, TRECHO_DO_PUSH - 1).trimEnd()}…`
+    : content;
+
+/**
+ * O mesmo ritmo para o lado do suporte: avisa a equipe da primeira mensagem
+ * não lida e, enquanto ninguém ler, no máximo a cada 10 min. Quando alguém
+ * lê (`markRead` zera `unreadCountSupport`), a próxima avisa de novo.
+ */
+export function deveAvisarSuporte(
+  conv: {
+    unreadCountSupport?: number;
+    ultimoPushSuporteEm?: { toMillis: () => number } | null;
+  },
+  agora: number,
+): boolean {
+  if (!conv.unreadCountSupport) return true;
+  const ultimo = conv.ultimoPushSuporteEm?.toMillis?.();
+  return !ultimo || agora - ultimo >= INTERVALO_PUSH_DO_CHAT_MS;
+}
+
 /** Deve avisar o estudante desta mensagem do suporte? (puro, para teste) */
 export function deveAvisarEstudante(
   conv: {
@@ -505,6 +528,8 @@ export class ChatService {
     const avisar =
       input.senderType === 'support' &&
       deveAvisarEstudante(conv, now.toMillis());
+    const avisarSuporte =
+      input.senderType === 'student' && deveAvisarSuporte(conv, now.toMillis());
 
     await db.runTransaction(async (tx) => {
       tx.set(messageRef, {
@@ -526,8 +551,17 @@ export class ChatService {
         [unreadField]: admin.firestore.FieldValue.increment(1),
         // Junto com a mensagem: o ritmo do push não depende do envio dar certo.
         ...(avisar ? { ultimoPushEstudanteEm: now } : {}),
+        ...(avisarSuporte ? { ultimoPushSuporteEm: now } : {}),
       });
     });
+
+    if (avisarSuporte) {
+      this.avisarSuporte(input.conversationId, conv, content).catch((e) =>
+        this.logger.warn(
+          `chat.push_suporte_falhou conv=${input.conversationId}: ${(e as Error).message}`,
+        ),
+      );
+    }
 
     if (avisar) {
       // ⚠️ Nunca derruba o envio da mensagem: push desligado no ambiente,
@@ -547,6 +581,39 @@ export class ChatService {
   }
 
   /**
+   * Push para quem atende a conversa (tickets/031): conversa do projeto → a
+   * equipe do projeto (`supportAgent`); conversa de um cursinho → os
+   * colaboradores ATIVOS daquele cursinho com `partnerPrepSupportAgent`. O
+   * suporte do projeto NÃO recebe as dos cursinhos (decisão de 2026-10-02):
+   * ele continua vendo-as no sino e na inbox.
+   *
+   * O toque abre a inbox certa já na conversa (`?conversa=`). A `tag` é a
+   * mesma por conversa: o aviso novo substitui o anterior.
+   */
+  private async avisarSuporte(
+    conversationId: string,
+    // userId, userName, partnerPrepId do documento da conversa.
+    conv: admin.firestore.DocumentData,
+    content: string,
+  ): Promise<void> {
+    const doCursinho = !!conv.partnerPrepId;
+    const destinatarios = doCursinho
+      ? await this.collaboratorRepository.idsDoSuporteDoCursinho(
+          conv.partnerPrepId,
+        )
+      : await this.userRepository.idsDoSuporteDoProjeto();
+    if (destinatarios.length === 0) return;
+
+    const tela = doCursinho ? 'suporte-cursinho' : 'suporte';
+    await this.push.sendToUsers(destinatarios, {
+      title: conv.userName || 'Mensagem no suporte',
+      body: trechoDoPush(content),
+      url: `/dashboard/${tela}?conversa=${encodeURIComponent(conversationId)}`,
+      tag: `chat-suporte-${conversationId}`,
+    });
+  }
+
+  /**
    * Push para o estudante com o app fechado (tickets/031, card 07). O toque
    * abre o balão na conversa (`?conversa=`, client card 05); a mesma `tag`
    * substitui o aviso anterior da conversa em vez de empilhar.
@@ -563,13 +630,9 @@ export class ChatService {
     const titulo = conv.partnerPrepId
       ? conv.cursinhoName || 'Cursinho'
       : 'Suporte Você na Facul';
-    const corpo =
-      content.length > TRECHO_DO_PUSH
-        ? `${content.slice(0, TRECHO_DO_PUSH - 1).trimEnd()}…`
-        : content;
     await this.push.sendToUsers([conv.userId], {
       title: titulo,
-      body: corpo,
+      body: trechoDoPush(content),
       url: `/dashboard?conversa=${encodeURIComponent(conversationId)}`,
       tag: `chat-${conversationId}`,
     });
