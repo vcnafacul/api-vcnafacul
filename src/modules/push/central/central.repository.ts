@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
-import { EntityManager } from 'typeorm';
+import { Brackets, EntityManager, IsNull, LessThan } from 'typeorm';
 import { BaseRepository } from '../../../shared/modules/base/base.repository';
 import { User } from '../../user/user.entity';
 import { PublicoDoEnvio } from '../push-notification.entity';
@@ -64,6 +64,81 @@ export class CentralRepository extends BaseRepository<NotificacaoDoUsuario> {
     }
 
     return (await qb.getRawMany()).map((l) => l.id);
+  }
+
+  /**
+   * O que a pessoa vê: não lidas + lidas depois de `lidasDesde` (1 hora atrás),
+   * da mais nova para a mais antiga.
+   */
+  async daPessoa(
+    userId: string,
+    lidasDesde: Date,
+    page: number,
+    limit: number,
+  ) {
+    const [data, totalItems] = await this.repository
+      .createQueryBuilder('n')
+      .select([
+        'n.id',
+        'n.titulo',
+        'n.corpo',
+        'n.url',
+        'n.lidaEm',
+        'n.createdAt',
+      ])
+      .where('n.userId = :userId', { userId })
+      .andWhere(
+        new Brackets((b) =>
+          b
+            .where('n.lidaEm IS NULL')
+            .orWhere('n.lidaEm > :lidasDesde', { lidasDesde }),
+        ),
+      )
+      .orderBy('n.createdAt', 'DESC')
+      .addOrderBy('n.id', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+    return { data, totalItems };
+  }
+
+  async naoLidas(userId: string): Promise<number> {
+    return this.repository.count({ where: { userId, lidaEm: IsNull() } });
+  }
+
+  /** Só a da própria pessoa, e só se ainda não lida. Devolve se existe. */
+  async marcarLida(userId: string, id: string, agora: Date): Promise<boolean> {
+    const r = await this.repository.update(
+      { id, userId, lidaEm: IsNull() },
+      { lidaEm: agora },
+    );
+    if (r.affected) return true;
+    // Já lida também é "existe": o PATCH é idempotente.
+    return this.repository.exists({ where: { id, userId } });
+  }
+
+  async marcarTodas(userId: string, agora: Date): Promise<number> {
+    const r = await this.repository.update(
+      { userId, lidaEm: IsNull() },
+      { lidaEm: agora },
+    );
+    return r.affected ?? 0;
+  }
+
+  /** Limpeza diária (card 02). Apaga de verdade: não tem valor histórico. */
+  async apagarLidasAntes(limite: Date): Promise<number> {
+    const r = await this.repository.delete({
+      lidaEm: LessThan(limite),
+    });
+    return r.affected ?? 0;
+  }
+
+  async apagarNaoLidasAntes(limite: Date): Promise<number> {
+    const r = await this.repository.delete({
+      lidaEm: IsNull(),
+      createdAt: LessThan(limite),
+    });
+    return r.affected ?? 0;
   }
 
   async gravar(
