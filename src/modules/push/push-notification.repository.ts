@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { BaseRepository } from '../../shared/modules/base/base.repository';
+import { gravarNaCentral } from './central/central.repository';
 import { PushNotification } from './push-notification.entity';
 
 @Injectable()
@@ -15,6 +16,26 @@ export class PushNotificationRepository extends BaseRepository<PushNotification>
 
   async salvar(envio: PushNotification): Promise<PushNotification> {
     return this.repository.save(envio);
+  }
+
+  /**
+   * Cria o envio e as linhas da central das `pessoas` na MESMA transação:
+   * ou o envio aparece para todo mundo, ou não existe.
+   */
+  async criarComCentral(
+    envio: PushNotification,
+    pessoas: string[],
+  ): Promise<PushNotification> {
+    return this._entityManager.transaction(async (m) => {
+      const salvo = await m.save(envio);
+      await gravarNaCentral(m, pessoas, {
+        titulo: salvo.title,
+        corpo: salvo.body,
+        url: salvo.url,
+        pushNotificationId: salvo.id,
+      });
+      return salvo;
+    });
   }
 
   /** Histórico da tela admin (FE-06), do mais novo ao mais antigo. */

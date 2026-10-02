@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { EnvModule } from 'src/shared/modules/env/env.module';
 import { FirebaseModule } from 'src/shared/modules/firebase/firebase.module';
+import { CentralRepository } from './central/central.repository';
 import { PushDeviceRepository } from './push-device.repository';
 import { PushNotificationRepository } from './push-notification.repository';
 import { PushCleanupTask } from './push-cleanup.task';
@@ -21,8 +22,14 @@ import { PushService } from './push.service';
     PushService,
     PushDeviceRepository,
     PushNotificationRepository,
+    CentralRepository,
     PushCleanupTask,
   ],
-  exports: [PushService, PushDeviceRepository, PushNotificationRepository],
+  exports: [
+    PushService,
+    PushDeviceRepository,
+    PushNotificationRepository,
+    CentralRepository,
+  ],
 })
 export class PushModule {}
