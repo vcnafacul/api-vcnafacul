@@ -59,6 +59,14 @@ export class PushNotification extends BaseEntity {
   @Column({ name: 'failure_count', type: 'int', default: 0 })
   failureCount: number;
 
+  /**
+   * Código de erro do FCM → quantos aparelhos falharam com ele (ex.:
+   * `messaging/registration-token-not-registered`: o aparelho cancelou a
+   * inscrição). `null` = sem falhas ou envio anterior a este campo.
+   */
+  @Column({ name: 'failure_reasons', type: 'json', nullable: true })
+  failureReasons: Record<string, number> | null;
+
   @Column({ name: 'finished_at', type: 'timestamp', nullable: true })
   finishedAt: Date | null;
 }
