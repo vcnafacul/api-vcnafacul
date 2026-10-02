@@ -256,6 +256,10 @@ describe('PushService (e2e)', () => {
       targetDevices: 3,
       successCount: 1,
       failureCount: 2,
+      failureReasons: {
+        'messaging/registration-token-not-registered': 1,
+        'messaging/internal-error': 1,
+      },
       sentById: u.id,
       audience: { type: 'users', userIds: [u.id] },
     });
@@ -437,7 +441,11 @@ describe('PushService (e2e)', () => {
         .set('Authorization', await bearer(u.id))
         .expect(200);
 
-      expect(body).toEqual({ successCount: 2, failureCount: 0 });
+      expect(body).toEqual({
+        successCount: 2,
+        failureCount: 0,
+        failureReasons: {},
+      });
       const [mensagem] = sendEachForMulticast.mock.calls[0];
       expect(mensagem.tokens.sort()).toEqual([d1.token, d2.token].sort());
       expect(mensagem.data).toMatchObject({ url: '/', tag: 'teste' });
@@ -761,6 +769,7 @@ describe('PushService (e2e)', () => {
         targetDevices: 2,
         successCount: 1,
         failureCount: 1,
+        failureReasons: { 'messaging/registration-token-not-registered': 1 },
         audience: { type: 'emails', emails: [email] },
         sentBy: { id: adminId },
       });

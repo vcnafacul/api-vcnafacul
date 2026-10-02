@@ -160,6 +160,7 @@ describe('PushService', () => {
       targetDevices: 3,
       successCount: 2,
       failureCount: 1,
+      failureReasons: { 'messaging/internal-error': 1 },
       status: StatusDoEnvio.done,
       sentById: 'admin-1',
     });
@@ -218,7 +219,7 @@ describe('PushService', () => {
 
     const r = await service.sendToUsers(['u0'], payload);
 
-    expect(r).toEqual({ successCount: 3, failureCount: 0 });
+    expect(r).toEqual({ successCount: 3, failureCount: 0, failureReasons: {} });
     expect(devices.ativosDoPublico).toHaveBeenCalledWith({
       type: 'users',
       userIds: ['u0'],

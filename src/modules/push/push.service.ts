@@ -27,7 +27,15 @@ import {
   validarPayload,
 } from './push.regras';
 
-export type ResultadoDoEnvio = { successCount: number; failureCount: number };
+export type ResultadoDoEnvio = {
+  successCount: number;
+  failureCount: number;
+  /** Código do FCM → quantos falharam com ele. */
+  failureReasons: Record<string, number>;
+};
+
+/** Sem `code` (erro fora do padrão do SDK) ainda conta, com nome próprio. */
+export const MOTIVO_DESCONHECIDO = 'desconhecido';
 
 export type PublicoResolvido = {
   aparelhos: AparelhoDoPublico[];
@@ -122,6 +130,9 @@ export class PushService {
         });
         envio.successCount = resultado.successCount;
         envio.failureCount = resultado.failureCount;
+        envio.failureReasons = resultado.failureCount
+          ? resultado.failureReasons
+          : null;
         envio.status = StatusDoEnvio.done;
       } catch (error) {
         this.logger.error(`Envio ${envio.id} falhou: ${error?.message}`);
@@ -173,6 +184,7 @@ export class PushService {
 
     let successCount = 0;
     let failureCount = 0;
+    const failureReasons: Record<string, number> = {};
     const mortos: string[] = [];
 
     for (const lote of emLotes(aparelhos)) {
@@ -187,17 +199,21 @@ export class PushService {
       successCount += resposta.successCount;
       failureCount += resposta.failureCount;
       resposta.responses.forEach((r, i) => {
-        if (!r.success && ERROS_DE_TOKEN_MORTO.has(r.error?.code)) {
-          mortos.push(lote[i].id);
-        }
+        if (r.success) return;
+        const motivo = r.error?.code || MOTIVO_DESCONHECIDO;
+        failureReasons[motivo] = (failureReasons[motivo] ?? 0) + 1;
+        if (ERROS_DE_TOKEN_MORTO.has(r.error?.code)) mortos.push(lote[i].id);
       });
     }
 
+    if (failureCount) {
+      this.logger.warn(`Falhas no envio: ${JSON.stringify(failureReasons)}`);
+    }
     if (mortos.length) {
       await this.devices.desativar(mortos);
       this.logger.log(`${mortos.length} aparelho(s) com token morto removidos`);
     }
-    return { successCount, failureCount };
+    return { successCount, failureCount, failureReasons };
   }
 
   // ─── Aparelhos (BE-04) ───────────────────────────────────────────────────
