@@ -225,20 +225,24 @@ export class ChatService {
     const db = this.firebase.firestore();
     const convs = db.collection('conversations');
 
-    // 1. Já existe conversa aberta? Retorna sem duplicar.
+    // O destino (cursinho da página, ou o projeto) vem antes de tudo: a
+    // conversa aberta e o cooldown são POR DESTINO (tickets/031, card 02).
+    const { partnerPrepId, cursinhoName, originLabel } = context
+      ? await this.resolveConversationContext(context)
+      : { partnerPrepId: null, cursinhoName: null, originLabel: null };
+
+    // 1. Já existe conversa aberta com ESTE destino? Retorna sem duplicar.
+    // ⚠️ Antes procurava qualquer conversa aberta do estudante: a pergunta para
+    // o cursinho A caía na conversa do cursinho B ou do projeto.
     const openSnap = await convs
       .where('userId', '==', userId)
       .where('status', '==', 'open')
+      .where('partnerPrepId', '==', partnerPrepId)
       .limit(1)
       .get();
     if (!openSnap.empty) {
       return { id: openSnap.docs[0].id };
     }
-
-    // Resolve contexto antes do cooldown para escopar por cursinho.
-    const { partnerPrepId, cursinhoName, originLabel } = context
-      ? await this.resolveConversationContext(context)
-      : { partnerPrepId: null, cursinhoName: null, originLabel: null };
 
     // 2. Cooldown: 15min após última conversa fechada no mesmo escopo (userId +
     // partnerPrepId). Cursinhos distintos não bloqueiam entre si.
@@ -344,9 +348,12 @@ export class ChatService {
     const convs = db.collection('conversations');
 
     // Idempotency check is BEFORE the transaction (mirrors openConversation pattern).
+    // Só a conversa do PROJETO (quem inicia é o suporte do projeto): a de um
+    // cursinho com o mesmo estudante não pode receber a mensagem do projeto.
     const openSnap = await convs
       .where('userId', '==', targetUserId)
       .where('status', '==', 'open')
+      .where('partnerPrepId', '==', null)
       .limit(1)
       .get();
 
@@ -373,6 +380,11 @@ export class ChatService {
           userName: displayName,
           status: 'open',
           initiatedBy: 'support',
+          // ⚠️ Explícito: no Firestore, `where('partnerPrepId', '==', null)`
+          // NÃO encontra documento sem o campo — a conversa sumiria da busca.
+          partnerPrepId: null,
+          cursinhoName: null,
+          originLabel: null,
           createdAt: now,
           lastMessageAt: now,
           closedAt: null,

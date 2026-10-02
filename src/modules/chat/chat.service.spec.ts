@@ -275,6 +275,50 @@ describe('ChatService', () => {
         expect.objectContaining({ partnerPrepId: 'prep-xyz' }),
       );
     });
+
+    it('⚠️ procura a conversa aberta DO DESTINO da página (tickets/031, card 02)', async () => {
+      conversationsRef.get.mockResolvedValueOnce({ empty: true, docs: [] });
+      conversationsRef.get.mockResolvedValueOnce({ empty: true, docs: [] });
+      mockInscriptionCourseRepository.findOneWithPartnerPrep.mockResolvedValue({
+        partnerPrepCourse: { id: 'cursinho-A' },
+      });
+
+      await service.openConversation(
+        'u1',
+        'João',
+        { page: '/y', userAgent: 'UA', device: 'desktop', browser: 'chrome' },
+        { inscriptionCourseId: 'ic-uuid' },
+      );
+
+      // 1ª busca: a aberta, já filtrada pelo cursinho A (não "qualquer aberta").
+      expect(conversationsRef.where.mock.calls.slice(0, 3)).toEqual([
+        ['userId', '==', 'u1'],
+        ['status', '==', 'open'],
+        ['partnerPrepId', '==', 'cursinho-A'],
+      ]);
+    });
+
+    it('sem contexto, o destino é o projeto (partnerPrepId null)', async () => {
+      conversationsRef.get.mockResolvedValueOnce({ empty: true, docs: [] });
+      conversationsRef.get.mockResolvedValueOnce({ empty: true, docs: [] });
+
+      await service.openConversation('u1', 'João', {
+        page: '/y',
+        userAgent: 'UA',
+        device: 'desktop',
+        browser: 'chrome',
+      });
+
+      expect(conversationsRef.where).toHaveBeenNthCalledWith(
+        3,
+        'partnerPrepId',
+        '==',
+        null,
+      );
+      expect(conversationsRef.add).toHaveBeenCalledWith(
+        expect.objectContaining({ partnerPrepId: null }),
+      );
+    });
   });
 
   describe('sendMessage', () => {
@@ -646,6 +690,33 @@ describe('ChatService', () => {
           'escopoDoSuporte',
         )
         .mockResolvedValue({ global: true, partnerPrepId: null });
+    });
+
+    it('⚠️ só reaproveita a conversa do PROJETO e grava partnerPrepId: null', async () => {
+      mockUserRepo.findOneBy.mockResolvedValue({
+        id: 'student1',
+        firstName: 'Ana',
+        lastName: 'Souza',
+        socialName: null,
+        useSocialName: false,
+        role: { name: 'estudante', supportAgent: false },
+      });
+      mockConvsCol.get.mockResolvedValue({ empty: true, docs: [] });
+
+      await service.initiateConversation('support1', 'Sup', 'student1', 'oi');
+
+      expect(mockConvsCol.where).toHaveBeenCalledWith(
+        'partnerPrepId',
+        '==',
+        null,
+      );
+      const conv = mockTx.set.mock.calls.find(
+        ([ref]) => ref === mockConvDoc,
+      )?.[1];
+      expect(conv).toEqual(expect.objectContaining({ partnerPrepId: null }));
+      expect(Object.prototype.hasOwnProperty.call(conv, 'partnerPrepId')).toBe(
+        true,
+      );
     });
 
     it('cria conversation + primeira mensagem quando não existe conv aberta', async () => {
