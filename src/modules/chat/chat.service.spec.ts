@@ -7,6 +7,7 @@ import {
   ChatService,
   INTERVALO_PUSH_DO_CHAT_MS,
   deveAvisarEstudante,
+  deveAvisarSuporte,
 } from './chat.service';
 import { FirebaseService } from 'src/shared/modules/firebase/firebase.service';
 import { PushService } from 'src/modules/push/push.service';
@@ -21,8 +22,14 @@ describe('ChatService', () => {
     auth: () => mockAuth,
     firestore: () => ({}),
   };
-  const mockUserRepo = { findOneBy: jest.fn() };
-  const mockCollaboratorRepository = { findOneByUserId: jest.fn() };
+  const mockUserRepo = {
+    findOneBy: jest.fn(),
+    idsDoSuporteDoProjeto: jest.fn(),
+  };
+  const mockCollaboratorRepository = {
+    findOneByUserId: jest.fn(),
+    idsDoSuporteDoCursinho: jest.fn(),
+  };
   const mockInscriptionCourseRepository = { findOneWithPartnerPrep: jest.fn() };
   const mockStudentCourseRepository = { findOneWithPartnerPrep: jest.fn() };
   const mockPush = { sendToUsers: jest.fn().mockResolvedValue(undefined) };
@@ -1114,17 +1121,146 @@ describe('ChatService', () => {
       );
     });
 
-    it('mensagem do estudante → nenhum push', async () => {
+    it('mensagem do estudante → nenhum push para o próprio estudante', async () => {
       conversa();
+      mockUserRepo.idsDoSuporteDoProjeto.mockResolvedValue([]);
       await enviar('student');
       await Promise.resolve();
-      expect(mockPush.sendToUsers).not.toHaveBeenCalled();
+      await Promise.resolve();
+      expect(mockPush.sendToUsers).not.toHaveBeenCalledWith(
+        ['aluno'],
+        expect.anything(),
+      );
     });
 
     it('⚠️ push falhando não derruba o envio da mensagem', async () => {
       conversa();
       mockPush.sendToUsers.mockRejectedValue(new Error('push desligado'));
       await expect(enviar('support')).resolves.toEqual({ id: 'm1' });
+    });
+  });
+
+  describe('push da mensagem do estudante para o suporte (tickets/031)', () => {
+    const AGORA = new Date('2026-10-02T12:00:00Z').getTime();
+    let convDocRef: { get: jest.Mock; update: jest.Mock };
+    const txOps = { set: jest.fn(), update: jest.fn() };
+    const esperar = async () => {
+      for (let i = 0; i < 5; i++) await Promise.resolve();
+    };
+
+    const conversa = (extra: Record<string, unknown> = {}) =>
+      convDocRef.get.mockResolvedValue({
+        exists: true,
+        data: () => ({
+          status: 'open',
+          userId: 'aluno',
+          userName: 'Ana Souza',
+          partnerPrepId: null,
+          unreadCountSupport: 0,
+          ...extra,
+        }),
+      });
+    const estudanteEnvia = (content = 'Preciso de ajuda') =>
+      service.sendMessage({
+        senderId: 'aluno',
+        senderName: 'Ana',
+        senderType: 'student',
+        conversationId: 'c1',
+        content,
+      });
+
+    beforeEach(() => {
+      jest.useFakeTimers().setSystemTime(AGORA);
+      txOps.update.mockClear();
+      mockPush.sendToUsers.mockReset().mockResolvedValue(undefined);
+      mockUserRepo.idsDoSuporteDoProjeto
+        .mockReset()
+        .mockResolvedValue(['s1', 's2']);
+      mockCollaboratorRepository.idsDoSuporteDoCursinho
+        .mockReset()
+        .mockResolvedValue(['colab-a1', 'colab-a2']);
+      convDocRef = { get: jest.fn(), update: jest.fn() };
+      mockFirebase.firestore = () => ({
+        collection: (name: string) =>
+          name === 'conversations'
+            ? { doc: () => convDocRef }
+            : { doc: () => ({ id: 'm1' }) },
+        runTransaction: jest.fn(async (cb) => cb(txOps)),
+      });
+    });
+    afterEach(() => jest.useRealTimers());
+
+    it('regra: mesma do estudante, com os campos do suporte', () => {
+      expect(deveAvisarSuporte({ unreadCountSupport: 0 }, AGORA)).toBe(true);
+      expect(
+        deveAvisarSuporte(
+          {
+            unreadCountSupport: 1,
+            ultimoPushSuporteEm: { toMillis: () => AGORA - 60_000 },
+          },
+          AGORA,
+        ),
+      ).toBe(false);
+    });
+
+    it('conversa do projeto → toda a equipe do projeto, abrindo /dashboard/suporte', async () => {
+      conversa();
+      await estudanteEnvia();
+      await esperar();
+
+      expect(
+        mockCollaboratorRepository.idsDoSuporteDoCursinho,
+      ).not.toHaveBeenCalled();
+      expect(mockPush.sendToUsers).toHaveBeenCalledWith(['s1', 's2'], {
+        title: 'Ana Souza',
+        body: 'Preciso de ajuda',
+        url: '/dashboard/suporte?conversa=c1',
+        tag: 'chat-suporte-c1',
+      });
+      expect(txOps.update.mock.calls[0][1]).toHaveProperty(
+        'ultimoPushSuporteEm',
+      );
+    });
+
+    it('⚠️ conversa de um cursinho → só os colaboradores dele; o suporte do projeto não', async () => {
+      conversa({ partnerPrepId: 'A' });
+      await estudanteEnvia();
+      await esperar();
+
+      expect(
+        mockCollaboratorRepository.idsDoSuporteDoCursinho,
+      ).toHaveBeenCalledWith('A');
+      expect(mockUserRepo.idsDoSuporteDoProjeto).not.toHaveBeenCalled();
+      expect(mockPush.sendToUsers).toHaveBeenCalledWith(
+        ['colab-a1', 'colab-a2'],
+        expect.objectContaining({
+          url: '/dashboard/suporte-cursinho?conversa=c1',
+        }),
+      );
+    });
+
+    it('ninguém leu e o último aviso foi há 1 min → sem push novo', async () => {
+      conversa({
+        unreadCountSupport: 3,
+        ultimoPushSuporteEm: { toMillis: () => AGORA - 60_000 },
+      });
+      await estudanteEnvia();
+      await esperar();
+      expect(mockPush.sendToUsers).not.toHaveBeenCalled();
+    });
+
+    it('cursinho sem ninguém com a permissão → nenhum envio', async () => {
+      conversa({ partnerPrepId: 'A' });
+      mockCollaboratorRepository.idsDoSuporteDoCursinho.mockResolvedValue([]);
+      await estudanteEnvia();
+      await esperar();
+      expect(mockPush.sendToUsers).not.toHaveBeenCalled();
+    });
+
+    it('⚠️ falha no push do suporte não derruba a mensagem do estudante', async () => {
+      conversa();
+      mockPush.sendToUsers.mockRejectedValue(new Error('FCM fora'));
+      await expect(estudanteEnvia()).resolves.toEqual({ id: 'm1' });
     });
   });
 });
