@@ -67,6 +67,17 @@ export class PushNotification extends BaseEntity {
   @Column({ name: 'failure_reasons', type: 'json', nullable: true })
   failureReasons: Record<string, number> | null;
 
+  /** Quantas pessoas receberam na central do app (central-notificacoes, 05). */
+  @Column({ name: 'pessoas_count', type: 'int', default: 0 })
+  pessoasCount: number;
+
+  /**
+   * Quantas leram na central. ⚠️ **Contador, não `COUNT`**: a limpeza diária
+   * apaga as lidas depois de 1 hora, e o número cairia.
+   */
+  @Column({ name: 'lidas_count', type: 'int', default: 0 })
+  lidasCount: number;
+
   @Column({ name: 'finished_at', type: 'timestamp', nullable: true })
   finishedAt: Date | null;
 }

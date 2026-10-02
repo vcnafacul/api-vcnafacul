@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
-import { EntityManager } from 'typeorm';
+import { Brackets, EntityManager, In, IsNull, LessThan } from 'typeorm';
 import { BaseRepository } from '../../../shared/modules/base/base.repository';
 import { User } from '../../user/user.entity';
-import { PublicoDoEnvio } from '../push-notification.entity';
+import { PublicoDoEnvio, PushNotification } from '../push-notification.entity';
 import { NotificacaoDoUsuario } from './notificacao-do-usuario.entity';
 
 /** Insert em lote: um envio para "Todos" vira uma linha por usuário. */
@@ -66,6 +66,107 @@ export class CentralRepository extends BaseRepository<NotificacaoDoUsuario> {
     return (await qb.getRawMany()).map((l) => l.id);
   }
 
+  /**
+   * O que a pessoa vê: não lidas + lidas depois de `lidasDesde` (1 hora atrás),
+   * da mais nova para a mais antiga.
+   */
+  async daPessoa(
+    userId: string,
+    lidasDesde: Date,
+    page: number,
+    limit: number,
+  ) {
+    const [data, totalItems] = await this.repository
+      .createQueryBuilder('n')
+      .select([
+        'n.id',
+        'n.titulo',
+        'n.corpo',
+        'n.url',
+        'n.lidaEm',
+        'n.createdAt',
+      ])
+      .where('n.userId = :userId', { userId })
+      .andWhere(
+        new Brackets((b) =>
+          b
+            .where('n.lidaEm IS NULL')
+            .orWhere('n.lidaEm > :lidasDesde', { lidasDesde }),
+        ),
+      )
+      .orderBy('n.createdAt', 'DESC')
+      .addOrderBy('n.id', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+    return { data, totalItems };
+  }
+
+  async naoLidas(userId: string): Promise<number> {
+    return this.repository.count({ where: { userId, lidaEm: IsNull() } });
+  }
+
+  /**
+   * Só a da própria pessoa, e só se ainda não lida. Devolve se existe.
+   * Soma no `lidas_count` do envio na mesma transação (card 05).
+   */
+  async marcarLida(userId: string, id: string, agora: Date): Promise<boolean> {
+    const marcou = await this._entityManager.transaction(async (m) => {
+      const n = await m.findOne(NotificacaoDoUsuario, {
+        where: { id, userId, lidaEm: IsNull() },
+        select: ['id', 'pushNotificationId'],
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!n) return false;
+      await m.update(NotificacaoDoUsuario, { id }, { lidaEm: agora });
+      if (n.pushNotificationId)
+        await somarLidas(m, { [n.pushNotificationId]: 1 });
+      return true;
+    });
+    if (marcou) return true;
+    // Já lida também é "existe": o PATCH é idempotente.
+    return this.repository.exists({ where: { id, userId } });
+  }
+
+  async marcarTodas(userId: string, agora: Date): Promise<number> {
+    return this._entityManager.transaction(async (m) => {
+      const naoLidas = await m.find(NotificacaoDoUsuario, {
+        where: { userId, lidaEm: IsNull() },
+        select: ['id', 'pushNotificationId'],
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!naoLidas.length) return 0;
+      await m.update(
+        NotificacaoDoUsuario,
+        { id: In(naoLidas.map((n) => n.id)) },
+        { lidaEm: agora },
+      );
+      const porEnvio: Record<string, number> = {};
+      for (const n of naoLidas)
+        if (n.pushNotificationId)
+          porEnvio[n.pushNotificationId] =
+            (porEnvio[n.pushNotificationId] ?? 0) + 1;
+      await somarLidas(m, porEnvio);
+      return naoLidas.length;
+    });
+  }
+
+  /** Limpeza diária (card 02). Apaga de verdade: não tem valor histórico. */
+  async apagarLidasAntes(limite: Date): Promise<number> {
+    const r = await this.repository.delete({
+      lidaEm: LessThan(limite),
+    });
+    return r.affected ?? 0;
+  }
+
+  async apagarNaoLidasAntes(limite: Date): Promise<number> {
+    const r = await this.repository.delete({
+      lidaEm: IsNull(),
+      createdAt: LessThan(limite),
+    });
+    return r.affected ?? 0;
+  }
+
   async gravar(
     userIds: string[],
     conteudo: ConteudoDaNotificacao,
@@ -93,5 +194,15 @@ export async function gravarNaCentral(
       pushNotificationId: conteudo.pushNotificationId ?? null,
     }));
     await manager.insert(NotificacaoDoUsuario, linhas);
+  }
+}
+
+/** `lidas_count += n` em cada envio. */
+async function somarLidas(
+  manager: EntityManager,
+  porEnvio: Record<string, number>,
+): Promise<void> {
+  for (const [id, n] of Object.entries(porEnvio)) {
+    await manager.increment(PushNotification, { id }, 'lidasCount', n);
   }
 }

@@ -142,6 +142,7 @@ export class PushService {
         targetDevices,
         successCount: 0,
         failureCount: 0,
+        pessoasCount: pessoas.length,
       }),
       pessoas,
     );
