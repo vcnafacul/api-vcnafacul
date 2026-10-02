@@ -17,10 +17,31 @@ import { UserRepository } from 'src/modules/user/user.repository';
 import { ConversationMetadata, SenderType } from './chat.types';
 import { OpenConversationDto } from './dtos/open-conversation.dto';
 import { FirebaseService } from 'src/shared/modules/firebase/firebase.service';
+import { PushService } from 'src/modules/push/push.service';
 
 const COOLDOWN_MS = 15 * 60 * 1000;
 const MAX_CONTENT = 1000;
 const TTL_DAYS = 7;
+/**
+ * Push da mensagem do suporte (tickets/031, card 07): no máximo um por
+ * conversa a cada 10 min enquanto o estudante não ler. Ler libera o próximo.
+ */
+export const INTERVALO_PUSH_DO_CHAT_MS = 10 * 60 * 1000;
+const TRECHO_DO_PUSH = 120;
+
+/** Deve avisar o estudante desta mensagem do suporte? (puro, para teste) */
+export function deveAvisarEstudante(
+  conv: {
+    unreadCountStudent?: number;
+    ultimoPushEstudanteEm?: { toMillis: () => number } | null;
+  },
+  agora: number,
+): boolean {
+  // Sem não lidas antes desta = ele leu tudo: a primeira de novo avisa.
+  if (!conv.unreadCountStudent) return true;
+  const ultimo = conv.ultimoPushEstudanteEm?.toMillis?.();
+  return !ultimo || agora - ultimo >= INTERVALO_PUSH_DO_CHAT_MS;
+}
 
 type UserLike = {
   id: string;
@@ -39,6 +60,7 @@ export class ChatService {
     private readonly collaboratorRepository: CollaboratorRepository,
     private readonly inscriptionCourseRepository: InscriptionCourseRepository,
     private readonly studentCourseRepository: StudentCourseRepository,
+    private readonly push: PushService,
   ) {}
 
   /**
@@ -480,6 +502,9 @@ export class ChatService {
       input.senderType === 'student'
         ? 'unreadCountSupport'
         : 'unreadCountStudent';
+    const avisar =
+      input.senderType === 'support' &&
+      deveAvisarEstudante(conv, now.toMillis());
 
     await db.runTransaction(async (tx) => {
       tx.set(messageRef, {
@@ -499,14 +524,55 @@ export class ChatService {
         lastMessageText: content.slice(0, 100),
         lastMessageSenderType: input.senderType,
         [unreadField]: admin.firestore.FieldValue.increment(1),
+        // Junto com a mensagem: o ritmo do push não depende do envio dar certo.
+        ...(avisar ? { ultimoPushEstudanteEm: now } : {}),
       });
     });
+
+    if (avisar) {
+      // ⚠️ Nunca derruba o envio da mensagem: push desligado no ambiente,
+      // estudante sem aparelho ou FCM fora — só log.
+      this.avisarEstudante(input.conversationId, conv, content).catch((e) =>
+        this.logger.warn(
+          `chat.push_falhou conv=${input.conversationId}: ${(e as Error).message}`,
+        ),
+      );
+    }
 
     this.logger.log(
       `chat.message_sent conv=${input.conversationId} sender=${input.senderType}/${input.senderId}`,
     );
 
     return { id: messageRef.id };
+  }
+
+  /**
+   * Push para o estudante com o app fechado (tickets/031, card 07). O toque
+   * abre o balão na conversa (`?conversa=`, client card 05); a mesma `tag`
+   * substitui o aviso anterior da conversa em vez de empilhar.
+   *
+   * Via `sendToUsers`, que NÃO grava na central do MySQL — o sino já mostra a
+   * conversa pelo Firestore; gravar faria aparecer duas vezes.
+   */
+  private async avisarEstudante(
+    conversationId: string,
+    // userId, partnerPrepId, cursinhoName do documento da conversa.
+    conv: admin.firestore.DocumentData,
+    content: string,
+  ): Promise<void> {
+    const titulo = conv.partnerPrepId
+      ? conv.cursinhoName || 'Cursinho'
+      : 'Suporte Você na Facul';
+    const corpo =
+      content.length > TRECHO_DO_PUSH
+        ? `${content.slice(0, TRECHO_DO_PUSH - 1).trimEnd()}…`
+        : content;
+    await this.push.sendToUsers([conv.userId], {
+      title: titulo,
+      body: corpo,
+      url: `/dashboard?conversa=${encodeURIComponent(conversationId)}`,
+      tag: `chat-${conversationId}`,
+    });
   }
 
   /**
