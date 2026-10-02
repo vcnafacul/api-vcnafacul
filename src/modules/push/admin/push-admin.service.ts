@@ -25,6 +25,8 @@ export function resumoDoEnvio(envio: PushNotification) {
     successCount: envio.successCount,
     failureCount: envio.failureCount,
     failureReasons: envio.failureReasons ?? null,
+    pessoas: envio.pessoasCount,
+    leram: envio.lidasCount,
     createdAt: envio.createdAt,
     finishedAt: envio.finishedAt,
     sentBy: autor

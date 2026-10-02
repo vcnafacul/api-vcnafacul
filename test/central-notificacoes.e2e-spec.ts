@@ -11,6 +11,10 @@ import { UserRepository } from 'src/modules/user/user.repository';
 import { UserService } from 'src/modules/user/user.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import * as request from 'supertest';
+import {
+  PushNotification,
+  StatusDoEnvio,
+} from 'src/modules/push/push-notification.entity';
 import { DataSource } from 'typeorm';
 import { CreateUserDtoInputFaker } from './faker/create-user.dto.input.faker';
 import { createNestAppTest } from './utils/createNestAppTest';
@@ -184,5 +188,56 @@ describe('Central de notificações (e2e)', () => {
     expect(restam.sort()).toEqual([lida59, recente].sort());
     expect(restam).not.toContain(lida61);
     expect(restam).not.toContain(velha);
+  });
+
+  describe('quantos leram (card 05)', () => {
+    it('⚠️ lida soma no envio, uma vez; o número não cai com a limpeza', async () => {
+      const [a, b, c] = await Promise.all([
+        novaPessoa(),
+        novaPessoa(),
+        novaPessoa(),
+      ]);
+      const envio = await db.getRepository(PushNotification).save(
+        Object.assign(new PushNotification(), {
+          title: 'Aviso',
+          body: 'b',
+          audience: { type: 'all' },
+          status: StatusDoEnvio.done,
+          pessoasCount: 3,
+        }),
+      );
+      await central.gravar([a.id, b.id, c.id], {
+        titulo: 'Aviso',
+        corpo: 'b',
+        url: null,
+        pushNotificationId: envio.id,
+      });
+      const deA = await repo().findOneByOrFail({ userId: a.id });
+
+      await http()
+        .patch(`/me/notificacoes/${deA.id}/lida`)
+        .set('Authorization', a.bearer)
+        .expect(204);
+      // de novo: não soma duas vezes
+      await http()
+        .patch(`/me/notificacoes/${deA.id}/lida`)
+        .set('Authorization', a.bearer)
+        .expect(204);
+      await http()
+        .patch('/me/notificacoes/lidas')
+        .set('Authorization', b.bearer)
+        .expect(200);
+
+      const lidas = async () =>
+        (await db.getRepository(PushNotification).findOneBy({ id: envio.id }))
+          .lidasCount;
+      expect(await lidas()).toBe(2);
+
+      await service.limpar(new Date(Date.now() + 2 * 60 * MIN));
+      expect(
+        await repo().count({ where: { pushNotificationId: envio.id } }),
+      ).toBe(1);
+      expect(await lidas()).toBe(2);
+    });
   });
 });
