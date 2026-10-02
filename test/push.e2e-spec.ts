@@ -832,6 +832,8 @@ describe('PushService (e2e)', () => {
           .send(corpo(audience))
           .expect(202);
         expect(body.pessoas).toBe(2);
+        const detalhe = await esperarTerminar(body.id);
+        expect(detalhe).toMatchObject({ pessoas: 2, leram: 0 });
 
         for (const u of [comPush, semPush]) {
           expect(await daCentral(u.id)).toEqual([
