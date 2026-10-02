@@ -3,8 +3,13 @@ import { InscriptionCourseRepository } from 'src/modules/prepCourse/InscriptionC
 import { StudentCourseRepository } from 'src/modules/prepCourse/studentCourse/student-course.repository';
 import { CollaboratorRepository } from 'src/modules/prepCourse/collaborator/collaborator.repository';
 import { UserRepository } from 'src/modules/user/user.repository';
-import { ChatService } from './chat.service';
+import {
+  ChatService,
+  INTERVALO_PUSH_DO_CHAT_MS,
+  deveAvisarEstudante,
+} from './chat.service';
 import { FirebaseService } from 'src/shared/modules/firebase/firebase.service';
+import { PushService } from 'src/modules/push/push.service';
 
 describe('ChatService', () => {
   let service: ChatService;
@@ -20,6 +25,7 @@ describe('ChatService', () => {
   const mockCollaboratorRepository = { findOneByUserId: jest.fn() };
   const mockInscriptionCourseRepository = { findOneWithPartnerPrep: jest.fn() };
   const mockStudentCourseRepository = { findOneWithPartnerPrep: jest.fn() };
+  const mockPush = { sendToUsers: jest.fn().mockResolvedValue(undefined) };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -29,6 +35,7 @@ describe('ChatService', () => {
       mockCollaboratorRepository as unknown as CollaboratorRepository,
       mockInscriptionCourseRepository as unknown as InscriptionCourseRepository,
       mockStudentCourseRepository as unknown as StudentCourseRepository,
+      mockPush as unknown as PushService,
     );
   });
 
@@ -273,6 +280,50 @@ describe('ChatService', () => {
 
       expect(conversationsRef.add).toHaveBeenCalledWith(
         expect.objectContaining({ partnerPrepId: 'prep-xyz' }),
+      );
+    });
+
+    it('⚠️ procura a conversa aberta DO DESTINO da página (tickets/031, card 02)', async () => {
+      conversationsRef.get.mockResolvedValueOnce({ empty: true, docs: [] });
+      conversationsRef.get.mockResolvedValueOnce({ empty: true, docs: [] });
+      mockInscriptionCourseRepository.findOneWithPartnerPrep.mockResolvedValue({
+        partnerPrepCourse: { id: 'cursinho-A' },
+      });
+
+      await service.openConversation(
+        'u1',
+        'João',
+        { page: '/y', userAgent: 'UA', device: 'desktop', browser: 'chrome' },
+        { inscriptionCourseId: 'ic-uuid' },
+      );
+
+      // 1ª busca: a aberta, já filtrada pelo cursinho A (não "qualquer aberta").
+      expect(conversationsRef.where.mock.calls.slice(0, 3)).toEqual([
+        ['userId', '==', 'u1'],
+        ['status', '==', 'open'],
+        ['partnerPrepId', '==', 'cursinho-A'],
+      ]);
+    });
+
+    it('sem contexto, o destino é o projeto (partnerPrepId null)', async () => {
+      conversationsRef.get.mockResolvedValueOnce({ empty: true, docs: [] });
+      conversationsRef.get.mockResolvedValueOnce({ empty: true, docs: [] });
+
+      await service.openConversation('u1', 'João', {
+        page: '/y',
+        userAgent: 'UA',
+        device: 'desktop',
+        browser: 'chrome',
+      });
+
+      expect(conversationsRef.where).toHaveBeenNthCalledWith(
+        3,
+        'partnerPrepId',
+        '==',
+        null,
+      );
+      expect(conversationsRef.add).toHaveBeenCalledWith(
+        expect.objectContaining({ partnerPrepId: null }),
       );
     });
   });
@@ -648,6 +699,33 @@ describe('ChatService', () => {
         .mockResolvedValue({ global: true, partnerPrepId: null });
     });
 
+    it('⚠️ só reaproveita a conversa do PROJETO e grava partnerPrepId: null', async () => {
+      mockUserRepo.findOneBy.mockResolvedValue({
+        id: 'student1',
+        firstName: 'Ana',
+        lastName: 'Souza',
+        socialName: null,
+        useSocialName: false,
+        role: { name: 'estudante', supportAgent: false },
+      });
+      mockConvsCol.get.mockResolvedValue({ empty: true, docs: [] });
+
+      await service.initiateConversation('support1', 'Sup', 'student1', 'oi');
+
+      expect(mockConvsCol.where).toHaveBeenCalledWith(
+        'partnerPrepId',
+        '==',
+        null,
+      );
+      const conv = mockTx.set.mock.calls.find(
+        ([ref]) => ref === mockConvDoc,
+      )?.[1];
+      expect(conv).toEqual(expect.objectContaining({ partnerPrepId: null }));
+      expect(Object.prototype.hasOwnProperty.call(conv, 'partnerPrepId')).toBe(
+        true,
+      );
+    });
+
     it('cria conversation + primeira mensagem quando não existe conv aberta', async () => {
       mockUserRepo.findOneBy.mockResolvedValue({
         id: 'student1',
@@ -928,6 +1006,125 @@ describe('ChatService', () => {
       await expect(
         service.initiateConversation('agente', 'Agente', 'aluno', 'oi'),
       ).rejects.toThrow(/suporte do projeto/i);
+    });
+  });
+
+  describe('push da mensagem do suporte (tickets/031, card 07)', () => {
+    const AGORA = new Date('2026-10-02T12:00:00Z').getTime();
+    let convDocRef: { get: jest.Mock; update: jest.Mock };
+    const txOps = { set: jest.fn(), update: jest.fn() };
+
+    const conversa = (extra: Record<string, unknown> = {}) =>
+      convDocRef.get.mockResolvedValue({
+        exists: true,
+        data: () => ({
+          status: 'open',
+          userId: 'aluno',
+          partnerPrepId: null,
+          unreadCountStudent: 0,
+          ...extra,
+        }),
+      });
+    const enviar = (senderType: 'support' | 'student', content = 'Oi!') =>
+      service.sendMessage({
+        senderId: senderType === 'support' ? 'agente' : 'aluno',
+        senderName: 'X',
+        senderType,
+        conversationId: 'c1',
+        content,
+      });
+
+    beforeEach(() => {
+      jest.useFakeTimers().setSystemTime(AGORA);
+      txOps.update.mockClear();
+      mockPush.sendToUsers.mockReset().mockResolvedValue(undefined);
+      mockUserRepo.findOneBy.mockResolvedValue({
+        role: { supportAgent: true },
+      });
+      convDocRef = { get: jest.fn(), update: jest.fn() };
+      mockFirebase.firestore = () => ({
+        collection: (name: string) =>
+          name === 'conversations'
+            ? { doc: () => convDocRef }
+            : { doc: () => ({ id: 'm1' }) },
+        runTransaction: jest.fn(async (cb) => cb(txOps)),
+      });
+    });
+    afterEach(() => jest.useRealTimers());
+
+    it('regra: sem não lidas avisa; com não lidas, só 10 min depois do último', () => {
+      const ts = (ms: number) => ({ toMillis: () => ms });
+      expect(deveAvisarEstudante({ unreadCountStudent: 0 }, AGORA)).toBe(true);
+      expect(
+        deveAvisarEstudante(
+          { unreadCountStudent: 3, ultimoPushEstudanteEm: ts(AGORA - 60_000) },
+          AGORA,
+        ),
+      ).toBe(false);
+      expect(
+        deveAvisarEstudante(
+          {
+            unreadCountStudent: 3,
+            ultimoPushEstudanteEm: ts(AGORA - INTERVALO_PUSH_DO_CHAT_MS),
+          },
+          AGORA,
+        ),
+      ).toBe(true);
+    });
+
+    it('mensagem do suporte → push para o estudante, com o link da conversa', async () => {
+      conversa({ partnerPrepId: 'A', cursinhoName: 'Cursinho Alfa' });
+      await enviar('support', 'Sua matrícula foi confirmada');
+      await Promise.resolve();
+
+      expect(mockPush.sendToUsers).toHaveBeenCalledWith(['aluno'], {
+        title: 'Cursinho Alfa',
+        body: 'Sua matrícula foi confirmada',
+        url: '/dashboard?conversa=c1',
+        tag: 'chat-c1',
+      });
+      // O ritmo é gravado junto com a mensagem.
+      expect(txOps.update.mock.calls[0][1]).toHaveProperty(
+        'ultimoPushEstudanteEm',
+      );
+    });
+
+    it('do projeto: título "Suporte Você na Facul"; texto longo é cortado', async () => {
+      conversa();
+      await enviar('support', 'a'.repeat(300));
+      await Promise.resolve();
+
+      const [, payload] = mockPush.sendToUsers.mock.calls[0];
+      expect(payload.title).toBe('Suporte Você na Facul');
+      expect(payload.body.length).toBeLessThanOrEqual(120);
+      expect(payload.body.endsWith('…')).toBe(true);
+    });
+
+    it('ainda não leu e o último push foi há 1 min → sem push novo', async () => {
+      conversa({
+        unreadCountStudent: 2,
+        ultimoPushEstudanteEm: { toMillis: () => AGORA - 60_000 },
+      });
+      await enviar('support');
+      await Promise.resolve();
+
+      expect(mockPush.sendToUsers).not.toHaveBeenCalled();
+      expect(txOps.update.mock.calls[0][1]).not.toHaveProperty(
+        'ultimoPushEstudanteEm',
+      );
+    });
+
+    it('mensagem do estudante → nenhum push', async () => {
+      conversa();
+      await enviar('student');
+      await Promise.resolve();
+      expect(mockPush.sendToUsers).not.toHaveBeenCalled();
+    });
+
+    it('⚠️ push falhando não derruba o envio da mensagem', async () => {
+      conversa();
+      mockPush.sendToUsers.mockRejectedValue(new Error('push desligado'));
+      await expect(enviar('support')).resolves.toEqual({ id: 'm1' });
     });
   });
 });
