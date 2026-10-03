@@ -115,6 +115,20 @@ export class IndicadoresRepository {
     );
   }
 
+  /** Usuários dos alunos do período (matrícula confirmada), por turma. */
+  async usuariosDasTurmas(
+    turmaIds: string[],
+  ): Promise<{ turmaId: string; userId: string }[]> {
+    if (turmaIds.length === 0) return [];
+    return this.em.query(
+      `SELECT sc.classId AS turmaId, sc.user_id AS userId
+         FROM student_course sc
+        WHERE sc.classId IN (?) AND sc.deleted_at IS NULL
+          AND sc.cod_enrolled IS NOT NULL`,
+      [turmaIds],
+    );
+  }
+
   /** O papel da pessoa tem `gerenciarEstudantes`? */
   async podeGerenciarEstudantes(userId: string): Promise<boolean> {
     const [linha] = await this.em.query(
