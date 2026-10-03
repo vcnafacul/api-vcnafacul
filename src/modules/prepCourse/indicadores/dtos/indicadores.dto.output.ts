@@ -26,3 +26,26 @@ export interface IndicadoresDtoOutput {
   /** Soma das turmas, um ponto por dia gravado (+ hoje, no período aberto). */
   serie: { dia: string; metricas: Metricas }[];
 }
+
+export interface AlunoSumindoDtoOutput {
+  alunoId: string;
+  nome: string;
+  turma: string;
+  /** `YYYY-MM-DD`; `null` se nunca veio. */
+  ultimaPresenca: string | null;
+  faltasSeguidas: number;
+  /** Só para quem tem `gerenciarEstudantes` (R7). */
+  telefone?: string | null;
+}
+
+export interface ResumoDosIndicadoresDtoOutput {
+  /**
+   * A pessoa é de um cursinho? A dashboard mantém o total da plataforma para
+   * a equipe do projeto e o troca pelos indicadores para o cursinho.
+   */
+  cursinho: boolean;
+  /** Os períodos em andamento somados (normalmente um). */
+  periodos: { id: string; nome: string }[];
+  /** `null` sem período em andamento (a dashboard esconde os KPIs). */
+  metricas: Metricas | null;
+}
