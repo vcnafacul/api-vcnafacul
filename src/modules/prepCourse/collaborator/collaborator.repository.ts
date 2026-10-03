@@ -63,6 +63,22 @@ export class CollaboratorRepository extends BaseRepository<Collaborator> {
       .getOne();
   }
 
+  /**
+   * O que inativar/reativar precisa (tickets-documentacao, card 02): a função
+   * atual, a guardada e o cursinho de cada uma.
+   */
+  async findOneParaAtivacao(id: string): Promise<Collaborator | null> {
+    return await this.repository
+      .createQueryBuilder('entity')
+      .leftJoinAndSelect('entity.user', 'user')
+      .leftJoinAndSelect('user.role', 'role')
+      .leftJoinAndSelect('entity.partnerPrepCourse', 'prep')
+      .leftJoinAndSelect('entity.roleBeforeInactive', 'anterior')
+      .leftJoinAndSelect('anterior.partnerPrepCourse', 'anteriorPrep')
+      .where('entity.id = :id', { id })
+      .getOne();
+  }
+
   /** O cursinho do colaborador (id), sem carregar mais nada. */
   async cursinhoDoColaborador(collaboratorId: string): Promise<string | null> {
     const r = await this.repository

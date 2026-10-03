@@ -8,6 +8,7 @@ import {
   OneToOne,
 } from 'typeorm';
 import { BaseEntity } from '../../../shared/modules/base/entity.base';
+import { Role } from '../../role/role.entity';
 import { User } from '../../user/user.entity';
 import { AttendanceRecord } from '../attendance/attendanceRecord/attendance-record.entity';
 import { Class } from '../class/class.entity';
@@ -37,6 +38,14 @@ export class Collaborator extends BaseEntity {
 
   @Column({ default: true })
   public actived: boolean;
+
+  /**
+   * A função de antes da inativação, devolvida ao reativar
+   * (tickets-documentacao, card 02). `null` com o colaborador ativo.
+   */
+  @ManyToOne(() => Role, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'role_before_inactive_id' })
+  public roleBeforeInactive: Role | null;
 
   @ManyToMany(() => Class, (classes) => classes.admins)
   public Class: Class[];

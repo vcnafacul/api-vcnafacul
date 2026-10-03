@@ -67,6 +67,11 @@ describe('Página do cursinho (e2e)', () => {
     await apaga('cursinho_pagina', ids.paginas);
     await apaga('student_course', ids.alunos);
     await apaga('inscription_course', ids.inscricoes);
+    // Ativar/inativar colaborador grava em log_partner (FK no cursinho).
+    if (ids.cursinhos.length)
+      await db.query(`DELETE FROM log_partner WHERE partner_id IN (?)`, [
+        ids.cursinhos,
+      ]);
     await apaga('partner_prep_course', ids.cursinhos);
     await apaga('geolocations', ids.geos);
     await apaga('users', ids.users);
@@ -281,6 +286,9 @@ describe('Página do cursinho (e2e)', () => {
       const A = await cursinho('Cursinho do cache');
       await pagina(A, `cache-${sufixo}`, true);
       const u = await usuario();
+      // Quem ativa precisa ser do mesmo cursinho (tickets-documentacao, 02).
+      const gestor = await usuario();
+      await colaborador(A, gestor);
       const colabId = randomUUID();
       await db.query(
         `INSERT INTO collaborators (id, user_id, partner_prep_course_id, actived) VALUES (?, ?, ?, 0)`,
@@ -294,13 +302,14 @@ describe('Página do cursinho (e2e)', () => {
             .expect(200)
         ).body.colaboradores.map((c: { name: string }) => c.name);
 
-      expect(await nomes()).toEqual([]); // página e lista entram no cache
-
-      await colaboradores.changeActive(colabId);
+      // página e lista entram no cache (só o gestor, ativo)
       expect(await nomes()).toEqual(['Ana Teste']);
 
-      await colaboradores.changeActive(colabId);
-      expect(await nomes()).toEqual([]);
+      await colaboradores.changeActive(colabId, gestor);
+      expect(await nomes()).toEqual(['Ana Teste', 'Ana Teste']);
+
+      await colaboradores.changeActive(colabId, gestor);
+      expect(await nomes()).toEqual(['Ana Teste']);
     });
   });
 
