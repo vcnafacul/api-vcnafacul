@@ -526,4 +526,88 @@ describe('Indicadores do cursinho (e2e)', () => {
       expect(body.serie.map((s) => s.metricas.ativos)).toEqual([1, 0, 0, 0]);
     });
   });
+  describe('quantos abandonaram? (card 04)', () => {
+    it('conta cancelamentos por motivo; "Outros: ..." vira Outros; texto antigo, "Sem motivo na lista"', async () => {
+      const c = await novoCursinho();
+      const p = await novoPeriodo(c, dia(-30), dia(30));
+      const a = await novaTurma(c, p.id, 'A');
+      const b = await novaTurma(c, p.id, 'B');
+      await matricular(c, a);
+      const motivos = [
+        [a, 'Transporte'],
+        [a, 'Desistência inicial'],
+        [b, 'Outros: mudou de cidade'],
+        [b, 'foi embora'],
+        [b, 'Transporte'],
+      ];
+      for (const [turma, motivo] of motivos) {
+        const aluno = await matricular(c, turma);
+        await studentService.cancelEnrolled(aluno, motivo);
+      }
+
+      const { body } = await indicadores(c, p.id).expect(200);
+
+      expect(body.cursinho).toMatchObject({
+        alunos: 6,
+        ativos: 1,
+        cancelados: 5,
+        desistenciaInicial: 1,
+        canceladosPorMotivo: {
+          Transporte: 2,
+          'Desistência inicial': 1,
+          Outros: 1,
+          'Sem motivo na lista': 1,
+        },
+      });
+      expect(body.turmas[0].metricas.cancelados).toBe(2);
+    });
+
+    it('reativado não conta; vale o motivo do último cancelamento', async () => {
+      const c = await novoCursinho();
+      const p = await novoPeriodo(c, dia(-30), dia(30));
+      const t = await novaTurma(c, p.id);
+      const reativado = await matricular(c, t);
+      await studentService.cancelEnrolled(reativado, 'Rotina');
+      await recuarLogs(reativado, 1);
+      await studentService.activeEnrolled(reativado);
+      const duasVezes = await matricular(c, t);
+      await studentService.cancelEnrolled(duasVezes, 'Rotina');
+      await recuarLogs(duasVezes, 2);
+      await studentService.activeEnrolled(duasVezes);
+      await recuarLogs(duasVezes, 1, StatusApplication.Enrolled);
+      await studentService.cancelEnrolled(duasVezes, 'Abandono');
+
+      const m = await metricasDaTurma(t);
+
+      expect(m).toMatchObject({
+        cancelados: 1,
+        canceladosPorMotivo: { Abandono: 1 },
+      });
+    });
+
+    it('⚠️ período encerrado mantém os cancelamentos (pelo histórico, não pelo status)', async () => {
+      const c = await novoCursinho();
+      const p = await novoPeriodo(c, dia(-40), dia(30));
+      const t = await novaTurma(c, p.id);
+      const aluno = await matricular(c, t);
+      await studentService.cancelEnrolled(aluno, 'Rotina');
+      await recuarLogs(aluno, 20);
+      await db.query('UPDATE course_periods SET endDate = ? WHERE id = ?', [
+        new Date(`${dia(-10)}T00:00:00Z`),
+        p.id,
+      ]);
+      // como o cron antigo deixava: cancelado vira "Encerrada"
+      await db.query(
+        'UPDATE student_course SET applicationStatus = ? WHERE id = ?',
+        [StatusApplication.EnrollmentClosed, aluno],
+      );
+
+      const { body } = await indicadores(c, p.id).expect(200);
+
+      expect(body.cursinho).toMatchObject({
+        cancelados: 1,
+        canceladosPorMotivo: { Rotina: 1 },
+      });
+    });
+  });
 });

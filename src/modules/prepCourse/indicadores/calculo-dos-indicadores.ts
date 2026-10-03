@@ -5,6 +5,10 @@ import { StatusApplication } from '../studentCourse/enums/stastusApplication';
 import { DESCRICAO_DA_REATIVACAO } from '../studentCourse/log-student/descricoes-do-log';
 import { fimDoDia } from './datas';
 import { Metricas } from './metricas';
+import {
+  MOTIVO_DESISTENCIA_INICIAL,
+  motivoDoCancelamento,
+} from './motivos-de-cancelamento';
 
 /** Um aluno de uma turma, com as datas que os indicadores usam. */
 export interface AlunoDaTurma {
@@ -16,6 +20,8 @@ export interface AlunoDaTurma {
   canceladoEm: Date | null;
   /** Última reativação até o dia de referência. */
   reativadoEm: Date | null;
+  /** Texto do último cancelamento até o dia (o motivo escolhido). */
+  descricaoDoCancelamento: string | null;
 }
 
 /**
@@ -52,7 +58,16 @@ export class CalculoDosIndicadores {
     dia: string,
   ): Promise<Map<string, Metricas>> {
     const porTurma = new Map<string, Metricas>(
-      turmaIds.map((id) => [id, { alunos: 0, ativos: 0 } as Metricas]),
+      turmaIds.map((id) => [
+        id,
+        {
+          alunos: 0,
+          ativos: 0,
+          cancelados: 0,
+          canceladosPorMotivo: {},
+          desistenciaInicial: 0,
+        } as Metricas,
+      ]),
     );
     if (turmaIds.length === 0) return porTurma;
 
@@ -64,7 +79,17 @@ export class CalculoDosIndicadores {
       // 02 — alunos do período: matrícula confirmada até o dia
       m.alunos = (m.alunos as number) + 1;
       // 03 — ativos: e sem cancelamento valendo no dia
-      if (!estavaCancelado(a)) m.ativos = (m.ativos as number) + 1;
+      if (!estavaCancelado(a)) {
+        m.ativos = (m.ativos as number) + 1;
+        continue;
+      }
+      // 04 — cancelamentos, pelo motivo escolhido
+      m.cancelados = (m.cancelados as number) + 1;
+      const motivo = motivoDoCancelamento(a.descricaoDoCancelamento);
+      const porMotivo = m.canceladosPorMotivo as Record<string, number>;
+      porMotivo[motivo] = (porMotivo[motivo] ?? 0) + 1;
+      if (motivo === MOTIVO_DESISTENCIA_INICIAL)
+        m.desistenciaInicial = (m.desistenciaInicial as number) + 1;
     }
     return porTurma;
   }
@@ -93,6 +118,7 @@ export class CalculoDosIndicadores {
       matriculadoEm: Date;
       canceladoEm: Date | null;
       reativadoEm: Date | null;
+      descricaoDoCancelamento: string | null;
     }[] = await this.em.query(
       `SELECT * FROM (
          SELECT sc.id, sc.classId AS turmaId,
@@ -105,6 +131,10 @@ export class CalculoDosIndicadores {
                 (SELECT MAX(l.created_at) FROM log_student l
                   WHERE l.student_id = sc.id AND l.applicationStatus = ?
                     AND l.created_at <= ?) AS canceladoEm,
+                (SELECT l.description FROM log_student l
+                  WHERE l.student_id = sc.id AND l.applicationStatus = ?
+                    AND l.created_at <= ?
+                  ORDER BY l.created_at DESC LIMIT 1) AS descricaoDoCancelamento,
                 (SELECT MAX(l.created_at) FROM log_student l
                   WHERE l.student_id = sc.id AND l.applicationStatus = ?
                     AND l.description = ? AND l.created_at <= ?) AS reativadoEm
@@ -116,6 +146,8 @@ export class CalculoDosIndicadores {
        WHERE a.matriculadoEm <= ?`,
       [
         StatusApplication.Enrolled,
+        StatusApplication.EnrollmentCancelled,
+        ate,
         StatusApplication.EnrollmentCancelled,
         ate,
         StatusApplication.Enrolled,
