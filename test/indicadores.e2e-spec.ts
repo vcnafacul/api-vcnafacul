@@ -8,6 +8,9 @@ import { LogGeoRepository } from 'src/modules/geo/log-geo/log-geo.repository';
 import { AttendanceRecordService } from 'src/modules/prepCourse/attendance/attendanceRecord/attendance-record.service';
 import { AttendancePeriod } from 'src/modules/prepCourse/attendance/attendanceRecord/enum/attendance-period.enum';
 import { ClassService } from 'src/modules/prepCourse/class/class.service';
+import { ClassEssaySnapshot } from 'src/modules/prepCourse/class/essay-analytics/class-essay-snapshot.entity';
+import { RelatorioHttpService } from 'src/modules/simulado/relatorio/relatorio-http.service';
+import { SimuladoHttpService } from 'src/shared/services/simulado-http.service';
 import { CoursePeriodService } from 'src/modules/prepCourse/coursePeriod/course-period.service';
 import { diaEmSaoPaulo } from 'src/modules/prepCourse/indicadores/datas';
 import { IndicadorDiarioTurma } from 'src/modules/prepCourse/indicadores/indicador-diario-turma.entity';
@@ -789,6 +792,136 @@ describe('Indicadores do cursinho (e2e)', () => {
         .set('Authorization', c.bearer)
         .expect(200);
       expect(body).toEqual([]);
+    });
+  });
+  describe('como o desempenho evoluiu? (card 09)', () => {
+    afterEach(() => jest.restoreAllMocks());
+
+    const mesDe = (n: number) => dia(n).slice(0, 7);
+
+    const redacao = (
+      classId: string,
+      month: string,
+      geral: number,
+      n: number,
+    ) =>
+      db.getRepository(ClassEssaySnapshot).save({
+        classId,
+        month,
+        monthStart: new Date(`${month}-01T03:00:00Z`),
+        monthEnd: new Date(`${month}-28T03:00:00Z`),
+        userIds: [],
+        generatedAt: new Date(),
+        sourceEssayCount: n,
+        payload: {
+          geral,
+          competencias: { c1: 0, c2: 0, c3: 0, c4: 0, c5: 0 },
+          studentsWithAtLeastOneHumanReview: n,
+          essaysReviewedByHuman: n,
+          essaysSubmittedTotal: n,
+          humanReviewRate: 1,
+        },
+      });
+
+    it('aplicações por cartão só dos alunos do período, em ordem de data; meses ponderados', async () => {
+      const c = await novoCursinho();
+      const p = await novoPeriodo(c, dia(-60), dia(30));
+      const a = await novaTurma(c, p.id, 'A');
+      const b = await novaTurma(c, p.id, 'B');
+      await matricular(c, a);
+      await matricular(c, b);
+      // aluno de OUTRO período do mesmo cursinho — não pode ir no recorte
+      const outro = await novoPeriodo(c, dia(-400), dia(-300), 'Antigo');
+      await novaTurma(c, outro.id);
+
+      const busca = jest
+        .spyOn(RelatorioHttpService.prototype, 'buscarSimulados')
+        .mockImplementation(async (_cursinho, usuarios) => ({
+          simulados: [
+            {
+              simuladoId: 's2',
+              nome: 'Segundo',
+              comLeituraConcluida: usuarios.length,
+              primeiroEnvio: `${dia(-5)}T13:00:00.000Z`,
+              mediaAproveitamento: 0.655,
+            },
+            {
+              simuladoId: 's1',
+              nome: 'Primeiro',
+              comLeituraConcluida: usuarios.length,
+              primeiroEnvio: `${dia(-30)}T13:00:00.000Z`,
+              mediaAproveitamento: 0.5,
+            },
+          ],
+        }));
+      jest
+        .spyOn(SimuladoHttpService.prototype, 'listUserGroupAggregates')
+        .mockImplementation(async (classId) => [
+          {
+            month: mesDe(-10),
+            payload:
+              classId === a
+                ? { geral: 0.5, studentsWithAtLeastOneCompletedAttempt: 2 }
+                : { geral: 0.8, studentsWithAtLeastOneCompletedAttempt: 1 },
+          },
+          // fora do período: não aparece
+          {
+            month: mesDe(-200),
+            payload: { geral: 1, studentsWithAtLeastOneCompletedAttempt: 9 },
+          },
+        ]);
+      await redacao(a, mesDe(-10), 600, 1);
+      await redacao(b, mesDe(-10), 900, 2);
+
+      const { body } = await http()
+        .get(`/indicadores/desempenho?periodoId=${p.id}`)
+        .set('Authorization', c.bearer)
+        .expect(200);
+
+      // 1ª chamada = o período inteiro (as outras são por turma)
+      expect(busca.mock.calls[0][1]).toHaveLength(2);
+      expect(body.aplicacoes.map((x) => [x.nome, x.media])).toEqual([
+        ['Primeiro', 50],
+        ['Segundo', 65.5],
+      ]);
+      expect(body.porTurma).toEqual(
+        expect.arrayContaining([
+          { turmaId: a, ultimaAplicacao: { nome: 'Segundo', media: 65.5 } },
+        ]),
+      );
+      expect(body.porMes).toEqual([
+        {
+          mes: mesDe(-10),
+          simulados: { participantes: 3, media: 60 },
+          redacao: { corrigidas: 3, media: 800 },
+        },
+      ]);
+    });
+
+    it('turma sem aluno não chama o ms; período de outro cursinho → 404', async () => {
+      const c = await novoCursinho();
+      const p = await novoPeriodo(c, dia(-10), dia(10));
+      await novaTurma(c, p.id);
+      const busca = jest.spyOn(
+        RelatorioHttpService.prototype,
+        'buscarSimulados',
+      );
+      jest
+        .spyOn(SimuladoHttpService.prototype, 'listUserGroupAggregates')
+        .mockResolvedValue([]);
+
+      const { body } = await http()
+        .get(`/indicadores/desempenho?periodoId=${p.id}`)
+        .set('Authorization', c.bearer)
+        .expect(200);
+
+      expect(busca).not.toHaveBeenCalled();
+      expect(body.aplicacoes).toEqual([]);
+      const outro = await novoCursinho();
+      await http()
+        .get(`/indicadores/desempenho?periodoId=${p.id}`)
+        .set('Authorization', outro.bearer)
+        .expect(404);
     });
   });
 });
