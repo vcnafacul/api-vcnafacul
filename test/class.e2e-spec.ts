@@ -752,4 +752,53 @@ describe('Class (e2e)', () => {
     const comRestrito = await getTurma(tokenRestrito, classId);
     expect(comRestrito.students[0].email).toContain('*');
   }, 60000);
+  it('⚠️ fim do período: encerra só os matriculados, com log; o cancelado continua cancelado', async () => {
+    const { token, classId, estudantes } = await criarTurmaComEstudantes(2);
+    const [ativo, cancelado] = estudantes;
+    await studentCourseService.cancelEnrolled(cancelado.studentId, 'Rotina');
+
+    // vence o período da turma (terminou ontem)
+    await dataSource.query(
+      `UPDATE course_periods SET endDate = DATE_SUB(CURDATE(), INTERVAL 1 DAY), startDate = DATE_SUB(CURDATE(), INTERVAL 60 DAY)
+       WHERE id = (SELECT course_period_id FROM classes WHERE id = ?)`,
+      [classId],
+    );
+
+    await coursePeriodService.closeExpiredCoursePeriods();
+
+    const status = async (id: string) =>
+      (await studentCourseService.findOneBy({ id })).applicationStatus;
+    expect(await status(ativo.studentId)).toBe(
+      StatusApplication.EnrollmentClosed,
+    );
+    expect(await status(cancelado.studentId)).toBe(
+      StatusApplication.EnrollmentCancelled,
+    );
+
+    const logs = await dataSource.query(
+      'SELECT student_id, description FROM log_student WHERE applicationStatus = ? AND student_id IN (?, ?)',
+      [
+        StatusApplication.EnrollmentClosed,
+        ativo.studentId,
+        cancelado.studentId,
+      ],
+    );
+    expect(logs).toHaveLength(1);
+    expect(logs[0].student_id).toBe(ativo.studentId);
+    expect(logs[0].description).toContain('fim do período letivo');
+
+    // a aba de cancelados da turma não esvazia com o fim do período
+    const lista = await getCancelados(token, classId);
+    expect(lista.map((e: { id: string }) => e.id)).toEqual([
+      cancelado.studentId,
+    ]);
+
+    // rodar de novo não grava outro log
+    await coursePeriodService.closeExpiredCoursePeriods();
+    const [{ n }] = await dataSource.query(
+      'SELECT COUNT(*) AS n FROM log_student WHERE applicationStatus = ? AND student_id = ?',
+      [StatusApplication.EnrollmentClosed, ativo.studentId],
+    );
+    expect(Number(n)).toBe(1);
+  }, 60000);
 });

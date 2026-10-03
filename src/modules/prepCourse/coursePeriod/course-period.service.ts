@@ -5,12 +5,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { InjectDataSource } from '@nestjs/typeorm';
+import { DataSource, In } from 'typeorm';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { PartnerPrepCourseRepository } from '../partnerPrepCourse/partner-prep-course.repository';
 import { StatusApplication } from '../studentCourse/enums/stastusApplication';
-import { StudentCourseRepository } from '../studentCourse/student-course.repository';
+import { LogStudent } from '../studentCourse/log-student/log-student.entity';
+import { StudentCourse } from '../studentCourse/student-course.entity';
 import { CoursePeriod } from './course-period.entity';
 import { CoursePeriodRepository } from './course-period.repository';
 import { CoursePeriodDtoOutput } from './dtos/course-period.dto.output';
@@ -22,8 +25,9 @@ export class CoursePeriodService extends BaseService<CoursePeriod> {
   constructor(
     private readonly repository: CoursePeriodRepository,
     private readonly partnerRepository: PartnerPrepCourseRepository,
-    private readonly studentCourseRepository: StudentCourseRepository,
     private readonly discordWebhook: DiscordWebhook,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
   ) {
     super(repository);
   }
@@ -249,15 +253,16 @@ export class CoursePeriodService extends BaseService<CoursePeriod> {
       let totalStudentsUpdated = 0;
 
       for (const period of expiredPeriods) {
-        // Coletar todos os IDs dos estudantes das turmas deste período
+        // Só encerra quem está matriculado. Cancelado, não confirmado etc.
+        // continuam como estão: sobrescrever o cancelamento apagava a evasão
+        // do status (tickets/033, card 00).
         const studentIds: string[] = [];
 
         for (const classEntity of period.classes || []) {
           for (const studentCourse of classEntity.students || []) {
-            // Só atualizar estudantes que não estão já com status de matrícula encerrada
             if (
-              studentCourse.applicationStatus !==
-              StatusApplication.EnrollmentClosed
+              !studentCourse.deletedAt &&
+              studentCourse.applicationStatus === StatusApplication.Enrolled
             ) {
               studentIds.push(studentCourse.id);
             }
@@ -265,11 +270,7 @@ export class CoursePeriodService extends BaseService<CoursePeriod> {
         }
 
         if (studentIds.length > 0) {
-          // Atualizar status dos estudantes para "Matrícula Encerrada"
-          await this.studentCourseRepository.updateStudentStatus(
-            studentIds,
-            StatusApplication.EnrollmentClosed,
-          );
+          await this.encerrarMatriculas(studentIds, period);
 
           totalStudentsUpdated += studentIds.length;
 
@@ -291,5 +292,33 @@ export class CoursePeriodService extends BaseService<CoursePeriod> {
         `❌ Erro ao processar encerramento de períodos letivos: ${error.message}`,
       );
     }
+  }
+
+  /**
+   * Encerra as matrículas e grava no histórico de cada estudante o motivo —
+   * antes o status mudava sem log, e o histórico não explicava o "Encerrada".
+   */
+  private async encerrarMatriculas(studentIds: string[], period: CoursePeriod) {
+    const description = `Matrícula encerrada pelo fim do período letivo "${period.name}" (${period.year})`;
+    await this.dataSource.transaction(async (manager) => {
+      await manager.update(
+        StudentCourse,
+        { id: In(studentIds) },
+        {
+          applicationStatus: StatusApplication.EnrollmentClosed,
+          updatedAt: new Date(),
+        },
+      );
+      await manager.save(
+        LogStudent,
+        studentIds.map((studentId) =>
+          manager.create(LogStudent, {
+            studentId,
+            applicationStatus: StatusApplication.EnrollmentClosed,
+            description,
+          }),
+        ),
+      );
+    });
   }
 }
