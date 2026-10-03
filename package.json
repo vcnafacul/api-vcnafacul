@@ -26,7 +26,8 @@
     "create-admin-user": "node --require ts-node/register scripts/create-admin-user.ts",
     "roles:cleanup:permissions": "node --require ts-node/register scripts/delete-roles-without-permissions.ts",
     "chat:backfill:partner-prep-id": "node --require ts-node/register scripts/backfill-chat-partner-prep-id.ts",
-    "periodo:recuperar-cancelados": "node --require ts-node/register scripts/recuperar-cancelados-do-fim-de-periodo.ts"
+    "periodo:recuperar-cancelados": "node --require ts-node/register scripts/recuperar-cancelados-do-fim-de-periodo.ts",
+    "indicadores:backfill": "node --require ts-node/register scripts/indicadores-backfill.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",

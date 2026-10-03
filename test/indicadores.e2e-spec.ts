@@ -9,7 +9,9 @@ import { ClassService } from 'src/modules/prepCourse/class/class.service';
 import { CoursePeriodService } from 'src/modules/prepCourse/coursePeriod/course-period.service';
 import { diaEmSaoPaulo } from 'src/modules/prepCourse/indicadores/datas';
 import { IndicadorDiarioTurma } from 'src/modules/prepCourse/indicadores/indicador-diario-turma.entity';
+import { IndicadoresRepository } from 'src/modules/prepCourse/indicadores/indicadores.repository';
 import { IndicadoresTask } from 'src/modules/prepCourse/indicadores/indicadores.task';
+import { preencherFotos } from 'src/modules/prepCourse/indicadores/preencher-fotos';
 import { CalculoDosIndicadores } from 'src/modules/prepCourse/indicadores/calculo-dos-indicadores';
 import { InscriptionCourseService } from 'src/modules/prepCourse/InscriptionCourse/inscription-course.service';
 import { LogPartnerRepository } from 'src/modules/prepCourse/partnerPrepCourse/log-partner/log-partner.repository';
@@ -58,6 +60,7 @@ describe('Indicadores do cursinho (e2e)', () => {
   let inscriptionService: InscriptionCourseService;
   let task: IndicadoresTask;
   let calculo: CalculoDosIndicadores;
+  let indicadoresRepository: IndicadoresRepository;
   let studentService: StudentCourseService;
   let studentRepository: StudentCourseRepository;
 
@@ -91,6 +94,7 @@ describe('Indicadores do cursinho (e2e)', () => {
     inscriptionService = mod.get(InscriptionCourseService);
     task = mod.get(IndicadoresTask);
     calculo = mod.get(CalculoDosIndicadores);
+    indicadoresRepository = mod.get(IndicadoresRepository);
     studentService = mod.get(StudentCourseService);
     studentRepository = mod.get(StudentCourseRepository);
 
@@ -408,6 +412,118 @@ describe('Indicadores do cursinho (e2e)', () => {
 
       expect(foto.metricas.alunos).toBe(2);
       expect(body.turmas[0].metricas.alunos).toBe(foto.metricas.alunos);
+    });
+  });
+  describe('quantos estão ativos? (card 03)', () => {
+    /** Matriculado há 20 dias e cancelado há `ha` dias. */
+    const canceladoHa = async (c: Cursinho, t: string, ha: number) => {
+      const aluno = await matricular(c, t);
+      await recuarLogs(aluno, 20);
+      await studentService.cancelEnrolled(aluno, 'Rotina');
+      await recuarLogs(aluno, ha, StatusApplication.EnrollmentCancelled);
+      return aluno;
+    };
+
+    it('cancelado em D conta como ativo em D-1 e não em D', async () => {
+      const c = await novoCursinho();
+      const p = await novoPeriodo(c, dia(-30), dia(30));
+      const t = await novaTurma(c, p.id);
+      await recuarLogs(await matricular(c, t), 20);
+      await canceladoHa(c, t, 10);
+
+      expect(await metricasDaTurma(t, dia(-11))).toMatchObject({
+        alunos: 2,
+        ativos: 2,
+      });
+      expect(await metricasDaTurma(t, dia(-10))).toMatchObject({
+        alunos: 2,
+        ativos: 1,
+      });
+    });
+
+    it('cancelado e reativado volta a contar a partir da reativação', async () => {
+      const c = await novoCursinho();
+      const p = await novoPeriodo(c, dia(-30), dia(30));
+      const t = await novaTurma(c, p.id);
+      const aluno = await canceladoHa(c, t, 10);
+      await studentService.activeEnrolled(aluno);
+      await db.query(
+        `UPDATE log_student SET created_at = DATE_SUB(created_at, INTERVAL 5 DAY)
+          WHERE student_id = ? AND description = 'Matrícula reativada'`,
+        [aluno],
+      );
+
+      expect((await metricasDaTurma(t, dia(-6))).ativos).toBe(0);
+      expect((await metricasDaTurma(t, dia(-5))).ativos).toBe(1);
+      expect((await metricasDaTurma(t)).ativos).toBe(1);
+    });
+
+    it('⚠️ período encerrado: ativos = quem chegou ao último dia, mesmo com todos "encerrados"', async () => {
+      const c = await novoCursinho();
+      // a matrícula só aceita turma de período aberto: matricula e depois
+      // empurra o período para o passado
+      const p = await novoPeriodo(c, dia(-40), dia(30));
+      const t = await novaTurma(c, p.id);
+      for (const a of [await matricular(c, t), await matricular(c, t)])
+        await recuarLogs(a, 30);
+      await canceladoHa(c, t, 15);
+      await db.query('UPDATE course_periods SET endDate = ? WHERE id = ?', [
+        new Date(`${dia(-10)}T00:00:00Z`),
+        p.id,
+      ]);
+      // o fechamento do período (status, sem passar pelo cron)
+      await db.query(
+        `UPDATE student_course SET applicationStatus = ? WHERE classId = ?
+            AND applicationStatus = ?`,
+        [StatusApplication.EnrollmentClosed, t, StatusApplication.Enrolled],
+      );
+
+      const { body } = await indicadores(c, p.id).expect(200);
+
+      expect(body.periodo.emAndamento).toBe(false);
+      expect(body.cursinho).toMatchObject({ alunos: 3, ativos: 2 });
+    });
+
+    it('backfill: grava os dias passados; rodar de novo não grava nada; --sobrescrever regrava', async () => {
+      const c = await novoCursinho();
+      const p = await novoPeriodo(c, dia(-3), dia(30));
+      const t = await novaTurma(c, p.id);
+      await canceladoHa(c, t, 2);
+
+      const seco = await preencherFotos(indicadoresRepository, calculo, {
+        periodoId: p.id,
+      });
+      expect(seco).toEqual({ periodos: 1, linhas: 3 });
+      expect(await fotos(t)).toHaveLength(0);
+
+      await preencherFotos(indicadoresRepository, calculo, {
+        periodoId: p.id,
+        aplicar: true,
+      });
+      const gravadas = await fotos(t);
+      expect(gravadas.map((f) => String(f.dia).slice(0, 10))).toEqual([
+        dia(-3),
+        dia(-2),
+        dia(-1),
+      ]);
+      expect(gravadas.map((f) => f.metricas.ativos)).toEqual([1, 0, 0]);
+
+      expect(
+        await preencherFotos(indicadoresRepository, calculo, {
+          periodoId: p.id,
+          aplicar: true,
+        }),
+      ).toEqual({ periodos: 1, linhas: 0 });
+      expect(
+        await preencherFotos(indicadoresRepository, calculo, {
+          periodoId: p.id,
+          sobrescrever: true,
+        }),
+      ).toEqual({ periodos: 1, linhas: 3 });
+
+      // a série da tela usa as fotos + o ponto de hoje
+      const { body } = await indicadores(c, p.id).expect(200);
+      expect(body.serie.map((s) => s.metricas.ativos)).toEqual([1, 0, 0, 0]);
     });
   });
 });
