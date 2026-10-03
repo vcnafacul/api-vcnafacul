@@ -66,6 +66,10 @@ export class CalculoDosIndicadores {
           cancelados: 0,
           canceladosPorMotivo: {},
           desistenciaInicial: 0,
+          chamadasAluno: 0,
+          presencas: 0,
+          faltasJustificadas: 0,
+          aulasRegistradas: 0,
         } as Metricas,
       ]),
     );
@@ -91,7 +95,57 @@ export class CalculoDosIndicadores {
       if (motivo === MOTIVO_DESISTENCIA_INICIAL)
         m.desistenciaInicial = (m.desistenciaInicial as number) + 1;
     }
+
+    // 07 — frequência: presenças e chamadas de cada turma até o dia
+    for (const f of await this.chamadasDasTurmas(turmaIds, ate)) {
+      Object.assign(porTurma.get(f.turmaId), {
+        chamadasAluno: Number(f.chamadasAluno),
+        presencas: Number(f.presencas),
+        faltasJustificadas: Number(f.faltasJustificadas),
+        aulasRegistradas: Number(f.aulasRegistradas),
+      });
+    }
     return porTurma;
+  }
+
+  /**
+   * Presenças das turmas até `ate`, somando todos os alunos.
+   *
+   * A chamada só lista quem estava matriculado no dia dela
+   * (`findOneByIdToAttendanceRecord`), então quem entrou depois ou saiu antes
+   * não leva falta pelas aulas de fora — não precisa filtrar aqui.
+   *
+   * - `chamadasAluno`: uma linha por aluno por aula (o denominador);
+   * - `faltasJustificadas`: falta com justificativa — não é presença (R5), mas
+   *   a tela mostra quantas foram;
+   * - `aulasRegistradas`: quantas chamadas a turma fez (com ou sem aluno).
+   */
+  async chamadasDasTurmas(turmaIds: string[], ate: Date) {
+    return this.em.query(
+      `SELECT ar.classId AS turmaId,
+              COUNT(sa.id) AS chamadasAluno,
+              COALESCE(SUM(sa.present = 1), 0) AS presencas,
+              COALESCE(SUM(sa.present = 0 AND aj.id IS NOT NULL), 0) AS faltasJustificadas,
+              COUNT(DISTINCT ar.id) AS aulasRegistradas
+         FROM attendance_record ar
+         LEFT JOIN student_attendance sa
+                ON sa.attendanceRecordId = ar.id AND sa.deleted_at IS NULL
+         LEFT JOIN absence_justification aj
+                ON aj.studentAttendanceId = sa.id AND aj.deleted_at IS NULL
+        WHERE ar.classId IN (?)
+          AND ar.deleted_at IS NULL
+          AND ar.registeredAt <= ?
+        GROUP BY ar.classId`,
+      [turmaIds, ate],
+    ) as Promise<
+      {
+        turmaId: string;
+        chamadasAluno: string;
+        presencas: string;
+        faltasJustificadas: string;
+        aulasRegistradas: string;
+      }[]
+    >;
   }
 
   /**

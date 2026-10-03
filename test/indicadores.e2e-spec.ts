@@ -5,6 +5,8 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 import { AppModule } from 'src/app.module';
 import { GeoService } from 'src/modules/geo/geo.service';
 import { LogGeoRepository } from 'src/modules/geo/log-geo/log-geo.repository';
+import { AttendanceRecordService } from 'src/modules/prepCourse/attendance/attendanceRecord/attendance-record.service';
+import { AttendancePeriod } from 'src/modules/prepCourse/attendance/attendanceRecord/enum/attendance-period.enum';
 import { ClassService } from 'src/modules/prepCourse/class/class.service';
 import { CoursePeriodService } from 'src/modules/prepCourse/coursePeriod/course-period.service';
 import { diaEmSaoPaulo } from 'src/modules/prepCourse/indicadores/datas';
@@ -59,6 +61,7 @@ describe('Indicadores do cursinho (e2e)', () => {
   let classService: ClassService;
   let inscriptionService: InscriptionCourseService;
   let task: IndicadoresTask;
+  let chamadaService: AttendanceRecordService;
   let calculo: CalculoDosIndicadores;
   let indicadoresRepository: IndicadoresRepository;
   let studentService: StudentCourseService;
@@ -93,6 +96,7 @@ describe('Indicadores do cursinho (e2e)', () => {
     classService = mod.get(ClassService);
     inscriptionService = mod.get(InscriptionCourseService);
     task = mod.get(IndicadoresTask);
+    chamadaService = mod.get(AttendanceRecordService);
     calculo = mod.get(CalculoDosIndicadores);
     indicadoresRepository = mod.get(IndicadoresRepository);
     studentService = mod.get(StudentCourseService);
@@ -223,6 +227,28 @@ describe('Indicadores do cursinho (e2e)', () => {
   /** Métricas de uma turma no dia, pela conta única. */
   const metricasDaTurma = async (turmaId: string, d = dia()) =>
     (await calculo.calcular([turmaId], d)).get(turmaId);
+
+  /** Faz a chamada do dia: presentes = os da lista. */
+  const chamada = async (
+    c: Cursinho,
+    turmaId: string,
+    d: string,
+    presentes: string[],
+    period = AttendancePeriod.MANHA,
+  ) =>
+    chamadaService.create(
+      { classId: turmaId, date: d as any, period, studentIds: presentes },
+      c.user.id,
+    );
+
+  /** Justifica a falta do aluno naquela chamada. */
+  const justificar = (chamadaId: string, alunoId: string) =>
+    db.query(
+      `INSERT INTO absence_justification (id, justification, studentAttendanceId)
+       SELECT UUID(), 'atestado', sa.id FROM student_attendance sa
+        WHERE sa.attendanceRecordId = ? AND sa.studentCourseId = ?`,
+      [chamadaId, alunoId],
+    );
 
   const indicadores = (c: Cursinho, periodoId: string) =>
     http()
@@ -608,6 +634,77 @@ describe('Indicadores do cursinho (e2e)', () => {
         cancelados: 1,
         canceladosPorMotivo: { Rotina: 1 },
       });
+    });
+  });
+  describe('qual a frequência média? (card 07)', () => {
+    it('⚠️ soma presenças e chamadas das turmas: 90/100 + 10/20 → 83,3%, não a média 70%', async () => {
+      // escala menor, mesma proporção: A = 9/10, B = 1/2
+      const c = await novoCursinho();
+      const p = await novoPeriodo(c, dia(-30), dia(30));
+      const a = await novaTurma(c, p.id, 'A');
+      const b = await novaTurma(c, p.id, 'B');
+      const deA = [];
+      for (let i = 0; i < 5; i++) deA.push(await matricular(c, a));
+      const deB = [await matricular(c, b), await matricular(c, b)];
+      await chamada(c, a, dia(-2), deA); // 5 de 5
+      await chamada(c, a, dia(-1), deA.slice(0, 4)); // 4 de 5
+      await chamada(c, b, dia(-1), deB.slice(0, 1)); // 1 de 2
+
+      const { body } = await indicadores(c, p.id).expect(200);
+
+      expect(body.turmas.map((t) => t.metricas)).toEqual([
+        expect.objectContaining({
+          presencas: 9,
+          chamadasAluno: 10,
+          aulasRegistradas: 2,
+        }),
+        expect.objectContaining({
+          presencas: 1,
+          chamadasAluno: 2,
+          aulasRegistradas: 1,
+        }),
+      ]);
+      expect(body.cursinho).toMatchObject({ presencas: 10, chamadasAluno: 12 });
+    });
+
+    it('cancelado no meio não leva falta nas chamadas seguintes; falta justificada soma à parte', async () => {
+      const c = await novoCursinho();
+      const p = await novoPeriodo(c, dia(-30), dia(30));
+      const t = await novaTurma(c, p.id);
+      const fica = await matricular(c, t);
+      const sai = await matricular(c, t);
+      const primeira = await chamada(c, t, dia(-3), [fica]);
+      await justificar(primeira.id, sai);
+      await studentService.cancelEnrolled(sai, 'Rotina');
+      await chamada(c, t, dia(-2), [fica]);
+
+      const m = await metricasDaTurma(t);
+
+      expect(m).toMatchObject({
+        chamadasAluno: 3, // 2 na primeira + só quem ficou na segunda
+        presencas: 2,
+        faltasJustificadas: 1,
+        aulasRegistradas: 2,
+      });
+    });
+
+    it('pela data da chamada; chamada apagada não conta; turma sem chamada fica em zero', async () => {
+      const c = await novoCursinho();
+      const p = await novoPeriodo(c, dia(-30), dia(30));
+      const t = await novaTurma(c, p.id);
+      const vazia = await novaTurma(c, p.id, 'Sem chamada');
+      const aluno = await matricular(c, t);
+      await chamada(c, t, dia(-5), [aluno]);
+      const apagada = await chamada(c, t, dia(-1), []);
+      await chamadaService.delete(apagada.id);
+
+      expect((await metricasDaTurma(t, dia(-6))).chamadasAluno).toBe(0);
+      expect(await metricasDaTurma(t)).toMatchObject({
+        chamadasAluno: 1,
+        presencas: 1,
+        aulasRegistradas: 1,
+      });
+      expect((await metricasDaTurma(vazia)).aulasRegistradas).toBe(0);
     });
   });
 });
