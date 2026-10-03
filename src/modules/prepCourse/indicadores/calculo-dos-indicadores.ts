@@ -113,12 +113,12 @@ export class CalculoDosIndicadores {
     // 07 — frequência: presenças e chamadas de cada turma até o dia
     // 08 — sumindo: ativo que faltou às últimas chamadas seguidas
     const ativos = alunos.filter((a) => !estavaCancelado(a));
-    for (const s of await this.sumindoDasTurmas(ativos, ate)) {
+    for (const s of await this.sumindoDasTurmas(ativos, dia)) {
       const m = porTurma.get(s.turmaId);
       m.sumindo = (m.sumindo as number) + 1;
     }
 
-    for (const f of await this.chamadasDasTurmas(turmaIds, ate)) {
+    for (const f of await this.chamadasDasTurmas(turmaIds, dia)) {
       Object.assign(porTurma.get(f.turmaId), {
         chamadasAluno: Number(f.chamadasAluno),
         presencas: Number(f.presencas),
@@ -130,7 +130,11 @@ export class CalculoDosIndicadores {
   }
 
   /**
-   * Presenças das turmas até `ate`, somando todos os alunos.
+   * Presenças das turmas até o fim de `dia`, somando todos os alunos.
+   *
+   * ⚠️ `registeredAt` guarda só a data da chamada (meia-noite, sem fuso):
+   * compara-se **dia com dia**. Comparar com o instante `fimDoDia` dependia do
+   * fuso do processo (em UTC, a chamada do dia seguinte entrava na conta).
    *
    * A chamada só lista quem estava matriculado no dia dela
    * (`findOneByIdToAttendanceRecord`), então quem entrou depois ou saiu antes
@@ -141,7 +145,7 @@ export class CalculoDosIndicadores {
    *   a tela mostra quantas foram;
    * - `aulasRegistradas`: quantas chamadas a turma fez (com ou sem aluno).
    */
-  async chamadasDasTurmas(turmaIds: string[], ate: Date) {
+  async chamadasDasTurmas(turmaIds: string[], dia: string) {
     return this.em.query(
       `SELECT ar.classId AS turmaId,
               COUNT(sa.id) AS chamadasAluno,
@@ -155,9 +159,9 @@ export class CalculoDosIndicadores {
                 ON aj.studentAttendanceId = sa.id AND aj.deleted_at IS NULL
         WHERE ar.classId IN (?)
           AND ar.deleted_at IS NULL
-          AND ar.registeredAt <= ?
+          AND DATE(ar.registeredAt) <= ?
         GROUP BY ar.classId`,
-      [turmaIds, ate],
+      [turmaIds, dia],
     ) as Promise<
       {
         turmaId: string;
@@ -171,7 +175,8 @@ export class CalculoDosIndicadores {
 
   /**
    * Alunos ativos que faltaram às **últimas `FALTAS_PARA_SUMIR` chamadas
-   * seguidas** da turma, até `ate` (tickets/033, card 08).
+   * seguidas** da turma, até o fim de `dia` (tickets/033, card 08). Dia com
+   * dia, como em `chamadasDasTurmas`.
    *
    * - Falta justificada interrompe a sequência (R6).
    * - Chamada em que o aluno não estava na lista (entrou depois) também
@@ -180,7 +185,7 @@ export class CalculoDosIndicadores {
    */
   async sumindoDasTurmas(
     ativos: AlunoDaTurma[],
-    ate: Date,
+    dia: string,
   ): Promise<AlunoSumindo[]> {
     if (ativos.length === 0) return [];
     const turmaIds = [...new Set(ativos.map((a) => a.turmaId))];
@@ -189,10 +194,10 @@ export class CalculoDosIndicadores {
         `SELECT ar.id, ar.classId AS turmaId, ar.registeredAt AS dia
            FROM attendance_record ar
           WHERE ar.classId IN (?) AND ar.deleted_at IS NULL
-            AND ar.registeredAt <= ?
+            AND DATE(ar.registeredAt) <= ?
           ORDER BY ar.registeredAt DESC,
                    FIELD(ar.period, 'NOITE', 'TARDE', 'MANHA')`,
-        [turmaIds, ate],
+        [turmaIds, dia],
       );
     const porTurma = new Map<string, typeof chamadas>();
     for (const c of chamadas) {
