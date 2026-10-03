@@ -83,6 +83,7 @@ import { LegalGuardian } from './legal-guardian/legal-guardian.entity';
 import { LegalGuardianRepository } from './legal-guardian/legal-guardian.repository';
 import { LogStudent } from './log-student/log-student.entity';
 import { DESCRICAO_DA_REATIVACAO } from './log-student/descricoes-do-log';
+import { PushDaInscricaoService } from './push-da-inscricao.service';
 import { LogStudentRepository } from './log-student/log-student.repository';
 import { StudentCourse } from './student-course.entity';
 import { StudentCourseRepository } from './student-course.repository';
@@ -116,6 +117,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     private readonly roleService: RoleService,
     private readonly cache: CacheService,
     private readonly submissionService: SubmissionService,
+    private readonly pushDaInscricao: PushDaInscricaoService,
   ) {
     super(repository);
   }
@@ -203,6 +205,13 @@ export class StudentCourseService extends BaseService<StudentCourse> {
       dto,
       representatives.map((rep) => rep.user.email),
       inscriptionCourse.partnerPrepCourse.geo.name,
+    );
+
+    // Sem await: a resposta da inscrição não espera o FCM (e nunca falha por ele).
+    void this.pushDaInscricao.avisar(
+      user.id,
+      inscriptionCourse.partnerPrepCourse.geo?.name,
+      studentCourse.id,
     );
 
     return { id: studentCourse.id } as CreateStudentCourseOutput;

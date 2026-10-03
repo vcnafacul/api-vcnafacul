@@ -1,6 +1,7 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module, forwardRef } from '@nestjs/common';
 import { GeoModule } from 'src/modules/geo/geo.module';
+import { PushModule } from 'src/modules/push/push.module';
 import { RoleModule } from 'src/modules/role/role.module';
 import { UserModule } from 'src/modules/user/user.module';
 import { VcnafaculFormModule } from 'src/modules/vcnafacul-form/vcnafacul-form.module';
@@ -16,6 +17,7 @@ import { PartnerPrepCourseModule } from '../partnerPrepCourse/partner-prep-cours
 import { DocumentStudentRepository } from './documents/document-students.repository';
 import { LegalGuardianRepository } from './legal-guardian/legal-guardian.repository';
 import { LogStudentRepository } from './log-student/log-student.repository';
+import { PushDaInscricaoService } from './push-da-inscricao.service';
 import { StudentCourseController } from './student-course.controller';
 import { StudentCourseRepository } from './student-course.repository';
 import { StudentCourseService } from './student-course.service';
@@ -34,6 +36,7 @@ import { StudentCourseService } from './student-course.service';
     EnvModule,
     VcnafaculFormModule,
     HttpModule,
+    PushModule,
   ],
   providers: [
     StudentCourseService,
@@ -44,6 +47,7 @@ import { StudentCourseService } from './student-course.service';
     LogStudentRepository,
     DiscordWebhook,
     HttpServiceAxiosFactory,
+    PushDaInscricaoService,
   ],
   exports: [StudentCourseService, StudentCourseRepository],
 })
