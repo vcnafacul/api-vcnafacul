@@ -8,6 +8,9 @@ import { LogGeoRepository } from 'src/modules/geo/log-geo/log-geo.repository';
 import { AttendanceRecordService } from 'src/modules/prepCourse/attendance/attendanceRecord/attendance-record.service';
 import { AttendancePeriod } from 'src/modules/prepCourse/attendance/attendanceRecord/enum/attendance-period.enum';
 import { ClassService } from 'src/modules/prepCourse/class/class.service';
+import { ClassEssaySnapshot } from 'src/modules/prepCourse/class/essay-analytics/class-essay-snapshot.entity';
+import { RelatorioHttpService } from 'src/modules/simulado/relatorio/relatorio-http.service';
+import { SimuladoHttpService } from 'src/shared/services/simulado-http.service';
 import { CoursePeriodService } from 'src/modules/prepCourse/coursePeriod/course-period.service';
 import { diaEmSaoPaulo } from 'src/modules/prepCourse/indicadores/datas';
 import { IndicadorDiarioTurma } from 'src/modules/prepCourse/indicadores/indicador-diario-turma.entity';
@@ -705,6 +708,287 @@ describe('Indicadores do cursinho (e2e)', () => {
         aulasRegistradas: 1,
       });
       expect((await metricasDaTurma(vazia)).aulasRegistradas).toBe(0);
+    });
+  });
+  describe('quem está sumindo? (card 08)', () => {
+    /** Turma com 4 alunos e 3 chamadas; devolve os alunos pelo papel. */
+    const cenario = async (permissoes?: Partial<CreateRoleDtoInput>) => {
+      const c = await novoCursinho(permissoes);
+      const p = await novoPeriodo(c, dia(-30), dia(30));
+      const t = await novaTurma(c, p.id, 'Noite');
+      const sumiu = await matricular(c, t);
+      const voltou = await matricular(c, t);
+      const justificou = await matricular(c, t);
+      const cancelado = await matricular(c, t);
+      const presente = await matricular(c, t);
+      const primeira = await chamada(c, t, dia(-6), [presente, sumiu]);
+      await chamada(c, t, dia(-4), [presente]);
+      const terceira = await chamada(c, t, dia(-3), [presente]);
+      await chamada(c, t, dia(-1), [presente, voltou]);
+      await justificar(terceira.id, justificou);
+      await studentService.cancelEnrolled(cancelado, 'Rotina');
+      return { c, p, t, sumiu, voltou, justificou, primeira };
+    };
+
+    it('ativo que faltou às 3 últimas aparece; quem veio, justificou ou cancelou, não', async () => {
+      const { c, p, t, sumiu, justificou } = await cenario();
+
+      expect((await metricasDaTurma(t)).sumindo).toBe(1);
+
+      const { body } = await http()
+        .get(`/indicadores/sumindo?periodoId=${p.id}`)
+        .set('Authorization', c.bearer)
+        .expect(200);
+      expect(body).toHaveLength(1);
+      expect(body[0]).toMatchObject({
+        alunoId: sumiu,
+        turma: 'Noite',
+        faltasSeguidas: 3,
+        ultimaPresenca: dia(-6),
+      });
+      expect(body[0].alunoId).not.toBe(justificou);
+      // sem gerenciarEstudantes: nem a chave do telefone vai
+      expect(body[0]).not.toHaveProperty('telefone');
+    });
+
+    it('com gerenciarEstudantes a lista traz o telefone', async () => {
+      const { c, p } = await cenario({
+        gerenciarEstudantes: true,
+        gerenciarTurmas: true,
+      });
+      const { body } = await http()
+        .get(`/indicadores/sumindo?periodoId=${p.id}`)
+        .set('Authorization', c.bearer)
+        .expect(200);
+      expect(body[0]).toHaveProperty('telefone');
+    });
+
+    it('turma com menos de 3 chamadas: ninguém aparece', async () => {
+      const c = await novoCursinho();
+      const p = await novoPeriodo(c, dia(-30), dia(30));
+      const t = await novaTurma(c, p.id);
+      await matricular(c, t);
+      await chamada(c, t, dia(-2), []);
+      await chamada(c, t, dia(-1), []);
+
+      expect((await metricasDaTurma(t)).sumindo).toBe(0);
+    });
+
+    it('⚠️ período de outro cursinho → 404; período encerrado → lista vazia', async () => {
+      const { p } = await cenario();
+      const outro = await novoCursinho();
+      await http()
+        .get(`/indicadores/sumindo?periodoId=${p.id}`)
+        .set('Authorization', outro.bearer)
+        .expect(404);
+
+      const { c, p: encerrado } = await cenario();
+      await db.query('UPDATE course_periods SET endDate = ? WHERE id = ?', [
+        new Date(`${dia(-1)}T00:00:00Z`),
+        encerrado.id,
+      ]);
+      const { body } = await http()
+        .get(`/indicadores/sumindo?periodoId=${encerrado.id}`)
+        .set('Authorization', c.bearer)
+        .expect(200);
+      expect(body).toEqual([]);
+    });
+  });
+  describe('como o desempenho evoluiu? (card 09)', () => {
+    // ⚠️ restoreAllMocks desfaria também os mocks do beforeAll (envio do
+    // formulário etc.) e quebraria os testes seguintes
+    afterEach(() => {
+      for (const metodo of [
+        RelatorioHttpService.prototype.buscarSimulados,
+        SimuladoHttpService.prototype.listUserGroupAggregates,
+      ] as jest.Mock[])
+        metodo.mockRestore?.();
+    });
+
+    const mesDe = (n: number) => dia(n).slice(0, 7);
+
+    const redacao = (
+      classId: string,
+      month: string,
+      geral: number,
+      n: number,
+    ) =>
+      db.getRepository(ClassEssaySnapshot).save({
+        classId,
+        month,
+        monthStart: new Date(`${month}-01T03:00:00Z`),
+        monthEnd: new Date(`${month}-28T03:00:00Z`),
+        userIds: [],
+        generatedAt: new Date(),
+        sourceEssayCount: n,
+        payload: {
+          geral,
+          competencias: { c1: 0, c2: 0, c3: 0, c4: 0, c5: 0 },
+          studentsWithAtLeastOneHumanReview: n,
+          essaysReviewedByHuman: n,
+          essaysSubmittedTotal: n,
+          humanReviewRate: 1,
+        },
+      });
+
+    it('aplicações por cartão só dos alunos do período, em ordem de data; meses ponderados', async () => {
+      const c = await novoCursinho();
+      const p = await novoPeriodo(c, dia(-60), dia(30));
+      const a = await novaTurma(c, p.id, 'A');
+      const b = await novaTurma(c, p.id, 'B');
+      await matricular(c, a);
+      await matricular(c, b);
+      // aluno de OUTRO período do mesmo cursinho — não pode ir no recorte
+      const outro = await novoPeriodo(c, dia(-400), dia(-300), 'Antigo');
+      await novaTurma(c, outro.id);
+
+      const busca = jest
+        .spyOn(RelatorioHttpService.prototype, 'buscarSimulados')
+        .mockImplementation(async (_cursinho, usuarios) => ({
+          simulados: [
+            {
+              simuladoId: 's2',
+              nome: 'Segundo',
+              comLeituraConcluida: usuarios.length,
+              primeiroEnvio: `${dia(-5)}T13:00:00.000Z`,
+              mediaAproveitamento: 0.655,
+            },
+            {
+              simuladoId: 's1',
+              nome: 'Primeiro',
+              comLeituraConcluida: usuarios.length,
+              primeiroEnvio: `${dia(-30)}T13:00:00.000Z`,
+              mediaAproveitamento: 0.5,
+            },
+          ],
+        }));
+      jest
+        .spyOn(SimuladoHttpService.prototype, 'listUserGroupAggregates')
+        .mockImplementation(async (classId) => [
+          {
+            month: mesDe(-10),
+            payload:
+              classId === a
+                ? { geral: 0.5, studentsWithAtLeastOneCompletedAttempt: 2 }
+                : { geral: 0.8, studentsWithAtLeastOneCompletedAttempt: 1 },
+          },
+          // fora do período: não aparece
+          {
+            month: mesDe(-200),
+            payload: { geral: 1, studentsWithAtLeastOneCompletedAttempt: 9 },
+          },
+        ]);
+      await redacao(a, mesDe(-10), 600, 1);
+      await redacao(b, mesDe(-10), 900, 2);
+
+      const { body } = await http()
+        .get(`/indicadores/desempenho?periodoId=${p.id}`)
+        .set('Authorization', c.bearer)
+        .expect(200);
+
+      // 1ª chamada = o período inteiro (as outras são por turma)
+      expect(busca.mock.calls[0][1]).toHaveLength(2);
+      expect(body.aplicacoes.map((x) => [x.nome, x.media])).toEqual([
+        ['Primeiro', 50],
+        ['Segundo', 65.5],
+      ]);
+      expect(body.porTurma).toEqual(
+        expect.arrayContaining([
+          { turmaId: a, ultimaAplicacao: { nome: 'Segundo', media: 65.5 } },
+        ]),
+      );
+      expect(body.porMes).toEqual([
+        {
+          mes: mesDe(-10),
+          simulados: { participantes: 3, media: 60 },
+          redacao: { corrigidas: 3, media: 800 },
+        },
+      ]);
+    });
+
+    it('turma sem aluno não chama o ms; período de outro cursinho → 404', async () => {
+      const c = await novoCursinho();
+      const p = await novoPeriodo(c, dia(-10), dia(10));
+      await novaTurma(c, p.id);
+      const busca = jest.spyOn(
+        RelatorioHttpService.prototype,
+        'buscarSimulados',
+      );
+      jest
+        .spyOn(SimuladoHttpService.prototype, 'listUserGroupAggregates')
+        .mockResolvedValue([]);
+
+      const { body } = await http()
+        .get(`/indicadores/desempenho?periodoId=${p.id}`)
+        .set('Authorization', c.bearer)
+        .expect(200);
+
+      expect(busca).not.toHaveBeenCalled();
+      expect(body.aplicacoes).toEqual([]);
+      const outro = await novoCursinho();
+      await http()
+        .get(`/indicadores/desempenho?periodoId=${p.id}`)
+        .set('Authorization', outro.bearer)
+        .expect(404);
+    });
+  });
+  describe('indicadores na dashboard (card 10)', () => {
+    it('resumo soma os períodos em andamento e bate com a tela', async () => {
+      const c = await novoCursinho();
+      const p = await novoPeriodo(c, dia(-30), dia(30), 'Extensivo');
+      const q = await novoPeriodo(c, dia(-10), dia(60), 'Semi');
+      await novoPeriodo(c, dia(-400), dia(-300), 'Antigo');
+      await matricular(c, await novaTurma(c, p.id));
+      await matricular(c, await novaTurma(c, q.id));
+      const t = await novaTurma(c, q.id);
+      await studentService.cancelEnrolled(await matricular(c, t), 'Rotina');
+
+      const { body } = await http()
+        .get('/indicadores/resumo')
+        .set('Authorization', c.bearer)
+        .expect(200);
+
+      expect(body.periodos.map((x) => x.nome).sort()).toEqual([
+        'Extensivo',
+        'Semi',
+      ]);
+      expect(body.metricas).toMatchObject({
+        alunos: 3,
+        ativos: 2,
+        cancelados: 1,
+      });
+      const tela = await indicadores(c, q.id).expect(200);
+      expect(tela.body.cursinho.alunos).toBe(2);
+    });
+
+    it('sem período aberto, ou sem cursinho: metricas null (a dashboard só esconde)', async () => {
+      const c = await novoCursinho();
+      await novoPeriodo(c, dia(-400), dia(-300));
+      const semAberto = await http()
+        .get('/indicadores/resumo')
+        .set('Authorization', c.bearer)
+        .expect(200);
+      expect(semAberto.body).toEqual({
+        cursinho: true,
+        periodos: [],
+        metricas: null,
+      });
+
+      const userDto = CreateUserDtoInputFaker();
+      await userService.create(userDto);
+      const solto = await userRepository.findOneBy({ email: userDto.email });
+      solto.role = await papel({ visualizarEstudantes: true });
+      await userRepository.update(solto);
+      const bearer = `Bearer ${await jwt.signAsync({ user: { id: solto.id } }, { expiresIn: '1h' })}`;
+      const semCursinho = await http()
+        .get('/indicadores/resumo')
+        .set('Authorization', bearer)
+        .expect(200);
+      expect(semCursinho.body).toEqual({
+        cursinho: false,
+        periodos: [],
+        metricas: null,
+      });
     });
   });
 });
