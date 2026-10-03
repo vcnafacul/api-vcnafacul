@@ -26,6 +26,7 @@ import { ClassAnalyticsModule } from './modules/prepCourse/class/analytics/class
 import { ClassEssayAnalyticsModule } from './modules/prepCourse/class/essay-analytics/class-essay-analytics.module';
 import { CollaboratorModule } from './modules/prepCourse/collaborator/collaborator.module';
 import { CoursePeriodModule } from './modules/prepCourse/coursePeriod/course-period.module';
+import { IndicadoresModule } from './modules/prepCourse/indicadores/indicadores.module';
 import { InscriptionCourseModule } from './modules/prepCourse/InscriptionCourse/inscription-course.module';
 import { PartnerPrepCourseModule } from './modules/prepCourse/partnerPrepCourse/partner-prep-course.module';
 import { PaginaCursinhoModule } from './modules/prepCourse/paginaCursinho/pagina-cursinho.module';
@@ -118,6 +119,7 @@ const throttlerProvider: Provider = isTestEnv
     BlobModule,
     SimuladoModule,
     ClassModule,
+    IndicadoresModule,
     ClassAnalyticsModule,
     ClassEssayAnalyticsModule,
     AttendanceRecordModule,
