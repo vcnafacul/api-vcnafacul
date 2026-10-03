@@ -2,15 +2,17 @@ import { HttpException, NotFoundException } from '@nestjs/common';
 import { CoursePeriodService } from './course-period.service';
 import { CoursePeriodRepository } from './course-period.repository';
 import { PartnerPrepCourseRepository } from '../partnerPrepCourse/partner-prep-course.repository';
-import { StudentCourseRepository } from '../studentCourse/student-course.repository';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import { StatusApplication } from '../studentCourse/enums/stastusApplication';
+import { LogStudent } from '../studentCourse/log-student/log-student.entity';
+import { StudentCourse } from '../studentCourse/student-course.entity';
 
 describe('CoursePeriodService', () => {
   let service: CoursePeriodService;
   let repository: jest.Mocked<CoursePeriodRepository>;
   let partnerRepository: jest.Mocked<PartnerPrepCourseRepository>;
-  let studentCourseRepository: jest.Mocked<StudentCourseRepository>;
+  let manager: { update: jest.Mock; save: jest.Mock; create: jest.Mock };
+  let dataSource: { transaction: jest.Mock };
   let discordWebhook: jest.Mocked<DiscordWebhook>;
 
   beforeEach(() => {
@@ -28,9 +30,14 @@ describe('CoursePeriodService', () => {
       findOneByUserId: jest.fn(),
     } as any;
 
-    studentCourseRepository = {
-      updateStudentStatus: jest.fn(),
-    } as any;
+    manager = {
+      update: jest.fn(),
+      save: jest.fn(),
+      create: jest.fn((_entity, dados) => dados),
+    };
+    dataSource = {
+      transaction: jest.fn((cb) => cb(manager)),
+    };
 
     discordWebhook = {
       sendMessage: jest.fn(),
@@ -39,8 +46,8 @@ describe('CoursePeriodService', () => {
     service = new CoursePeriodService(
       repository,
       partnerRepository,
-      studentCourseRepository,
       discordWebhook,
+      dataSource as any,
     );
   });
 
@@ -216,9 +223,7 @@ describe('CoursePeriodService', () => {
 
       await service.closeExpiredCoursePeriods();
 
-      expect(
-        studentCourseRepository.updateStudentStatus,
-      ).not.toHaveBeenCalled();
+      expect(manager.update).not.toHaveBeenCalled();
     });
 
     it('should update students and send discord messages', async () => {
@@ -239,10 +244,23 @@ describe('CoursePeriodService', () => {
 
       await service.closeExpiredCoursePeriods();
 
-      expect(studentCourseRepository.updateStudentStatus).toHaveBeenCalledWith(
-        ['s1', 's2'],
-        StatusApplication.EnrollmentClosed,
+      expect(manager.update).toHaveBeenCalledWith(
+        StudentCourse,
+        { id: expect.objectContaining({ _value: ['s1', 's2'] }) },
+        expect.objectContaining({
+          applicationStatus: StatusApplication.EnrollmentClosed,
+        }),
       );
+      // um log por estudante, explicando o encerramento
+      expect(manager.save).toHaveBeenCalledWith(LogStudent, [
+        {
+          studentId: 's1',
+          applicationStatus: StatusApplication.EnrollmentClosed,
+          description:
+            'Matrícula encerrada pelo fim do período letivo "Período 2025" (2025)',
+        },
+        expect.objectContaining({ studentId: 's2' }),
+      ]);
       expect(discordWebhook.sendMessage).toHaveBeenCalledTimes(2);
     });
 
@@ -267,10 +285,45 @@ describe('CoursePeriodService', () => {
 
       await service.closeExpiredCoursePeriods();
 
-      expect(studentCourseRepository.updateStudentStatus).toHaveBeenCalledWith(
-        ['s2'],
-        StatusApplication.EnrollmentClosed,
+      expect(manager.update).toHaveBeenCalledWith(
+        StudentCourse,
+        { id: expect.objectContaining({ _value: ['s2'] }) },
+        expect.anything(),
       );
+    });
+
+    it('⚠️ não encerra matrícula cancelada (nem outro status que não Matriculado)', async () => {
+      repository.findExpiredPeriods.mockResolvedValue([
+        {
+          name: 'P1',
+          year: 2025,
+          classes: [
+            {
+              students: [
+                {
+                  id: 'cancelado',
+                  applicationStatus: StatusApplication.EnrollmentCancelled,
+                },
+                {
+                  id: 'nao-confirmado',
+                  applicationStatus: StatusApplication.EnrollmentNotConfirmed,
+                },
+                {
+                  id: 'apagado',
+                  applicationStatus: StatusApplication.Enrolled,
+                  deletedAt: new Date(),
+                },
+                { id: 's2', applicationStatus: StatusApplication.Enrolled },
+              ],
+            },
+          ],
+        },
+      ] as any);
+
+      await service.closeExpiredCoursePeriods();
+
+      expect(manager.update).toHaveBeenCalledTimes(1);
+      expect(manager.update.mock.calls[0][1].id._value).toEqual(['s2']);
     });
 
     it('should handle errors and send discord error message', async () => {
@@ -305,9 +358,7 @@ describe('CoursePeriodService', () => {
 
       await service.closeExpiredCoursePeriods();
 
-      expect(
-        studentCourseRepository.updateStudentStatus,
-      ).not.toHaveBeenCalled();
+      expect(manager.update).not.toHaveBeenCalled();
     });
   });
 });
