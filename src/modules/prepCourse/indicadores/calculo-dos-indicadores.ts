@@ -32,6 +32,19 @@ export interface AlunoDaTurma {
 export const estavaCancelado = (a: AlunoDaTurma) =>
   !!a.canceladoEm && (!a.reativadoEm || a.canceladoEm > a.reativadoEm);
 
+/** Faltas seguidas, sem justificativa, para o aluno aparecer como "sumindo". */
+export const FALTAS_PARA_SUMIR = 3;
+
+/** Um aluno ativo que faltou às últimas chamadas seguidas da turma (08). */
+export interface AlunoSumindo {
+  alunoId: string;
+  turmaId: string;
+  /** Faltas seguidas sem justificativa, da chamada mais recente para trás. */
+  faltasSeguidas: number;
+  /** Dia da última chamada com presença; `null` se nunca veio. */
+  ultimaPresenca: string | null;
+}
+
 /**
  * A ÚNICA conta dos indicadores (tickets/033). O cron do snapshot, a leitura
  * ao vivo e o backfill passam todos por aqui — por isso o número da tela de
@@ -66,6 +79,11 @@ export class CalculoDosIndicadores {
           cancelados: 0,
           canceladosPorMotivo: {},
           desistenciaInicial: 0,
+          chamadasAluno: 0,
+          presencas: 0,
+          faltasJustificadas: 0,
+          aulasRegistradas: 0,
+          sumindo: 0,
         } as Metricas,
       ]),
     );
@@ -91,7 +109,146 @@ export class CalculoDosIndicadores {
       if (motivo === MOTIVO_DESISTENCIA_INICIAL)
         m.desistenciaInicial = (m.desistenciaInicial as number) + 1;
     }
+
+    // 07 — frequência: presenças e chamadas de cada turma até o dia
+    // 08 — sumindo: ativo que faltou às últimas chamadas seguidas
+    const ativos = alunos.filter((a) => !estavaCancelado(a));
+    for (const s of await this.sumindoDasTurmas(ativos, ate)) {
+      const m = porTurma.get(s.turmaId);
+      m.sumindo = (m.sumindo as number) + 1;
+    }
+
+    for (const f of await this.chamadasDasTurmas(turmaIds, ate)) {
+      Object.assign(porTurma.get(f.turmaId), {
+        chamadasAluno: Number(f.chamadasAluno),
+        presencas: Number(f.presencas),
+        faltasJustificadas: Number(f.faltasJustificadas),
+        aulasRegistradas: Number(f.aulasRegistradas),
+      });
+    }
     return porTurma;
+  }
+
+  /**
+   * Presenças das turmas até `ate`, somando todos os alunos.
+   *
+   * A chamada só lista quem estava matriculado no dia dela
+   * (`findOneByIdToAttendanceRecord`), então quem entrou depois ou saiu antes
+   * não leva falta pelas aulas de fora — não precisa filtrar aqui.
+   *
+   * - `chamadasAluno`: uma linha por aluno por aula (o denominador);
+   * - `faltasJustificadas`: falta com justificativa — não é presença (R5), mas
+   *   a tela mostra quantas foram;
+   * - `aulasRegistradas`: quantas chamadas a turma fez (com ou sem aluno).
+   */
+  async chamadasDasTurmas(turmaIds: string[], ate: Date) {
+    return this.em.query(
+      `SELECT ar.classId AS turmaId,
+              COUNT(sa.id) AS chamadasAluno,
+              COALESCE(SUM(sa.present = 1), 0) AS presencas,
+              COALESCE(SUM(sa.present = 0 AND aj.id IS NOT NULL), 0) AS faltasJustificadas,
+              COUNT(DISTINCT ar.id) AS aulasRegistradas
+         FROM attendance_record ar
+         LEFT JOIN student_attendance sa
+                ON sa.attendanceRecordId = ar.id AND sa.deleted_at IS NULL
+         LEFT JOIN absence_justification aj
+                ON aj.studentAttendanceId = sa.id AND aj.deleted_at IS NULL
+        WHERE ar.classId IN (?)
+          AND ar.deleted_at IS NULL
+          AND ar.registeredAt <= ?
+        GROUP BY ar.classId`,
+      [turmaIds, ate],
+    ) as Promise<
+      {
+        turmaId: string;
+        chamadasAluno: string;
+        presencas: string;
+        faltasJustificadas: string;
+        aulasRegistradas: string;
+      }[]
+    >;
+  }
+
+  /**
+   * Alunos ativos que faltaram às **últimas `FALTAS_PARA_SUMIR` chamadas
+   * seguidas** da turma, até `ate` (tickets/033, card 08).
+   *
+   * - Falta justificada interrompe a sequência (R6).
+   * - Chamada em que o aluno não estava na lista (entrou depois) também
+   *   interrompe: não é falta dele.
+   * - Turma com menos chamadas que o limite: ninguém aparece.
+   */
+  async sumindoDasTurmas(
+    ativos: AlunoDaTurma[],
+    ate: Date,
+  ): Promise<AlunoSumindo[]> {
+    if (ativos.length === 0) return [];
+    const turmaIds = [...new Set(ativos.map((a) => a.turmaId))];
+    const chamadas: { id: string; turmaId: string; dia: Date | string }[] =
+      await this.em.query(
+        `SELECT ar.id, ar.classId AS turmaId, ar.registeredAt AS dia
+           FROM attendance_record ar
+          WHERE ar.classId IN (?) AND ar.deleted_at IS NULL
+            AND ar.registeredAt <= ?
+          ORDER BY ar.registeredAt DESC,
+                   FIELD(ar.period, 'NOITE', 'TARDE', 'MANHA')`,
+        [turmaIds, ate],
+      );
+    const porTurma = new Map<string, typeof chamadas>();
+    for (const c of chamadas) {
+      if (!porTurma.has(c.turmaId)) porTurma.set(c.turmaId, []);
+      porTurma.get(c.turmaId).push(c);
+    }
+    const consideradas = chamadas.filter(
+      (c) => porTurma.get(c.turmaId).length >= FALTAS_PARA_SUMIR,
+    );
+    if (consideradas.length === 0) return [];
+
+    const linhas: {
+      chamadaId: string;
+      alunoId: string;
+      presente: number;
+      justificada: number;
+    }[] = await this.em.query(
+      `SELECT sa.attendanceRecordId AS chamadaId, sa.studentCourseId AS alunoId,
+              sa.present AS presente, (aj.id IS NOT NULL) AS justificada
+         FROM student_attendance sa
+         LEFT JOIN absence_justification aj
+                ON aj.studentAttendanceId = sa.id AND aj.deleted_at IS NULL
+        WHERE sa.attendanceRecordId IN (?) AND sa.studentCourseId IN (?)
+          AND sa.deleted_at IS NULL`,
+      [consideradas.map((c) => c.id), ativos.map((a) => a.id)],
+    );
+    const linha = new Map(
+      linhas.map((l) => [`${l.chamadaId}:${l.alunoId}`, l]),
+    );
+
+    const sumindo: AlunoSumindo[] = [];
+    for (const aluno of ativos) {
+      const daTurma = porTurma.get(aluno.turmaId) ?? [];
+      if (daTurma.length < FALTAS_PARA_SUMIR) continue;
+      let faltas = 0;
+      let ultimaPresenca: string | null = null;
+      let contando = true;
+      for (const c of daTurma) {
+        const l = linha.get(`${c.id}:${aluno.id}`);
+        if (l && Number(l.presente)) {
+          ultimaPresenca = diaDaChamada(c.dia);
+          break;
+        }
+        if (!contando) continue;
+        if (!l || Number(l.justificada)) contando = false;
+        else faltas++;
+      }
+      if (faltas >= FALTAS_PARA_SUMIR)
+        sumindo.push({
+          alunoId: aluno.id,
+          turmaId: aluno.turmaId,
+          faltasSeguidas: faltas,
+          ultimaPresenca,
+        });
+    }
+    return sumindo;
   }
 
   /**
@@ -165,4 +322,11 @@ export class CalculoDosIndicadores {
       reativadoEm: data(l.reativadoEm),
     }));
   }
+}
+
+/** O dia da chamada (`registeredAt` guarda a data escolhida, sem hora). */
+function diaDaChamada(d: Date | string): string {
+  if (typeof d === 'string') return d.slice(0, 10);
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  return `${d.getFullYear()}-${mes}-${String(d.getDate()).padStart(2, '0')}`;
 }
