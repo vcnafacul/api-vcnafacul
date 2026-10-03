@@ -82,6 +82,7 @@ import { StatusApplication } from './enums/stastusApplication';
 import { LegalGuardian } from './legal-guardian/legal-guardian.entity';
 import { LegalGuardianRepository } from './legal-guardian/legal-guardian.repository';
 import { LogStudent } from './log-student/log-student.entity';
+import { DESCRICAO_DA_REATIVACAO } from './log-student/descricoes-do-log';
 import { LogStudentRepository } from './log-student/log-student.repository';
 import { StudentCourse } from './student-course.entity';
 import { StudentCourseRepository } from './student-course.repository';
@@ -1755,7 +1756,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     const log = new LogStudent();
     log.studentId = student.id;
     log.applicationStatus = StatusApplication.Enrolled;
-    log.description = 'Matrícula reativada';
+    log.description = DESCRICAO_DA_REATIVACAO;
     await this.logStudentRepository.create(log);
   }
 
