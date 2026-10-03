@@ -37,3 +37,10 @@ export interface AlunoSumindoDtoOutput {
   /** Só para quem tem `gerenciarEstudantes` (R7). */
   telefone?: string | null;
 }
+
+export interface ResumoDosIndicadoresDtoOutput {
+  /** Os períodos em andamento somados (normalmente um). */
+  periodos: { id: string; nome: string }[];
+  /** `null` sem período em andamento (a dashboard esconde os KPIs). */
+  metricas: Metricas | null;
+}
