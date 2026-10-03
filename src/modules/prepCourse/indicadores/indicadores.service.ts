@@ -2,9 +2,13 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { CoursePeriod } from '../coursePeriod/course-period.entity';
 import { PartnerPrepCourseRepository } from '../partnerPrepCourse/partner-prep-course.repository';
-import { CalculoDosIndicadores } from './calculo-dos-indicadores';
+import {
+  CalculoDosIndicadores,
+  estavaCancelado,
+} from './calculo-dos-indicadores';
 import { diaDoPeriodo, diaEmSaoPaulo, diasEntre, fimDoDia } from './datas';
 import {
+  AlunoSumindoDtoOutput,
   IndicadoresDtoOutput,
   PeriodoDoIndicadorDtoOutput,
   PeriodosDoCursinhoDtoOutput,
@@ -68,6 +72,59 @@ export class IndicadoresService {
       () => this.montar(periodo, saida),
       saida.emAndamento ? CACHE_ABERTO : CACHE_ENCERRADO,
     );
+  }
+
+  /**
+   * Quem está sumindo hoje, com nome — por isso fora do snapshot e sem cache
+   * compartilhado. Período encerrado: lista vazia (não há o que fazer).
+   * O telefone só vai para quem pode gerenciar estudantes (R7).
+   */
+  async sumindo(
+    periodoId: string,
+    userId: string,
+  ): Promise<AlunoSumindoDtoOutput[]> {
+    const cursinhoId = await this.cursinhoDe(userId);
+    const periodo = await this.repository.periodoDoCursinho(
+      periodoId,
+      cursinhoId,
+    );
+    if (!periodo) throw new NotFoundException('Período letivo não encontrado');
+    if (!paraSaida(periodo, diaEmSaoPaulo()).emAndamento) return [];
+
+    const turmas = await this.repository.turmasDoPeriodo(periodo.id);
+    if (turmas.length === 0) return [];
+    const ate = fimDoDia(diaEmSaoPaulo());
+    const alunos = await this.calculo.alunosDasTurmas(
+      turmas.map((t) => t.id),
+      ate,
+    );
+    const sumindo = await this.calculo.sumindoDasTurmas(
+      alunos.filter((a) => !estavaCancelado(a)),
+      ate,
+    );
+    if (sumindo.length === 0) return [];
+
+    const [dados, podeVerTelefone] = await Promise.all([
+      this.repository.contatosDosAlunos(sumindo.map((s) => s.alunoId)),
+      this.repository.podeGerenciarEstudantes(userId),
+    ]);
+    const nomeDaTurma = new Map(turmas.map((t) => [t.id, t.nome]));
+    return sumindo
+      .map((s) => {
+        const d = dados.get(s.alunoId);
+        return {
+          alunoId: s.alunoId,
+          nome: d?.nome ?? '',
+          turma: nomeDaTurma.get(s.turmaId) ?? '',
+          ultimaPresenca: s.ultimaPresenca,
+          faltasSeguidas: s.faltasSeguidas,
+          ...(podeVerTelefone ? { telefone: d?.telefone ?? null } : {}),
+        };
+      })
+      .sort(
+        (a, b) =>
+          b.faltasSeguidas - a.faltasSeguidas || a.nome.localeCompare(b.nome),
+      );
   }
 
   /**

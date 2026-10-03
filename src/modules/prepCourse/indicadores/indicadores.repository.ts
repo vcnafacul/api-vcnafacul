@@ -84,6 +84,48 @@ export class IndicadoresRepository {
     return turmas.map((t) => ({ id: t.id, nome: t.name }));
   }
 
+  /** Nome (social, quando a pessoa usa) e telefone dos alunos. */
+  async contatosDosAlunos(alunoIds: string[]) {
+    const linhas: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      socialName: string | null;
+      useSocialName: number;
+      telefone: string | null;
+    }[] = await this.em.query(
+      `SELECT sc.id, u.firstName, u.lastName, u.socialName, u.useSocialName,
+              COALESCE(sc.whatsapp, u.phone) AS telefone
+         FROM student_course sc
+         JOIN users u ON u.id = sc.user_id
+        WHERE sc.id IN (?)`,
+      [alunoIds],
+    );
+    return new Map(
+      linhas.map((l) => [
+        l.id,
+        {
+          nome:
+            Number(l.useSocialName) && l.socialName
+              ? `${l.socialName.split(' ')[0]} ${l.lastName}`
+              : `${l.firstName} ${l.lastName}`,
+          telefone: l.telefone,
+        },
+      ]),
+    );
+  }
+
+  /** O papel da pessoa tem `gerenciarEstudantes`? */
+  async podeGerenciarEstudantes(userId: string): Promise<boolean> {
+    const [linha] = await this.em.query(
+      `SELECT r.gerenciar_estudantes AS pode
+         FROM users u JOIN roles r ON r.id = u.roleId
+        WHERE u.id = ?`,
+      [userId],
+    );
+    return !!Number(linha?.pode);
+  }
+
   /** Grava (ou regrava) a foto do dia de cada turma. */
   async gravar(linhas: Omit<IndicadorDiarioTurma, 'id' | 'createdAt'>[]) {
     if (linhas.length === 0) return;

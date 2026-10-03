@@ -26,3 +26,14 @@ export interface IndicadoresDtoOutput {
   /** Soma das turmas, um ponto por dia gravado (+ hoje, no período aberto). */
   serie: { dia: string; metricas: Metricas }[];
 }
+
+export interface AlunoSumindoDtoOutput {
+  alunoId: string;
+  nome: string;
+  turma: string;
+  /** `YYYY-MM-DD`; `null` se nunca veio. */
+  ultimaPresenca: string | null;
+  faltasSeguidas: number;
+  /** Só para quem tem `gerenciarEstudantes` (R7). */
+  telefone?: string | null;
+}

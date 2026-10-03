@@ -13,6 +13,7 @@ import { Permissions } from 'src/modules/role/permissions/permissions';
 import { User } from 'src/modules/user/user.entity';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import {
+  AlunoSumindoDtoOutput,
   IndicadoresDtoOutput,
   PeriodosDoCursinhoDtoOutput,
 } from './dtos/indicadores.dto.output';
@@ -41,6 +42,25 @@ export class IndicadoresController {
   })
   async periodos(@Req() req: Request): Promise<PeriodosDoCursinhoDtoOutput> {
     return this.service.periodos((req.user as User).id);
+  }
+
+  @Get('sumindo')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.visualizarEstudantes,
+    Permissions.gerenciarEstudantes,
+  ])
+  @ApiResponse({
+    status: 200,
+    description:
+      'Alunos ativos que faltaram às 3 últimas chamadas seguidas da turma',
+  })
+  async sumindo(
+    @Query('periodoId', ParseUUIDPipe) periodoId: string,
+    @Req() req: Request,
+  ): Promise<AlunoSumindoDtoOutput[]> {
+    return this.service.sumindo(periodoId, (req.user as User).id);
   }
 
   @Get()

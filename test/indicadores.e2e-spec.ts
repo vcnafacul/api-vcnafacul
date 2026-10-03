@@ -707,4 +707,88 @@ describe('Indicadores do cursinho (e2e)', () => {
       expect((await metricasDaTurma(vazia)).aulasRegistradas).toBe(0);
     });
   });
+  describe('quem está sumindo? (card 08)', () => {
+    /** Turma com 4 alunos e 3 chamadas; devolve os alunos pelo papel. */
+    const cenario = async (permissoes?: Partial<CreateRoleDtoInput>) => {
+      const c = await novoCursinho(permissoes);
+      const p = await novoPeriodo(c, dia(-30), dia(30));
+      const t = await novaTurma(c, p.id, 'Noite');
+      const sumiu = await matricular(c, t);
+      const voltou = await matricular(c, t);
+      const justificou = await matricular(c, t);
+      const cancelado = await matricular(c, t);
+      const presente = await matricular(c, t);
+      const primeira = await chamada(c, t, dia(-6), [presente, sumiu]);
+      await chamada(c, t, dia(-4), [presente]);
+      const terceira = await chamada(c, t, dia(-3), [presente]);
+      await chamada(c, t, dia(-1), [presente, voltou]);
+      await justificar(terceira.id, justificou);
+      await studentService.cancelEnrolled(cancelado, 'Rotina');
+      return { c, p, t, sumiu, voltou, justificou, primeira };
+    };
+
+    it('ativo que faltou às 3 últimas aparece; quem veio, justificou ou cancelou, não', async () => {
+      const { c, p, t, sumiu, justificou } = await cenario();
+
+      expect((await metricasDaTurma(t)).sumindo).toBe(1);
+
+      const { body } = await http()
+        .get(`/indicadores/sumindo?periodoId=${p.id}`)
+        .set('Authorization', c.bearer)
+        .expect(200);
+      expect(body).toHaveLength(1);
+      expect(body[0]).toMatchObject({
+        alunoId: sumiu,
+        turma: 'Noite',
+        faltasSeguidas: 3,
+        ultimaPresenca: dia(-6),
+      });
+      expect(body[0].alunoId).not.toBe(justificou);
+      // sem gerenciarEstudantes: nem a chave do telefone vai
+      expect(body[0]).not.toHaveProperty('telefone');
+    });
+
+    it('com gerenciarEstudantes a lista traz o telefone', async () => {
+      const { c, p } = await cenario({
+        gerenciarEstudantes: true,
+        gerenciarTurmas: true,
+      });
+      const { body } = await http()
+        .get(`/indicadores/sumindo?periodoId=${p.id}`)
+        .set('Authorization', c.bearer)
+        .expect(200);
+      expect(body[0]).toHaveProperty('telefone');
+    });
+
+    it('turma com menos de 3 chamadas: ninguém aparece', async () => {
+      const c = await novoCursinho();
+      const p = await novoPeriodo(c, dia(-30), dia(30));
+      const t = await novaTurma(c, p.id);
+      await matricular(c, t);
+      await chamada(c, t, dia(-2), []);
+      await chamada(c, t, dia(-1), []);
+
+      expect((await metricasDaTurma(t)).sumindo).toBe(0);
+    });
+
+    it('⚠️ período de outro cursinho → 404; período encerrado → lista vazia', async () => {
+      const { p } = await cenario();
+      const outro = await novoCursinho();
+      await http()
+        .get(`/indicadores/sumindo?periodoId=${p.id}`)
+        .set('Authorization', outro.bearer)
+        .expect(404);
+
+      const { c, p: encerrado } = await cenario();
+      await db.query('UPDATE course_periods SET endDate = ? WHERE id = ?', [
+        new Date(`${dia(-1)}T00:00:00Z`),
+        encerrado.id,
+      ]);
+      const { body } = await http()
+        .get(`/indicadores/sumindo?periodoId=${encerrado.id}`)
+        .set('Authorization', c.bearer)
+        .expect(200);
+      expect(body).toEqual([]);
+    });
+  });
 });
