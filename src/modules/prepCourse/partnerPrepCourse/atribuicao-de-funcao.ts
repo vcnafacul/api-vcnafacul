@@ -87,3 +87,65 @@ export function motivosParaNaoAtribuir(
   }
   return m;
 }
+
+/**
+ * Quem pode inativar ou reativar qual colaborador (tickets-documentacao,
+ * card 02). Inativar tira a função (vira `aluno`) e reativar a devolve — então
+ * valem as mesmas regras de escopo e de escalada da troca de função.
+ *
+ * ⚠️ Antes, `PATCH collaborator/:id/active` não conferia nada: quem gerenciava
+ * colaboradores de um cursinho inativava colaborador de OUTRO, o próprio admin
+ * do cursinho ou a si mesmo.
+ */
+export enum MotivoParaNaoAtivar {
+  alvoForaDoCursinho = 'alvo-fora-do-cursinho',
+  alvoEhAdmin = 'alvo-eh-admin',
+  proprioCadastro = 'proprio-cadastro',
+}
+
+export const TEXTO_DO_MOTIVO_DE_ATIVACAO: Record<MotivoParaNaoAtivar, string> =
+  {
+    [MotivoParaNaoAtivar.alvoForaDoCursinho]:
+      TEXTO_DO_MOTIVO[MotivoParaNaoAtribuir.alvoForaDoCursinho],
+    [MotivoParaNaoAtivar.alvoEhAdmin]:
+      'Só o administrador do cursinho pode inativar ou reativar outro administrador.',
+    [MotivoParaNaoAtivar.proprioCadastro]:
+      'Você não pode inativar o seu próprio cadastro.',
+  };
+
+export interface SituacaoDaAtivacao {
+  quemPedeId: string;
+  /** Quem pede tem `gerenciarPermissoesCursinho`. */
+  quemPedeEhAdmin: boolean;
+  /** O cursinho de quem pede. */
+  cursinhoId: string;
+  alvo: {
+    userId: string;
+    cursinhoId: string | null;
+    /**
+     * A função em jogo tem `gerenciarPermissoesCursinho`: ao inativar, a
+     * atual; ao reativar, a que vai ser devolvida.
+     */
+    ehAdmin: boolean;
+  };
+}
+
+/**
+ * Todos os motivos que impedem; vazio = pode. Escopo e "a si mesmo" valem para
+ * os dois níveis (nem o admin se inativa: o cursinho ficaria sem quem o
+ * reative); a escalada, só para quem não é admin.
+ */
+export function motivosParaNaoAtivar(
+  s: SituacaoDaAtivacao,
+): MotivoParaNaoAtivar[] {
+  const m: MotivoParaNaoAtivar[] = [];
+  if (s.alvo.cursinhoId !== s.cursinhoId) {
+    return [MotivoParaNaoAtivar.alvoForaDoCursinho];
+  }
+  if (s.alvo.userId === s.quemPedeId)
+    m.push(MotivoParaNaoAtivar.proprioCadastro);
+  if (!s.quemPedeEhAdmin && s.alvo.ehAdmin) {
+    m.push(MotivoParaNaoAtivar.alvoEhAdmin);
+  }
+  return m;
+}

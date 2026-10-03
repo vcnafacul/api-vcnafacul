@@ -1,6 +1,9 @@
 import {
+  MotivoParaNaoAtivar as A,
   MotivoParaNaoAtribuir as M,
+  motivosParaNaoAtivar,
   motivosParaNaoAtribuir,
+  SituacaoDaAtivacao,
   SituacaoDaAtribuicao,
 } from './atribuicao-de-funcao';
 
@@ -110,6 +113,53 @@ describe('motivosParaNaoAtribuir (convite 02)', () => {
           },
           funcao: { cursinhoId: 'c1', ehDeAdmin: true },
         }),
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe('motivosParaNaoAtivar (tickets-documentacao, card 02)', () => {
+  const pedido = (
+    over: Partial<SituacaoDaAtivacao> = {},
+    alvo: Partial<SituacaoDaAtivacao['alvo']> = {},
+  ): SituacaoDaAtivacao => ({
+    quemPedeId: 'gestor',
+    quemPedeEhAdmin: false,
+    cursinhoId: 'A',
+    ...over,
+    alvo: { userId: 'alvo', cursinhoId: 'A', ehAdmin: false, ...alvo },
+  });
+
+  it('colaborador comum do próprio cursinho: pode', () => {
+    expect(motivosParaNaoAtivar(pedido())).toEqual([]);
+  });
+
+  it('de outro cursinho: só esse motivo, para os dois níveis', () => {
+    expect(motivosParaNaoAtivar(pedido({}, { cursinhoId: 'B' }))).toEqual([
+      A.alvoForaDoCursinho,
+    ]);
+    expect(
+      motivosParaNaoAtivar(
+        pedido({ quemPedeEhAdmin: true }, { cursinhoId: null, ehAdmin: true }),
+      ),
+    ).toEqual([A.alvoForaDoCursinho]);
+  });
+
+  it('a si mesmo: nem o admin', () => {
+    expect(
+      motivosParaNaoAtivar(
+        pedido({ quemPedeEhAdmin: true }, { userId: 'gestor', ehAdmin: true }),
+      ),
+    ).toEqual([A.proprioCadastro]);
+  });
+
+  it('admin: só o admin mexe', () => {
+    expect(motivosParaNaoAtivar(pedido({}, { ehAdmin: true }))).toEqual([
+      A.alvoEhAdmin,
+    ]);
+    expect(
+      motivosParaNaoAtivar(
+        pedido({ quemPedeEhAdmin: true }, { ehAdmin: true }),
       ),
     ).toEqual([]);
   });

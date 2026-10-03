@@ -22,6 +22,7 @@ import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { CollaboratorService } from './collaborator.service';
+import { ChangeActiveDtoInput } from './dtos/change-active.dto.input';
 import { UpdateCollaboratorFrentesDtoInput } from './dtos/update-collaborator-frentes.dto.input';
 
 @ApiTags('Collaborator')
@@ -90,8 +91,16 @@ export class CollaboratorController {
   @Patch(':id/active')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarColaboradores)
-  async changeActive(@Param('id') id: string) {
-    return await this.service.changeActive(id);
+  async changeActive(
+    @Param('id') id: string,
+    @Body() body: ChangeActiveDtoInput,
+    @Req() req: Request,
+  ) {
+    return await this.service.changeActive(
+      id,
+      (req.user as User).id,
+      body?.actived,
+    );
   }
 
   @Patch(':id/description')
@@ -103,9 +112,15 @@ export class CollaboratorController {
     body: {
       description: string;
     },
+    @Req() req: Request,
   ) {
-    return await this.service.changeDescription(id, body.description);
+    return await this.service.changeDescription(
+      id,
+      (req.user as User).id,
+      body.description,
+    );
   }
+
   @Get(':imageKey/photo')
   async getPhoto(@Param('imageKey') imageKey: string) {
     // Keys com prefix (collaborators/<uuid>.<ext>) chegam URL-encoded do

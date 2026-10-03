@@ -27,6 +27,22 @@ import {
 import { CollaboratorVolunteerDtoOutput } from './dtos/collaborator-volunteer.dto.output';
 import { GetAllCollaboratorDtoInput } from './dtos/get-all-collaborator.dto.input';
 import { CollaboratorDTOOutput } from './dtos/get-all-collaborator.dto.output';
+import { LogPartner } from '../partnerPrepCourse/log-partner/log-partner.entity';
+import { LogPartnerRepository } from '../partnerPrepCourse/log-partner/log-partner.repository';
+import {
+  motivosParaNaoAtivar,
+  TEXTO_DO_MOTIVO_DE_ATIVACAO,
+} from '../partnerPrepCourse/atribuicao-de-funcao';
+
+/** Resposta de `PATCH collaborator/:id/active`. */
+export type ResultadoDaAtivacao = {
+  id: string;
+  actived: boolean;
+  /** A função do usuário depois da ação, para a tela atualizar. */
+  role: { id: string; name: string } | null;
+  /** Reativou devolvendo a função de antes da inativação. */
+  funcaoRestaurada: boolean;
+};
 
 @Injectable()
 export class CollaboratorService extends BaseService<Collaborator> {
@@ -42,6 +58,7 @@ export class CollaboratorService extends BaseService<Collaborator> {
     private readonly collaboratorFrenteRepository: CollaboratorFrenteRepository,
     private readonly frenteProxyService: FrenteProxyService,
     private readonly materiaProxyService: MateriaProxyService,
+    private readonly logPartnerRepository: LogPartnerRepository,
   ) {
     super(repository);
   }
@@ -197,24 +214,119 @@ export class CollaboratorService extends BaseService<Collaborator> {
     return true;
   }
 
-  async changeActive(id: string) {
-    const collaborator = await this.repository.findOneBy({ id });
-    collaborator.actived = !collaborator.actived;
-    if (!collaborator.actived) {
-      const user = await this.userRepository.findOneBy({
-        id: collaborator.user.id,
-      });
-      const aluno = await this.roleRepository.findOneBy({ name: 'aluno' });
-      user.role = aluno;
-      await this.userRepository.update(user);
+  /**
+   * Inativa ou reativa um colaborador do cursinho de quem pede
+   * (tickets-documentacao, card 02).
+   *
+   * - Inativar guarda a função atual e troca para `aluno`; reativar devolve a
+   *   guardada (se ainda for do cursinho) — `funcaoRestaurada` diz se deu.
+   * - `actived` é a intenção explícita; sem ele, alterna (o client antigo).
+   *   Pedir o estado que já está não muda nada.
+   *
+   * ⚠️ Ordem das gravações: se a segunda falhar, repetir a ação conserta —
+   * a função guardada só é apagada depois de devolvida.
+   */
+  async changeActive(
+    id: string,
+    quemPedeId: string,
+    actived?: boolean,
+  ): Promise<ResultadoDaAtivacao> {
+    const cursinho =
+      await this.partnerPrepCourseService.getByUserId(quemPedeId);
+    const [collaborator, quemPede] = await Promise.all([
+      this.repository.findOneParaAtivacao(id),
+      this.userRepository.findOneBy({ id: quemPedeId }),
+    ]);
+    if (!collaborator) {
+      throw new HttpException(
+        'Colaborador não encontrado',
+        HttpStatus.NOT_FOUND,
+      );
     }
-    await this.repository.update(collaborator);
+    const ativar = actived ?? !collaborator.actived;
+    const user = collaborator.user;
+    const funcaoEmJogo = ativar ? collaborator.roleBeforeInactive : user.role;
+
+    const motivos = motivosParaNaoAtivar({
+      quemPedeId,
+      quemPedeEhAdmin: !!quemPede?.role?.gerenciarPermissoesCursinho,
+      cursinhoId: cursinho.id,
+      alvo: {
+        userId: user.id,
+        cursinhoId: collaborator.partnerPrepCourse?.id ?? null,
+        ehAdmin: !!funcaoEmJogo?.gerenciarPermissoesCursinho,
+      },
+    });
+    if (motivos.length > 0) {
+      throw new HttpException(
+        motivos.map((m) => TEXTO_DO_MOTIVO_DE_ATIVACAO[m]).join(' '),
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    if (ativar === collaborator.actived) {
+      return this.resultadoDaAtivacao(collaborator, false);
+    }
+
+    let funcaoRestaurada = false;
+    if (!ativar) {
+      collaborator.roleBeforeInactive = user.role ?? null;
+      collaborator.actived = false;
+      await this.repository.update(collaborator);
+      user.role = await this.roleRepository.findOneBy({ name: 'aluno' });
+      await this.userRepository.update(user);
+    } else {
+      const anterior = collaborator.roleBeforeInactive;
+      // Só função do próprio cursinho volta: uma da plataforma não é dele dar.
+      if (anterior && anterior.partnerPrepCourse?.id === cursinho.id) {
+        user.role = anterior;
+        await this.userRepository.update(user);
+        funcaoRestaurada = true;
+      }
+      collaborator.roleBeforeInactive = null;
+      collaborator.actived = true;
+      await this.repository.update(collaborator);
+    }
+
+    const nome = `${user.firstName} ${user.lastName}`;
+    const log = new LogPartner();
+    log.partnerId = cursinho.id;
+    log.description = !ativar
+      ? `Colaborador ${nome} inativado`
+      : funcaoRestaurada
+        ? `Colaborador ${nome} reativado com a função "${user.role.name}"`
+        : `Colaborador ${nome} reativado sem função anterior para devolver`;
+    await this.logPartnerRepository.create(log);
+
     await this.limparCacheDaPagina(collaborator.id);
-    return collaborator;
+    return this.resultadoDaAtivacao(collaborator, funcaoRestaurada);
   }
 
-  async changeDescription(id: string, description: string) {
+  private resultadoDaAtivacao(
+    c: Collaborator,
+    funcaoRestaurada: boolean,
+  ): ResultadoDaAtivacao {
+    return {
+      id: c.id,
+      actived: c.actived,
+      role: c.user.role ? { id: c.user.role.id, name: c.user.role.name } : null,
+      funcaoRestaurada,
+    };
+  }
+
+  async changeDescription(id: string, quemPedeId: string, description: string) {
+    const cursinho =
+      await this.partnerPrepCourseService.getByUserId(quemPedeId);
     const collaborator = await this.repository.findOneBy({ id });
+    if (
+      !collaborator ||
+      (await this.repository.cursinhoDoColaborador(id)) !== cursinho.id
+    ) {
+      throw new HttpException(
+        'Colaborador não encontrado',
+        HttpStatus.NOT_FOUND,
+      );
+    }
     collaborator.description = description;
     await this.repository.update(collaborator);
     await this.limparCacheDaPagina(collaborator.id);
