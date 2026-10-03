@@ -2,12 +2,17 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { CoursePeriod } from '../coursePeriod/course-period.entity';
 import { PartnerPrepCourseRepository } from '../partnerPrepCourse/partner-prep-course.repository';
-import { CalculoDosIndicadores } from './calculo-dos-indicadores';
+import {
+  CalculoDosIndicadores,
+  estavaCancelado,
+} from './calculo-dos-indicadores';
 import { diaDoPeriodo, diaEmSaoPaulo, diasEntre, fimDoDia } from './datas';
 import {
+  AlunoSumindoDtoOutput,
   IndicadoresDtoOutput,
   PeriodoDoIndicadorDtoOutput,
   PeriodosDoCursinhoDtoOutput,
+  ResumoDosIndicadoresDtoOutput,
 } from './dtos/indicadores.dto.output';
 import { IndicadoresRepository } from './indicadores.repository';
 import { Metricas, somarMetricas, VERSAO_DAS_METRICAS } from './metricas';
@@ -68,6 +73,84 @@ export class IndicadoresService {
       () => this.montar(periodo, saida),
       saida.emAndamento ? CACHE_ABERTO : CACHE_ENCERRADO,
     );
+  }
+
+  /**
+   * Os números do período em andamento para a dashboard (card 10) — a mesma
+   * conta e o mesmo cache da tela. Mais de um período aberto (ex.: extensivo
+   * e semiextensivo): soma. Nenhum, ou a pessoa não é de um cursinho: lista
+   * vazia e `metricas: null` — um `null` puro chegaria como corpo vazio.
+   */
+  async resumo(userId: string): Promise<ResumoDosIndicadoresDtoOutput> {
+    const cursinho = await this.partnerRepository.findOneByUserId(userId);
+    if (!cursinho) return { cursinho: false, periodos: [], metricas: null };
+    const nenhum = { cursinho: true, periodos: [], metricas: null };
+    const hoje = diaEmSaoPaulo();
+    const abertos = (await this.repository.periodosDoCursinho(cursinho.id))
+      .map((p) => paraSaida(p, hoje))
+      .filter((p) => p.emAndamento);
+    if (abertos.length === 0) return nenhum;
+    const indicadores = await Promise.all(
+      abertos.map((p) => this.obter(p.id, userId)),
+    );
+    return {
+      cursinho: true,
+      periodos: abertos.map((p) => ({ id: p.id, nome: p.nome })),
+      metricas: somarMetricas(indicadores.map((i) => i.cursinho)),
+    };
+  }
+
+  /**
+   * Quem está sumindo hoje, com nome — por isso fora do snapshot e sem cache
+   * compartilhado. Período encerrado: lista vazia (não há o que fazer).
+   * O telefone só vai para quem pode gerenciar estudantes (R7).
+   */
+  async sumindo(
+    periodoId: string,
+    userId: string,
+  ): Promise<AlunoSumindoDtoOutput[]> {
+    const cursinhoId = await this.cursinhoDe(userId);
+    const periodo = await this.repository.periodoDoCursinho(
+      periodoId,
+      cursinhoId,
+    );
+    if (!periodo) throw new NotFoundException('Período letivo não encontrado');
+    if (!paraSaida(periodo, diaEmSaoPaulo()).emAndamento) return [];
+
+    const turmas = await this.repository.turmasDoPeriodo(periodo.id);
+    if (turmas.length === 0) return [];
+    const ate = fimDoDia(diaEmSaoPaulo());
+    const alunos = await this.calculo.alunosDasTurmas(
+      turmas.map((t) => t.id),
+      ate,
+    );
+    const sumindo = await this.calculo.sumindoDasTurmas(
+      alunos.filter((a) => !estavaCancelado(a)),
+      ate,
+    );
+    if (sumindo.length === 0) return [];
+
+    const [dados, podeVerTelefone] = await Promise.all([
+      this.repository.contatosDosAlunos(sumindo.map((s) => s.alunoId)),
+      this.repository.podeGerenciarEstudantes(userId),
+    ]);
+    const nomeDaTurma = new Map(turmas.map((t) => [t.id, t.nome]));
+    return sumindo
+      .map((s) => {
+        const d = dados.get(s.alunoId);
+        return {
+          alunoId: s.alunoId,
+          nome: d?.nome ?? '',
+          turma: nomeDaTurma.get(s.turmaId) ?? '',
+          ultimaPresenca: s.ultimaPresenca,
+          faltasSeguidas: s.faltasSeguidas,
+          ...(podeVerTelefone ? { telefone: d?.telefone ?? null } : {}),
+        };
+      })
+      .sort(
+        (a, b) =>
+          b.faltasSeguidas - a.faltasSeguidas || a.nome.localeCompare(b.nome),
+      );
   }
 
   /**
