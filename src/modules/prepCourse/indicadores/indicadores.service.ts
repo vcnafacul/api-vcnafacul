@@ -119,14 +119,14 @@ export class IndicadoresService {
 
     const turmas = await this.repository.turmasDoPeriodo(periodo.id);
     if (turmas.length === 0) return [];
-    const ate = fimDoDia(diaEmSaoPaulo());
+    const hoje = diaEmSaoPaulo();
     const alunos = await this.calculo.alunosDasTurmas(
       turmas.map((t) => t.id),
-      ate,
+      fimDoDia(hoje),
     );
     const sumindo = await this.calculo.sumindoDasTurmas(
       alunos.filter((a) => !estavaCancelado(a)),
-      ate,
+      hoje,
     );
     if (sumindo.length === 0) return [];
 
