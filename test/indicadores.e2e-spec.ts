@@ -10,9 +10,13 @@ import { CoursePeriodService } from 'src/modules/prepCourse/coursePeriod/course-
 import { diaEmSaoPaulo } from 'src/modules/prepCourse/indicadores/datas';
 import { IndicadorDiarioTurma } from 'src/modules/prepCourse/indicadores/indicador-diario-turma.entity';
 import { IndicadoresTask } from 'src/modules/prepCourse/indicadores/indicadores.task';
+import { CalculoDosIndicadores } from 'src/modules/prepCourse/indicadores/calculo-dos-indicadores';
 import { InscriptionCourseService } from 'src/modules/prepCourse/InscriptionCourse/inscription-course.service';
 import { LogPartnerRepository } from 'src/modules/prepCourse/partnerPrepCourse/log-partner/log-partner.repository';
 import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
+import { StatusApplication } from 'src/modules/prepCourse/studentCourse/enums/stastusApplication';
+import { StudentCourseRepository } from 'src/modules/prepCourse/studentCourse/student-course.repository';
+import { StudentCourseService } from 'src/modules/prepCourse/studentCourse/student-course.service';
 import { CreateRoleDtoInput } from 'src/modules/role/dto/create-role.dto';
 import { RoleService } from 'src/modules/role/role.service';
 import { UserRepository } from 'src/modules/user/user.repository';
@@ -26,6 +30,7 @@ import * as request from 'supertest';
 import { DataSource } from 'typeorm';
 import { CreateGeoDTOInputFaker } from './faker/create-geo.dto.input.faker';
 import { CreateInscriptionCourseDTOInputFaker } from './faker/create-inscription-course.dto.faker';
+import { createStudentCourseDTOInputFaker } from './faker/create-student-course.dto.input.faker';
 import { CreateUserDtoInputFaker } from './faker/create-user.dto.input.faker';
 import createFakeDocxBase64 from './utils/createFakeDocxBase64';
 import { createNestAppTest } from './utils/createNestAppTest';
@@ -52,6 +57,9 @@ describe('Indicadores do cursinho (e2e)', () => {
   let classService: ClassService;
   let inscriptionService: InscriptionCourseService;
   let task: IndicadoresTask;
+  let calculo: CalculoDosIndicadores;
+  let studentService: StudentCourseService;
+  let studentRepository: StudentCourseRepository;
 
   beforeAll(async () => {
     const mod: TestingModule = await Test.createTestingModule({
@@ -82,6 +90,9 @@ describe('Indicadores do cursinho (e2e)', () => {
     classService = mod.get(ClassService);
     inscriptionService = mod.get(InscriptionCourseService);
     task = mod.get(IndicadoresTask);
+    calculo = mod.get(CalculoDosIndicadores);
+    studentService = mod.get(StudentCourseService);
+    studentRepository = mod.get(StudentCourseRepository);
 
     jest
       .spyOn(mod.get(LogPartnerRepository), 'create')
@@ -166,6 +177,48 @@ describe('Indicadores do cursinho (e2e)', () => {
         c.user.id,
       )
     ).id;
+
+  /** Estudante com a matrícula confirmada na turma. */
+  const matricular = async (c: Cursinho, turmaId: string) => {
+    const userDto = CreateUserDtoInputFaker();
+    await userService.create(userDto);
+    const aluno = await userRepository.findOneBy({ email: userDto.email });
+    const dto = createStudentCourseDTOInputFaker(aluno.id, c.inscricaoId);
+    dto.rg = '45.678.123-4';
+    const { id } = await studentService.create(dto);
+    const criado = await studentService.findOneBy({ id });
+    criado.applicationStatus = StatusApplication.DeclaredInterest;
+    await studentRepository.update(criado);
+    await studentService.confirmEnrolled(id, turmaId);
+    return id;
+  };
+
+  /** Inscrito que nunca teve a matrícula confirmada. */
+  const inscrever = async (c: Cursinho, turmaId: string) => {
+    const userDto = CreateUserDtoInputFaker();
+    await userService.create(userDto);
+    const aluno = await userRepository.findOneBy({ email: userDto.email });
+    const dto = createStudentCourseDTOInputFaker(aluno.id, c.inscricaoId);
+    dto.rg = '45.678.123-4';
+    const { id } = await studentService.create(dto);
+    await db.query('UPDATE student_course SET classId = ? WHERE id = ?', [
+      turmaId,
+      id,
+    ]);
+    return id;
+  };
+
+  /** Afasta no tempo os logs de um aluno (para testar "até o dia D"). */
+  const recuarLogs = async (alunoId: string, dias: number, status?: string) =>
+    db.query(
+      `UPDATE log_student SET created_at = DATE_SUB(created_at, INTERVAL ? DAY)
+        WHERE student_id = ?${status ? ' AND applicationStatus = ?' : ''}`,
+      status ? [dias, alunoId, status] : [dias, alunoId],
+    );
+
+  /** Métricas de uma turma no dia, pela conta única. */
+  const metricasDaTurma = async (turmaId: string, d = dia()) =>
+    (await calculo.calcular([turmaId], d)).get(turmaId);
 
   const indicadores = (c: Cursinho, periodoId: string) =>
     http()
@@ -289,6 +342,72 @@ describe('Indicadores do cursinho (e2e)', () => {
 
       expect(await fotos(terminaHoje)).toHaveLength(1);
       expect(await fotos(comecaHoje)).toHaveLength(1);
+    });
+  });
+  describe('quantos alunos temos? (card 02)', () => {
+    it('conta quem teve a matrícula confirmada: matriculado, cancelado e encerrado; não o inscrito', async () => {
+      const c = await novoCursinho();
+      const p = await novoPeriodo(c, dia(-30), dia(30));
+      const t = await novaTurma(c, p.id);
+      await matricular(c, t);
+      await matricular(c, t);
+      const cancelado = await matricular(c, t);
+      const encerrado = await matricular(c, t);
+      await studentService.cancelEnrolled(cancelado, 'Rotina');
+      await db.query(
+        'UPDATE student_course SET applicationStatus = ? WHERE id = ?',
+        [StatusApplication.EnrollmentClosed, encerrado],
+      );
+      await inscrever(c, t);
+
+      const { body } = await indicadores(c, p.id).expect(200);
+
+      expect(body.turmas[0].metricas.alunos).toBe(4);
+      expect(body.cursinho.alunos).toBe(4);
+    });
+
+    it('soma as turmas no cursinho; aluno de outro cursinho nunca entra', async () => {
+      const c = await novoCursinho();
+      const p = await novoPeriodo(c, dia(-30), dia(30));
+      const a = await novaTurma(c, p.id, 'A');
+      const b = await novaTurma(c, p.id, 'B');
+      await matricular(c, a);
+      await matricular(c, b);
+      await matricular(c, b);
+      const outro = await novoCursinho();
+      const po = await novoPeriodo(outro, dia(-30), dia(30));
+      await matricular(outro, await novaTurma(outro, po.id));
+
+      const { body } = await indicadores(c, p.id).expect(200);
+
+      expect(body.turmas.map((t) => t.metricas.alunos)).toEqual([1, 2]);
+      expect(body.cursinho.alunos).toBe(3);
+    });
+
+    it('⚠️ pela data da matrícula: quem foi matriculado há 5 dias não conta 6 dias atrás', async () => {
+      const c = await novoCursinho();
+      const p = await novoPeriodo(c, dia(-30), dia(30));
+      const t = await novaTurma(c, p.id);
+      const aluno = await matricular(c, t);
+      await recuarLogs(aluno, 5);
+
+      expect((await metricasDaTurma(t, dia(-6))).alunos).toBe(0);
+      expect((await metricasDaTurma(t, dia(-5))).alunos).toBe(1);
+    });
+
+    it('a foto do dia bate com o número ao vivo', async () => {
+      const c = await novoCursinho();
+      const p = await novoPeriodo(c, dia(-30), dia(30));
+      const t = await novaTurma(c, p.id);
+      await matricular(c, t);
+      await matricular(c, t);
+
+      await task.fotografar();
+      const [foto] = await fotos(t);
+      const { body } = await indicadores(c, p.id).expect(200);
+
+      expect(foto.metricas.alunos).toBe(2);
+      expect(body.turmas[0].metricas.alunos).toBe(foto.metricas.alunos);
     });
   });
 });
