@@ -795,7 +795,15 @@ describe('Indicadores do cursinho (e2e)', () => {
     });
   });
   describe('como o desempenho evoluiu? (card 09)', () => {
-    afterEach(() => jest.restoreAllMocks());
+    // ⚠️ restoreAllMocks desfaria também os mocks do beforeAll (envio do
+    // formulário etc.) e quebraria os testes seguintes
+    afterEach(() => {
+      for (const metodo of [
+        RelatorioHttpService.prototype.buscarSimulados,
+        SimuladoHttpService.prototype.listUserGroupAggregates,
+      ] as jest.Mock[])
+        metodo.mockRestore?.();
+    });
 
     const mesDe = (n: number) => dia(n).slice(0, 7);
 
@@ -922,6 +930,65 @@ describe('Indicadores do cursinho (e2e)', () => {
         .get(`/indicadores/desempenho?periodoId=${p.id}`)
         .set('Authorization', outro.bearer)
         .expect(404);
+    });
+  });
+  describe('indicadores na dashboard (card 10)', () => {
+    it('resumo soma os períodos em andamento e bate com a tela', async () => {
+      const c = await novoCursinho();
+      const p = await novoPeriodo(c, dia(-30), dia(30), 'Extensivo');
+      const q = await novoPeriodo(c, dia(-10), dia(60), 'Semi');
+      await novoPeriodo(c, dia(-400), dia(-300), 'Antigo');
+      await matricular(c, await novaTurma(c, p.id));
+      await matricular(c, await novaTurma(c, q.id));
+      const t = await novaTurma(c, q.id);
+      await studentService.cancelEnrolled(await matricular(c, t), 'Rotina');
+
+      const { body } = await http()
+        .get('/indicadores/resumo')
+        .set('Authorization', c.bearer)
+        .expect(200);
+
+      expect(body.periodos.map((x) => x.nome).sort()).toEqual([
+        'Extensivo',
+        'Semi',
+      ]);
+      expect(body.metricas).toMatchObject({
+        alunos: 3,
+        ativos: 2,
+        cancelados: 1,
+      });
+      const tela = await indicadores(c, q.id).expect(200);
+      expect(tela.body.cursinho.alunos).toBe(2);
+    });
+
+    it('sem período aberto, ou sem cursinho: metricas null (a dashboard só esconde)', async () => {
+      const c = await novoCursinho();
+      await novoPeriodo(c, dia(-400), dia(-300));
+      const semAberto = await http()
+        .get('/indicadores/resumo')
+        .set('Authorization', c.bearer)
+        .expect(200);
+      expect(semAberto.body).toEqual({
+        cursinho: true,
+        periodos: [],
+        metricas: null,
+      });
+
+      const userDto = CreateUserDtoInputFaker();
+      await userService.create(userDto);
+      const solto = await userRepository.findOneBy({ email: userDto.email });
+      solto.role = await papel({ visualizarEstudantes: true });
+      await userRepository.update(solto);
+      const bearer = `Bearer ${await jwt.signAsync({ user: { id: solto.id } }, { expiresIn: '1h' })}`;
+      const semCursinho = await http()
+        .get('/indicadores/resumo')
+        .set('Authorization', bearer)
+        .expect(200);
+      expect(semCursinho.body).toEqual({
+        cursinho: false,
+        periodos: [],
+        metricas: null,
+      });
     });
   });
 });

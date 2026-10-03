@@ -12,6 +12,7 @@ import {
   IndicadoresDtoOutput,
   PeriodoDoIndicadorDtoOutput,
   PeriodosDoCursinhoDtoOutput,
+  ResumoDosIndicadoresDtoOutput,
 } from './dtos/indicadores.dto.output';
 import { IndicadoresRepository } from './indicadores.repository';
 import { Metricas, somarMetricas, VERSAO_DAS_METRICAS } from './metricas';
@@ -72,6 +73,31 @@ export class IndicadoresService {
       () => this.montar(periodo, saida),
       saida.emAndamento ? CACHE_ABERTO : CACHE_ENCERRADO,
     );
+  }
+
+  /**
+   * Os números do período em andamento para a dashboard (card 10) — a mesma
+   * conta e o mesmo cache da tela. Mais de um período aberto (ex.: extensivo
+   * e semiextensivo): soma. Nenhum, ou a pessoa não é de um cursinho: lista
+   * vazia e `metricas: null` — um `null` puro chegaria como corpo vazio.
+   */
+  async resumo(userId: string): Promise<ResumoDosIndicadoresDtoOutput> {
+    const cursinho = await this.partnerRepository.findOneByUserId(userId);
+    if (!cursinho) return { cursinho: false, periodos: [], metricas: null };
+    const nenhum = { cursinho: true, periodos: [], metricas: null };
+    const hoje = diaEmSaoPaulo();
+    const abertos = (await this.repository.periodosDoCursinho(cursinho.id))
+      .map((p) => paraSaida(p, hoje))
+      .filter((p) => p.emAndamento);
+    if (abertos.length === 0) return nenhum;
+    const indicadores = await Promise.all(
+      abertos.map((p) => this.obter(p.id, userId)),
+    );
+    return {
+      cursinho: true,
+      periodos: abertos.map((p) => ({ id: p.id, nome: p.nome })),
+      metricas: somarMetricas(indicadores.map((i) => i.cursinho)),
+    };
   }
 
   /**

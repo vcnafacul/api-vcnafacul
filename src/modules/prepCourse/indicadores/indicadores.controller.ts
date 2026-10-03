@@ -16,6 +16,7 @@ import {
   AlunoSumindoDtoOutput,
   IndicadoresDtoOutput,
   PeriodosDoCursinhoDtoOutput,
+  ResumoDosIndicadoresDtoOutput,
 } from './dtos/indicadores.dto.output';
 import { DesempenhoService } from './desempenho.service';
 import { DesempenhoDtoOutput } from './dtos/desempenho.dto.output';
@@ -47,6 +48,22 @@ export class IndicadoresController {
   })
   async periodos(@Req() req: Request): Promise<PeriodosDoCursinhoDtoOutput> {
     return this.service.periodos((req.user as User).id);
+  }
+
+  @Get('resumo')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.visualizarEstudantes,
+    Permissions.gerenciarEstudantes,
+  ])
+  @ApiResponse({
+    status: 200,
+    description:
+      'Números do período em andamento, para a dashboard (metricas null sem período aberto)',
+  })
+  async resumo(@Req() req: Request): Promise<ResumoDosIndicadoresDtoOutput> {
+    return this.service.resumo((req.user as User).id);
   }
 
   @Get('desempenho')
