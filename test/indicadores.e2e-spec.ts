@@ -968,7 +968,11 @@ describe('Indicadores do cursinho (e2e)', () => {
         .get('/indicadores/resumo')
         .set('Authorization', c.bearer)
         .expect(200);
-      expect(semAberto.body).toEqual({ periodos: [], metricas: null });
+      expect(semAberto.body).toEqual({
+        cursinho: true,
+        periodos: [],
+        metricas: null,
+      });
 
       const userDto = CreateUserDtoInputFaker();
       await userService.create(userDto);
@@ -980,7 +984,11 @@ describe('Indicadores do cursinho (e2e)', () => {
         .get('/indicadores/resumo')
         .set('Authorization', bearer)
         .expect(200);
-      expect(semCursinho.body).toEqual({ periodos: [], metricas: null });
+      expect(semCursinho.body).toEqual({
+        cursinho: false,
+        periodos: [],
+        metricas: null,
+      });
     });
   });
 });

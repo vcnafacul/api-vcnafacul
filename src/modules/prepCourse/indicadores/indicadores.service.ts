@@ -83,8 +83,8 @@ export class IndicadoresService {
    */
   async resumo(userId: string): Promise<ResumoDosIndicadoresDtoOutput> {
     const cursinho = await this.partnerRepository.findOneByUserId(userId);
-    const nenhum = { periodos: [], metricas: null };
-    if (!cursinho) return nenhum;
+    if (!cursinho) return { cursinho: false, periodos: [], metricas: null };
+    const nenhum = { cursinho: true, periodos: [], metricas: null };
     const hoje = diaEmSaoPaulo();
     const abertos = (await this.repository.periodosDoCursinho(cursinho.id))
       .map((p) => paraSaida(p, hoje))
@@ -94,6 +94,7 @@ export class IndicadoresService {
       abertos.map((p) => this.obter(p.id, userId)),
     );
     return {
+      cursinho: true,
       periodos: abertos.map((p) => ({ id: p.id, nome: p.nome })),
       metricas: somarMetricas(indicadores.map((i) => i.cursinho)),
     };

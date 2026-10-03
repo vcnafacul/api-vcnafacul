@@ -39,6 +39,11 @@ export interface AlunoSumindoDtoOutput {
 }
 
 export interface ResumoDosIndicadoresDtoOutput {
+  /**
+   * A pessoa é de um cursinho? A dashboard mantém o total da plataforma para
+   * a equipe do projeto e o troca pelos indicadores para o cursinho.
+   */
+  cursinho: boolean;
   /** Os períodos em andamento somados (normalmente um). */
   periodos: { id: string; nome: string }[];
   /** `null` sem período em andamento (a dashboard esconde os KPIs). */
