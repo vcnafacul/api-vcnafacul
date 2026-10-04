@@ -51,6 +51,31 @@ export class ProvaService {
     );
   }
 
+  /**
+   * Card 41 — edita os dados da prova do cursinho. Quem decide se pode (dono,
+   * oficial, categoria) é o ms, pelo ator; 400/403/404/409 chegam com a
+   * mensagem dele.
+   */
+  public async editarDados(
+    id: string,
+    dados: Record<string, unknown>,
+    ator: Ator,
+  ): Promise<{ nome: string }> {
+    return await this.axios.patch(
+      `v1/prova/${encodeURIComponent(id)}/dados`,
+      dados,
+      headerDoAtor(ator),
+    );
+  }
+
+  /** Card 41 — exclusão lógica da prova do cursinho (o ms decide). */
+  public async excluir(id: string, ator: Ator): Promise<{ nome: string }> {
+    return await this.axios.delete(
+      `v1/prova/${encodeURIComponent(id)}`,
+      headerDoAtor(ator),
+    );
+  }
+
   /** As atualizações disponíveis das questões da prova (tickets/023, card 13). */
   public async listarAtualizacoes(id: string, ator: Ator) {
     return await this.axios.get(

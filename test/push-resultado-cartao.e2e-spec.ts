@@ -6,6 +6,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { AppModule } from 'src/app.module';
 import { EnvioDeResultadoTask } from 'src/modules/push/resultado-cartao/envio-de-resultado.task';
+import { PushResultadoCartaoRepository } from 'src/modules/push/resultado-cartao/push-resultado-cartao.repository';
 import { PushService } from 'src/modules/push/push.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import * as request from 'supertest';
@@ -256,6 +257,26 @@ describe('Push do resultado do cartão (e2e)', () => {
         status: 'enviado',
         envios: 2,
       });
+    });
+  });
+
+  describe('excluir envio do cartão (card 36)', () => {
+    it('⚠️ pendente → ignorado (não sai); enviado continua enviado', async () => {
+      const pendente = novoHistorico();
+      const enviado = novoHistorico();
+      await avisar(aviso(pendente)).expect(202);
+      await avisar(aviso(enviado)).expect(202);
+      await db.query(
+        "UPDATE push_resultado_cartao SET status = 'enviado' WHERE historico_id = ?",
+        [enviado],
+      );
+      const repo = app.get(PushResultadoCartaoRepository);
+
+      await repo.ignorarDoHistorico(pendente);
+      await repo.ignorarDoHistorico(enviado);
+
+      expect((await linha(pendente)).status).toBe('ignorado');
+      expect((await linha(enviado)).status).toBe('enviado');
     });
   });
 
