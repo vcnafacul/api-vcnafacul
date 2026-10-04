@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Param,
@@ -24,6 +25,7 @@ import { CartaoRespostaHttpService } from './cartao-resposta-http.service';
 import { CartaoRespostaResultadosService } from './cartao-resposta-resultados.service';
 import { CartaoReprocessoService } from './cartao-reprocesso.service';
 import { CartaoImagemService } from './cartao-imagem.service';
+import { CartaoExclusaoService } from './cartao-exclusao.service';
 import { CartaoUploadService } from './cartao-upload.service';
 
 /**
@@ -52,6 +54,7 @@ export class CartaoRespostaController {
     private readonly imagemService: CartaoImagemService,
     private readonly atorService: AtorService,
     private readonly simuladoService: SimuladoService,
+    private readonly exclusaoService: CartaoExclusaoService,
   ) {}
 
   /**
@@ -128,6 +131,29 @@ export class CartaoRespostaController {
       `attachment; filename="${nomeDoArquivo}"`,
     );
     res.send(buffer);
+  }
+
+  /**
+   * Card 36 — "Excluir envio" de um cartão mandado para o aluno errado. O
+   * estudante volta a "Não enviou" e o cartão certo pode ser enviado.
+   *
+   * ⚠️ `gerenciarEstudantes`, como o `reprocessar` e a foto: a ação nasce no
+   * relatório e muda estado. O recorte por cursinho sai do JWT; quem excluiu
+   * fica registrado no ms.
+   */
+  @Delete(':historicoId')
+  @HttpCode(204)
+  @ApiBearerAuth()
+  @ApiResponse({ status: 204, description: 'envio excluído' })
+  @ApiResponse({ status: 404, description: 'cartão de outro cursinho' })
+  @ApiResponse({ status: 409, description: 'leitura ainda em andamento' })
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
+  async excluir(
+    @Param('historicoId') historicoId: string,
+    @Req() req: Request,
+  ): Promise<void> {
+    await this.exclusaoService.excluir((req.user as User).id, historicoId);
   }
 
   @Post('upload')

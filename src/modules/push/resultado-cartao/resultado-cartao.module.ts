@@ -15,5 +15,7 @@ import { SegredoDeNotificacaoGuard } from './segredo-de-notificacao.guard';
     SegredoDeNotificacaoGuard,
     EnvioDeResultadoTask,
   ],
+  // Card 36: o "Excluir envio" tira da fila o resultado que ainda não saiu.
+  exports: [PushResultadoCartaoRepository],
 })
 export class ResultadoCartaoModule {}

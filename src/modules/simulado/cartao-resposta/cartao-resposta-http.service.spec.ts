@@ -78,3 +78,16 @@ it('⚠️ historicoId vai encodado', async () => {
   const url = axios.post.mock.calls[0][0] as string;
   expect(url.split('?')).toHaveLength(1);
 });
+
+it('excluir (card 36): POST :id/excluir, cursinho e autor no CORPO, id encodado', async () => {
+  const { svc, axios } = montar();
+
+  await svc.excluir('h1?cursinhoId=outro', {
+    cursinhoId: 'cur-1',
+    excluidoPor: 'colab-1',
+  });
+
+  const [url, corpo] = axios.post.mock.calls[0];
+  expect(url).toBe('v1/cartao-resposta/h1%3FcursinhoId%3Doutro/excluir');
+  expect(corpo).toEqual({ cursinhoId: 'cur-1', excluidoPor: 'colab-1' });
+});
