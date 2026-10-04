@@ -29,6 +29,7 @@ import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import * as ExcelJS from 'exceljs';
 import * as request from 'supertest';
 import { DataSource } from 'typeorm';
+import { Collaborator } from 'src/modules/prepCourse/collaborator/collaborator.entity';
 import CreateClassDtoInputFaker from './faker/create-class.dto.input.faker';
 import { CreateCoursePeriodDtoInputFaker } from './faker/create-course-period.dto.input.faker';
 import { CreateGeoDTOInputFaker } from './faker/create-geo.dto.input.faker';
@@ -828,6 +829,92 @@ describe('AttendanceRecord (e2e)', () => {
       // Excluída, deixa de valer para as chamadas seguintes também.
       await falta('2026-03-17');
       expect((await justificativas())['2026-03-17']).toBeNull();
+    }, 100000);
+  });
+
+  describe('chamada é gestão: exige Gerenciar Turmas (tickets-documentacao, 08)', () => {
+    it('só Visualizar Turmas: não cria nem lê chamada; o registro do aluno segue aberto', async () => {
+      const { representative, student, classEntity } =
+        await criarTurmaComAlunoEFrequencia({
+          whatsapp: null,
+          urgencyPhone: null,
+        });
+      const db = app.get(DataSource);
+      const [registro] = await db.query(
+        `SELECT id FROM attendance_record WHERE classId = ?`,
+        [classEntity.id],
+      );
+      const cursinho = await partnerPrepCourseService.getByUserId(
+        representative.id,
+      );
+
+      /** Colaborador do cursinho com uma função nova; devolve o token. */
+      const membro = async (permissoes: object) => {
+        const funcao = await partnerPrepCourseService.createRole(
+          {
+            name: `Função ${Date.now()}-${Math.random()}`,
+            base: false,
+            ...permissoes,
+          } as any,
+          representative.id,
+        );
+        const dto = CreateUserDtoInputFaker();
+        await userService.create(dto);
+        const user = await userRepository.findOneBy({ email: dto.email });
+        user.role = funcao as any;
+        await userRepository.update(user);
+        await db.getRepository(Collaborator).save(
+          Object.assign(new Collaborator(), {
+            user,
+            partnerPrepCourse: { id: cursinho.id },
+            actived: true,
+          }),
+        );
+        return jwtService.signAsync({ user: { id: user.id } });
+      };
+      const monitor = await membro({ visualizarTurmas: true });
+      const gestor = await membro({
+        visualizarTurmas: true,
+        gerenciarTurmas: true,
+      });
+
+      const chamada = (t: string) =>
+        request(app.getHttpServer())
+          .post('/attendance-record')
+          .set({ Authorization: `Bearer ${t}` })
+          .send({
+            classId: classEntity.id,
+            date: '2026-03-11',
+            period: AttendancePeriod.MANHA,
+            studentIds: [],
+          });
+      const get = (t: string, url: string) =>
+        request(app.getHttpServer())
+          .get(url)
+          .set({ Authorization: `Bearer ${t}` });
+
+      await chamada(monitor).expect(403);
+      await get(monitor, `/class/${classEntity.id}/attendance-record`).expect(
+        403,
+      );
+      await get(monitor, `/attendance-record?classId=${classEntity.id}`).expect(
+        403,
+      );
+      await get(monitor, `/attendance-record/${registro.id}`).expect(403);
+      // A janela do aluno é só leitura para quem visualiza (card 07).
+      await get(
+        monitor,
+        `/attendance-record/student?studentId=${student.id}`,
+      ).expect(200);
+
+      await get(gestor, `/class/${classEntity.id}/attendance-record`).expect(
+        200,
+      );
+      await chamada(gestor).expect(201);
+      await get(gestor, `/attendance-record?classId=${classEntity.id}`).expect(
+        200,
+      );
+      await get(gestor, `/attendance-record/${registro.id}`).expect(200);
     }, 100000);
   });
 });
