@@ -10,6 +10,7 @@ describe('GestaoDoEventoService (026 · 02)', () => {
   const P1 = '64b000000000000000000001';
   const P2 = '64b000000000000000000002';
   const DE_OUTRO = '64b000000000000000000009';
+  const INCOMPLETA = '64b000000000000000000008';
 
   const montar = () => {
     const eventos = {
@@ -18,6 +19,7 @@ describe('GestaoDoEventoService (026 · 02)', () => {
       inscritosPorProva: jest.fn().mockResolvedValue(new Map()),
       salvarComProvas: jest.fn().mockResolvedValue('e1'),
       excluir: jest.fn(),
+      inscricoesDoEvento: jest.fn().mockResolvedValue([]),
     };
     const colaboradores = {
       findOneByUserId: jest
@@ -30,14 +32,17 @@ describe('GestaoDoEventoService (026 · 02)', () => {
         nome: id === P1 ? 'Simulado Inglês' : 'Simulado Espanhol',
         cursinhoId: id === DE_OUTRO ? 'B' : 'A',
         simuladoIds: [],
+        completa: id !== INCOMPLETA,
       })),
     };
+    const pushDoEvento = { avisarCancelamento: jest.fn() };
     const service = new GestaoDoEventoService(
       eventos as never,
       colaboradores as never,
       provas as never,
+      pushDoEvento as never,
     );
-    return { service, eventos, colaboradores };
+    return { service, eventos, colaboradores, pushDoEvento };
   };
 
   const dto = (over = {}) => ({
@@ -143,6 +148,71 @@ describe('GestaoDoEventoService (026 · 02)', () => {
       status: 'aberto',
       totalInscritos: 4,
       provas: [{ provaId: P1, nome: 'Simulado Inglês', inscritos: 4 }],
+    });
+  });
+
+  describe('card 38', () => {
+    const atualCom = (provaIds: string[], fim = Date.now() + 100000) => ({
+      id: 'e1',
+      nome: 'Simulado de outubro',
+      inscricoesDe: new Date(Date.now() - 1000),
+      inscricoesAte: new Date(fim),
+      provas: provaIds.map((provaId) => ({ provaId, nomeDaProva: provaId })),
+    });
+
+    it('⚠️ prova incompleta NOVA no evento → 400, nada gravado', async () => {
+      const { service, eventos } = montar();
+      await expect(
+        service.criar('u1', dto({ provaIds: [P1, INCOMPLETA] })),
+      ).rejects.toThrow('Só dá para usar provas completas.');
+      eventos.findUmDoCursinho.mockResolvedValue(atualCom([P1]));
+      await expect(
+        service.editar('u1', 'e1', dto({ provaIds: [P1, INCOMPLETA] })),
+      ).rejects.toThrow(BadRequestException);
+      expect(eventos.salvarComProvas).not.toHaveBeenCalled();
+    });
+
+    it('⚠️ prova que JÁ estava no evento e deixou de estar completa não trava a edição', async () => {
+      const { service, eventos } = montar();
+      eventos.findUmDoCursinho.mockResolvedValue(atualCom([P1, INCOMPLETA]));
+      await expect(
+        service.editar('u1', 'e1', dto({ provaIds: [P1, INCOMPLETA] })),
+      ).resolves.toBeDefined();
+    });
+
+    it('excluir com inscritos avisa cada um (depois de excluir)', async () => {
+      const { service, eventos, pushDoEvento } = montar();
+      eventos.findUmDoCursinho.mockResolvedValue(atualCom([P1]));
+      eventos.inscricoesDoEvento.mockResolvedValue([
+        { userId: 'ana', provaId: P1 },
+        { userId: 'beto', provaId: P1 },
+      ]);
+
+      await service.excluir('u1', 'e1');
+
+      expect(eventos.excluir).toHaveBeenCalledWith('e1');
+      expect(pushDoEvento.avisarCancelamento).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'e1', nome: 'Simulado de outubro' }),
+        ['ana', 'beto'],
+      );
+    });
+
+    it('⚠️ evento ENCERRADO ou sem inscritos: exclui sem avisar', async () => {
+      const { service, eventos, pushDoEvento } = montar();
+      eventos.findUmDoCursinho.mockResolvedValue(
+        atualCom([P1], Date.now() - 500),
+      );
+      eventos.inscricoesDoEvento.mockResolvedValue([
+        { userId: 'ana', provaId: P1 },
+      ]);
+      await service.excluir('u1', 'e1');
+
+      eventos.findUmDoCursinho.mockResolvedValue(atualCom([P1]));
+      eventos.inscricoesDoEvento.mockResolvedValue([]);
+      await service.excluir('u1', 'e1');
+
+      expect(eventos.excluir).toHaveBeenCalledTimes(2);
+      expect(pushDoEvento.avisarCancelamento).not.toHaveBeenCalled();
     });
   });
 });
