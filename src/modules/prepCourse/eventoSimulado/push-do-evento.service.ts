@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { CentralRepository } from 'src/modules/push/central/central.repository';
 import { PushPayload } from 'src/modules/push/push.regras';
 import { PushService } from 'src/modules/push/push.service';
 import { StudentCourseRepository } from '../studentCourse/student-course.repository';
@@ -46,6 +47,21 @@ export function textoDaConfirmacao(
       };
 }
 
+/** Card 38 — o evento foi excluído com alunos inscritos. */
+export function textoDoCancelamento(
+  evento: Pick<EventoSimulado, 'id' | 'nome'>,
+): PushPayload {
+  return {
+    title: corta(`❌ Simulado cancelado: ${evento.nome}`, 100),
+    body: corta(
+      `O simulado ${evento.nome} foi cancelado pelo cursinho. Sua inscrição não vale mais.`,
+      500,
+    ),
+    url: LINK,
+    tag: `evento-${evento.id}`,
+  };
+}
+
 /**
  * Push do evento (tickets/026, card 04, R5).
  *
@@ -59,6 +75,7 @@ export class PushDoEventoService {
   constructor(
     private readonly push: PushService,
     private readonly alunos: StudentCourseRepository,
+    private readonly central: CentralRepository,
   ) {}
 
   /** Push desligado neste ambiente? (fora de prod, sempre.) */
@@ -96,5 +113,46 @@ export class PushDoEventoService {
     } catch (err) {
       this.logger.warn(`Confirmação do evento ${evento.id} não saiu: ${err}`);
     }
+  }
+
+  /**
+   * Card 38 — avisa os inscritos de que o evento foi cancelado (excluído).
+   *
+   * ⚠️ **Central E push**, como a confirmação de inscrição do processo
+   * seletivo (card 01): o card do evento some do painel do aluno, e a central
+   * é o único lugar que continua dizendo por quê. A central grava mesmo com
+   * o push desligado (fora de prod).
+   *
+   * ⚠️ Nunca derruba a exclusão: falha vira log.
+   */
+  async avisarCancelamento(
+    evento: Pick<EventoSimulado, 'id' | 'nome'>,
+    userIds: string[],
+  ): Promise<void> {
+    if (!userIds.length) return;
+    const texto = textoDoCancelamento(evento);
+    await Promise.all([
+      this.central
+        .gravar(userIds, {
+          titulo: texto.title,
+          corpo: texto.body,
+          url: texto.url ?? null,
+        })
+        .catch((err) =>
+          this.logger.error(
+            `Central: cancelamento do evento ${evento.id} não gravou`,
+            err,
+          ),
+        ),
+      this.habilitado()
+        ? this.push
+            .sendToUsers(userIds, texto)
+            .catch((err) =>
+              this.logger.warn(
+                `Cancelamento do evento ${evento.id} não saiu: ${err}`,
+              ),
+            )
+        : undefined,
+    ]);
   }
 }

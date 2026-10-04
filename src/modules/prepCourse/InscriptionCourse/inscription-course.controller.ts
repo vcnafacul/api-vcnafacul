@@ -83,7 +83,9 @@ export class InscriptionCourseController {
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async getSubcribers(
     @Param('id') id: string,
+    @Req() req: Request,
   ): Promise<GetSubscribersDtoOutput[]> {
+    await this.service.garantirDoCursinho(id, (req.user as User).id);
     return await this.service.getSubscribers(id);
   }
 
@@ -91,13 +93,17 @@ export class InscriptionCourseController {
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
-  async getWaitingList(@Param('id') id: string): Promise<
+  async getWaitingList(
+    @Param('id') id: string,
+    @Req() req: Request,
+  ): Promise<
     {
       id: string;
       position: number;
       name: string;
     }[]
   > {
+    await this.service.garantirDoCursinho(id, (req.user as User).id);
     return await this.service.getWaitingList(id);
   }
 
@@ -111,7 +117,11 @@ export class InscriptionCourseController {
       limit: THROTTLE_CONFIG.WAITING_LIST.limit,
     },
   })
-  async sendWaitingList(@Param('id') id: string): Promise<void> {
+  async sendWaitingList(
+    @Param('id') id: string,
+    @Req() req: Request,
+  ): Promise<void> {
+    await this.service.garantirDoCursinho(id, (req.user as User).id);
     await this.service.sendEmailWaitingList(id);
   }
 
@@ -144,7 +154,11 @@ export class InscriptionCourseController {
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
-  async getById(@Param('id') id: string): Promise<InscriptionCourse> {
+  async getById(
+    @Param('id') id: string,
+    @Req() req: Request,
+  ): Promise<InscriptionCourse> {
+    await this.service.garantirDoCursinho(id, (req.user as User).id);
     return await this.service.getById(id);
   }
 
@@ -152,7 +166,11 @@ export class InscriptionCourseController {
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
-  async update(@Body() dto: UpdateInscriptionCourseDTOInput) {
+  async update(
+    @Body() dto: UpdateInscriptionCourseDTOInput,
+    @Req() req: Request,
+  ) {
+    await this.service.garantirDoCursinho(dto.id, (req.user as User).id);
     await this.service.updateFromDTO(dto);
   }
 
@@ -160,7 +178,8 @@ export class InscriptionCourseController {
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
-  async cancel(@Param('id') id: string): Promise<void> {
+  async cancel(@Param('id') id: string, @Req() req: Request): Promise<void> {
+    await this.service.garantirDoCursinho(id, (req.user as User).id);
     await this.service.cancelInscriptionCourse(id);
   }
 
@@ -170,7 +189,11 @@ export class InscriptionCourseController {
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async updateWaitingList(
     @Body() dto: { id: string; studentId: string; waitingList: boolean },
+    @Req() req: Request,
   ) {
+    await this.service.garantirDoCursinho(dto.id, (req.user as User).id, [
+      dto.studentId,
+    ]);
     await this.service.updateWaitingList(
       dto.id,
       dto.studentId,
@@ -184,7 +207,13 @@ export class InscriptionCourseController {
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
   async updateOrderWaitingList(
     @Body() dto: { id: string; studentsId: string[] },
+    @Req() req: Request,
   ) {
+    await this.service.garantirDoCursinho(
+      dto.id,
+      (req.user as User).id,
+      dto.studentsId,
+    );
     await this.service.updateOrderWaitingList(dto.id, dto.studentsId);
   }
 
@@ -195,7 +224,9 @@ export class InscriptionCourseController {
   async extendInscription(
     @Param('id') id: string,
     @Body() dto: ExtendInscriptionCourseDtoInput,
+    @Req() req: Request,
   ): Promise<void> {
+    await this.service.garantirDoCursinho(id, (req.user as User).id);
     await this.service.extendInscription(id, dto);
   }
 }

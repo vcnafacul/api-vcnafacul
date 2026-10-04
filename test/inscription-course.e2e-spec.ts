@@ -26,6 +26,7 @@ import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import * as request from 'supertest';
+import { DataSource } from 'typeorm';
 import { CreateGeoDTOInputFaker } from './faker/create-geo.dto.input.faker';
 import { CreateInscriptionCourseDTOInputFaker } from './faker/create-inscription-course.dto.faker';
 import { createStudentCourseDTOInputFaker } from './faker/create-student-course.dto.input.faker';
@@ -508,7 +509,7 @@ describe('InscriptionCourse (e2e)', () => {
       .set({
         Authorization: `Bearer ${token}`,
       })
-      .expect(400)
+      .expect(404) // inexistente = de outro cursinho (card 43)
       .expect((res) => {
         expect(res.body).toHaveProperty('message');
         expect(res.body.message).toBe('Processo Seletivo não encontrado');
@@ -878,7 +879,7 @@ describe('InscriptionCourse (e2e)', () => {
     await request(app.getHttpServer())
       .get(`/inscription-course/subscribers/hashid-not-exist`)
       .set({ Authorization: `Bearer ${token}` })
-      .expect(400)
+      .expect(404) // inexistente = de outro cursinho (card 43)
       .expect((res) => {
         expect(res.body).toHaveProperty('message');
         expect(res.body.message).toBe('Processo Seletivo não encontrado');
@@ -1475,5 +1476,125 @@ describe('InscriptionCourse (e2e)', () => {
       id: inscriptionCreated.id,
     });
     expect(after.actived).toBe(Status.Approved);
+  });
+
+  describe('⚠️ escopo de cursinho (tickets-documentacao, 43)', () => {
+    it('com o processo de OUTRO cursinho, toda rota responde 404 e nada muda', async () => {
+      const B = await createPartnerPrepCourse();
+      const processoB = await inscriptionService.create(
+        CreateInscriptionCourseDTOInputFaker(),
+        B.representative.id,
+      );
+      const userDto = await CreateUserDtoInputFaker();
+      await userService.create(userDto);
+      const aluno = await userRepository.findOneBy({ email: userDto.email });
+      const inscritoB = await studentCourseService.create(
+        createStudentCourseDTOInputFaker(aluno.id, processoB.id),
+      );
+      const antes = await inscriptionService.findOneBy({ id: processoB.id });
+
+      const A = await createPartnerPrepCourse();
+      const tokenA = await jwtService.signAsync(
+        { user: { id: A.representative.id } },
+        { expiresIn: '2h' },
+      );
+      const enviar = jest.spyOn(emailService, 'sendWaitingList');
+      enviar.mockClear();
+
+      // Sob demanda: cada requisição do supertest abre e fecha o servidor.
+      const http = () => request(app.getHttpServer());
+      const id = processoB.id;
+      const tentativas: (() => request.Test)[] = [
+        () => http().get(`/inscription-course/subscribers/${id}`),
+        () => http().get(`/inscription-course/waiting-list/${id}`),
+        () => http().get(`/inscription-course/send-waiting-list/${id}`),
+        () => http().get(`/inscription-course/${id}`),
+        () =>
+          http()
+            .patch('/inscription-course')
+            .send({ id, description: 'invadido' }),
+        () => http().delete(`/inscription-course/${id}`),
+        () =>
+          http()
+            .patch('/inscription-course/update-waiting-list')
+            .send({ id, studentId: inscritoB.id, waitingList: true }),
+        () =>
+          http()
+            .patch('/inscription-course/update-order-waiting-list')
+            .send({ id, studentsId: [inscritoB.id] }),
+        () =>
+          http()
+            .patch(`/inscription-course/${id}/extend`)
+            .send({ endDate: '2099-12-31' }),
+      ];
+      // O índice aponta qual tentativa (na ordem da lista) não deu 404.
+      for (const [tentativa, t] of tentativas.entries()) {
+        const r = await t().set({ Authorization: `Bearer ${tokenA}` });
+        expect({ tentativa, status: r.status }).toEqual({
+          tentativa,
+          status: 404,
+        });
+      }
+
+      expect(enviar).not.toHaveBeenCalled();
+      const depois = await inscriptionService.findOneBy({ id: processoB.id });
+      expect({
+        actived: depois.actived,
+        description: depois.description,
+        endDate: new Date(depois.endDate).toISOString(),
+      }).toEqual({
+        actived: antes.actived,
+        description: antes.description,
+        endDate: new Date(antes.endDate).toISOString(),
+      });
+
+      // o próprio cursinho continua lendo os inscritos
+      const tokenB = await jwtService.signAsync(
+        { user: { id: B.representative.id } },
+        { expiresIn: '2h' },
+      );
+      await request(app.getHttpServer())
+        .get(`/inscription-course/subscribers/${id}`)
+        .set({ Authorization: `Bearer ${tokenB}` })
+        .expect(200);
+    }, 100000);
+  });
+
+  describe('cópia do formulário falhou (tickets-documentacao, 28)', () => {
+    it('não deixa o processo gravado sem formulário', async () => {
+      const { representative, partnerPrepCourse } =
+        await createPartnerPrepCourse();
+      const token = await jwtService.signAsync(
+        { user: { id: representative.id } },
+        { expiresIn: '2h' },
+      );
+      formServiceMock.createFormFull.mockRejectedValueOnce(
+        new Error('microserviço fora do ar'),
+      );
+
+      const { body } = await request(app.getHttpServer())
+        .post('/inscription-course')
+        .send(CreateInscriptionCourseDTOInputFaker())
+        .set({ Authorization: `Bearer ${token}` })
+        .expect(502);
+      expect(body.message).toBe(
+        'Não foi possível montar o formulário do processo. Nada foi criado. Tente de novo.',
+      );
+
+      const [{ n }] = await app
+        .get(DataSource)
+        .query(
+          `SELECT COUNT(*) AS n FROM inscription_course WHERE partner_prep_course_id = ?`,
+          [partnerPrepCourse.id],
+        );
+      expect(Number(n)).toBe(0);
+
+      // na tentativa seguinte, com o formulário de pé, cria normalmente
+      await request(app.getHttpServer())
+        .post('/inscription-course')
+        .send(CreateInscriptionCourseDTOInputFaker())
+        .set({ Authorization: `Bearer ${token}` })
+        .expect(201);
+    }, 100000);
   });
 });
