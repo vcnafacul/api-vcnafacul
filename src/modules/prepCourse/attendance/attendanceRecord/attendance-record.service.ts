@@ -71,7 +71,7 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
       await this.collaboratorRepository.findOneByUserId(userId);
     if (!collaborator) {
       throw new HttpException(
-        'Colaborador não encontrado',
+        'Você não é colaborador deste cursinho',
         HttpStatus.NOT_FOUND,
       );
     }
@@ -159,13 +159,13 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
     } catch (error) {
       console.error('Error creating attendance record:', error);
       throw new HttpException(
-        'An error occurred while creating the attendance record',
+        'Não foi possível registrar a presença',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
     if (!record) {
       throw new HttpException(
-        'An error occurred while creating the attendance record',
+        'Não foi possível registrar a presença',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -235,17 +235,11 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
     classId,
   }: GetAttendanceRecord): Promise<GetAllOutput<AttendanceRecord>> {
     if (!classId) {
-      throw new HttpException(
-        `Class not found by id ${classId}`,
-        HttpStatus.NOT_FOUND,
-      );
+      throw new HttpException('Turma não encontrada', HttpStatus.NOT_FOUND);
     }
     const cl = await this.classRepository.findOneBy({ id: classId });
     if (!cl) {
-      throw new HttpException(
-        `Class not found by id ${classId}`,
-        HttpStatus.NOT_FOUND,
-      );
+      throw new HttpException('Turma não encontrada', HttpStatus.NOT_FOUND);
     }
     const where = { class: cl };
 
@@ -313,10 +307,7 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
     const classEntity =
       await this.classRepository.findOneByIdWithPartner(classId);
     if (!classEntity) {
-      throw new HttpException(
-        `Class not found by id ${classId}`,
-        HttpStatus.NOT_FOUND,
-      );
+      throw new HttpException('Turma não encontrada', HttpStatus.NOT_FOUND);
     }
 
     const endDateCopy = new Date(endDate);
@@ -370,10 +361,7 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
     const classEntity =
       await this.classRepository.findOneByIdWithPartner(classId);
     if (!classEntity) {
-      throw new HttpException(
-        `Class not found by id ${classId}`,
-        HttpStatus.NOT_FOUND,
-      );
+      throw new HttpException('Turma não encontrada', HttpStatus.NOT_FOUND);
     }
 
     const report = await this.repository.studentAttendanceReportByClassId(

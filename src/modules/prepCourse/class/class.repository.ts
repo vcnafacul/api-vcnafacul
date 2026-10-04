@@ -21,10 +21,7 @@ export class ClassRepository extends BaseRepository<Class> {
   async delete(id: string): Promise<void> {
     const classEntity = await this.repository.findOneBy({ id });
     if (!classEntity) {
-      throw new HttpException(
-        `Class not found by id ${id}`,
-        HttpStatus.NOT_FOUND,
-      );
+      throw new HttpException('Turma não encontrada', HttpStatus.NOT_FOUND);
     }
     classEntity.deletedAt = new Date();
     await this.repository.save(classEntity);

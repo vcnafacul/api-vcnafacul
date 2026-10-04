@@ -10,6 +10,12 @@ import { StudentAttendance } from '../studentAttendance/student-attendance.entit
 import { CollaboratorRepository } from '../../collaborator/collaborator.repository';
 import { StudentCourse } from '../../studentCourse/student-course.entity';
 
+/** `AAAA-MM-DD` (ou Date) → `dd/mm/aaaa`, para as mensagens (card 12). */
+function emDiaMesAno(data: Date | string): string {
+  const iso = data instanceof Date ? data.toISOString() : String(data);
+  return iso.slice(0, 10).split('-').reverse().join('/');
+}
+
 @Injectable()
 export class PeriodJustificationService {
   constructor(
@@ -62,7 +68,7 @@ export class PeriodJustificationService {
 
     if (startDate < periodStart || endDate > periodEnd) {
       throw new HttpException(
-        `As datas devem estar dentro do período letivo (${periodStart} a ${periodEnd})`,
+        `As datas devem estar dentro do período letivo (${emDiaMesAno(periodStart)} a ${emDiaMesAno(periodEnd)})`,
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -96,7 +102,7 @@ export class PeriodJustificationService {
       if (overlapping.length > 0) {
         const existing = overlapping[0];
         throw new HttpException(
-          `Já existe uma justificativa de período que conflita: ${existing.startDate} a ${existing.endDate}`,
+          `Já existe uma justificativa de período que conflita: ${emDiaMesAno(existing.startDate)} a ${emDiaMesAno(existing.endDate)}`,
           HttpStatus.BAD_REQUEST,
         );
       }

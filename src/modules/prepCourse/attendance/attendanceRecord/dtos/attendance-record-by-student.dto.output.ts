@@ -4,6 +4,9 @@ export class AttendanceRecordByStudentItem {
   @ApiProperty({ example: 'Maria' })
   name: string;
 
+  @ApiProperty({ example: 'Souza' })
+  lastName: string;
+
   @ApiProperty({ example: 'Maria Silva' })
   socialName: string;
 
