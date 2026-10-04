@@ -7,6 +7,7 @@ import { AppModule } from 'src/app.module';
 import { AvisoDeAberturaTask } from 'src/modules/prepCourse/eventoSimulado/aviso-de-abertura.task';
 import { ProvasDoMsService } from 'src/modules/prepCourse/eventoSimulado/provas-do-ms.service';
 import { PushService } from 'src/modules/push/push.service';
+import { ProvaNosEventosRepository } from 'src/modules/simulado/prova/cursinho/prova-nos-eventos.repository';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import * as request from 'supertest';
 import { DataSource } from 'typeorm';
@@ -23,7 +24,10 @@ describe('Eventos de simulado (e2e)', () => {
   let app: INestApplication;
   let db: DataSource;
   let jwt: JwtService;
-  const provasNoMs = new Map<string, { nome: string; cursinhoId: string }>();
+  const provasNoMs = new Map<
+    string,
+    { nome: string; cursinhoId: string; completa?: boolean }
+  >();
   // Push "ligado" e sem FCM: guarda para quem e o quê seria enviado.
   const push = {
     garantirHabilitado: jest.fn(),
@@ -57,7 +61,10 @@ describe('Eventos de simulado (e2e)', () => {
       .useValue({
         buscar: async (id: string) => {
           const p = provasNoMs.get(id);
-          return p ? { id, ...p, simuladoIds: [`sim-${id}`] } : null;
+          // Card 38: completa por padrão; `prova(..., false)` cria incompleta.
+          return p
+            ? { id, completa: true, ...p, simuladoIds: [`sim-${id}`] }
+            : null;
         },
         participantesPorCartao: async (simuladoIds: string[]) =>
           Object.fromEntries(
@@ -139,9 +146,9 @@ describe('Eventos de simulado (e2e)', () => {
     return u;
   };
 
-  const prova = (cursinhoId: string, nome: string) => {
+  const prova = (cursinhoId: string, nome: string, completa = true) => {
     const id = randomUUID().replace(/-/g, '').slice(0, 24);
-    provasNoMs.set(id, { nome, cursinhoId });
+    provasNoMs.set(id, { nome, cursinhoId, completa });
     return id;
   };
 
@@ -288,6 +295,109 @@ describe('Eventos de simulado (e2e)', () => {
         .set('Authorization', await bearer(gestor))
         .send(corpo([espanhol], { nome: 'Renomeado' }))
         .expect(200);
+    });
+  });
+
+  describe('ajustes do card 38', () => {
+    let A: string;
+    let gestor: string;
+
+    beforeAll(async () => {
+      A = await cursinho();
+      gestor = await colaborador(A, ['cadastrar_provas_cursinho']);
+    });
+
+    it('11 provas → 400 em português', async () => {
+      const onze = Array.from({ length: 11 }, (_, i) => prova(A, `P${i}`));
+      const r = await request(app.getHttpServer())
+        .post('/eventos-simulado/cursinho')
+        .set('Authorization', await bearer(gestor))
+        .send(corpo(onze))
+        .expect(400);
+      expect(JSON.stringify(r.body.message)).toContain(
+        'Máximo de 10 provas por evento.',
+      );
+    });
+
+    it('prova incompleta → 400', async () => {
+      const r = await request(app.getHttpServer())
+        .post('/eventos-simulado/cursinho')
+        .set('Authorization', await bearer(gestor))
+        .send(corpo([prova(A, 'Incompleta', false)]))
+        .expect(400);
+      expect(r.body.message).toBe('Só dá para usar provas completas.');
+    });
+
+    it('⚠️ excluir com inscritos: o aluno recebe o aviso na central e no push', async () => {
+      const p = prova(A, 'Simulado Natureza');
+      const criado = await request(app.getHttpServer())
+        .post('/eventos-simulado/cursinho')
+        .set('Authorization', await bearer(gestor))
+        .send(corpo([p], { nome: 'Simulado cancelado de teste' }))
+        .expect(201);
+      ids.eventos.push(criado.body.id);
+      const aluno = await usuario();
+      await db.query(
+        `INSERT INTO simulado_evento_inscricao (id, evento_id, user_id, prova_id) VALUES (?, ?, ?, ?)`,
+        [randomUUID(), criado.body.id, aluno, p],
+      );
+      push.sendToUsers.mockClear();
+
+      await request(app.getHttpServer())
+        .delete(`/eventos-simulado/cursinho/${criado.body.id}`)
+        .set('Authorization', await bearer(gestor))
+        .expect(204);
+
+      const central = await db.query(
+        'SELECT titulo FROM notificacao_do_usuario WHERE user_id = ?',
+        [aluno],
+      );
+      expect(central).toEqual([
+        { titulo: '❌ Simulado cancelado: Simulado cancelado de teste' },
+      ]);
+      expect(push.sendToUsers).toHaveBeenCalledWith(
+        [aluno],
+        expect.objectContaining({ tag: `evento-${criado.body.id}` }),
+      );
+    });
+  });
+
+  describe('prova nos eventos (card 41)', () => {
+    it('⚠️ lista só eventos vivos com a prova, e renomeia a cópia do nome', async () => {
+      const A = await cursinho();
+      const gestor = await colaborador(A, ['cadastrar_provas_cursinho']);
+      const p = prova(A, 'Prova que vai mudar de nome');
+      const vivo = await request(app.getHttpServer())
+        .post('/eventos-simulado/cursinho')
+        .set('Authorization', await bearer(gestor))
+        .send(corpo([p], { nome: 'Evento vivo' }))
+        .expect(201);
+      const excluido = await request(app.getHttpServer())
+        .post('/eventos-simulado/cursinho')
+        .set('Authorization', await bearer(gestor))
+        .send(corpo([p], { nome: 'Evento excluído' }))
+        .expect(201);
+      ids.eventos.push(vivo.body.id, excluido.body.id);
+      await request(app.getHttpServer())
+        .delete(`/eventos-simulado/cursinho/${excluido.body.id}`)
+        .set('Authorization', await bearer(gestor))
+        .expect(204);
+      const repo = app.get(ProvaNosEventosRepository);
+
+      expect(await repo.eventosComProva(p)).toEqual(['Evento vivo']);
+      expect(await repo.eventosComProva('64b0000000000000000000ff')).toEqual(
+        [],
+      );
+
+      await repo.renomearProva(p, 'Nome novo');
+      const lista = await request(app.getHttpServer())
+        .get('/eventos-simulado/cursinho')
+        .set('Authorization', await bearer(gestor))
+        .expect(200);
+      const evento = lista.body.find(
+        (e: { id: string }) => e.id === vivo.body.id,
+      );
+      expect(evento.provas[0].nome).toBe('Nome novo');
     });
   });
 
@@ -602,6 +712,7 @@ describe('Eventos de simulado (e2e)', () => {
           nome: 'Simulado Inglês',
           inscritos: 1,
           fizeram: 1,
+          trocaram: 0,
           naoVieram: 0,
         },
         {
@@ -609,6 +720,7 @@ describe('Eventos de simulado (e2e)', () => {
           nome: 'Simulado Espanhol',
           inscritos: 1,
           fizeram: 0,
+          trocaram: 0,
           naoVieram: 1,
         },
       ]);

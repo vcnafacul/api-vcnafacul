@@ -11,7 +11,7 @@ import {
   IsString,
   MaxLength,
 } from 'class-validator';
-import { PROVAS_MAX } from '../regras-do-evento';
+import { PROVAS_MAX, TEXTO_MAXIMO_DE_PROVAS } from '../regras-do-evento';
 
 export class SalvarEventoDtoInput {
   @ApiProperty()
@@ -38,7 +38,7 @@ export class SalvarEventoDtoInput {
   @ApiProperty({ type: [String] })
   @IsArray()
   @ArrayMinSize(1, { message: 'Escolha pelo menos uma prova.' })
-  @ArrayMaxSize(PROVAS_MAX)
+  @ArrayMaxSize(PROVAS_MAX, { message: TEXTO_MAXIMO_DE_PROVAS })
   @ArrayUnique()
   @IsMongoId({ each: true })
   provaIds: string[];
