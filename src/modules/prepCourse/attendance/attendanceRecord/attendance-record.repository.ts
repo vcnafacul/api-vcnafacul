@@ -31,8 +31,21 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
         'userRegisteredBy.email',
       ])
       .leftJoin('entity.studentAttendance', 'studentAttendance')
-      .addSelect(['studentAttendance.id', 'studentAttendance.present'])
+      .addSelect([
+        'studentAttendance.id',
+        'studentAttendance.present',
+        'studentAttendance.observation',
+        'studentAttendance.observationAt',
+      ])
       .leftJoinAndSelect('studentAttendance.justification', 'justification')
+      .leftJoin('studentAttendance.observationBy', 'observationBy')
+      .addSelect([
+        'observationBy.id',
+        'observationBy.firstName',
+        'observationBy.lastName',
+        'observationBy.socialName',
+        'observationBy.useSocialName',
+      ])
       .innerJoin('studentAttendance.studentCourse', 'studentCourse')
       .addSelect(['studentCourse.id', 'studentCourse.cod_enrolled'])
       .innerJoin('studentCourse.user', 'user')
