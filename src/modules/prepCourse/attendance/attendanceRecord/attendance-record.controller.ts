@@ -33,10 +33,15 @@ import { ExportAttendanceRecordDtoInput } from './dtos/export-attendance-record.
 export class AttendanceRecordController {
   constructor(private readonly service: AttendanceRecordService) {}
 
+  /**
+   * ⚠️ Era Visualizar Turmas: quem só via a turma criava chamada pela api (e
+   * não conseguia editá-la nem excluí-la). A tela já tratava como gestão
+   * (tickets-documentacao, card 08).
+   */
   @Post()
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarTurmas)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
   @ApiResponse({
     status: 201,
     description: 'criar registro de presença',
@@ -98,10 +103,11 @@ export class AttendanceRecordController {
     return this.service.exportToExcel(dto, res);
   }
 
+  // Histórico e detalhe: só a janela de gestão usa (card 08).
   @Get(':id')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarTurmas)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
   @ApiResponse({
     status: 200,
     description: 'buscar registro de presença',
@@ -112,10 +118,11 @@ export class AttendanceRecordController {
     return await this.service.findOneById(id);
   }
 
+  // Histórico e detalhe: só a janela de gestão usa (card 08).
   @Get()
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarTurmas)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
   @ApiResponse({
     status: 200,
     description: 'buscar registros de presenca',

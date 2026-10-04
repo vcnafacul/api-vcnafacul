@@ -118,10 +118,11 @@ export class ClassController {
     );
   }
 
+  // Alunos para montar a chamada: só o "Novo Registro" usa (card 08).
   @Get(':id/attendance-record')
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarTurmas)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
   async getClassByIdToAttendanceRecord(@Param('id') id: string) {
     return await this.service.findOneByIdToAttendanceRecord(id);
   }
