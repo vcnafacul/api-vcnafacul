@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Param,
@@ -24,6 +25,7 @@ import { CartaoRespostaHttpService } from './cartao-resposta-http.service';
 import { CartaoRespostaResultadosService } from './cartao-resposta-resultados.service';
 import { CartaoReprocessoService } from './cartao-reprocesso.service';
 import { CartaoImagemService } from './cartao-imagem.service';
+import { CartaoExclusaoService } from './cartao-exclusao.service';
 import { CartaoUploadService } from './cartao-upload.service';
 
 /**
@@ -34,6 +36,13 @@ import { CartaoUploadService } from './cartao-upload.service';
  */
 const TAMANHO_MAXIMO_CARTAO = 8 * 1024 * 1024;
 
+import { AtorService } from '../ator/ator.service';
+import {
+  DonoDoMaterial,
+  garantirQuePodeLer,
+} from '../ator/pode-alterar-material';
+import { SimuladoService } from '../simulado.service';
+
 @ApiTags('Simulado - Cartão Resposta')
 @Controller('mssimulado/cartao-resposta')
 export class CartaoRespostaController {
@@ -43,6 +52,9 @@ export class CartaoRespostaController {
     private readonly uploadService: CartaoUploadService,
     private readonly reprocessoService: CartaoReprocessoService,
     private readonly imagemService: CartaoImagemService,
+    private readonly atorService: AtorService,
+    private readonly simuladoService: SimuladoService,
+    private readonly exclusaoService: CartaoExclusaoService,
   ) {}
 
   /**
@@ -121,6 +133,29 @@ export class CartaoRespostaController {
     res.send(buffer);
   }
 
+  /**
+   * Card 36 — "Excluir envio" de um cartão mandado para o aluno errado. O
+   * estudante volta a "Não enviou" e o cartão certo pode ser enviado.
+   *
+   * ⚠️ `gerenciarEstudantes`, como o `reprocessar` e a foto: a ação nasce no
+   * relatório e muda estado. O recorte por cursinho sai do JWT; quem excluiu
+   * fica registrado no ms.
+   */
+  @Delete(':historicoId')
+  @HttpCode(204)
+  @ApiBearerAuth()
+  @ApiResponse({ status: 204, description: 'envio excluído' })
+  @ApiResponse({ status: 404, description: 'cartão de outro cursinho' })
+  @ApiResponse({ status: 409, description: 'leitura ainda em andamento' })
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
+  async excluir(
+    @Param('historicoId') historicoId: string,
+    @Req() req: Request,
+  ): Promise<void> {
+    await this.exclusaoService.excluir((req.user as User).id, historicoId);
+  }
+
   @Post('upload')
   @ApiBearerAuth()
   @ApiResponse({ status: 201, description: 'upload do cartão preenchido' })
@@ -186,12 +221,22 @@ export class CartaoRespostaController {
     status: 200,
     description: 'baixa o PDF do cartão de resposta',
   })
-  @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarProvas)
+  // Card 32: `JwtAuthGuard` como o resto do controller (sem token era 403,
+  // não 401), e as permissões de provas do cursinho também.
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.visualizarProvas,
+    Permissions.visualizarProvasCursinho,
+  ])
   async baixarCartao(
     @Param('simuladoId') simuladoId: string,
+    @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
+    garantirQuePodeLer(
+      (await this.simuladoService.getById(simuladoId)) as DonoDoMaterial,
+      await this.atorService.resolver((req.user as User).id),
+    );
     const { buffer, contentType } = await this.service.baixarCartao(simuladoId);
     res.setHeader('Content-Type', contentType || 'application/pdf');
     res.setHeader(

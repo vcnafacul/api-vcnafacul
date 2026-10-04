@@ -10,6 +10,7 @@ import { SalvarEventoDtoInput } from './dtos/salvar-evento.dto';
 import { EventoSimulado } from './evento-simulado.entity';
 import { EventoSimuladoRepository } from './evento-simulado.repository';
 import { ProvasDoMsService } from './provas-do-ms.service';
+import { PushDoEventoService } from './push-do-evento.service';
 import { StatusDoEvento, statusDoEvento } from './regras-do-evento';
 
 export type EventoDoCursinho = {
@@ -28,6 +29,7 @@ export const TEXTO_JANELA_INVERTIDA =
 export const TEXTO_PROVA_DE_OUTRO =
   'Só dá para usar provas do seu cursinho no evento.';
 export const TEXTO_PROVA_COM_INSCRITOS = 'Há alunos inscritos nesta prova.';
+export const TEXTO_PROVA_INCOMPLETA = 'Só dá para usar provas completas.';
 
 /**
  * O cursinho gerencia os eventos (tickets/026, card 02).
@@ -39,6 +41,7 @@ export class GestaoDoEventoService {
     private readonly eventos: EventoSimuladoRepository,
     private readonly colaboradores: CollaboratorRepository,
     private readonly provasDoMs: ProvasDoMsService,
+    private readonly pushDoEvento: PushDoEventoService,
   ) {}
 
   async cursinhoDoColaborador(userId: string): Promise<string> {
@@ -62,7 +65,7 @@ export class GestaoDoEventoService {
 
   async criar(userId: string, dto: SalvarEventoDtoInput) {
     const cursinhoId = await this.cursinhoDoColaborador(userId);
-    const provas = await this.validar(cursinhoId, dto);
+    const provas = await this.validar(cursinhoId, dto, []);
     const id = await this.eventos.salvarComProvas(
       {
         partnerPrepCourseId: cursinhoId,
@@ -80,7 +83,11 @@ export class GestaoDoEventoService {
     const cursinhoId = await this.cursinhoDoColaborador(userId);
     const atual = await this.eventos.findUmDoCursinho(id, cursinhoId);
     if (!atual) throw new NotFoundException('Evento não encontrado');
-    const provas = await this.validar(cursinhoId, dto);
+    const provas = await this.validar(
+      cursinhoId,
+      dto,
+      atual.provas.map((p) => p.provaId),
+    );
 
     // Tirar do evento uma prova com inscritos deixaria inscrição órfã (R: 409).
     const inscritos = (await this.eventos.inscritosPorProva([id])).get(id);
@@ -114,11 +121,38 @@ export class GestaoDoEventoService {
     const cursinhoId = await this.cursinhoDoColaborador(userId);
     const atual = await this.eventos.findUmDoCursinho(id, cursinhoId);
     if (!atual) throw new NotFoundException('Evento não encontrado');
+
+    // Lidas ANTES: depois da exclusão o evento some das consultas.
+    const inscricoes = await this.eventos.inscricoesDoEvento(id);
     await this.eventos.excluir(id);
+
+    /*
+      ⚠️ Card 38: os inscritos são avisados — antes o card simplesmente sumia
+      do painel deles, e vários apareciam no cursinho no dia. Evento já
+      ENCERRADO não avisa: o simulado aconteceu, excluir ali é arrumação, e
+      "foi cancelado" seria falso.
+    */
+    if (inscricoes.length && statusDoEvento(atual) !== 'encerrado') {
+      await this.pushDoEvento.avisarCancelamento(
+        atual,
+        inscricoes.map((i) => i.userId),
+      );
+    }
   }
 
-  /** Janela e provas — tudo ANTES de gravar. */
-  private async validar(cursinhoId: string, dto: SalvarEventoDtoInput) {
+  /**
+   * Janela e provas — tudo ANTES de gravar.
+   *
+   * @param jaNoEvento provas que o evento já tinha. ⚠️ Card 38: elas não
+   * precisam estar completas — uma prova que deixou de estar (questão
+   * reprovada depois) não pode impedir de editar o nome ou a janela, e tirá-la
+   * com inscritos já é 409.
+   */
+  private async validar(
+    cursinhoId: string,
+    dto: SalvarEventoDtoInput,
+    jaNoEvento: string[],
+  ) {
     if (new Date(dto.inscricoesDe) >= new Date(dto.inscricoesAte)) {
       throw new BadRequestException(TEXTO_JANELA_INVERTIDA);
     }
@@ -127,6 +161,11 @@ export class GestaoDoEventoService {
     );
     if (provas.some((p) => !p || p.cursinhoId !== cursinhoId)) {
       throw new BadRequestException(TEXTO_PROVA_DE_OUTRO);
+    }
+    // Card 38: "Só aparecem provas completas" era regra só da tela.
+    const antigas = new Set(jaNoEvento);
+    if (provas.some((p) => !p.completa && !antigas.has(p.id))) {
+      throw new BadRequestException(TEXTO_PROVA_INCOMPLETA);
     }
     return provas.map((p) => ({ provaId: p.id, nomeDaProva: p.nome }));
   }

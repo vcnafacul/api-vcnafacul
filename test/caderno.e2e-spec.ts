@@ -37,7 +37,12 @@ describe('Caderno (e2e)', () => {
   // a composição `handleError` (desembrulharCorpo) → `ControllerExceptionsFilter`
   // que este card conserta. Trocando só a instância do axios por dentro da
   // `HttpServiceAxios` real, o resto da corrente roda com código de produção.
-  const axiosForjado = { post: jest.fn() };
+  // `get`: a rota busca o simulado para conferir o dono (tickets-
+  // documentacao, card 32) — aqui, um simulado oficial (sem cursinho).
+  const axiosForjado = {
+    post: jest.fn(),
+    get: jest.fn().mockResolvedValue({ data: { cursinhoId: null } }),
+  };
   const servicoReal = new HttpServiceAxios('http://ms-forjado', new Logger());
   (servicoReal as any).axiosInstance = axiosForjado;
 

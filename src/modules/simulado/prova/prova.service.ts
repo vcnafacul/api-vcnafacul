@@ -1,4 +1,11 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
+import { v4 as uuidv4 } from 'uuid';
 import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EnvService } from 'src/shared/modules/env/env.service';
 import {
@@ -14,6 +21,7 @@ import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
 @Injectable()
 export class ProvaService {
   private readonly axios: HttpServiceAxios;
+  private readonly logger = new Logger(ProvaService.name);
 
   constructor(
     private readonly httpServiceFactory: HttpServiceAxiosFactory,
@@ -39,6 +47,31 @@ export class ProvaService {
     return await this.axios.patch(
       `v1/prova/${encodeURIComponent(id)}/receber-novas-versoes`,
       { valor },
+      headerDoAtor(ator),
+    );
+  }
+
+  /**
+   * Card 41 — edita os dados da prova do cursinho. Quem decide se pode (dono,
+   * oficial, categoria) é o ms, pelo ator; 400/403/404/409 chegam com a
+   * mensagem dele.
+   */
+  public async editarDados(
+    id: string,
+    dados: Record<string, unknown>,
+    ator: Ator,
+  ): Promise<{ nome: string }> {
+    return await this.axios.patch(
+      `v1/prova/${encodeURIComponent(id)}/dados`,
+      dados,
+      headerDoAtor(ator),
+    );
+  }
+
+  /** Card 41 — exclusão lógica da prova do cursinho (o ms decide). */
+  public async excluir(id: string, ator: Ator): Promise<{ nome: string }> {
+    return await this.axios.delete(
+      `v1/prova/${encodeURIComponent(id)}`,
       headerDoAtor(ator),
     );
   }
@@ -72,11 +105,70 @@ export class ProvaService {
    * mesmos números, origem guardada. Quem decide se pode é o ms, pelo ator.
    */
   public async duplicar(id: string, nome: string, ator: Ator) {
-    return await this.axios.post(
+    const copia = await this.axios.post<{ _id?: string }>(
       `v1/prova/${encodeURIComponent(id)}/duplicar`,
       { nome },
       headerDoAtor(ator),
     );
+    const arquivos = await this.copiarArquivosDaProva(id, copia?._id);
+    return arquivos ? { ...copia, ...arquivos } : copia;
+  }
+
+  /**
+   * Card 37: a cópia nasce com o PDF e o gabarito da original — em arquivos
+   * NOVOS no bucket. Compartilhar a mesma chave quebraria a original na
+   * primeira troca de arquivo da cópia (`updateProvaFiles` apaga o antigo).
+   *
+   * Falhar aqui não desfaz a duplicação: a cópia fica sem arquivo, como as
+   * provas de cursinho criadas sem PDF, e os detalhes mandam usar "Editar
+   * arquivos".
+   */
+  private async copiarArquivosDaProva(
+    origemId: string,
+    copiaId?: string,
+  ): Promise<{ filename?: string; gabarito?: string } | null> {
+    if (!copiaId) return null;
+    try {
+      const origem = (await this.axios.get(
+        `v1/prova/${encodeURIComponent(origemId)}`,
+      )) as { filename?: string; gabarito?: string };
+      const payload: { filename?: string; gabarito?: string } = {};
+      if (origem?.filename) {
+        payload.filename = await this.copiarArquivo(origem.filename);
+      }
+      if (origem?.gabarito) {
+        payload.gabarito = await this.copiarArquivo(origem.gabarito);
+      }
+      if (!payload.filename && !payload.gabarito) return null;
+      await this.axios.patch(
+        `v1/prova/${encodeURIComponent(copiaId)}/files`,
+        payload,
+      );
+      return payload;
+    } catch (err) {
+      this.logger.warn(
+        `prova ${copiaId} duplicada de ${origemId} SEM os arquivos: ` +
+          (err instanceof Error ? err.message : String(err)),
+      );
+      return null;
+    }
+  }
+
+  private async copiarArquivo(chave: string): Promise<string> {
+    const bucket = this.envService.get('BUCKET_SIMULADO');
+    const { buffer, contentType } = await this.blobService.getFile(
+      chave,
+      bucket,
+    );
+    const extensao = chave.includes('.') ? chave.split('.').pop() : 'pdf';
+    const nova = `${uuidv4()}.${extensao}`;
+    await this.blobService.putObjectAtKey(
+      Buffer.from(buffer, 'base64'),
+      bucket,
+      nova,
+      contentType,
+    );
+    return nova;
   }
 
   public async createProva(

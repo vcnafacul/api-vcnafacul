@@ -31,7 +31,7 @@ export class CartaoUploadService {
     file: Express.Multer.File,
   ): Promise<{ historicoId: string }> {
     if (!file?.buffer) {
-      throw new BadRequestException('arquivo do cartão é obrigatório');
+      throw new BadRequestException('Envie a foto do cartão.');
     }
 
     // Resolvido ANTES de tocar no bucket: recusar depois deixaria a imagem órfã lá.
@@ -79,7 +79,7 @@ export class CartaoUploadService {
         cursinhoId,
       );
     if (!student) {
-      throw new ForbiddenException('estudante não pertence ao seu cursinho');
+      throw new ForbiddenException('Este estudante não é do seu cursinho.');
     }
     return { cursinhoId, turmaId: student.class?.id };
   }

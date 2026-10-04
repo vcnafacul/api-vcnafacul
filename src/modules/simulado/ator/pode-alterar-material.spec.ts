@@ -1,6 +1,7 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import {
   garantirQuePodeAlterar,
+  garantirQuePodeLer,
   motivoParaNaoAlterar,
   TEXTO_DE_OUTRO_CURSINHO,
   TEXTO_OFICIAL,
@@ -49,5 +50,19 @@ describe('motivoParaNaoAlterar (tickets-documentacao, 30)', () => {
       garantirQuePodeAlterar(doCursinhoA, { cursinhoId: 'B' }),
     ).toThrow(ForbiddenException);
     expect(() => garantirQuePodeAlterar(doCursinhoA, deA)).not.toThrow();
+  });
+});
+
+describe('garantirQuePodeLer — caderno e cartão (tickets-documentacao, 32)', () => {
+  it('oficial e do próprio cursinho: baixa; de outro: 403; sem simulado: 404', () => {
+    expect(() => garantirQuePodeLer({ cursinhoId: null }, deA)).not.toThrow();
+    expect(() => garantirQuePodeLer({ cursinhoId: 'A' }, deA)).not.toThrow();
+    expect(() => garantirQuePodeLer({ cursinhoId: 'B' }, deA)).toThrow(
+      ForbiddenException,
+    );
+    expect(() =>
+      garantirQuePodeLer({ cursinhoId: 'B' }, plataforma),
+    ).not.toThrow();
+    expect(() => garantirQuePodeLer(null, deA)).toThrow(NotFoundException);
   });
 });
