@@ -252,6 +252,7 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
   ): Promise<
     {
       name: string;
+      lastName: string;
       socialName: string;
       useSocialName: boolean;
       codEnrolled: string;
@@ -288,6 +289,8 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
       .andWhere('studentCourse.id IN (:...studentIds)', { studentIds })
       .andWhere('attendance.deletedAt IS NULL')
       .select('user.firstName', 'name')
+      // O PDF mostrava só o primeiro nome (tickets-documentacao, card 12).
+      .addSelect('user.lastName', 'lastName')
       .addSelect('user.socialName', 'socialName')
       .addSelect('user.useSocialName', 'useSocialName')
       .addSelect('studentCourse.cod_enrolled', 'codEnrolled')
@@ -306,6 +309,7 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
         'presencePercentage',
       )
       .groupBy('user.firstName')
+      .addGroupBy('user.lastName')
       .addGroupBy('user.socialName')
       .addGroupBy('user.useSocialName')
       .addGroupBy('studentCourse.cod_enrolled')
@@ -317,6 +321,7 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
 
     return raw.map((item) => ({
       name: item.name,
+      lastName: item.lastName,
       socialName: item.socialName,
       useSocialName: item.useSocialName,
       codEnrolled: item.codEnrolled,

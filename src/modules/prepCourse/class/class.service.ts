@@ -209,7 +209,7 @@ export class ClassService extends BaseService<Class> {
     userId: string,
   ): Promise<CancelledStudentDtoOutput[]> {
     const naoEncontrada = new HttpException(
-      `Class not found by id ${id}`,
+      'Turma não encontrada',
       HttpStatus.NOT_FOUND,
     );
 
@@ -312,10 +312,7 @@ export class ClassService extends BaseService<Class> {
     const partnerPrepCourse = await this.cursinhoDaTurma(dto.id, userId);
     const classEntity = await this.repository.findOneBy({ id: dto.id });
     if (!classEntity) {
-      throw new HttpException(
-        `Class not found by id ${dto.id}`,
-        HttpStatus.NOT_FOUND,
-      );
+      throw new HttpException('Turma não encontrada', HttpStatus.NOT_FOUND);
     }
 
     // Se está atualizando o período letivo, validar
@@ -365,14 +362,11 @@ export class ClassService extends BaseService<Class> {
     await this.cursinhoDaTurma(id, userId);
     const classEntity = await this.repository.findOneBy({ id });
     if (!classEntity) {
-      throw new HttpException(
-        `Class not found by id ${id}`,
-        HttpStatus.NOT_FOUND,
-      );
+      throw new HttpException('Turma não encontrada', HttpStatus.NOT_FOUND);
     }
     if (classEntity.students.length > 0) {
       throw new HttpException(
-        `Class with id ${id} has students, cannot be deleted`,
+        'Não é possível excluir uma turma com alunos',
         HttpStatus.BAD_REQUEST,
       );
     }

@@ -98,7 +98,7 @@ describe('CoursePeriodService', () => {
           { name: 'P', startDate: '2026-06-30', endDate: '2026-01-01' } as any,
           'user-1',
         ),
-      ).rejects.toThrow('Start date must be before end date');
+      ).rejects.toThrow('A data de início deve ser anterior à data de fim');
     });
   });
 
@@ -163,7 +163,7 @@ describe('CoursePeriodService', () => {
           } as any,
           'u1',
         ),
-      ).rejects.toThrow('Start date must be before end date');
+      ).rejects.toThrow('A data de início deve ser anterior à data de fim');
     });
   });
 
@@ -212,7 +212,7 @@ describe('CoursePeriodService', () => {
       } as any);
 
       await expect(service.excluirDoCursinho('cp-1', 'u1')).rejects.toThrow(
-        'has classes, cannot be deleted',
+        'Não é possível excluir um período que tem turmas',
       );
     });
   });

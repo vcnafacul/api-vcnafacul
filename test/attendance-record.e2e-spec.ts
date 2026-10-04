@@ -961,4 +961,59 @@ describe('AttendanceRecord (e2e)', () => {
       expect(body.message).toBe('Turma não encontrada');
     }, 100000);
   });
+
+  describe('textos (tickets-documentacao, 12)', () => {
+    it('relatório por estudante traz o sobrenome; mensagens de período em dd/mm/aaaa', async () => {
+      const { token, student, classEntity, dia } =
+        await criarTurmaComAlunoEFrequencia({
+          whatsapp: null,
+          urgencyPhone: null,
+        });
+      const auth = { Authorization: `Bearer ${token}` };
+      const db = app.get(DataSource);
+      const [u] = await db.query(
+        `SELECT u.lastName FROM users u JOIN student_course sc ON sc.user_id = u.id WHERE sc.id = ?`,
+        [student.id],
+      );
+
+      const { body } = await request(app.getHttpServer())
+        .get(
+          `/attendance-record/summarybystudent?classId=${classEntity.id}&startDate=${dia}&endDate=${dia}`,
+        )
+        .set(auth)
+        .expect(200);
+      expect(body.report[0].lastName).toBe(u.lastName);
+
+      await db.query(
+        `UPDATE course_periods cp JOIN classes c ON c.course_period_id = cp.id
+            SET cp.startDate = '2026-01-01', cp.endDate = '2030-12-31'
+          WHERE c.id = ?`,
+        [classEntity.id],
+      );
+      const periodo = (startDate: string, endDate: string) =>
+        request(app.getHttpServer())
+          .post('/period-justification')
+          .set(auth)
+          .send({
+            studentCourseId: student.id,
+            startDate,
+            endDate,
+            justification: 'Atestado',
+          });
+      await periodo('2026-03-01', '2026-03-05').expect(201);
+      const { body: conflito } = await periodo(
+        '2026-03-04',
+        '2026-03-08',
+      ).expect(400);
+      expect(conflito.message).toBe(
+        'Já existe uma justificativa de período que conflita: 01/03/2026 a 05/03/2026',
+      );
+      const { body: fora } = await periodo('2025-12-30', '2026-01-02').expect(
+        400,
+      );
+      expect(fora.message).toBe(
+        'As datas devem estar dentro do período letivo (01/01/2026 a 31/12/2030)',
+      );
+    }, 100000);
+  });
 });

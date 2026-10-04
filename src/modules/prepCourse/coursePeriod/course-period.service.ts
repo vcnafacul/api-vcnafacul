@@ -52,7 +52,7 @@ export class CoursePeriodService extends BaseService<CoursePeriod> {
 
     if (startDate >= endDate) {
       throw new HttpException(
-        'Start date must be before end date',
+        'A data de início deve ser anterior à data de fim',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -150,7 +150,7 @@ export class CoursePeriodService extends BaseService<CoursePeriod> {
 
       if (startDate >= endDate) {
         throw new HttpException(
-          'Start date must be before end date',
+          'A data de início deve ser anterior à data de fim',
           HttpStatus.BAD_REQUEST,
         );
       }
@@ -177,7 +177,7 @@ export class CoursePeriodService extends BaseService<CoursePeriod> {
     const coursePeriod = await this.periodoDoCursinho(id, userId);
     if (coursePeriod.classes && coursePeriod.classes.length > 0) {
       throw new HttpException(
-        `Course period with id ${id} has classes, cannot be deleted`,
+        'Não é possível excluir um período que tem turmas',
         HttpStatus.BAD_REQUEST,
       );
     }
