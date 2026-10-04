@@ -425,10 +425,7 @@ export class ClassService extends BaseService<Class> {
   ): Promise<GetClassByIdAttendanceDtoOutput> {
     const classEntity = await this.repository.findOneByIdToAttendanceRecord(id);
     if (!classEntity) {
-      throw new HttpException(
-        `Class not found by id ${id}`,
-        HttpStatus.NOT_FOUND,
-      );
+      throw new HttpException('Turma não encontrada', HttpStatus.NOT_FOUND);
     }
     const students = classEntity.students.map((student) => {
       return {

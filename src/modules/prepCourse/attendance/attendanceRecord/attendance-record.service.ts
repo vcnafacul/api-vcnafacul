@@ -43,9 +43,14 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
     const classEntity =
       await this.classRepository.findOneByIdToAttendanceRecord(dto.classId);
     if (!classEntity) {
+      throw new HttpException('Turma não encontrada', HttpStatus.NOT_FOUND);
+    }
+    // Chamada sem ninguém não registra presença, mas contaria como aula
+    // registrada nos indicadores (card 11).
+    if (classEntity.students.length === 0) {
       throw new HttpException(
-        `Class not found by id ${dto.classId}`,
-        HttpStatus.NOT_FOUND,
+        'Esta turma não tem alunos matriculados',
+        HttpStatus.BAD_REQUEST,
       );
     }
 
@@ -66,7 +71,7 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
       await this.collaboratorRepository.findOneByUserId(userId);
     if (!collaborator) {
       throw new HttpException(
-        `Collaborator not found by id ${userId}`,
+        'Colaborador não encontrado',
         HttpStatus.NOT_FOUND,
       );
     }
