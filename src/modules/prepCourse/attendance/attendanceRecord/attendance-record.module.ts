@@ -1,3 +1,4 @@
+import { EscopoDaFrequenciaModule } from '../escopo/escopo-da-frequencia.module';
 import { Module } from '@nestjs/common';
 import { UserModule } from 'src/modules/user/user.module';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
@@ -12,6 +13,7 @@ import { AttendanceRecordService } from './attendance-record.service';
 @Module({
   controllers: [AttendanceRecordController],
   imports: [
+    EscopoDaFrequenciaModule,
     UserModule,
     EnvModule,
     ClassModule,

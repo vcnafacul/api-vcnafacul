@@ -1016,4 +1016,144 @@ describe('AttendanceRecord (e2e)', () => {
       );
     }, 100000);
   });
+
+  describe('⚠️ escopo de cursinho na frequência (tickets-documentacao, 13)', () => {
+    it('com ids de OUTRO cursinho, toda rota responde 404 e nada muda', async () => {
+      const db = app.get(DataSource);
+      const B = await criarTurmaComAlunoEFrequencia({
+        whatsapp: '11999998888',
+        urgencyPhone: null,
+      });
+      const A = await criarTurmaComAlunoEFrequencia({
+        whatsapp: null,
+        urgencyPhone: null,
+      });
+      await db.query(
+        `UPDATE course_periods cp JOIN classes c ON c.course_period_id = cp.id
+            SET cp.startDate = '2026-01-01', cp.endDate = '2030-12-31'
+          WHERE c.id IN (?)`,
+        [[A.classEntity.id, B.classEntity.id]],
+      );
+      const presencaDe = async (alunoId: string) => {
+        const [r] = await db.query(
+          `SELECT sa.id, sa.attendanceRecordId AS recordId FROM student_attendance sa
+            WHERE sa.studentCourseId = ?`,
+          [alunoId],
+        );
+        return r as { id: string; recordId: string };
+      };
+      const saB = await presencaDe(B.student.id);
+      const saA = await presencaDe(A.student.id);
+      const { body: pjB } = await request(app.getHttpServer())
+        .post('/period-justification')
+        .set({ Authorization: `Bearer ${B.token}` })
+        .send({
+          studentCourseId: B.student.id,
+          startDate: '2026-04-01',
+          endDate: '2026-04-05',
+          justification: 'Atestado',
+        })
+        .expect(201);
+
+      const comoA = { Authorization: `Bearer ${A.token}` };
+      // Sob demanda: cada requisição do supertest abre e fecha o servidor.
+      const http = () => request(app.getHttpServer());
+      const dia = B.dia;
+      const turmaB = B.classEntity.id;
+      const tentativas: (() => request.Test)[] = [
+        () =>
+          http().get(
+            `/attendance-record/export?classId=${turmaB}&startDate=${dia}&endDate=${dia}&maxAbsencePercent=25`,
+          ),
+        () =>
+          http().get(
+            `/attendance-record/summarybystudent?classId=${turmaB}&startDate=${dia}&endDate=${dia}`,
+          ),
+        () =>
+          http().get(
+            `/attendance-record/summary?classId=${turmaB}&startDate=${dia}&endDate=${dia}`,
+          ),
+        () =>
+          http().get(
+            `/attendance-record/summary?startDate=${dia}&endDate=${dia}`,
+          ), // sem turma
+        () => http().get(`/attendance-record?classId=${turmaB}`),
+        () => http().get(`/attendance-record/${saB.recordId}`),
+        () =>
+          http().get(`/attendance-record/student?studentId=${B.student.id}`),
+        () =>
+          http().post('/attendance-record').send({
+            classId: turmaB,
+            date: '2026-03-11',
+            period: AttendancePeriod.MANHA,
+            studentIds: [],
+          }),
+        () => http().delete(`/attendance-record/${saB.recordId}`),
+        () =>
+          http().patch('/student-attendance/present').send({
+            id: saB.id,
+            present: false,
+            observation: 'invasão',
+          }),
+        () =>
+          http()
+            .patch('/student-attendance/justification')
+            .send({
+              studentCourseId: B.student.id,
+              attendanceRecordIds: [saB.recordId],
+              justification: 'invasão',
+            }),
+        // aluno do próprio cursinho, mas com uma chamada de fora: recusa tudo
+        () =>
+          http()
+            .patch('/student-attendance/justification')
+            .send({
+              studentCourseId: A.student.id,
+              attendanceRecordIds: [saA.recordId, saB.recordId],
+              justification: 'invasão',
+            }),
+        () =>
+          http().get(`/period-justification?studentCourseId=${B.student.id}`),
+        () =>
+          http().post('/period-justification').send({
+            studentCourseId: B.student.id,
+            startDate: '2026-05-01',
+            endDate: '2026-05-02',
+            justification: 'invasão',
+          }),
+        () => http().delete(`/period-justification/${pjB.id}`),
+        () => http().get(`/class/${turmaB}/attendance-record`),
+      ];
+      // O índice aponta qual tentativa (na ordem da lista) não deu 404.
+      for (const [tentativa, t] of tentativas.entries()) {
+        const r = await t().set(comoA);
+        expect({ tentativa, status: r.status }).toEqual({
+          tentativa,
+          status: 404,
+        });
+      }
+
+      // nada mudou no Cursinho B (nem na presença de A da tentativa mista)
+      const [estadoB] = await db.query(
+        `SELECT sa.present,
+                (SELECT COUNT(*) FROM attendance_record WHERE classId = ?) AS chamadas,
+                (SELECT COUNT(*) FROM absence_justification WHERE studentAttendanceId IN (?, ?)) AS justificativas,
+                (SELECT COUNT(*) FROM period_justification WHERE student_course_id = ? AND deleted_at IS NULL) AS periodos
+           FROM student_attendance sa WHERE sa.id = ?`,
+        [turmaB, saB.id, saA.id, B.student.id, saB.id],
+      );
+      expect({
+        present: Number(estadoB.present),
+        chamadas: Number(estadoB.chamadas),
+        justificativas: Number(estadoB.justificativas),
+        periodos: Number(estadoB.periodos),
+      }).toEqual({ present: 1, chamadas: 1, justificativas: 0, periodos: 1 });
+
+      // o próprio cursinho segue lendo normalmente
+      await request(app.getHttpServer())
+        .get(`/attendance-record/${saB.recordId}`)
+        .set({ Authorization: `Bearer ${B.token}` })
+        .expect(200);
+    }, 100000);
+  });
 });

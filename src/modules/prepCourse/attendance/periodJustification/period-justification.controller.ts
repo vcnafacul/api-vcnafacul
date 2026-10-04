@@ -17,13 +17,18 @@ import { User } from 'src/modules/user/user.entity';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { PeriodJustification } from './period-justification.entity';
 import { PeriodJustificationService } from './period-justification.service';
+import { EscopoDaFrequencia } from '../escopo/escopo-da-frequencia.service';
 import { CreatePeriodJustificationDtoInput } from './dtos/create-period-justification.dto.input';
 import { GetPeriodJustificationDtoInput } from './dtos/get-period-justification.dto.input';
 
 @ApiTags('PeriodJustification')
 @Controller('period-justification')
 export class PeriodJustificationController {
-  constructor(private readonly service: PeriodJustificationService) {}
+  /** Confere o cursinho do aluno antes de ler ou escrever (card 13). */
+  constructor(
+    private readonly service: PeriodJustificationService,
+    private readonly escopo: EscopoDaFrequencia,
+  ) {}
 
   @Post()
   @ApiBearerAuth()
@@ -37,6 +42,7 @@ export class PeriodJustificationController {
     @Body() dto: CreatePeriodJustificationDtoInput,
     @Req() req: Request,
   ): Promise<PeriodJustification> {
+    await this.escopo.aluno(dto.studentCourseId, (req.user as User).id);
     return await this.service.create(dto, (req.user as User).id);
   }
 
@@ -48,7 +54,11 @@ export class PeriodJustificationController {
     status: 200,
     description: 'buscar justificativas de período',
   })
-  async findAll(@Query() query: GetPeriodJustificationDtoInput) {
+  async findAll(
+    @Query() query: GetPeriodJustificationDtoInput,
+    @Req() req: Request,
+  ) {
+    await this.escopo.aluno(query.studentCourseId, (req.user as User).id);
     return await this.service.findAll(query);
   }
 
@@ -61,6 +71,7 @@ export class PeriodJustificationController {
     description: 'deletar justificativa de período',
   })
   async delete(@Param('id') id: string, @Req() req: Request): Promise<void> {
+    await this.escopo.justificativaDePeriodo(id, (req.user as User).id);
     await this.service.delete(id, (req.user as User).id);
   }
 }

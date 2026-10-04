@@ -17,6 +17,7 @@ import { Permissions } from 'src/modules/role/permissions/permissions';
 import { User } from 'src/modules/user/user.entity';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { EscopoDaFrequencia } from '../escopo/escopo-da-frequencia.service';
 import { AttendanceRecord } from './attendance-record.entity';
 import { AttendanceRecordService } from './attendance-record.service';
 import { AttendanceRecordByClassInput } from './dtos/attendance-record-by-class.dto.input';
@@ -31,7 +32,18 @@ import { ExportAttendanceRecordDtoInput } from './dtos/export-attendance-record.
 @ApiTags('Attendance Record')
 @Controller('attendance-record')
 export class AttendanceRecordController {
-  constructor(private readonly service: AttendanceRecordService) {}
+  /**
+   * ⚠️ Toda rota confere o cursinho antes de ler ou escrever (card 13): a
+   * permissão vale para o cursinho de quem pede, não para a turma pedida.
+   */
+  constructor(
+    private readonly service: AttendanceRecordService,
+    private readonly escopo: EscopoDaFrequencia,
+  ) {}
+
+  private quem(req: Request): string {
+    return (req.user as User).id;
+  }
 
   /**
    * ⚠️ Era Visualizar Turmas: quem só via a turma criava chamada pela api (e
@@ -50,7 +62,8 @@ export class AttendanceRecordController {
     @Body() dto: CreateAttendanceRecordDtoInput,
     @Req() req: Request,
   ): Promise<AttendanceRecord> {
-    return await this.service.create(dto, (req.user as User).id);
+    await this.escopo.turma(dto.classId, this.quem(req));
+    return await this.service.create(dto, this.quem(req));
   }
 
   @Get('student')
@@ -63,7 +76,9 @@ export class AttendanceRecordController {
   })
   async findManyByStudentId(
     @Query() query: GetAttendanceRecordByStudent,
+    @Req() req: Request,
   ): Promise<GetAllOutput<AttendanceRecord>> {
+    await this.escopo.aluno(query.studentId, this.quem(req));
     return await this.service.findManyByStudentId(query);
   }
 
@@ -73,7 +88,9 @@ export class AttendanceRecordController {
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
   async summary(
     @Query() dto: AttendanceRecordByClassInput,
+    @Req() req: Request,
   ): Promise<AttendanceRecordByClassOutput> {
+    await this.escopo.turma(dto.classId, this.quem(req));
     return await this.service.getAttendanceRecordByClassId(dto);
   }
 
@@ -88,7 +105,9 @@ export class AttendanceRecordController {
   })
   async summaryByStudent(
     @Query() dto: AttendanceRecordByClassInput,
+    @Req() req: Request,
   ): Promise<AttendanceRecordByStudentDtoOutput> {
+    await this.escopo.turma(dto.classId, this.quem(req));
     return await this.service.getStudentPresenceReportByClassId(dto);
   }
 
@@ -99,7 +118,9 @@ export class AttendanceRecordController {
   async export(
     @Query() dto: ExportAttendanceRecordDtoInput,
     @Res() res: Response,
+    @Req() req: Request,
   ) {
+    await this.escopo.turma(dto.classId, this.quem(req));
     return this.service.exportToExcel(dto, res);
   }
 
@@ -114,7 +135,9 @@ export class AttendanceRecordController {
   })
   async findOneById(
     @Param('id') id: string,
+    @Req() req: Request,
   ): Promise<GetAttendanceRecordByIdDtoOutput> {
+    await this.escopo.chamadas([id], this.quem(req));
     return await this.service.findOneById(id);
   }
 
@@ -129,7 +152,9 @@ export class AttendanceRecordController {
   })
   async findAll(
     @Query() query: GetAttendanceRecord,
+    @Req() req: Request,
   ): Promise<GetAllOutput<AttendanceRecord>> {
+    await this.escopo.turma(query.classId, this.quem(req));
     return await this.service.findAll(query);
   }
 
@@ -141,7 +166,8 @@ export class AttendanceRecordController {
     status: 204,
     description: 'deletar registro de presença',
   })
-  async delete(@Param('id') id: string): Promise<void> {
+  async delete(@Param('id') id: string, @Req() req: Request): Promise<void> {
+    await this.escopo.chamadas([id], this.quem(req));
     await this.service.delete(id);
   }
 }
