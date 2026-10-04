@@ -279,4 +279,50 @@ describe('Ativar e inativar colaborador (e2e)', () => {
       .send({ description: 'do próprio cursinho' })
       .expect(200);
   });
+
+  describe('frentes do colaborador (tickets-documentacao, card 42)', () => {
+    const frentes = (token: string, colabId: string) =>
+      request(app.getHttpServer())
+        .get(`/collaborator/${colabId}/frentes`)
+        .set({ Authorization: `Bearer ${token}` });
+
+    it('⚠️ conta sem gerenciar colaboradores (estudante) → 403', async () => {
+      const c = await cursinho();
+      const prof = await membro(c.id, c.professor);
+      const estudante = await novoUsuario();
+      const token = await jwtService.signAsync({ user: { id: estudante.id } });
+      await frentes(token, prof.colabId).expect(403);
+    });
+
+    it('⚠️ gestão de OUTRO cursinho → 404', async () => {
+      const A = await cursinho();
+      const B = await cursinho();
+      const gestorDeA = await membro(A.id, A.gestao);
+      const profDeB = await membro(B.id, B.professor);
+      await frentes(gestorDeA.token, profDeB.colabId).expect(404);
+    });
+
+    it('gestão do próprio cursinho lê as frentes', async () => {
+      const c = await cursinho();
+      const gestor = await membro(c.id, c.gestao);
+      const prof = await membro(c.id, c.professor);
+      const r = await frentes(gestor.token, prof.colabId).expect(200);
+      expect(r.body).toEqual({
+        collaboratorId: prof.colabId,
+        frentes: [],
+        materias: [],
+      });
+    });
+
+    it('⚠️ PUT :id/frentes não existe mais (qualquer conta sobrescrevia)', async () => {
+      const c = await cursinho();
+      const gestor = await membro(c.id, c.gestao);
+      const prof = await membro(c.id, c.professor);
+      await request(app.getHttpServer())
+        .put(`/collaborator/${prof.colabId}/frentes`)
+        .set({ Authorization: `Bearer ${gestor.token}` })
+        .send({ frenteIds: ['qualquer'] })
+        .expect(404);
+    });
+  });
 });

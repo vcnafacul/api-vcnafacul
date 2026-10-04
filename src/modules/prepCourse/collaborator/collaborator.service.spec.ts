@@ -32,6 +32,7 @@ describe('CollaboratorService — photo handling', () => {
   let userRepository: { findOneBy: jest.Mock; update: jest.Mock };
   let roleRepository: { findOneBy: jest.Mock };
   let logPartnerRepository: { create: jest.Mock };
+  let collaboratorFrenteRepository: { findByCollaboratorId: jest.Mock };
 
   beforeEach(async () => {
     blobService = {
@@ -62,6 +63,9 @@ describe('CollaboratorService — photo handling', () => {
       findOneBy: jest.fn().mockResolvedValue({ id: 'r-aluno', name: 'aluno' }),
     };
     logPartnerRepository = { create: jest.fn() };
+    collaboratorFrenteRepository = {
+      findByCollaboratorId: jest.fn().mockResolvedValue([]),
+    };
 
     const moduleRef: TestingModule = await Test.createTestingModule({
       providers: [
@@ -81,7 +85,10 @@ describe('CollaboratorService — photo handling', () => {
         { provide: UserRepository, useValue: userRepository },
         { provide: 'BlobService', useValue: blobService },
         { provide: CacheService, useValue: cache },
-        { provide: CollaboratorFrenteRepository, useValue: {} },
+        {
+          provide: CollaboratorFrenteRepository,
+          useValue: collaboratorFrenteRepository,
+        },
         { provide: FrenteProxyService, useValue: {} },
         { provide: MateriaProxyService, useValue: {} },
         { provide: LogPartnerRepository, useValue: logPartnerRepository },
@@ -593,6 +600,29 @@ describe('CollaboratorService — photo handling', () => {
       const e = await erro(service.changeDescription('c-1', 'gestor', 'x'));
       expect(e.getStatus()).toBe(404);
       expect(repository.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('frentes do colaborador (tickets-documentacao, card 42)', () => {
+    it('do próprio cursinho: devolve as frentes', async () => {
+      await expect(
+        service.getEnrichedFrentes('c-1', 'gestor'),
+      ).resolves.toEqual({ collaboratorId: 'c-1', frentes: [], materias: [] });
+      expect(repository.cursinhoDoColaborador).toHaveBeenCalledWith('c-1');
+    });
+
+    it('de outro cursinho (ou inexistente): 404 sem ler nada', async () => {
+      repository.cursinhoDoColaborador.mockResolvedValue('cursinho-B');
+      await expect(
+        service.getEnrichedFrentes('c-1', 'gestor'),
+      ).rejects.toMatchObject({ status: 404 });
+      repository.cursinhoDoColaborador.mockResolvedValue(null);
+      await expect(
+        service.getEnrichedFrentes('c-x', 'gestor'),
+      ).rejects.toMatchObject({ status: 404 });
+      expect(
+        collaboratorFrenteRepository.findByCollaboratorId,
+      ).not.toHaveBeenCalled();
     });
   });
 });
