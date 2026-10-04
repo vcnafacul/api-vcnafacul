@@ -12,15 +12,30 @@ export type EngajamentoDoEvento = {
     provaId: string;
     nome: string;
     inscritos: number;
+    /**
+     * Quem fez ESTA prova — inscrito nela ou noutra do evento (card 38). Pode
+     * passar de `inscritos`: quem trocou entra aqui, na prova que fez.
+     */
     fizeram: number;
+    /** Inscritos NESTA prova que fizeram outra do evento (card 38). */
+    trocaram: number;
+    /** Inscritos nesta prova que não fizeram prova nenhuma do evento. */
     naoVieram: number;
   }[];
   totalInscritos: number;
   inscritosQueFizeram: number;
   /** inscritos que fizeram ÷ inscritos; `null` sem inscritos. */
   engajamento: number | null;
-  /** Cada inscrito: a prova escolhida e se fez (qualquer prova do evento). */
-  inscritos: { nome: string; provaId: string; fez: boolean }[];
+  /**
+   * Cada inscrito: a prova escolhida, se fez (qualquer prova do evento) e
+   * QUAL fez. `provaQueFez !== provaId` = trocou de prova (card 38).
+   */
+  inscritos: {
+    nome: string;
+    provaId: string;
+    fez: boolean;
+    provaQueFez: string | null;
+  }[];
   /** Fez pelo cartão sem se inscrever — conta, e aparece à parte. */
   fizeramSemInscricao: { nome: string; provaId: string }[];
 };
@@ -84,15 +99,29 @@ export class EngajamentoDoEventoService {
       ...semInscricao,
     ]);
 
+    /*
+      ⚠️ Card 38: "fez" conta na linha da prova que o aluno FEZ, e não na que
+      ele escolheu. Antes, o Pedro inscrito em Natureza que fez Matemática
+      aparecia como "Fez" em Natureza — e Matemática não registrava que ele a
+      fez, o que distorcia a conta de cadernos do evento seguinte. O
+      engajamento geral continua valendo para qualquer prova do evento.
+    */
     const porProva = provas.map((p) => {
       const daProva = inscricoes.filter((i) => i.provaId === p.provaId);
-      const fizeram = daProva.filter((i) => fezA.has(i.userId)).length;
+      const fizeram = inscricoes.filter(
+        (i) => fezA.get(i.userId) === p.provaId,
+      ).length;
+      const trocaram = daProva.filter(
+        (i) => fezA.has(i.userId) && fezA.get(i.userId) !== p.provaId,
+      ).length;
+      const naoVieram = daProva.filter((i) => !fezA.has(i.userId)).length;
       return {
         provaId: p.provaId,
         nome: p.nome,
         inscritos: daProva.length,
         fizeram,
-        naoVieram: daProva.length - fizeram,
+        trocaram,
+        naoVieram,
       };
     });
     const inscritosQueFizeram = inscricoes.filter((i) =>
@@ -111,6 +140,7 @@ export class EngajamentoDoEventoService {
           nome: nomes.get(i.userId) ?? '',
           provaId: i.provaId,
           fez: fezA.has(i.userId),
+          provaQueFez: fezA.get(i.userId) ?? null,
         }))
         .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
       fizeramSemInscricao: semInscricao

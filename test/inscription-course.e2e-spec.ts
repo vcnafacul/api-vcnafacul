@@ -26,6 +26,7 @@ import { BlobService } from 'src/shared/services/blob/blob-service';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import * as request from 'supertest';
+import { DataSource } from 'typeorm';
 import { CreateGeoDTOInputFaker } from './faker/create-geo.dto.input.faker';
 import { CreateInscriptionCourseDTOInputFaker } from './faker/create-inscription-course.dto.faker';
 import { createStudentCourseDTOInputFaker } from './faker/create-student-course.dto.input.faker';
@@ -1556,6 +1557,44 @@ describe('InscriptionCourse (e2e)', () => {
         .get(`/inscription-course/subscribers/${id}`)
         .set({ Authorization: `Bearer ${tokenB}` })
         .expect(200);
+    }, 100000);
+  });
+
+  describe('cópia do formulário falhou (tickets-documentacao, 28)', () => {
+    it('não deixa o processo gravado sem formulário', async () => {
+      const { representative, partnerPrepCourse } =
+        await createPartnerPrepCourse();
+      const token = await jwtService.signAsync(
+        { user: { id: representative.id } },
+        { expiresIn: '2h' },
+      );
+      formServiceMock.createFormFull.mockRejectedValueOnce(
+        new Error('microserviço fora do ar'),
+      );
+
+      const { body } = await request(app.getHttpServer())
+        .post('/inscription-course')
+        .send(CreateInscriptionCourseDTOInputFaker())
+        .set({ Authorization: `Bearer ${token}` })
+        .expect(502);
+      expect(body.message).toBe(
+        'Não foi possível montar o formulário do processo. Nada foi criado. Tente de novo.',
+      );
+
+      const [{ n }] = await app
+        .get(DataSource)
+        .query(
+          `SELECT COUNT(*) AS n FROM inscription_course WHERE partner_prep_course_id = ?`,
+          [partnerPrepCourse.id],
+        );
+      expect(Number(n)).toBe(0);
+
+      // na tentativa seguinte, com o formulário de pé, cria normalmente
+      await request(app.getHttpServer())
+        .post('/inscription-course')
+        .send(CreateInscriptionCourseDTOInputFaker())
+        .set({ Authorization: `Bearer ${token}` })
+        .expect(201);
     }, 100000);
   });
 });

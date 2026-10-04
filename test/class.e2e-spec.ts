@@ -429,8 +429,37 @@ describe('Class (e2e)', () => {
     dto.rg = '45.678.123-4';
 
     const student = await studentCourseService.create(dto);
+    // Só matriculado muda de turma (tickets-documentacao, card 15).
+    const matriculado = await studentCourseService.findOneBy({
+      id: student.id,
+    });
+    matriculado.applicationStatus = StatusApplication.Enrolled;
+    await studentCourseRepository.update(matriculado);
 
     await studentCourseService.updateClass(student.id, classId);
+
+    // Um cancelado ligado à turma não conta em Inscritos (card 15).
+    const cancelado = await studentCourseService.create(
+      createStudentCourseDTOInputFaker(
+        (
+          await (async () => {
+            const outro = CreateUserDtoInputFaker();
+            await userService.create(outro);
+            return userRepository.findOneBy({ email: outro.email });
+          })()
+        ).id,
+        inscription.id,
+      ),
+    );
+    await studentCourseRepository.update(
+      Object.assign(
+        await studentCourseService.findOneBy({ id: cancelado.id }),
+        {
+          applicationStatus: StatusApplication.EnrollmentCancelled,
+          class: { id: classId },
+        },
+      ),
+    );
 
     return request(app.getHttpServer())
       .get('/class')

@@ -26,11 +26,19 @@ import { SimuladoAnswerDTO } from './dtos/simulado-answer.dto.output';
 import { SimuladoDTO } from './dtos/simulado.dto.output';
 import { UpdateDisponibilidadeDTO } from './dtos/update-disponibilidade.dto.input';
 import { SimuladoService } from './simulado.service';
+import { AtorService } from './ator/ator.service';
+import {
+  DonoDoMaterial,
+  garantirQuePodeAlterar,
+} from './ator/pode-alterar-material';
 
 @ApiTags('Simulado')
 @Controller('mssimulado/simulado')
 export class SimuladoController {
-  constructor(private readonly simuladoService: SimuladoService) {}
+  constructor(
+    private readonly simuladoService: SimuladoService,
+    private readonly atorService: AtorService,
+  ) {}
 
   @Get()
   @ApiResponse({
@@ -135,11 +143,22 @@ export class SimuladoController {
     isArray: false,
   })
   @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.cadastrarProvas)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.cadastrarProvas,
+    Permissions.cadastrarProvasCursinho,
+  ])
   public async updateDisponibilidade(
     @Param('id') id: string,
     @Body() dto: UpdateDisponibilidadeDTO,
+    @Req() req: Request,
   ) {
+    // Só o cursinho dono (ou a plataforma) mexe na janela (card 30).
+    const ator = await this.atorService.resolver((req.user as User).id);
+    garantirQuePodeAlterar(
+      (await this.simuladoService.getById(id)) as DonoDoMaterial,
+      ator,
+      'Simulado',
+    );
     return await this.simuladoService.updateDisponibilidade(id, dto);
   }
 
