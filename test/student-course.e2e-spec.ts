@@ -4066,4 +4066,40 @@ describe('StudentCourse (e2e)', () => {
     ]);
     expect(rows[0][2]).toBe('Transporte');
   }, 100000);
+
+  describe('cancelar e reativar: mensagens (tickets-documentacao, 14)', () => {
+    it('reativar só matrícula cancelada; cancelar só matrícula ativa', async () => {
+      const cursinho = await createPartnerPrepCourse();
+      const [id] = await matricularEstudantes(
+        cursinho.representative.id,
+        cursinho.inscription.id,
+        1,
+      );
+      const auth = { Authorization: `Bearer ${cursinho.token}` };
+      const estudante = await studentCourseService.findOneBy({ id });
+      estudante.applicationStatus = StatusApplication.EnrollmentClosed;
+      await studentCourseRepository.update(estudante);
+
+      const { body: reativar } = await request(app.getHttpServer())
+        .patch('/student-course/active-enrolled')
+        .set(auth)
+        .send({ studentId: id })
+        .expect(400);
+      expect(reativar.message).toBe(
+        'Só é possível reativar uma matrícula cancelada',
+      );
+
+      const { body: cancelar } = await request(app.getHttpServer())
+        .patch('/student-course/enrollment-cancelled')
+        .set(auth)
+        .send({ studentId: id, reason: 'x' })
+        .expect(400);
+      expect(cancelar.message).toBe(
+        'Só é possível cancelar uma matrícula ativa',
+      );
+      expect(
+        (await studentCourseService.findOneBy({ id })).applicationStatus,
+      ).toBe(StatusApplication.EnrollmentClosed);
+    }, 100000);
+  });
 });

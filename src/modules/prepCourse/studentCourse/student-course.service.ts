@@ -1732,7 +1732,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     }
     if (student.applicationStatus !== StatusApplication.Enrolled) {
       throw new HttpException(
-        'Estudante não esta matriculado',
+        'Só é possível cancelar uma matrícula ativa',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -1754,7 +1754,7 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     }
     if (student.applicationStatus !== StatusApplication.EnrollmentCancelled) {
       throw new HttpException(
-        'Estudante não esta matriculado',
+        'Só é possível reativar uma matrícula cancelada',
         HttpStatus.BAD_REQUEST,
       );
     }
