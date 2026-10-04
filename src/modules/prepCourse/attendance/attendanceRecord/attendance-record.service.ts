@@ -195,6 +195,13 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
         id: studentAttendance.id,
         present: studentAttendance.present,
         justification: studentAttendance.justification?.justification,
+        observation: studentAttendance.observation
+          ? {
+              text: studentAttendance.observation,
+              by: nomeDe(studentAttendance.observationBy),
+              at: studentAttendance.observationAt,
+            }
+          : null,
         student: {
           name:
             (studentAttendance.studentCourse.user.useSocialName
@@ -560,4 +567,17 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
     await workbook.xlsx.write(res);
     res.end();
   }
+}
+
+/** Nome de exibição (social, se a pessoa usa); `null` sem usuário. */
+function nomeDe(
+  u: {
+    firstName: string;
+    lastName: string;
+    socialName?: string;
+    useSocialName?: boolean;
+  } | null,
+): string | null {
+  if (!u) return null;
+  return `${u.useSocialName && u.socialName ? u.socialName : u.firstName} ${u.lastName}`;
 }

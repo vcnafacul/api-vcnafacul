@@ -10,6 +10,8 @@ export class GetAttendanceRecordByIdDtoOutput {
     id: string;
     present: boolean;
     justification?: string;
+    /** Por que a presença foi editada (card 05); `null` se nunca foi. */
+    observation: { text: string; by: string | null; at: Date } | null;
     student: {
       name: string;
       cod_enrolled: string;
