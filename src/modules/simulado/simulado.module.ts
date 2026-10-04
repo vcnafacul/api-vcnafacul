@@ -42,6 +42,7 @@ import { AtorService } from './ator/ator.service';
 import { CursinhoNomeService } from './prova/cursinho/cursinho-nome.service';
 import { CursinhoProvaController } from './prova/cursinho/cursinho-prova.controller';
 import { CursinhoResolverService } from './prova/cursinho/cursinho-resolver.service';
+import { ProvaNosEventosRepository } from './prova/cursinho/prova-nos-eventos.repository';
 import { ProvaController } from './prova/prova.controller';
 import { ProvaService } from './prova/prova.service';
 import { QuestaoController } from './questao/questao.controller';
@@ -111,6 +112,7 @@ import { SubjectProxyService } from './subject/subject.service';
     CollaboratorRepository,
     StudentCourseRepository,
     CursinhoResolverService,
+    ProvaNosEventosRepository,
     AtorService,
     CursinhoNomeService,
     CartaoRespostaHttpService,

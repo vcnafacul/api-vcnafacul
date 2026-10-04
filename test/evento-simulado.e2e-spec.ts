@@ -7,6 +7,7 @@ import { AppModule } from 'src/app.module';
 import { AvisoDeAberturaTask } from 'src/modules/prepCourse/eventoSimulado/aviso-de-abertura.task';
 import { ProvasDoMsService } from 'src/modules/prepCourse/eventoSimulado/provas-do-ms.service';
 import { PushService } from 'src/modules/push/push.service';
+import { ProvaNosEventosRepository } from 'src/modules/simulado/prova/cursinho/prova-nos-eventos.repository';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import * as request from 'supertest';
 import { DataSource } from 'typeorm';
@@ -358,6 +359,45 @@ describe('Eventos de simulado (e2e)', () => {
         [aluno],
         expect.objectContaining({ tag: `evento-${criado.body.id}` }),
       );
+    });
+  });
+
+  describe('prova nos eventos (card 41)', () => {
+    it('⚠️ lista só eventos vivos com a prova, e renomeia a cópia do nome', async () => {
+      const A = await cursinho();
+      const gestor = await colaborador(A, ['cadastrar_provas_cursinho']);
+      const p = prova(A, 'Prova que vai mudar de nome');
+      const vivo = await request(app.getHttpServer())
+        .post('/eventos-simulado/cursinho')
+        .set('Authorization', await bearer(gestor))
+        .send(corpo([p], { nome: 'Evento vivo' }))
+        .expect(201);
+      const excluido = await request(app.getHttpServer())
+        .post('/eventos-simulado/cursinho')
+        .set('Authorization', await bearer(gestor))
+        .send(corpo([p], { nome: 'Evento excluído' }))
+        .expect(201);
+      ids.eventos.push(vivo.body.id, excluido.body.id);
+      await request(app.getHttpServer())
+        .delete(`/eventos-simulado/cursinho/${excluido.body.id}`)
+        .set('Authorization', await bearer(gestor))
+        .expect(204);
+      const repo = app.get(ProvaNosEventosRepository);
+
+      expect(await repo.eventosComProva(p)).toEqual(['Evento vivo']);
+      expect(await repo.eventosComProva('64b0000000000000000000ff')).toEqual(
+        [],
+      );
+
+      await repo.renomearProva(p, 'Nome novo');
+      const lista = await request(app.getHttpServer())
+        .get('/eventos-simulado/cursinho')
+        .set('Authorization', await bearer(gestor))
+        .expect(200);
+      const evento = lista.body.find(
+        (e: { id: string }) => e.id === vivo.body.id,
+      );
+      expect(evento.provas[0].nome).toBe('Nome novo');
     });
   });
 
