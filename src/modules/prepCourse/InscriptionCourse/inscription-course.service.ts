@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Status } from 'src/modules/simulado/enum/status.enum';
 import { Gender } from 'src/modules/user/enum/gender';
@@ -32,6 +32,8 @@ import { AggregateInscriptionCoursePeriodDtoOutput } from './dtos/aggregate-insc
 
 @Injectable()
 export class InscriptionCourseService extends BaseService<InscriptionCourse> {
+  private readonly logger = new Logger(InscriptionCourseService.name);
+
   constructor(
     private readonly repository: InscriptionCourseRepository,
     private readonly studentRepository: StudentCourseRepository,
@@ -119,7 +121,23 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     inscriptionCourse.description = dto.description || '';
     inscriptionCourse.partnerPrepCourse = parnetPrepCourse;
     const result = await this.repository.create(inscriptionCourse);
-    await this.formService.createFormFull(result.id, parnetPrepCourse.id);
+    // A cópia do formulário precisa do id do processo, então ela vem depois —
+    // e, se falhar, o processo sai (tickets-documentacao, card 28). Antes ele
+    // ficava gravado sem formulário: o link abria uma inscrição impossível de
+    // preencher, e quem tentava de novo ficava com dois processos iguais.
+    try {
+      await this.formService.createFormFull(result.id, parnetPrepCourse.id);
+    } catch (error) {
+      this.logger.error(
+        `Formulário do processo ${result.id} não foi montado; desfazendo`,
+        error,
+      );
+      await this.repository.delete(result.id);
+      throw new HttpException(
+        'Não foi possível montar o formulário do processo. Nada foi criado. Tente de novo.',
+        HttpStatus.BAD_GATEWAY,
+      );
+    }
     await this.cache.del('inscription-course:open');
     return {
       id: result.id,
