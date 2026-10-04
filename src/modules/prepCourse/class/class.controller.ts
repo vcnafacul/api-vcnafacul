@@ -123,7 +123,13 @@ export class ClassController {
   @ApiBearerAuth()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
-  async getClassByIdToAttendanceRecord(@Param('id') id: string) {
-    return await this.service.findOneByIdToAttendanceRecord(id);
+  async getClassByIdToAttendanceRecord(
+    @Param('id') id: string,
+    @Req() req: Request,
+  ) {
+    return await this.service.findOneByIdToAttendanceRecord(
+      id,
+      (req.user as User).id,
+    );
   }
 }

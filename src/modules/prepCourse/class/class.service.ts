@@ -81,9 +81,7 @@ export class ClassService extends BaseService<Class> {
     id: string,
     userId: string,
   ): Promise<GetClassByIdDtoOutput> {
-    const naoEncontrada = new NotFoundException(
-      `Class with id ${id} not found`,
-    );
+    const naoEncontrada = new NotFoundException('Turma não encontrada');
 
     const partnerPrepCourse =
       await this.partnerRepository.findOneByUserId(userId);
@@ -124,7 +122,7 @@ export class ClassService extends BaseService<Class> {
     const classEntity = await this.repository.findOneById(id);
 
     if (!classEntity) {
-      throw new NotFoundException(`Class with id ${id} not found`);
+      throw new NotFoundException('Turma não encontrada');
     }
 
     // Buscar contagem de registros e % de presença em paralelo
@@ -292,9 +290,7 @@ export class ClassService extends BaseService<Class> {
    * cursinho responde 404, igual a inexistente (mesmo critério do findOneById).
    */
   private async cursinhoDaTurma(id: string, userId: string) {
-    const naoEncontrada = new NotFoundException(
-      `Class with id ${id} not found`,
-    );
+    const naoEncontrada = new NotFoundException('Turma não encontrada');
     const partnerPrepCourse =
       await this.partnerRepository.findOneByUserId(userId);
     if (!partnerPrepCourse) throw naoEncontrada;
@@ -416,7 +412,10 @@ export class ClassService extends BaseService<Class> {
 
   async findOneByIdToAttendanceRecord(
     id: string,
+    userId: string,
   ): Promise<GetClassByIdAttendanceDtoOutput> {
+    // Turma de outro cursinho → 404, como a tela da turma (card 13).
+    await this.cursinhoDaTurma(id, userId);
     const classEntity = await this.repository.findOneByIdToAttendanceRecord(id);
     if (!classEntity) {
       throw new HttpException('Turma não encontrada', HttpStatus.NOT_FOUND);

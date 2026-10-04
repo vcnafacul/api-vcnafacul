@@ -1,3 +1,4 @@
+import { EscopoDaFrequenciaModule } from '../escopo/escopo-da-frequencia.module';
 import { Module } from '@nestjs/common';
 import { UserModule } from 'src/modules/user/user.module';
 import { EnvModule } from 'src/shared/modules/env/env.module';
@@ -8,7 +9,12 @@ import { StudentAttendanceService } from './student-attendance.service';
 
 @Module({
   controllers: [StudentAttendanceController],
-  imports: [UserModule, EnvModule, AbsenceJustificationModule],
+  imports: [
+    EscopoDaFrequenciaModule,
+    UserModule,
+    EnvModule,
+    AbsenceJustificationModule,
+  ],
   providers: [StudentAttendanceRepository, StudentAttendanceService],
   exports: [StudentAttendanceRepository, StudentAttendanceService],
 })
