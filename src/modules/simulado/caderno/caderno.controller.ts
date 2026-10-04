@@ -18,12 +18,21 @@ import { ObjectIdPipe } from 'src/shared/pipes/object-id.pipe';
 import { CadernoHttpService } from './caderno-http.service';
 import { CadernoLogosService } from './caderno-logos.service';
 
+import { AtorService } from '../ator/ator.service';
+import {
+  DonoDoMaterial,
+  garantirQuePodeLer,
+} from '../ator/pode-alterar-material';
+import { SimuladoService } from '../simulado.service';
+
 @ApiTags('Simulado - Caderno')
 @Controller('mssimulado/caderno')
 export class CadernoController {
   constructor(
     private readonly http: CadernoHttpService,
     private readonly logos: CadernoLogosService,
+    private readonly atorService: AtorService,
+    private readonly simuladoService: SimuladoService,
   ) {}
 
   /**
@@ -57,13 +66,22 @@ export class CadernoController {
   // traduz `false` para 403, não 401. Os outros endpoints do controller do
   // cartão já usam os dois; o `baixarCartao` é que é a exceção.
   @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarProvas)
+  // Card 32: a tela do cursinho usa as permissões do cursinho.
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.visualizarProvas,
+    Permissions.visualizarProvasCursinho,
+  ])
   async baixar(
     @Param('simuladoId', ObjectIdPipe) simuladoId: string,
     @Query('draft') draft: string | undefined,
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
+    // Simulado de outro cursinho não sai (card 32).
+    garantirQuePodeLer(
+      (await this.simuladoService.getById(simuladoId)) as DonoDoMaterial,
+      await this.atorService.resolver((req.user as User).id),
+    );
     // ⚠️ O cursinho sai de quem PEDIU, não do simulado: o mesmo simulado
     // baixado por dois colaboradores sai com logos diferentes.
     const logos = await this.logos.resolver((req.user as User).id);
