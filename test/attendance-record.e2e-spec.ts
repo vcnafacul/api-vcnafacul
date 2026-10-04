@@ -28,6 +28,7 @@ import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import * as ExcelJS from 'exceljs';
 import * as request from 'supertest';
+import { DataSource } from 'typeorm';
 import CreateClassDtoInputFaker from './faker/create-class.dto.input.faker';
 import { CreateCoursePeriodDtoInputFaker } from './faker/create-course-period.dto.input.faker';
 import { CreateGeoDTOInputFaker } from './faker/create-geo.dto.input.faker';
@@ -587,4 +588,128 @@ describe('AttendanceRecord (e2e)', () => {
     expect(idsPaginados).toEqual(completo.map((r) => r.id));
     expect(new Set(idsPaginados).size).toBe(5);
   }, 100000);
+
+  describe('editar presença: observação x justificativa (tickets-documentacao, 05)', () => {
+    /** Registro com um aluno presente; devolve o id da presença dele. */
+    const cenario = async () => {
+      const { token, representative, student, classEntity } =
+        await criarTurmaComAlunoEFrequencia({
+          whatsapp: null,
+          urgencyPhone: null,
+        });
+      const db = app.get(DataSource);
+      const [sa] = await db.query(
+        `SELECT sa.id, sa.attendanceRecordId AS recordId
+           FROM student_attendance sa
+           JOIN attendance_record ar ON ar.id = sa.attendanceRecordId
+          WHERE ar.classId = ? AND sa.studentCourseId = ?`,
+        [classEntity.id, student.id],
+      );
+      const editar = (body: object) =>
+        request(app.getHttpServer())
+          .patch('/student-attendance/present')
+          .send({ id: sa.id, ...body })
+          .set({ Authorization: `Bearer ${token}` });
+      const estado = async () => {
+        const [row] = await db.query(
+          `SELECT sa.present, sa.observation, sa.observation_by AS por,
+                  sa.observation_at AS em, aj.justification
+             FROM student_attendance sa
+             LEFT JOIN absence_justification aj ON aj.studentAttendanceId = sa.id
+            WHERE sa.id = ?`,
+          [sa.id],
+        );
+        return { ...row, present: !!Number(row.present) };
+      };
+      return { token, representative, recordId: sa.recordId, editar, estado };
+    };
+
+    it('sem observação não edita (nem só com espaços)', async () => {
+      const { editar, estado } = await cenario();
+      await editar({ present: false }).expect(400);
+      await editar({ present: false, observation: '   ' }).expect(400);
+      expect((await estado()).present).toBe(true);
+    });
+
+    it('⚠️ Presente → Ausente com observação e sem justificativa = falta COMUM', async () => {
+      const { editar, estado, representative } = await cenario();
+      await editar({
+        present: false,
+        observation: 'corrigindo chamada',
+      }).expect(200);
+      const e = await estado();
+      expect(e).toMatchObject({
+        present: false,
+        observation: 'corrigindo chamada',
+        por: representative.id,
+        justification: null,
+      });
+      expect(e.em).not.toBeNull();
+    });
+
+    it('com justificativa = falta justificada; omitida mantém; vazia remove', async () => {
+      const { editar, estado } = await cenario();
+      await editar({
+        present: false,
+        observation: 'trouxe atestado',
+        justification: 'Atestado médico',
+      }).expect(200);
+      expect((await estado()).justification).toBe('Atestado médico');
+
+      await editar({ present: false, observation: 'só a observação' }).expect(
+        200,
+      );
+      expect(await estado()).toMatchObject({
+        observation: 'só a observação',
+        justification: 'Atestado médico',
+      });
+
+      await editar({
+        present: false,
+        observation: 'justificada por engano',
+        justification: '',
+      }).expect(200);
+      expect((await estado()).justification).toBeNull();
+    });
+
+    it('mudar para Presente remove a justificativa', async () => {
+      const { editar, estado } = await cenario();
+      await editar({
+        present: false,
+        observation: 'faltou',
+        justification: 'Atestado',
+      }).expect(200);
+      await editar({
+        present: true,
+        observation: 'estava presente',
+        justification: 'ignorada',
+      }).expect(200);
+      expect(await estado()).toMatchObject({
+        present: true,
+        observation: 'estava presente',
+        justification: null,
+      });
+    });
+
+    it('o detalhe do registro mostra a observação, quem e quando', async () => {
+      const { editar, token, recordId, representative } = await cenario();
+      await editar({
+        present: false,
+        observation: 'corrigindo chamada',
+      }).expect(200);
+      const { body } = await request(app.getHttpServer())
+        .get(`/attendance-record/${recordId}`)
+        .set({ Authorization: `Bearer ${token}` })
+        .expect(200);
+      // `present` já vinha como tinyint (0/1) nesta rota.
+      expect(Number(body.studentAttendance[0].present)).toBe(0);
+      expect(body.studentAttendance[0]).toMatchObject({
+        observation: {
+          text: 'corrigindo chamada',
+          by: `${representative.firstName} ${representative.lastName}`,
+        },
+      });
+      expect(body.studentAttendance[0].justification).toBeUndefined();
+    });
+  });
 });

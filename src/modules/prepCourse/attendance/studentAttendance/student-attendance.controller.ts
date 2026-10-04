@@ -2,11 +2,14 @@ import {
   Body,
   Controller,
   Patch,
+  Req,
   SetMetadata,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Request } from 'express';
 import { Permissions } from 'src/modules/role/permissions/permissions';
+import { User } from 'src/modules/user/user.entity';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { ApplyJusticationDtoInput } from './dtos/apply-justication.dto.input';
 import { UpdateAttendanceDtoInput } from './dtos/update-attendance.dto.input';
@@ -27,8 +30,9 @@ export class StudentAttendanceController {
   })
   async createPartnerPrepCourse(
     @Body() dto: UpdateAttendanceDtoInput,
+    @Req() req: Request,
   ): Promise<void> {
-    await this.service.updatePresent(dto);
+    await this.service.updatePresent(dto, (req.user as User).id);
   }
 
   @Patch('justification')
