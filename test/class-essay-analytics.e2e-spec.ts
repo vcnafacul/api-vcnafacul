@@ -354,15 +354,22 @@ describe('ClassEssayAnalytics (e2e)', () => {
   /**
    * Assigns a student to the given class but keeps their status as UnderReview (i.e. "Pending").
    * Used to test that the aggregation filters out non-Enrolled students.
+   *
+   * ⚠️ Grava a turma direto no repositório: desde o card 15
+   * (tickets-documentacao) o `updateClass` recusa estudante não matriculado.
+   * O cenário continua real — linhas gravadas antes da regra — e a agregação
+   * tem de seguir filtrando.
    */
   const addPendingStudentToClass = async (
     studentId: string,
     classId: string,
   ) => {
-    await studentCourseService.updateClass(studentId, classId);
-    // updateClass does not modify applicationStatus; it stays UnderReview (default).
+    const student = await studentCourseRepository.findOneBy({ id: studentId });
+    student.class = { id: classId } as typeof student.class;
+    await studentCourseRepository.update(student);
     const fresh = await studentCourseRepository.findOneBy({ id: studentId });
     expect(fresh.applicationStatus).toBe(StatusApplication.UnderReview);
+    expect(fresh.class?.id).toBe(classId);
   };
 
   /**
