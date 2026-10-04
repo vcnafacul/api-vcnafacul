@@ -22,6 +22,7 @@ import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { User } from 'src/modules/user/user.entity';
 import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
 import { AtorService } from '../ator/ator.service';
+import { garantirQuePodeAlterar } from '../ator/pode-alterar-material';
 import { AplicarAtualizacoesDTOInput } from './dtos/aplicar-atualizacoes.dto.input';
 import { ReceberNovasVersoesDTOInput } from './dtos/receber-novas-versoes.dto.input';
 import { ProvaService } from './prova.service';
@@ -240,12 +241,19 @@ export class ProvaController {
     );
   }
 
+  /**
+   * ⚠️ Não tinha guarda nenhuma: com a chave do arquivo, qualquer pessoa —
+   * sem login — baixava o PDF da prova ou do gabarito (tickets-documentacao,
+   * card 31). Agora exige login e a mesma leitura de prova da tela.
+   */
   @Get(':id/file')
   @ApiBearerAuth()
   @ApiResponse({
     status: 200,
     description: 'busca arquivo de prova',
   })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, LER_PROVA)
   public async getFile(@Param('id') id: string) {
     return await this.provaService.getFile(id);
   }
@@ -257,7 +265,10 @@ export class ProvaController {
     description: 'Atualiza arquivos da prova',
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.cadastrarProvas)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.cadastrarProvas,
+    Permissions.cadastrarProvasCursinho,
+  ])
   @UseInterceptors(
     FileFieldsInterceptor([
       { name: 'file', maxCount: 1 },
@@ -271,7 +282,14 @@ export class ProvaController {
       file?: Express.Multer.File[];
       gabarito?: Express.Multer.File[];
     },
+    @Req() req: Request,
   ) {
+    // Só o cursinho dono (ou a plataforma) troca o PDF (card 30).
+    const ator = await this.atorService.resolver((req.user as User).id);
+    garantirQuePodeAlterar(
+      await this.provaService.getProvaById(id, ator),
+      ator,
+    );
     return await this.provaService.updateProvaFiles(
       id,
       files?.file?.[0],

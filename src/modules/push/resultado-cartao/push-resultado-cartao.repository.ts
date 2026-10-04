@@ -139,6 +139,28 @@ export class PushResultadoCartaoRepository {
   }
 
   /**
+   * Card 36 — o envio do cartão foi excluído (aluno errado): o resultado que
+   * ainda não saiu não sai mais.
+   *
+   * ⚠️ Só `pendente` e `enviando`. O que já foi `enviado` não tem volta — o
+   * push está no celular —, e reescrever o status apagaria esse fato.
+   * `enviando` entra porque o `marcarEnviado` só fecha como `enviado` a linha
+   * que ainda está `enviando`: a marcada aqui fica `ignorado`.
+   */
+  async ignorarDoHistorico(historicoId: string): Promise<void> {
+    await this.repo.update(
+      {
+        historicoId,
+        status: In([
+          StatusDoPushDeResultado.Pendente,
+          StatusDoPushDeResultado.Enviando,
+        ]),
+      },
+      { status: StatusDoPushDeResultado.Ignorado },
+    );
+  }
+
+  /**
    * Linha presa em `enviando` (a api caiu no meio do envio) volta a
    * `pendente` depois de `minutos` — o push é idempotente o bastante para
    * isso (no pior caso o aluno recebe o mesmo resultado duas vezes).

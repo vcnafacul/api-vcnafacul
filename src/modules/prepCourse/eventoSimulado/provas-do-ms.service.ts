@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EnvService } from 'src/shared/modules/env/env.service';
+import { provaCompleta } from './regras-do-evento';
 import {
   HttpServiceAxios,
   HttpServiceAxiosFactory,
@@ -10,6 +11,8 @@ export type ProvaDoMs = {
   nome: string;
   cursinhoId: string | null;
   simuladoIds: string[];
+  /** Card 38: a mesma regra do "Completa" da tela — ver `provaCompleta`. */
+  completa: boolean;
 };
 
 /** Lê provas do ms-simulado (dono, nome e simulados) — tickets/026. */
@@ -44,6 +47,9 @@ export class ProvasDoMsService {
         nome: string;
         cursinhoId?: string | null;
         simulados?: (string | { _id: string })[];
+        totalQuestao?: number | null;
+        totalQuestaoValidadas?: number;
+        questoes?: unknown[];
       } | null>(`v1/prova/${encodeURIComponent(id)}`);
       if (!p) return null;
       return {
@@ -53,6 +59,11 @@ export class ProvasDoMsService {
         simuladoIds: (p.simulados ?? []).map((s) =>
           typeof s === 'string' ? s : String(s._id),
         ),
+        completa: provaCompleta({
+          totalQuestao: p.totalQuestao ?? null,
+          totalQuestaoValidadas: p.totalQuestaoValidadas ?? 0,
+          totalQuestaoCadastradas: p.questoes?.length ?? 0,
+        }),
       };
     } catch (err) {
       this.logger.warn(`Prova ${id} não encontrada no ms: ${err}`);
