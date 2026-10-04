@@ -57,6 +57,7 @@ describe('EngajamentoDoEventoService (026 · 05)', () => {
         nome: 'Inglês',
         inscritos: 2,
         fizeram: 1,
+        trocaram: 0,
         naoVieram: 1,
       },
       {
@@ -64,23 +65,48 @@ describe('EngajamentoDoEventoService (026 · 05)', () => {
         nome: 'Espanhol',
         inscritos: 1,
         fizeram: 1,
+        trocaram: 0,
         naoVieram: 0,
       },
     ]);
     expect(r).toMatchObject({ totalInscritos: 3, inscritosQueFizeram: 2 });
     expect(r.engajamento).toBeCloseTo(2 / 3);
     expect(r.inscritos).toEqual([
-      { nome: 'ANA', provaId: 'p-en', fez: true },
-      { nome: 'BETO', provaId: 'p-en', fez: false },
-      { nome: 'CAIO', provaId: 'p-es', fez: true },
+      { nome: 'ANA', provaId: 'p-en', fez: true, provaQueFez: 'p-en' },
+      { nome: 'BETO', provaId: 'p-en', fez: false, provaQueFez: null },
+      { nome: 'CAIO', provaId: 'p-es', fez: true, provaQueFez: 'p-es' },
     ]);
     expect(r.fizeramSemInscricao).toEqual([{ nome: 'DANI', provaId: 'p-en' }]);
   });
 
-  it('inscrito que fez a OUTRA prova do evento conta como fez', async () => {
+  it('⚠️ inscrito que fez a OUTRA prova: conta no engajamento e na linha da prova que FEZ (card 38)', async () => {
     const { service } = montar({ 'sim-p-en': [], 'sim-p-es': ['beto'] });
     const r = await service.doEvento('u1', 'e1');
-    expect(r.inscritos.find((i) => i.nome === 'BETO')?.fez).toBe(true);
+
+    expect(r.inscritos.find((i) => i.nome === 'BETO')).toEqual({
+      nome: 'BETO',
+      provaId: 'p-en',
+      fez: true,
+      provaQueFez: 'p-es',
+    });
+    // Inglês: beto trocou, ana não veio. Espanhol: beto fez lá.
+    expect(r.porProva).toEqual([
+      expect.objectContaining({
+        provaId: 'p-en',
+        inscritos: 2,
+        fizeram: 0,
+        trocaram: 1,
+        naoVieram: 1,
+      }),
+      expect.objectContaining({
+        provaId: 'p-es',
+        inscritos: 1,
+        fizeram: 1,
+        trocaram: 0,
+        naoVieram: 1,
+      }),
+    ]);
+    expect(r.inscritosQueFizeram).toBe(1);
     expect(r.fizeramSemInscricao).toEqual([]);
   });
 

@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { contarMatriculados } from './contagem-de-alunos';
 import { RoleService } from 'src/modules/role/role.service';
 import { UserService } from 'src/modules/user/user.service';
 import { BaseService } from 'src/shared/modules/base/base.service';
@@ -394,7 +395,7 @@ export class ClassService extends BaseService<Class> {
           startDate: c.coursePeriod?.startDate || new Date(),
           endDate: c.coursePeriod?.endDate || new Date(),
         },
-        number_students: c.students.length,
+        number_students: contarMatriculados(c.students),
       })),
       page: classes.page,
       limit: classes.limit,

@@ -2021,6 +2021,10 @@ describe('StudentCourse (e2e)', () => {
     );
 
     const { id: studentId } = await createStudent(inscription.id);
+    // Só matriculado muda de turma (tickets-documentacao, card 15).
+    const matriculado = await studentCourseService.findOneBy({ id: studentId });
+    matriculado.applicationStatus = StatusApplication.Enrolled;
+    await studentCourseRepository.update(matriculado);
 
     const token = await jwtService.signAsync({
       user: { id: representative.id },
@@ -4100,6 +4104,50 @@ describe('StudentCourse (e2e)', () => {
       expect(
         (await studentCourseService.findOneBy({ id })).applicationStatus,
       ).toBe(StatusApplication.EnrollmentClosed);
+    }, 100000);
+  });
+
+  describe('alterar turma só de matriculado (tickets-documentacao, 15)', () => {
+    it('cancelado ou encerrado → 400, sem mudar de turma nem gravar log', async () => {
+      const cursinho = await createPartnerPrepCourse();
+      const [id] = await matricularEstudantes(
+        cursinho.representative.id,
+        cursinho.inscription.id,
+        1,
+      );
+      const destino = await createClass(cursinho.representative.id, 'Destino');
+      const auth = { Authorization: `Bearer ${cursinho.token}` };
+      const turmaAtual = async () =>
+        (await studentCourseService.findOneBy({ id })).class?.id;
+      const antes = await turmaAtual();
+
+      for (const status of [
+        StatusApplication.EnrollmentCancelled,
+        StatusApplication.EnrollmentClosed,
+      ]) {
+        const e = await studentCourseService.findOneBy({ id });
+        e.applicationStatus = status;
+        await studentCourseRepository.update(e);
+        const { body } = await request(app.getHttpServer())
+          .patch('/student-course/class')
+          .set(auth)
+          .send({ studentId: id, classId: destino.id })
+          .expect(400);
+        expect(body.message).toBe(
+          'Só é possível alterar a turma de um estudante matriculado',
+        );
+        expect(await turmaAtual()).toBe(antes);
+      }
+
+      const e = await studentCourseService.findOneBy({ id });
+      e.applicationStatus = StatusApplication.Enrolled;
+      await studentCourseRepository.update(e);
+      await request(app.getHttpServer())
+        .patch('/student-course/class')
+        .set(auth)
+        .send({ studentId: id, classId: destino.id })
+        .expect(200);
+      expect(await turmaAtual()).toBe(destino.id);
     }, 100000);
   });
 });

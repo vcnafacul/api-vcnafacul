@@ -19,6 +19,16 @@ import { AdminFormService } from './admin-form.service';
 
 @ApiTags('Admin Form')
 @ApiBearerAuth()
+/**
+ * Formulário **global** — entra em todos os processos seletivos de todos os
+ * cursinhos.
+ *
+ * ⚠️ Escrita só com Gerenciar Formulário **Global** (tickets-documentacao,
+ * card 16): antes toda rota aceitava também a Gerenciar Formulário dos
+ * cursinhos, e qualquer coordenador mexia no formulário de todos pela api.
+ * A leitura segue aberta às duas, porque a tela do cursinho mostra as seções
+ * globais.
+ */
 @Controller('admin-form')
 export class AdminFormController {
   constructor(private readonly service: AdminFormService) {}
@@ -38,10 +48,7 @@ export class AdminFormController {
 
   @Post('form')
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, [
-    Permissions.gerenciarFormularioGlobal,
-    Permissions.gerenciarFormulario,
-  ])
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarFormularioGlobal)
   @ApiResponse({ description: 'criar form global' })
   public async createGlobalForm(@Body() dto: { name: string }) {
     return await this.service.createGlobalForm(dto);
@@ -49,10 +56,7 @@ export class AdminFormController {
 
   @Patch('form/:id/set-active')
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, [
-    Permissions.gerenciarFormularioGlobal,
-    Permissions.gerenciarFormulario,
-  ])
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarFormularioGlobal)
   @ApiResponse({ description: 'ativar form global' })
   public async setActiveForm(@Param('id') id: string) {
     return await this.service.setActiveForm(id);
@@ -95,10 +99,7 @@ export class AdminFormController {
 
   @Post('section')
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, [
-    Permissions.gerenciarFormularioGlobal,
-    Permissions.gerenciarFormulario,
-  ])
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarFormularioGlobal)
   @ApiResponse({ description: 'criar section no form global' })
   public async createSection(
     @Body() dto: { name: string; description?: string },
@@ -108,10 +109,7 @@ export class AdminFormController {
 
   @Patch('section/:id/set-active')
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, [
-    Permissions.gerenciarFormularioGlobal,
-    Permissions.gerenciarFormulario,
-  ])
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarFormularioGlobal)
   @ApiResponse({ description: 'ativar/desativar section' })
   public async setActiveSection(@Param('id') id: string) {
     return await this.service.setActiveSection(id);
@@ -119,10 +117,7 @@ export class AdminFormController {
 
   @Delete('section/:id')
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, [
-    Permissions.gerenciarFormularioGlobal,
-    Permissions.gerenciarFormulario,
-  ])
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarFormularioGlobal)
   @ApiResponse({ description: 'excluir section' })
   public async deleteSection(@Param('id') id: string) {
     return await this.service.deleteSection(id);
@@ -130,10 +125,7 @@ export class AdminFormController {
 
   @Patch('section/:id')
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, [
-    Permissions.gerenciarFormularioGlobal,
-    Permissions.gerenciarFormulario,
-  ])
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarFormularioGlobal)
   @ApiResponse({ description: 'atualizar section' })
   public async updateSection(
     @Param('id') id: string,
@@ -144,10 +136,7 @@ export class AdminFormController {
 
   @Patch('section/:id/reorder')
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, [
-    Permissions.gerenciarFormularioGlobal,
-    Permissions.gerenciarFormulario,
-  ])
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarFormularioGlobal)
   @ApiResponse({ description: 'reordenar questões da section' })
   public async reorderQuestions(@Param('id') id: string, @Body() dto: any) {
     return await this.service.reorderQuestions(id, dto);
@@ -155,10 +144,7 @@ export class AdminFormController {
 
   @Post('section/:id/duplicate')
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, [
-    Permissions.gerenciarFormularioGlobal,
-    Permissions.gerenciarFormulario,
-  ])
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarFormularioGlobal)
   @ApiResponse({ description: 'duplicar section' })
   public async duplicateSection(@Param('id') id: string) {
     return await this.service.duplicateSection(id);
@@ -168,10 +154,7 @@ export class AdminFormController {
 
   @Post('question')
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, [
-    Permissions.gerenciarFormularioGlobal,
-    Permissions.gerenciarFormulario,
-  ])
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarFormularioGlobal)
   @ApiResponse({ description: 'criar question no form global' })
   public async createQuestion(@Body() dto: any) {
     return await this.service.createQuestion(dto);
@@ -179,10 +162,7 @@ export class AdminFormController {
 
   @Put('question/:id')
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, [
-    Permissions.gerenciarFormularioGlobal,
-    Permissions.gerenciarFormulario,
-  ])
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarFormularioGlobal)
   @ApiResponse({ description: 'atualizar question' })
   public async updateQuestion(@Param('id') id: string, @Body() dto: any) {
     return await this.service.updateQuestion(id, dto);
@@ -190,10 +170,7 @@ export class AdminFormController {
 
   @Delete('question/:id')
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, [
-    Permissions.gerenciarFormularioGlobal,
-    Permissions.gerenciarFormulario,
-  ])
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarFormularioGlobal)
   @ApiResponse({ description: 'excluir question' })
   public async deleteQuestion(@Param('id') id: string) {
     return await this.service.deleteQuestion(id);
@@ -201,10 +178,7 @@ export class AdminFormController {
 
   @Patch('question/:id/set-active')
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, [
-    Permissions.gerenciarFormularioGlobal,
-    Permissions.gerenciarFormulario,
-  ])
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarFormularioGlobal)
   @ApiResponse({ description: 'ativar/desativar question' })
   public async setActiveQuestion(@Param('id') id: string) {
     return await this.service.setActiveQuestion(id);

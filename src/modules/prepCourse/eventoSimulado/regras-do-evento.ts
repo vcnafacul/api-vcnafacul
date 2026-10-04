@@ -15,3 +15,20 @@ export function statusDoEvento(
 }
 
 export const PROVAS_MAX = 10;
+/** Card 38: sem `message`, o class-validator respondia em inglês. */
+export const TEXTO_MAXIMO_DE_PROVAS = `Máximo de ${PROVAS_MAX} provas por evento.`;
+
+/**
+ * Card 38 — a mesma regra do "Completa" da tela (`statusDaProva` +
+ * `alvoDaProva` no client): o alvo é a quantidade da categoria, ou, na
+ * categoria livre (`totalQuestao` nulo), as questões cadastradas.
+ */
+export function provaCompleta(p: {
+  totalQuestao: number | null;
+  totalQuestaoValidadas: number;
+  totalQuestaoCadastradas: number;
+}): boolean {
+  const alvo =
+    p.totalQuestao == null ? p.totalQuestaoCadastradas : p.totalQuestao;
+  return alvo > 0 && p.totalQuestaoValidadas >= alvo;
+}

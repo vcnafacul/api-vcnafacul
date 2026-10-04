@@ -48,10 +48,16 @@ describe('push do evento (026 · 04)', () => {
       const alunos = {
         alunosMatriculadosNo: jest.fn().mockResolvedValue(['u1', 'u2']),
       };
+      const central = { gravar: jest.fn().mockResolvedValue(undefined) };
       return {
-        service: new PushDoEventoService(push as never, alunos as never),
+        service: new PushDoEventoService(
+          push as never,
+          alunos as never,
+          central as never,
+        ),
         push,
         alunos,
+        central,
       };
     };
 
@@ -83,6 +89,38 @@ describe('push do evento (026 · 04)', () => {
         throw new Error('off');
       });
       expect(service.habilitado()).toBe(false);
+    });
+    it('cancelamento (card 38): central E push para os inscritos', async () => {
+      const { service, push, central } = montar(
+        jest.fn().mockResolvedValue({ enviados: 2, falhas: 0 }),
+      );
+      await service.avisarCancelamento(evento, ['u1', 'u2']);
+      expect(central.gravar).toHaveBeenCalledWith(
+        ['u1', 'u2'],
+        expect.objectContaining({
+          titulo: expect.stringContaining('Simulado cancelado'),
+          url: '/dashboard',
+        }),
+      );
+      expect(push.sendToUsers.mock.calls[0][0]).toEqual(['u1', 'u2']);
+      expect(push.sendToUsers.mock.calls[0][1].body).toContain(
+        'foi cancelado pelo cursinho',
+      );
+    });
+
+    it('⚠️ cancelamento com push desligado: só a central; falhas não derrubam', async () => {
+      const { service, push, central } = montar(
+        jest.fn().mockRejectedValue(new Error('503')),
+      );
+      push.garantirHabilitado.mockImplementation(() => {
+        throw new Error('off');
+      });
+      central.gravar.mockRejectedValue(new Error('db'));
+      await expect(
+        service.avisarCancelamento(evento, ['u1']),
+      ).resolves.toBeUndefined();
+      expect(push.sendToUsers).not.toHaveBeenCalled();
+      expect(central.gravar).toHaveBeenCalled();
     });
   });
 

@@ -71,4 +71,23 @@ export class CartaoRespostaHttpService {
       corpo,
     );
   }
+
+  /**
+   * Card 36 — exclui o envio do cartão. O ms apaga o histórico, desconta as
+   * questões, tira do relatório e audita; devolve a `imageKey` para a foto
+   * sair do bucket aqui. Mesmo contrato do `reprocessar`.
+   */
+  async excluir(
+    historicoId: string,
+    corpo: { cursinhoId: string; excluidoPor: string },
+  ): Promise<{
+    imageKey: string | null;
+    usuario: string;
+    simuladoId: string | null;
+  }> {
+    return this.axios.post(
+      `v1/cartao-resposta/${encodeURIComponent(historicoId)}/excluir`,
+      corpo,
+    );
+  }
 }
