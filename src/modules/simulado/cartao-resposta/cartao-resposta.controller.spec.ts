@@ -18,8 +18,11 @@ it('GET :simuladoId seta Content-Type e envia o buffer', async () => {
     uploadService as any,
     { processar: jest.fn() } as any,
     { baixar: jest.fn() } as any,
+    { resolver: jest.fn().mockResolvedValue({ cursinhoId: 'c1' }) } as any,
+    { getById: jest.fn().mockResolvedValue({ cursinhoId: 'c1' }) } as any,
+    {} as any,
   );
-  await controller.baixarCartao('665abc', res);
+  await controller.baixarCartao('665abc', { user: { id: 'u1' } } as any, res);
   expect(service.baixarCartao).toHaveBeenCalledWith('665abc');
   expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/pdf');
   expect(res.send).toHaveBeenCalledWith(Buffer.from('PDF'));
@@ -39,6 +42,9 @@ it('GET resultados delega ao service com userId + matricula', async () => {
     uploadService as any,
     { processar: jest.fn() } as any,
     { baixar: jest.fn() } as any,
+    { resolver: jest.fn().mockResolvedValue({ cursinhoId: 'c1' }) } as any,
+    { getById: jest.fn().mockResolvedValue({ cursinhoId: 'c1' }) } as any,
+    {} as any,
   );
   const req: any = { user: { id: 'u-colab' } };
   const r = await controller.resultadosPorMatricula('MAT1', req);
@@ -61,6 +67,9 @@ it('POST upload delega ao CartaoUploadService', async () => {
     uploadService as any,
     { processar: jest.fn() } as any,
     { baixar: jest.fn() } as any,
+    { resolver: jest.fn().mockResolvedValue({ cursinhoId: 'c1' }) } as any,
+    { getById: jest.fn().mockResolvedValue({ cursinhoId: 'c1' }) } as any,
+    {} as any,
   );
   const file: any = { buffer: Buffer.from('IMG'), mimetype: 'image/jpeg' };
   const req: any = { user: { id: 'u-colab' } };
@@ -83,6 +92,9 @@ it('POST :historicoId/reprocessar delega com o userId do JWT e o arquivo', async
     { processar: jest.fn() } as any,
     reprocessoService as any,
     { baixar: jest.fn() } as any,
+    { resolver: jest.fn().mockResolvedValue({ cursinhoId: 'c1' }) } as any,
+    { getById: jest.fn().mockResolvedValue({ cursinhoId: 'c1' }) } as any,
+    {} as any,
   );
   const file: any = { buffer: Buffer.from('IMG'), mimetype: 'image/jpeg' };
   const req: any = { user: { id: 'u-colab' } };
@@ -109,6 +121,9 @@ describe('GET buscar-estudantes', () => {
       { processar: jest.fn() } as any,
       { processar: jest.fn() } as any,
       { baixar: jest.fn() } as any,
+      { resolver: jest.fn().mockResolvedValue({ cursinhoId: 'c1' }) } as any,
+      { getById: jest.fn().mockResolvedValue({ cursinhoId: 'c1' }) } as any,
+      {} as any,
     );
     return { controller, resultadosService };
   };
@@ -190,6 +205,9 @@ describe('CartaoRespostaController — baixar a foto do cartão', () => {
       {} as any,
       {} as any,
       imagemService as any,
+      { resolver: jest.fn().mockResolvedValue({ cursinhoId: 'c1' }) } as any,
+      { getById: jest.fn().mockResolvedValue({ cursinhoId: 'c1' }) } as any,
+      {} as any,
     );
     const res: any = { setHeader: jest.fn(), send: jest.fn() };
 
@@ -206,5 +224,25 @@ describe('CartaoRespostaController — baixar a foto do cartão', () => {
       'attachment; filename="foto.jpg"',
     );
     expect(res.send).toHaveBeenCalledWith(Buffer.from('IMG'));
+  });
+});
+
+describe('CartaoRespostaController — excluir envio (card 36)', () => {
+  it('delega ao CartaoExclusaoService com o usuário do JWT', async () => {
+    const exclusao = { excluir: jest.fn().mockResolvedValue(undefined) };
+    const controller = new CartaoRespostaController(
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      exclusao as any,
+    );
+
+    await controller.excluir('h1', { user: { id: 'u-colab' } } as any);
+
+    expect(exclusao.excluir).toHaveBeenCalledWith('u-colab', 'h1');
   });
 });

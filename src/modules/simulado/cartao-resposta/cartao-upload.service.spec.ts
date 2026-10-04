@@ -135,7 +135,9 @@ it('recusa cartão de estudante que não é do cursinho de quem envia', async ()
 
   await expect(
     svc.processar('u-colab', 'u-de-outro-cursinho', file),
-  ).rejects.toThrow(ForbiddenException);
+  ).rejects.toThrow(
+    new ForbiddenException('Este estudante não é do seu cursinho.'),
+  );
 
   // recusa ANTES de subir o arquivo: nada de lixo no bucket
   expect(blob.putObjectAtKey).not.toHaveBeenCalled();

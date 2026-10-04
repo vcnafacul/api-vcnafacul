@@ -14,8 +14,19 @@ const montar = (retorno: any = {}) => {
   };
   const logos = { resolver: jest.fn().mockResolvedValue({}) };
   const res: any = { setHeader: jest.fn(), send: jest.fn() };
+  // Card 32: quem pede é do cursinho dono do simulado.
+  const ator = { resolver: jest.fn().mockResolvedValue({ cursinhoId: 'c1' }) };
+  const simulados = {
+    getById: jest.fn().mockResolvedValue({ cursinhoId: 'c1' }),
+  };
   return {
-    controller: new CadernoController(http as any, logos as any),
+    controller: new CadernoController(
+      http as any,
+      logos as any,
+      ator as any,
+      simulados as any,
+    ),
+    simulados,
     http,
     logos,
     res,
@@ -106,5 +117,23 @@ describe('CadernoController', () => {
 
       expect(logos.resolver).toHaveBeenCalledWith('outro-usuario');
     });
+  });
+});
+
+describe('CadernoController — escopo (tickets-documentacao, 32)', () => {
+  it('⚠️ simulado de outro cursinho: 403 sem baixar', async () => {
+    const { controller, http, res, simulados } = montar();
+    simulados.getById.mockResolvedValue({ cursinhoId: 'outro' });
+    await expect(
+      controller.baixar('65ecc850a528b39d273e7900', undefined, REQ, res),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(http.baixar).not.toHaveBeenCalled();
+  });
+
+  it('simulado oficial (sem dono): baixa', async () => {
+    const { controller, http, res, simulados } = montar();
+    simulados.getById.mockResolvedValue({ cursinhoId: null });
+    await controller.baixar('65ecc850a528b39d273e7900', undefined, REQ, res);
+    expect(http.baixar).toHaveBeenCalled();
   });
 });
