@@ -8,6 +8,8 @@ describe('CursinhoProvaController', () => {
       createProva: jest.fn().mockResolvedValue({ _id: 'p1' }),
       getAllByCursinho: jest.fn().mockResolvedValue({ data: [] }),
       duplicar: jest.fn().mockResolvedValue({ _id: 'p2' }),
+      editarDados: jest.fn().mockResolvedValue({ nome: 'Simulado novo' }),
+      excluir: jest.fn().mockResolvedValue({ nome: 'teste' }),
     };
     const resolver = {
       resolveCursinhoIdByUserId: jest.fn().mockResolvedValue('curs-A'),
@@ -17,12 +19,17 @@ describe('CursinhoProvaController', () => {
         .fn()
         .mockResolvedValue({ userId: 'user-1', cursinhoId: 'curs-A' }),
     };
+    const provaNosEventos = {
+      eventosComProva: jest.fn().mockResolvedValue([]),
+      renomearProva: jest.fn(),
+    };
     const controller = new CursinhoProvaController(
       provaService as any,
       resolver as any,
       atorService as any,
+      provaNosEventos as any,
     );
-    return { controller, provaService, resolver, atorService };
+    return { controller, provaService, resolver, atorService, provaNosEventos };
   }
 
   it('POST injeta criadorId+cursinhoId resolvidos, ignorando o body', async () => {
@@ -83,5 +90,81 @@ describe('CursinhoProvaController', () => {
         CursinhoProvaController.prototype.duplicar,
       ),
     ).toBe(Permissions.cadastrarProvasCursinho);
+  });
+
+  // ---- card 41 ----
+
+  describe('editar e excluir (card 41)', () => {
+    const req = { user: { id: 'user-1' } } as any;
+
+    it('editar: repassa os dados e o ator; com nome, renomeia nos eventos', async () => {
+      const { controller, provaService, provaNosEventos } = make();
+
+      const r = await controller.editarDados(
+        'p1',
+        { nome: 'Simulado novo', ano: 2026 },
+        req,
+      );
+
+      expect(r).toEqual({ nome: 'Simulado novo' });
+      expect(provaService.editarDados).toHaveBeenCalledWith(
+        'p1',
+        { nome: 'Simulado novo', ano: 2026 },
+        { userId: 'user-1', cursinhoId: 'curs-A' },
+      );
+      expect(provaNosEventos.renomearProva).toHaveBeenCalledWith(
+        'p1',
+        'Simulado novo',
+      );
+    });
+
+    it('editar sem nome não mexe nos eventos', async () => {
+      const { controller, provaNosEventos } = make();
+      await controller.editarDados('p1', { ano: 2026 }, req);
+      expect(provaNosEventos.renomearProva).not.toHaveBeenCalled();
+    });
+
+    it('⚠️ editar recusado pelo ms: nada é renomeado nos eventos', async () => {
+      const { controller, provaService, provaNosEventos } = make();
+      provaService.editarDados.mockRejectedValue(new Error('409'));
+      await expect(
+        controller.editarDados('p1', { nome: 'X' }, req),
+      ).rejects.toThrow('409');
+      expect(provaNosEventos.renomearProva).not.toHaveBeenCalled();
+    });
+
+    it('excluir sem evento: chama o ms com o ator', async () => {
+      const { controller, provaService } = make();
+      await expect(controller.excluir('p1', req)).resolves.toEqual({
+        nome: 'teste',
+      });
+      expect(provaService.excluir).toHaveBeenCalledWith('p1', {
+        userId: 'user-1',
+        cursinhoId: 'curs-A',
+      });
+    });
+
+    it('⚠️ prova em evento de simulado → 409 com os eventos, e o ms nem é chamado', async () => {
+      const { controller, provaService, provaNosEventos } = make();
+      provaNosEventos.eventosComProva.mockResolvedValue([
+        'Simulado de outubro',
+      ]);
+      await expect(controller.excluir('p1', req)).rejects.toThrow(
+        'a prova está no evento de simulado "Simulado de outubro"',
+      );
+      expect(provaService.excluir).not.toHaveBeenCalled();
+    });
+
+    it.each(['editarDados', 'excluir'] as const)(
+      '%s exige cadastrarProvasCursinho, na rota',
+      (metodo) => {
+        expect(
+          Reflect.getMetadata(
+            PermissionsGuard.name,
+            CursinhoProvaController.prototype[metodo],
+          ),
+        ).toBe(Permissions.cadastrarProvasCursinho);
+      },
+    );
   });
 });
