@@ -45,6 +45,40 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     super(repository);
   }
 
+  /**
+   * O processo é do cursinho de quem pede (e os inscritos, se vierem, são
+   * dele)? Senão 404, a resposta de "não existe" (tickets-documentacao,
+   * card 43).
+   *
+   * ⚠️ As rotas por id só conferiam a permissão, que vale para o cursinho de
+   * quem pede: com o id (que aparece no link público de inscrição), quem
+   * gerenciava o processo de um cursinho lia os inscritos — com email e CPF —,
+   * cancelava ou mandava emails no processo de outro.
+   */
+  async garantirDoCursinho(
+    inscriptionId: string,
+    userId: string,
+    studentIds: string[] = [],
+  ): Promise<void> {
+    if (
+      !inscriptionId ||
+      !(await this.repository.ehDoCursinhoDe(inscriptionId, userId))
+    ) {
+      throw new HttpException(
+        'Processo Seletivo não encontrado',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    const unicos = [...new Set(studentIds.filter(Boolean))];
+    if (
+      unicos.length > 0 &&
+      (await this.repository.inscritosDoProcesso(inscriptionId, unicos)) !==
+        unicos.length
+    ) {
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+    }
+  }
+
   async create(
     dto: CreateInscriptionCourseInput,
     userId: string,

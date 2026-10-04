@@ -266,4 +266,25 @@ export class InscriptionCourseRepository extends LinkedListRepository<
       .leftJoinAndSelect('partnerPrepCourse.geo', 'geo')
       .getOne();
   }
+
+  /** O processo é do cursinho em que `userId` é colaborador? (card 43) */
+  async ehDoCursinhoDe(inscriptionId: string, userId: string) {
+    const [{ n }] = await this._entityManager.query(
+      `SELECT COUNT(*) AS n FROM inscription_course ic
+         JOIN collaborators c ON c.partner_prep_course_id = ic.partner_prep_course_id
+        WHERE ic.id = ? AND c.user_id = ?`,
+      [inscriptionId, userId],
+    );
+    return Number(n) > 0;
+  }
+
+  /** Quantos destes inscritos são do processo `inscriptionId`. */
+  async inscritosDoProcesso(inscriptionId: string, studentIds: string[]) {
+    const [{ n }] = await this._entityManager.query(
+      `SELECT COUNT(*) AS n FROM student_course
+        WHERE inscriptionCourseId = ? AND id IN (?)`,
+      [inscriptionId, studentIds],
+    );
+    return Number(n);
+  }
 }
