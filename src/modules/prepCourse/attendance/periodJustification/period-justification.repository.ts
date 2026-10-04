@@ -60,4 +60,26 @@ export class PeriodJustificationRepository extends BaseRepository<PeriodJustific
       relations: ['studentCourse', 'studentCourse.user'],
     });
   }
+
+  /** Quantas faltas cada justificativa de período justificou (card 06). */
+  async faltasJustificadasPor(ids: string[]): Promise<Map<string, number>> {
+    if (ids.length === 0) return new Map();
+    const linhas: { id: string; n: string }[] = await this._entityManager.query(
+      `SELECT period_justification_id AS id, COUNT(*) AS n
+         FROM absence_justification
+        WHERE period_justification_id IN (?) AND deleted_at IS NULL
+        GROUP BY period_justification_id`,
+      [ids],
+    );
+    return new Map(linhas.map((l) => [l.id, Number(l.n)]));
+  }
+
+  /** A turma do aluno, para limpar o cache de presença. */
+  async turmaDoAluno(studentCourseId: string): Promise<string | null> {
+    const [r] = await this._entityManager.query(
+      `SELECT classId AS turmaId FROM student_course WHERE id = ?`,
+      [studentCourseId],
+    );
+    return r?.turmaId ?? null;
+  }
 }

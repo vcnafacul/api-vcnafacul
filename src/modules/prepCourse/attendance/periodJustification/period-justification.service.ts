@@ -135,6 +135,7 @@ export class PeriodJustificationService {
           ajRepo.create({
             studentAttendance: sa,
             justification: dto.justification,
+            periodJustification: saved,
           }),
         );
         await ajRepo.save(justifications);
@@ -157,9 +158,14 @@ export class PeriodJustificationService {
       dto.limit,
     );
 
+    const faltas = await this.repository.faltasJustificadasPor(
+      data.map((pj) => pj.id),
+    );
     return {
       data: data.map((pj) => ({
         id: pj.id,
+        /** Quantas faltas voltam a ser comuns se ela for excluída (card 06). */
+        faltasJustificadas: faltas.get(pj.id) ?? 0,
         startDate: pj.startDate,
         endDate: pj.endDate,
         justification: pj.justification,
@@ -198,8 +204,20 @@ export class PeriodJustificationService {
       );
     }
 
-    // Soft delete
-    pj.deletedAt = new Date();
-    await this.dataSource.getRepository(PeriodJustification).save(pj);
+    // Desfaz o efeito (card 06): as cópias deste período voltam a ser faltas
+    // comuns; as individuais ficam. Tudo ou nada.
+    await this.dataSource.transaction(async (manager) => {
+      await manager
+        .getRepository(AbsenceJustification)
+        .createQueryBuilder()
+        .delete()
+        .where('period_justification_id = :id', { id: pj.id })
+        .execute();
+      pj.deletedAt = new Date();
+      await manager.getRepository(PeriodJustification).save(pj);
+    });
+
+    const turmaId = await this.repository.turmaDoAluno(pj.studentCourse.id);
+    if (turmaId) await this.cache.del(`presence_by_class_id_${turmaId}`);
   }
 }

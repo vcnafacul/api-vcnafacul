@@ -48,6 +48,10 @@ export class StudentAttendanceService extends BaseService<StudentAttendance> {
       studentAttendance.justification = null;
     } else if (!present && justification) {
       const aj = atual ?? new AbsenceJustification();
+      // Texto alterado à mão: deixa de ser cópia do período (card 06) e não
+      // some se o período for excluído. Mesmo texto mantém a origem.
+      if (atual && atual.justification !== justification)
+        aj.periodJustification = null;
       aj.justification = justification;
       aj.studentAttendance = studentAttendance;
       if (atual) await this.absenceJustificationRepository.update(aj);
@@ -88,6 +92,12 @@ export class StudentAttendanceService extends BaseService<StudentAttendance> {
         absenceJustification.studentAttendance = studentAttendance;
       }
 
+      // Ver `updatePresent`: texto alterado vira justificativa individual.
+      if (
+        absenceJustification.id &&
+        absenceJustification.justification !== justification
+      )
+        absenceJustification.periodJustification = null;
       absenceJustification.justification = justification;
 
       if (absenceJustification.id) {
