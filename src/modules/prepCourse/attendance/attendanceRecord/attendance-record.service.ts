@@ -139,6 +139,7 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
                   ajRepo.create({
                     studentAttendance: sa,
                     justification: pj.justification,
+                    periodJustification: pj,
                   }),
                 );
               }

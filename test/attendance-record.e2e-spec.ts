@@ -712,4 +712,122 @@ describe('AttendanceRecord (e2e)', () => {
       expect(body.studentAttendance[0].justification).toBeUndefined();
     });
   });
+
+  describe('excluir justificativa de período desfaz as faltas dela (tickets-documentacao, 06)', () => {
+    it('retroativo + chamada futura + exclusão; individuais e alteradas à mão ficam', async () => {
+      const { token, student, classEntity } =
+        await criarTurmaComAlunoEFrequencia({
+          whatsapp: null,
+          urgencyPhone: null,
+        });
+      const db = app.get(DataSource);
+      // O faker sorteia o período letivo; fixa um que contém março/2026.
+      await db.query(
+        `UPDATE course_periods cp JOIN classes c ON c.course_period_id = cp.id
+            SET cp.startDate = '2026-01-01', cp.endDate = '2030-12-31'
+          WHERE c.id = ?`,
+        [classEntity.id],
+      );
+      const auth = { Authorization: `Bearer ${token}` };
+      const falta = (dia: string) =>
+        registrarFrequencia(
+          token,
+          classEntity.id,
+          dia,
+          AttendancePeriod.MANHA,
+          [],
+        );
+      /** Dia → justificativa da falta do aluno (null = falta comum). */
+      const justificativas = async () => {
+        const linhas: { dia: string; j: string | null }[] = await db.query(
+          `SELECT DATE_FORMAT(ar.registeredAt, '%Y-%m-%d') AS dia, aj.justification AS j
+             FROM student_attendance sa
+             JOIN attendance_record ar ON ar.id = sa.attendanceRecordId
+             LEFT JOIN absence_justification aj ON aj.studentAttendanceId = sa.id
+            WHERE sa.studentCourseId = ? AND sa.present = 0`,
+          [student.id],
+        );
+        return Object.fromEntries(linhas.map((l) => [l.dia, l.j]));
+      };
+      const presencaDoDia = async (dia: string) => {
+        const [r] = await db.query(
+          `SELECT sa.id, ar.id AS recordId FROM student_attendance sa
+             JOIN attendance_record ar ON ar.id = sa.attendanceRecordId
+            WHERE sa.studentCourseId = ? AND DATE(ar.registeredAt) = ?`,
+          [student.id, dia],
+        );
+        return r as { id: string; recordId: string };
+      };
+
+      await falta('2026-03-02');
+      await falta('2026-03-03');
+      // Individual antes do período: não é cópia, não pode sumir.
+      await request(app.getHttpServer())
+        .patch('/student-attendance/present')
+        .set(auth)
+        .send({
+          id: (await presencaDoDia('2026-03-03')).id,
+          present: false,
+          observation: 'trouxe declaração',
+          justification: 'Consulta',
+        })
+        .expect(200);
+
+      const { body: periodo } = await request(app.getHttpServer())
+        .post('/period-justification')
+        .set(auth)
+        .send({
+          studentCourseId: student.id,
+          startDate: '2026-03-01',
+          endDate: '2026-03-20',
+          justification: 'Atestado',
+        })
+        .expect(201);
+
+      await falta('2026-03-15'); // chamada futura: recebe a cópia
+      await falta('2026-03-16');
+      // Cópia com texto alterado à mão vira individual.
+      await request(app.getHttpServer())
+        .patch('/student-attendance/justification')
+        .set(auth)
+        .send({
+          studentCourseId: student.id,
+          attendanceRecordIds: [(await presencaDoDia('2026-03-16')).recordId],
+          justification: 'Atestado (corrigido)',
+        })
+        .expect(200);
+
+      expect(await justificativas()).toEqual({
+        '2026-03-02': 'Atestado',
+        '2026-03-03': 'Consulta',
+        '2026-03-15': 'Atestado',
+        '2026-03-16': 'Atestado (corrigido)',
+      });
+
+      const { body: lista } = await request(app.getHttpServer())
+        .get(`/period-justification?studentCourseId=${student.id}`)
+        .set(auth)
+        .expect(200);
+      expect(lista.data[0]).toMatchObject({
+        id: periodo.id,
+        faltasJustificadas: 2,
+      });
+
+      await request(app.getHttpServer())
+        .delete(`/period-justification/${periodo.id}`)
+        .set(auth)
+        .expect(200);
+
+      expect(await justificativas()).toEqual({
+        '2026-03-02': null,
+        '2026-03-03': 'Consulta',
+        '2026-03-15': null,
+        '2026-03-16': 'Atestado (corrigido)',
+      });
+
+      // Excluída, deixa de valer para as chamadas seguintes também.
+      await falta('2026-03-17');
+      expect((await justificativas())['2026-03-17']).toBeNull();
+    }, 100000);
+  });
 });
