@@ -23,6 +23,8 @@ import { CartaoReprocessoService } from './cartao-resposta/cartao-reprocesso.ser
 import { CartaoUploadService } from './cartao-resposta/cartao-upload.service';
 import { OmrCacheService } from './cartao-resposta/omr-cache.service';
 import { CartaoImagemService } from './cartao-resposta/cartao-imagem.service';
+import { CartaoExclusaoService } from './cartao-resposta/cartao-exclusao.service';
+import { ResultadoCartaoModule } from '../push/resultado-cartao/resultado-cartao.module';
 import { CategoriaProxyController } from './categoria/categoria.controller';
 import { CursinhoCategoriaController } from './categoria/cursinho/cursinho-categoria.controller';
 import { CategoriaProxyService } from './categoria/categoria.service';
@@ -60,6 +62,8 @@ import { SubjectProxyService } from './subject/subject.service';
     EnvModule,
     CacheManagerModule,
     AuditLogModule,
+    // Card 36: o "Excluir envio" tira da fila o push do resultado.
+    ResultadoCartaoModule,
     // ⚠️ `forwardRef` obrigatório: o `CollaboratorModule` importa de volta o
     // `SimuladoModule` (via `PartnerPrepCourseModule`), fechando o ciclo
     // SimuladoModule → PartnerPrepCourseModule → CollaboratorModule →
@@ -115,6 +119,7 @@ import { SubjectProxyService } from './subject/subject.service';
     CartaoImagemService,
     CartaoUploadService,
     CartaoReprocessoService,
+    CartaoExclusaoService,
     CadernoHttpService,
     CadernoLogosService,
     CadernoTemplateHttpService,
