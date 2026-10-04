@@ -41,7 +41,7 @@ export class ClassRepository extends BaseRepository<Class> {
         .where({ ...where })
         .andWhere('entity.deletedAt IS NULL')
         .leftJoin('entity.students', 'student_course')
-        .addSelect('student_course.id')
+        .addSelect(['student_course.id', 'student_course.applicationStatus'])
         .leftJoinAndSelect('entity.coursePeriod', 'course_period')
         .getMany(),
       this.repository

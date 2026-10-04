@@ -1207,6 +1207,14 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     if (class_.coursePeriod.endDate < new Date()) {
       throw new HttpException('Turma já encerrada', HttpStatus.BAD_REQUEST);
     }
+    // Cancelado ou encerrado mudava de turma sem aparecer nela (nem na
+    // chamada) e inflava os "Inscritos" (tickets-documentacao, card 15).
+    if (student.applicationStatus !== StatusApplication.Enrolled) {
+      throw new HttpException(
+        'Só é possível alterar a turma de um estudante matriculado',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     // Lida antes da atribuicao: so invalidar o destino deixaria a turma de
     // origem exibindo um aluno que ja saiu.
     const turmaDeOrigemId = student.class?.id;
@@ -1216,8 +1224,8 @@ export class StudentCourseService extends BaseService<StudentCourse> {
 
     const log = new LogStudent();
     log.studentId = student.id;
-    log.applicationStatus = StatusApplication.Enrolled;
-    log.description = `Atribuido a Turma: ${class_.name} (${class_.coursePeriod?.year || 'N/A'})`;
+    log.applicationStatus = student.applicationStatus;
+    log.description = `Atribuído à Turma: ${class_.name} (${class_.coursePeriod?.year || 'N/A'})`;
     await this.logStudentRepository.create(log);
   }
 

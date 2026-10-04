@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { contarMatriculados } from '../class/contagem-de-alunos';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, In } from 'typeorm';
@@ -123,7 +124,7 @@ export class CoursePeriodService extends BaseService<CoursePeriod> {
         id: classEntity.id,
         name: classEntity.name,
         description: classEntity.description,
-        number_students: classEntity.students.length,
+        number_students: contarMatriculados(classEntity.students),
       })),
     };
   }
@@ -214,7 +215,7 @@ export class CoursePeriodService extends BaseService<CoursePeriod> {
           id: classEntity.id,
           name: classEntity.name,
           description: classEntity.description,
-          number_students: classEntity.students?.length || 0,
+          number_students: contarMatriculados(classEntity.students),
         })),
       })),
       page: coursePeriods.page,
