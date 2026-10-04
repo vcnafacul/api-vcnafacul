@@ -143,7 +143,10 @@ export class SimuladoController {
     isArray: false,
   })
   @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.cadastrarProvas)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.cadastrarProvas,
+    Permissions.cadastrarProvasCursinho,
+  ])
   public async updateDisponibilidade(
     @Param('id') id: string,
     @Body() dto: UpdateDisponibilidadeDTO,

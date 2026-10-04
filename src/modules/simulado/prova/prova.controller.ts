@@ -265,7 +265,10 @@ export class ProvaController {
     description: 'Atualiza arquivos da prova',
   })
   @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.cadastrarProvas)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.cadastrarProvas,
+    Permissions.cadastrarProvasCursinho,
+  ])
   @UseInterceptors(
     FileFieldsInterceptor([
       { name: 'file', maxCount: 1 },

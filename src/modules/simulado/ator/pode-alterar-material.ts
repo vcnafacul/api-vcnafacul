@@ -60,3 +60,20 @@ export function garantirQuePodeAlterar(
   const motivo = motivoParaNaoAlterar(m, ator);
   if (motivo) throw new ForbiddenException(motivo);
 }
+
+export const TEXTO_SIMULADO_DE_OUTRO_CURSINHO =
+  'Este simulado pertence a outro cursinho.';
+
+/**
+ * Quem baixa caderno e cartão (tickets-documentacao, card 32): a plataforma
+ * e os oficiais são de todos; o simulado de um cursinho, só dele.
+ */
+export function garantirQuePodeLer(
+  m: DonoDoMaterial | null | undefined,
+  ator: Pick<Ator, 'cursinhoId'>,
+): void {
+  if (!m) throw new NotFoundException('Simulado não encontrado');
+  if (ator.cursinhoId && m.cursinhoId && m.cursinhoId !== ator.cursinhoId) {
+    throw new ForbiddenException(TEXTO_SIMULADO_DE_OUTRO_CURSINHO);
+  }
+}

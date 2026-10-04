@@ -34,6 +34,13 @@ import { CartaoUploadService } from './cartao-upload.service';
  */
 const TAMANHO_MAXIMO_CARTAO = 8 * 1024 * 1024;
 
+import { AtorService } from '../ator/ator.service';
+import {
+  DonoDoMaterial,
+  garantirQuePodeLer,
+} from '../ator/pode-alterar-material';
+import { SimuladoService } from '../simulado.service';
+
 @ApiTags('Simulado - Cartão Resposta')
 @Controller('mssimulado/cartao-resposta')
 export class CartaoRespostaController {
@@ -43,6 +50,8 @@ export class CartaoRespostaController {
     private readonly uploadService: CartaoUploadService,
     private readonly reprocessoService: CartaoReprocessoService,
     private readonly imagemService: CartaoImagemService,
+    private readonly atorService: AtorService,
+    private readonly simuladoService: SimuladoService,
   ) {}
 
   /**
@@ -186,12 +195,22 @@ export class CartaoRespostaController {
     status: 200,
     description: 'baixa o PDF do cartão de resposta',
   })
-  @UseGuards(PermissionsGuard)
-  @SetMetadata(PermissionsGuard.name, Permissions.visualizarProvas)
+  // Card 32: `JwtAuthGuard` como o resto do controller (sem token era 403,
+  // não 401), e as permissões de provas do cursinho também.
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.visualizarProvas,
+    Permissions.visualizarProvasCursinho,
+  ])
   async baixarCartao(
     @Param('simuladoId') simuladoId: string,
+    @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
+    garantirQuePodeLer(
+      (await this.simuladoService.getById(simuladoId)) as DonoDoMaterial,
+      await this.atorService.resolver((req.user as User).id),
+    );
     const { buffer, contentType } = await this.service.baixarCartao(simuladoId);
     res.setHeader('Content-Type', contentType || 'application/pdf');
     res.setHeader(
