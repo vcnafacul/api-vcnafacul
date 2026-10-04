@@ -140,18 +140,15 @@ export class CollaboratorController {
     return this.service.updateFrentes(collaborator.id, dto.frenteIds);
   }
 
-  @Put(':id/frentes')
-  @UseGuards(JwtAuthGuard)
-  async updateFrentes(
-    @Param('id') id: string,
-    @Body() dto: UpdateCollaboratorFrentesDtoInput,
-  ): Promise<void> {
-    return this.service.updateFrentes(id, dto.frenteIds);
-  }
-
+  /**
+   * ⚠️ Era só login: qualquer conta lia as frentes de qualquer colaborador. E o
+   * `PUT :id/frentes`, que deixava qualquer conta SOBRESCREVÊ-LAS, foi removido
+   * — ninguém o usava (tickets-documentacao, card 42).
+   */
   @Get(':id/frentes')
-  @UseGuards(JwtAuthGuard)
-  async getFrentes(@Param('id') id: string): Promise<any> {
-    return this.service.getEnrichedFrentes(id);
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarColaboradores)
+  async getFrentes(@Param('id') id: string, @Req() req: Request) {
+    return this.service.getEnrichedFrentes(id, (req.user as User).id);
   }
 }

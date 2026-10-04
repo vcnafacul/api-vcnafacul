@@ -314,19 +314,30 @@ export class CollaboratorService extends BaseService<Collaborator> {
     };
   }
 
-  async changeDescription(id: string, quemPedeId: string, description: string) {
+  /**
+   * O colaborador é do cursinho de quem pede? Senão 404, para não revelar que
+   * existe (tickets-documentacao, cards 02 e 42).
+   */
+  private async garantirDoCursinho(
+    collaboratorId: string,
+    quemPedeId: string,
+  ): Promise<void> {
     const cursinho =
       await this.partnerPrepCourseService.getByUserId(quemPedeId);
-    const collaborator = await this.repository.findOneBy({ id });
     if (
-      !collaborator ||
-      (await this.repository.cursinhoDoColaborador(id)) !== cursinho.id
+      (await this.repository.cursinhoDoColaborador(collaboratorId)) !==
+      cursinho.id
     ) {
       throw new HttpException(
         'Colaborador não encontrado',
         HttpStatus.NOT_FOUND,
       );
     }
+  }
+
+  async changeDescription(id: string, quemPedeId: string, description: string) {
+    await this.garantirDoCursinho(id, quemPedeId);
+    const collaborator = await this.repository.findOneBy({ id });
     collaborator.description = description;
     await this.repository.update(collaborator);
     await this.limparCacheDaPagina(collaborator.id);
@@ -398,7 +409,9 @@ export class CollaboratorService extends BaseService<Collaborator> {
 
   async getEnrichedFrentes(
     collaboratorId: string,
+    quemPedeId: string,
   ): Promise<CollaboratorFrentesDtoOutput> {
+    await this.garantirDoCursinho(collaboratorId, quemPedeId);
     const records =
       await this.collaboratorFrenteRepository.findByCollaboratorId(
         collaboratorId,
