@@ -917,4 +917,48 @@ describe('AttendanceRecord (e2e)', () => {
       await get(gestor, `/attendance-record/${registro.id}`).expect(200);
     }, 100000);
   });
+
+  describe('turma sem alunos matriculados (tickets-documentacao, 11)', () => {
+    it('monta a chamada com a lista vazia e recusa criá-la, sem "turma não encontrada"', async () => {
+      const { representative, token } = await createPartnerPrepCourse();
+      const turma = await createClass(representative.id);
+      const auth = { Authorization: `Bearer ${token}` };
+
+      const { body } = await request(app.getHttpServer())
+        .get(`/class/${turma.id}/attendance-record`)
+        .set(auth)
+        .expect(200);
+      expect(body.id).toBe(turma.id);
+      expect(body.students).toEqual([]);
+
+      const { body: erro } = await request(app.getHttpServer())
+        .post('/attendance-record')
+        .set(auth)
+        .send({
+          classId: turma.id,
+          date: '2026-03-10',
+          period: AttendancePeriod.MANHA,
+          studentIds: [],
+        })
+        .expect(400);
+      expect(erro.message).toBe('Esta turma não tem alunos matriculados');
+
+      const [{ n }] = await app
+        .get(DataSource)
+        .query(
+          `SELECT COUNT(*) AS n FROM attendance_record WHERE classId = ?`,
+          [turma.id],
+        );
+      expect(Number(n)).toBe(0);
+    }, 100000);
+
+    it('turma que não existe: "Turma não encontrada"', async () => {
+      const { token } = await createPartnerPrepCourse();
+      const { body } = await request(app.getHttpServer())
+        .get('/class/00000000-0000-0000-0000-000000000000/attendance-record')
+        .set({ Authorization: `Bearer ${token}` })
+        .expect(404);
+      expect(body.message).toBe('Turma não encontrada');
+    }, 100000);
+  });
 });

@@ -93,10 +93,22 @@ export class ClassRepository extends BaseRepository<Class> {
       .getOne();
   }
 
+  /**
+   * A turma com os alunos matriculados, para montar a chamada.
+   *
+   * ⚠️ O status vai no `ON` do join (tickets-documentacao, card 11): no
+   * `WHERE`, uma turma sem nenhum matriculado sumia do resultado — e a chamada
+   * respondia "turma não encontrada".
+   */
   async findOneByIdToAttendanceRecord(id: string): Promise<Class> {
     return this.repository
       .createQueryBuilder('entity')
-      .leftJoin('entity.students', 'student_course')
+      .leftJoin(
+        'entity.students',
+        'student_course',
+        'student_course.applicationStatus = :status',
+        { status: StatusApplication.Enrolled },
+      )
       .addSelect([
         'student_course.id',
         'student_course.userId',
@@ -112,9 +124,6 @@ export class ClassRepository extends BaseRepository<Class> {
       ])
       .leftJoinAndSelect('entity.coursePeriod', 'course_period')
       .where('entity.id = :id', { id })
-      .andWhere(`student_course.applicationStatus = :status`, {
-        status: StatusApplication.Enrolled,
-      })
       .getOne();
   }
 
