@@ -74,6 +74,13 @@ export class LinhaDoRelatorioDtoOutput {
   @ApiProperty() enviouCartao: boolean;
 
   /**
+   * O status da matrícula hoje (tickets/036). O cartão enviado continua no
+   * relatório mesmo depois que a matrícula é cancelada ou encerrada — e a tela
+   * usa este campo para dizer isso, em vez de o aluno sumir.
+   */
+  @ApiProperty() situacaoDaMatricula: string;
+
+  /**
    * De qual simulado é o cartão (tickets/034) — ausente em quem não enviou. No
    * relatório da prova é o que distingue as linhas do mesmo estudante: o grão é
    * a APLICAÇÃO, não o estudante.

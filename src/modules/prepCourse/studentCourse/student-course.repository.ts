@@ -688,10 +688,9 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
    * e é o que impede um cursinho de enxergar estudante de outro ao digitar um
    * nome comum.
    *
-   * ⚠️ Mesma regra de quem é estudante válido do `findEnrolledForRelatorio`:
-   * `Enrolled` e não apagado. Divergir faria a busca oferecer alguém que o
-   * relatório depois não lista — o cartão enviado sumiria da tela, contado em
-   * `linhasSemEstudanteAtivo` e nunca exibido.
+   * ⚠️ Só `Enrolled` e não apagado: o cartão só é ENVIADO para quem está
+   * matriculado. Depois de enviado ele vale para sempre — o relatório lista o
+   * estudante mesmo que a matrícula seja cancelada ou encerrada (tickets/036).
    *
    * ⚠️ O nome é casado por `CONCAT(firstName, ' ', lastName)` **e** pelo
    * `socialName`: comparar só os campos separados faria "Ana Silva" não achar
@@ -739,6 +738,61 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
         .limit(limite)
         .getMany()
     );
+  }
+
+  /**
+   * Os `userId` de quem está ou ESTEVE na turma, em qualquer status — o recorte
+   * de turma do relatório do cartão (tickets/036).
+   *
+   * ⚠️ Não filtra `Matriculado`, e é esse o ponto: o cartão enviado vale para
+   * sempre. Quem cancelou ou teve a matrícula encerrada continua com a turma no
+   * registro, e o relatório de um ano atrás tem de continuar mostrando o que ele
+   * fez.
+   */
+  async findUsuariosDaTurmaParaRelatorio(
+    prepCourseId: string,
+    classId: string,
+  ): Promise<string[]> {
+    const linhas = await this.repository
+      .createQueryBuilder('entity')
+      .select('entity.userId', 'userId')
+      .innerJoin('entity.partnerPrepCourse', 'ppc')
+      .innerJoin('entity.class', 'class')
+      .where('ppc.id = :prepCourseId', { prepCourseId })
+      .andWhere('class.id = :classId', { classId })
+      .andWhere('entity.deletedAt IS NULL')
+      .distinct(true)
+      .getRawMany<{ userId: string }>();
+    return linhas.map((l) => l.userId);
+  }
+
+  /**
+   * Os estudantes destes usuários no cursinho, em QUALQUER status — para
+   * hidratar a linha do cartão de quem não está mais matriculado (tickets/036).
+   * Mesmos campos do `findEnrolledForRelatorio`.
+   */
+  async findPorUsuariosParaRelatorio(
+    prepCourseId: string,
+    userIds: string[],
+  ): Promise<StudentCourse[]> {
+    if (userIds.length === 0) return [];
+    return this.repository
+      .createQueryBuilder('entity')
+      .innerJoin('entity.partnerPrepCourse', 'ppc')
+      .where('ppc.id = :prepCourseId', { prepCourseId })
+      .andWhere('entity.user_id IN (:...userIds)', { userIds })
+      .innerJoin('entity.user', 'user')
+      .addSelect([
+        'user.id',
+        'user.firstName',
+        'user.lastName',
+        'user.socialName',
+        'user.useSocialName',
+      ])
+      .leftJoin('entity.class', 'class')
+      .addSelect(['class.id', 'class.name'])
+      .andWhere('entity.deletedAt IS NULL')
+      .getMany();
   }
 
   async findEnrolledForRelatorio(

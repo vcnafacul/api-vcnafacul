@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import { ClassRepository } from 'src/modules/prepCourse/class/class.repository';
 import { StudentCourse } from 'src/modules/prepCourse/studentCourse/student-course.entity';
 import { StudentCourseRepository } from 'src/modules/prepCourse/studentCourse/student-course.repository';
+import { StatusApplication } from 'src/modules/prepCourse/studentCourse/enums/stastusApplication';
 import { CursinhoResolverService } from '../prova/cursinho/cursinho-resolver.service';
 import { DetalheDoEstudanteDtoOutput } from './dtos/detalhe-do-estudante.dto.output';
 import { SerieDoEstudanteDtoOutput } from './dtos/serie-do-estudante.dto.output';
@@ -32,6 +33,34 @@ interface LinhaDoMs {
   acertos?: number;
   aproveitamentoPorMateria?: MateriaDoEstudanteDtoOutput[];
   falha?: Record<string, unknown>;
+}
+
+/**
+ * Um estudante por usuário (tickets/036).
+ *
+ * ⚠️ O usuário pode ter vários `student_course` no mesmo cursinho (um por
+ * inscrição): sem isto, o mesmo cartão sairia numa linha por registro. Fica o
+ * mais representativo — matriculado, depois com número de matrícula, depois
+ * com turma, depois o mais recente.
+ */
+function umPorUsuario(estudantes: StudentCourse[]): StudentCourse[] {
+  const peso = (e: StudentCourse) =>
+    (e.applicationStatus === StatusApplication.Enrolled ? 4 : 0) +
+    (e.cod_enrolled ? 2 : 0) +
+    (e.class ? 1 : 0);
+  const escolhido = new Map<string, StudentCourse>();
+  for (const e of estudantes) {
+    const atual = escolhido.get(e.userId);
+    if (
+      !atual ||
+      peso(e) > peso(atual) ||
+      (peso(e) === peso(atual) &&
+        new Date(e.updatedAt ?? 0) > new Date(atual.updatedAt ?? 0))
+    ) {
+      escolhido.set(e.userId, e);
+    }
+  }
+  return [...escolhido.values()];
 }
 
 /** O que o `montarRelatorio` precisa do ms, venha do simulado ou da prova. */
@@ -200,20 +229,25 @@ export class RelatorioService {
       O custo é uma consulta em série em vez de paralela; o ganho é as duas
       metades falarem da mesma turma.
     */
-    const estudantes =
+    const matriculados = umPorUsuario(
       await this.studentCourseRepository.findEnrolledForRelatorio(
         cursinhoId,
         turmaId,
-      );
+      ),
+    );
 
     /*
       ⚠️ `undefined` sem recorte de turma, e NÃO a lista completa: o relatório
       do cursinho inteiro pede tudo, e mandar centenas de ids só para dizer
       "todos" faria o corpo crescer sem necessidade. Com turma, a lista é o
       recorte — e se ela estiver vazia, não há o que perguntar ao ms.
+
+      ⚠️ **A turma inclui quem SAIU dela** (tickets/036): o cartão enviado vale
+      para sempre, e quem cancelou ou teve a matrícula encerrada continua com a
+      turma no registro. Pedir ao ms só os matriculados de hoje fazia o cartão
+      dele sumir do relatório.
     */
-    const usuariosDoRecorte =
-      turmaId === undefined ? undefined : estudantes.map((e) => e.userId);
+    const usuariosDoRecorte = await this.usuariosDoRecorte(cursinhoId, turmaId);
 
     const doMs: DoMs =
       usuariosDoRecorte !== undefined && usuariosDoRecorte.length === 0
@@ -241,7 +275,25 @@ export class RelatorioService {
     for (const l of doMs.linhas) {
       porUsuario.set(l.usuario, [...(porUsuario.get(l.usuario) ?? []), l]);
     }
-    const usuariosAtivos = new Set(estudantes.map((e) => e.userId));
+
+    /*
+      ⚠️ **Quem enviou o cartão aparece, matriculado ou não** (tickets/036). A
+      regra de só listar matriculados vale para ENVIAR o cartão; depois de
+      enviado, o relatório é registro histórico — e voltar a ele daqui a um ano
+      tem de mostrar quem fez e como foi.
+
+      Os matriculados de hoje entram todos (é deles o "não enviou"); os demais
+      só se tiverem cartão, hidratados do MySQL em qualquer status.
+    */
+    const jaListados = new Set(matriculados.map((e) => e.userId));
+    const exMatriculados = umPorUsuario(
+      await this.studentCourseRepository.findPorUsuariosParaRelatorio(
+        cursinhoId,
+        [...porUsuario.keys()].filter((u) => !jaListados.has(u)),
+      ),
+    );
+    const estudantes = [...matriculados, ...exMatriculados];
+    const usuariosListados = new Set(estudantes.map((e) => e.userId));
 
     // A lista parte dos ESTUDANTES: quem não enviou some se partir das linhas,
     // e saber quem falta é metade do valor do relatório para quem coordena.
@@ -301,9 +353,13 @@ export class RelatorioService {
           não escrever um recorte que não existe.
         */
         turmaNome,
-        // quem saiu do cursinho depois de enviar: contado, nunca listado
+        /*
+          ⚠️ Cartões sem NENHUM estudante no cursinho (registro apagado): contados,
+          nunca listados. Quem só deixou de estar matriculado agora é listado
+          (tickets/036) e não entra aqui.
+        */
         linhasSemEstudanteAtivo: doMs.linhas.filter(
-          (l) => !usuariosAtivos.has(l.usuario),
+          (l) => !usuariosListados.has(l.usuario),
         ).length,
       },
     };
@@ -365,18 +421,20 @@ export class RelatorioService {
    * ⚠️ A lista é a turma **ATUAL**, lida do MySQL a cada consulta. É esta
    * releitura que corrige o card 18 — nenhum valor é guardado em lugar nenhum
    * para envelhecer.
+   *
+   * ⚠️ **Em qualquer status** (tickets/036): quem cancelou ou encerrou a
+   * matrícula continua na turma, e o cartão dele continua valendo — no
+   * relatório, na aba de questões e na lista de simulados com cartão.
    */
   private async usuariosDoRecorte(
     cursinhoId: string,
     turmaId?: string,
   ): Promise<string[] | undefined> {
     if (turmaId === undefined) return undefined;
-    const estudantes =
-      await this.studentCourseRepository.findEnrolledForRelatorio(
-        cursinhoId,
-        turmaId,
-      );
-    return estudantes.map((e) => e.userId);
+    return this.studentCourseRepository.findUsuariosDaTurmaParaRelatorio(
+      cursinhoId,
+      turmaId,
+    );
   }
 
   /**
@@ -507,6 +565,8 @@ export class RelatorioService {
       turmaId: e.class?.id ?? null,
       turmaNome: e.class?.name ?? null,
       enviouCartao: doMs !== undefined,
+      // tickets/036: a tela marca quem não está mais matriculado.
+      situacaoDaMatricula: e.applicationStatus,
       simuladoId: doMs?.simuladoId,
       historicoId: doMs?.historicoId,
       status: doMs?.status,
