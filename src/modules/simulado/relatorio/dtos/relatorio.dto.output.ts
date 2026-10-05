@@ -58,7 +58,8 @@ export class LinhaDoRelatorioDtoOutput {
 
   @ApiProperty() nome: string;
 
-  @ApiProperty() matricula: string;
+  /** `null` para quem ainda não recebeu número de matrícula. */
+  @ApiProperty({ nullable: true }) matricula: string | null;
 
   @ApiProperty({ required: false, nullable: true }) turmaId: string | null;
 
