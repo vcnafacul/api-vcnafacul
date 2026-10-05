@@ -73,6 +73,13 @@ export class LinhaDoRelatorioDtoOutput {
    */
   @ApiProperty() enviouCartao: boolean;
 
+  /**
+   * De qual simulado é o cartão (tickets/034) — ausente em quem não enviou. No
+   * relatório da prova é o que distingue as linhas do mesmo estudante: o grão é
+   * a APLICAÇÃO, não o estudante.
+   */
+  @ApiProperty({ required: false }) simuladoId?: string;
+
   @ApiProperty({ required: false }) historicoId?: string;
 
   @ApiProperty({ required: false }) status?: string;

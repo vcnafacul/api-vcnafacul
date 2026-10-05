@@ -48,6 +48,7 @@ import { ProvaService } from './prova/prova.service';
 import { QuestaoController } from './questao/questao.controller';
 import { QuestaoService } from './questao/questao.service';
 import { RelatorioController } from './relatorio/relatorio.controller';
+import { RelatorioDaProvaController } from './relatorio/relatorio-da-prova.controller';
 import { RelatorioHttpService } from './relatorio/relatorio-http.service';
 import { RelatorioService } from './relatorio/relatorio.service';
 import { SimuladoController } from './simulado.controller';
@@ -95,6 +96,7 @@ import { SubjectProxyService } from './subject/subject.service';
     CadernoController,
     CadernoTemplateController,
     RelatorioController,
+    RelatorioDaProvaController,
   ],
   providers: [
     SimuladoService,
