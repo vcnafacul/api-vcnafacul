@@ -869,6 +869,43 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
     return linhas.map((l) => l.cursinhoId).filter(Boolean);
   }
 
+  /**
+   * A outra matrícula ATIVA do usuário, em qualquer cursinho (tickets/035), com
+   * o que a mensagem de bloqueio cita: o nome do cursinho e o período letivo da
+   * turma.
+   *
+   * ⚠️ `exceto` é o próprio registro que se quer matricular ou reativar — ele
+   * não pode bloquear a si mesmo.
+   */
+  async buscarOutraMatriculaAtiva(
+    userId: string,
+    exceto: string,
+  ): Promise<StudentCourse | null> {
+    return this.repository
+      .createQueryBuilder('entity')
+      .where('entity.user_id = :userId', { userId })
+      .andWhere('entity.id != :exceto', { exceto })
+      .andWhere('entity.applicationStatus = :status', {
+        status: StatusApplication.Enrolled,
+      })
+      .andWhere('entity.deletedAt IS NULL')
+      .leftJoin('entity.partnerPrepCourse', 'ppc')
+      .addSelect('ppc.id')
+      .leftJoin('ppc.geo', 'geo')
+      .addSelect(['geo.id', 'geo.name'])
+      .leftJoin('entity.class', 'class')
+      .addSelect(['class.id', 'class.name'])
+      .leftJoin('class.coursePeriod', 'period')
+      .addSelect([
+        'period.id',
+        'period.name',
+        'period.year',
+        'period.startDate',
+        'period.endDate',
+      ])
+      .getOne();
+  }
+
   /** tickets/025, card 05: aluno MATRICULADO naquele cursinho. */
   async ehAlunoMatriculadoNo(
     userId: string,

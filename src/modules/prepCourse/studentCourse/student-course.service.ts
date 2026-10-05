@@ -79,6 +79,7 @@ import {
   VerifyEnrollmentStatusDtoOutput,
 } from './dtos/verify-enrollment-status.dto.output';
 import { StatusApplication } from './enums/stastusApplication';
+import { mensagemDeMatriculaAtiva } from './matricula-ativa';
 import { LegalGuardian } from './legal-guardian/legal-guardian.entity';
 import { LegalGuardianRepository } from './legal-guardian/legal-guardian.repository';
 import { LogStudent } from './log-student/log-student.entity';
@@ -660,6 +661,9 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         HttpStatus.NOT_FOUND,
       );
     } else {
+      // tickets/035: ANTES de gerar o número de matrícula — bloquear depois
+      // queimaria um código.
+      await this.garantirSemOutraMatriculaAtiva(student, 'matricular');
       student.applicationStatus = StatusApplication.Enrolled;
       student.cod_enrolled = await this.generateEnrolledCode();
       await this.repository.update(student);
@@ -1766,6 +1770,9 @@ export class StudentCourseService extends BaseService<StudentCourse> {
         HttpStatus.BAD_REQUEST,
       );
     }
+    // tickets/035: enquanto estava cancelada, o aluno pode ter sido
+    // matriculado em outro lugar.
+    await this.garantirSemOutraMatriculaAtiva(student, 'reativar a matrícula');
     student.applicationStatus = StatusApplication.Enrolled;
     await this.repository.update(student);
     await this.invalidateClassCache(student.class?.id);
@@ -1775,6 +1782,39 @@ export class StudentCourseService extends BaseService<StudentCourse> {
     log.applicationStatus = StatusApplication.Enrolled;
     log.description = DESCRICAO_DA_REATIVACAO;
     await this.logStudentRepository.create(log);
+  }
+
+  /**
+   * Um usuário tem no máximo UMA matrícula ativa, somando todos os cursinhos
+   * (tickets/035). Inscrever-se em outro processo continua livre; o bloqueio é
+   * aqui, nos dois caminhos que gravam `Matriculado`: `confirmEnrolled` e
+   * `activeEnrolled`.
+   */
+  private async garantirSemOutraMatriculaAtiva(
+    student: StudentCourse,
+    acao: 'matricular' | 'reativar a matrícula',
+  ) {
+    const outra = await this.repository.buscarOutraMatriculaAtiva(
+      student.userId,
+      student.id,
+    );
+    if (!outra) return;
+
+    const periodo = outra.class?.coursePeriod;
+    throw new HttpException(
+      mensagemDeMatriculaAtiva(acao, {
+        cursinho: outra.partnerPrepCourse?.geo?.name ?? null,
+        periodo: periodo
+          ? {
+              nome: periodo.name,
+              ano: periodo.year,
+              inicio: periodo.startDate,
+              fim: periodo.endDate,
+            }
+          : null,
+      }),
+      HttpStatus.BAD_REQUEST,
+    );
   }
 
   /**
