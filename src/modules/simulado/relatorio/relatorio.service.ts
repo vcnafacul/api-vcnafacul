@@ -7,6 +7,11 @@ import { DetalheDoEstudanteDtoOutput } from './dtos/detalhe-do-estudante.dto.out
 import { SerieDoEstudanteDtoOutput } from './dtos/serie-do-estudante.dto.output';
 import { QuestoesDoRelatorioDtoOutput } from './dtos/questoes-do-relatorio.dto.output';
 import {
+  QuestoesDaProvaDtoOutput,
+  RelatorioDaProvaDtoOutput,
+  SimuladoDoRelatorioDtoOutput,
+} from './dtos/relatorio-da-prova.dto.output';
+import {
   LinhaDoRelatorioDtoOutput,
   MateriaDoEstudanteDtoOutput,
   MediaPorMateriaDtoOutput,
@@ -17,6 +22,8 @@ import { RelatorioHttpService } from './relatorio-http.service';
 
 interface LinhaDoMs {
   usuario: string;
+  /** De qual simulado é o cartão (tickets/034). Ausente no ms antigo. */
+  simuladoId?: string;
   historicoId?: string;
   status?: string;
   cartaoCode?: string;
@@ -26,6 +33,24 @@ interface LinhaDoMs {
   aproveitamentoPorMateria?: MateriaDoEstudanteDtoOutput[];
   falha?: Record<string, unknown>;
 }
+
+/** O que o `montarRelatorio` precisa do ms, venha do simulado ou da prova. */
+interface DoMs {
+  linhas: LinhaDoMs[];
+  totalEstudantesComCartaoNoCursinho: number;
+  totalDeQuestoes: number;
+  /** O nome do simulado, ou o da prova — o título do relatório. */
+  titulo: string | null;
+  ultimoCartaoEm: string | null;
+}
+
+type DoMsDoSimulado = Omit<DoMs, 'titulo'> & { simuladoNome: string | null };
+
+type DoMsDaProva = Omit<DoMs, 'titulo'> & {
+  provaNome: string | null;
+  simulados?: SimuladoDoRelatorioDtoOutput[];
+  mesmasQuestoes?: boolean;
+};
 
 /**
  * A nota da turma em cada matéria, com a base de cada uma.
@@ -88,6 +113,75 @@ export class RelatorioService {
     simuladoId: string,
     turmaId?: string,
   ): Promise<RelatorioDtoOutput> {
+    const { linhas, resumo } = await this.montarRelatorio(
+      colaboradorUserId,
+      turmaId,
+      async (cursinhoId, usuarios) => {
+        const doMs = (await this.http.buscarLinhas(
+          simuladoId,
+          cursinhoId,
+          usuarios,
+        )) as DoMsDoSimulado;
+        return { ...doMs, titulo: doMs.simuladoNome };
+      },
+    );
+    return { linhas, resumo };
+  }
+
+  /**
+   * O relatório de uma PROVA — o agregado dos simulados dela (tickets/034).
+   *
+   * ⚠️ **Mesmo caminho do `consultar`** (`montarRelatorio`): estudantes do
+   * MySQL primeiro, left join com as linhas do ms. O que muda é só de onde as
+   * linhas vêm e o que o resumo carrega a mais.
+   *
+   * ⚠️ `resumo.simuladoNome` leva o nome da PROVA: é o título do relatório, e é
+   * o campo que a tela já usa para isso.
+   */
+  async consultarProva(
+    colaboradorUserId: string,
+    provaId: string,
+    turmaId?: string,
+  ): Promise<RelatorioDaProvaDtoOutput> {
+    let extras: {
+      simulados: SimuladoDoRelatorioDtoOutput[];
+      mesmasQuestoes: boolean;
+    } = { simulados: [], mesmasQuestoes: true };
+
+    const { linhas, resumo } = await this.montarRelatorio(
+      colaboradorUserId,
+      turmaId,
+      async (cursinhoId, usuarios) => {
+        const doMs = (await this.http.buscarLinhasDaProva(
+          provaId,
+          cursinhoId,
+          usuarios,
+        )) as DoMsDaProva;
+        extras = {
+          simulados: doMs.simulados ?? [],
+          mesmasQuestoes: doMs.mesmasQuestoes ?? true,
+        };
+        return { ...doMs, titulo: doMs.provaNome };
+      },
+    );
+    return { linhas, resumo: { ...resumo, ...extras } };
+  }
+
+  /**
+   * O miolo comum ao relatório do simulado e ao da prova.
+   *
+   * ⚠️ **Uma linha por APLICAÇÃO** (tickets/034, card 00): o estudante com
+   * cartão em dois simulados da prova sai em duas linhas, cada uma com o seu
+   * `simuladoId`; quem não enviou nenhum sai em uma. Antes o join era um
+   * `Map<usuario, linha>` — com dois cartões, um deles sumia calado. No
+   * relatório do simulado nada muda: o ms devolve no máximo uma linha por
+   * estudante (único em `{simulado, cursinhoId, usuario}`).
+   */
+  private async montarRelatorio(
+    colaboradorUserId: string,
+    turmaId: string | undefined,
+    buscar: (cursinhoId: string, usuarios?: string[]) => Promise<DoMs>,
+  ): Promise<RelatorioDtoOutput> {
     const { cursinhoId, turmaNome } = await this.resolverEscopoComNome(
       colaboradorUserId,
       turmaId,
@@ -121,7 +215,7 @@ export class RelatorioService {
     const usuariosDoRecorte =
       turmaId === undefined ? undefined : estudantes.map((e) => e.userId);
 
-    const doMs =
+    const doMs: DoMs =
       usuariosDoRecorte !== undefined && usuariosDoRecorte.length === 0
         ? {
             linhas: [],
@@ -138,29 +232,25 @@ export class RelatorioService {
               como remoção faria a tela afirmar que o simulado sumiu quando o
               que está vazio é a turma.
             */
-            simuladoNome: null,
+            titulo: null,
             ultimoCartaoEm: null,
           }
-        : ((await this.http.buscarLinhas(
-            simuladoId,
-            cursinhoId,
-            usuariosDoRecorte,
-          )) as {
-            linhas: LinhaDoMs[];
-            totalEstudantesComCartaoNoCursinho: number;
-            totalDeQuestoes: number;
-            simuladoNome: string | null;
-            ultimoCartaoEm: string | null;
-          });
+        : await buscar(cursinhoId, usuariosDoRecorte);
 
-    const porUsuario = new Map(doMs.linhas.map((l) => [l.usuario, l]));
+    const porUsuario = new Map<string, LinhaDoMs[]>();
+    for (const l of doMs.linhas) {
+      porUsuario.set(l.usuario, [...(porUsuario.get(l.usuario) ?? []), l]);
+    }
     const usuariosAtivos = new Set(estudantes.map((e) => e.userId));
 
     // A lista parte dos ESTUDANTES: quem não enviou some se partir das linhas,
     // e saber quem falta é metade do valor do relatório para quem coordena.
-    const linhas = estudantes.map((e) =>
-      this.montarLinha(e, porUsuario.get(e.userId)),
-    );
+    const linhas = estudantes.flatMap((e) => {
+      const doEstudante = porUsuario.get(e.userId);
+      return doEstudante
+        ? doEstudante.map((l) => this.montarLinha(e, l))
+        : [this.montarLinha(e)];
+    });
 
     // ⚠️ Gate no STATUS, não só na presença da nota. O `marcarFalha` do ms não
     // limpa `aproveitamento`, então um cartão que leu bem e depois falhou no
@@ -178,7 +268,9 @@ export class RelatorioService {
     return {
       linhas,
       resumo: {
-        totalNoRecorte: linhas.length,
+        // ⚠️ ESTUDANTES, não linhas: com a linha por aplicação (tickets/034)
+        // o mesmo estudante pode ocupar duas.
+        totalNoRecorte: estudantes.length,
         comLeituraConcluida: comLeitura.length,
         // null, não zero: zero é uma nota, ausência de leitura não é
         aproveitamentoGeral: comLeitura.length
@@ -198,7 +290,7 @@ export class RelatorioService {
         */
         totalDeQuestoes: doMs.totalDeQuestoes ?? 0,
         // ⚠️ Repassados do ms — `null` quando o simulado foi apagado.
-        simuladoNome: doMs.simuladoNome ?? null,
+        simuladoNome: doMs.titulo ?? null,
         ultimoCartaoEm: doMs.ultimoCartaoEm ?? null,
         /*
           ⚠️ **O nome da TURMA só a api sabe** — o ms guarda o `turmaId` na
@@ -242,6 +334,29 @@ export class RelatorioService {
       cursinhoId,
       usuarios,
     ) as Promise<QuestoesDoRelatorioDtoOutput>;
+  }
+
+  /**
+   * A aba Questões da prova (tickets/034): mesmo recorte do `consultarQuestoes`,
+   * com o agregado somando os simulados da prova.
+   */
+  async consultarQuestoesDaProva(
+    colaboradorUserId: string,
+    provaId: string,
+    turmaId?: string,
+  ): Promise<QuestoesDaProvaDtoOutput> {
+    const cursinhoId = await this.resolverEscopo(colaboradorUserId, turmaId);
+    const usuarios = await this.usuariosDoRecorte(cursinhoId, turmaId);
+
+    if (usuarios !== undefined && usuarios.length === 0) {
+      return { questoes: [], mesmasQuestoes: true };
+    }
+
+    return this.http.buscarQuestoesDaProva(
+      provaId,
+      cursinhoId,
+      usuarios,
+    ) as Promise<QuestoesDaProvaDtoOutput>;
   }
 
   /**
@@ -392,6 +507,7 @@ export class RelatorioService {
       turmaId: e.class?.id ?? null,
       turmaNome: e.class?.name ?? null,
       enviouCartao: doMs !== undefined,
+      simuladoId: doMs?.simuladoId,
       historicoId: doMs?.historicoId,
       status: doMs?.status,
       cartaoCode: doMs?.cartaoCode,

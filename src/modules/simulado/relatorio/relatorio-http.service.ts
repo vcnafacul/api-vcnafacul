@@ -72,6 +72,29 @@ export class RelatorioHttpService {
     );
   }
 
+  /** Relatório da prova (tickets/034) — rota própria no ms, mesmo corpo. */
+  async buscarLinhasDaProva(
+    provaId: string,
+    cursinhoId: string,
+    usuarios?: string[],
+  ): Promise<unknown> {
+    return this.axios.post(
+      `v1/relatorio-prova/${this.seg(provaId)}`,
+      this.corpo(cursinhoId, usuarios),
+    );
+  }
+
+  async buscarQuestoesDaProva(
+    provaId: string,
+    cursinhoId: string,
+    usuarios?: string[],
+  ): Promise<unknown> {
+    return this.axios.post(
+      `v1/relatorio-prova/${this.seg(provaId)}/questoes`,
+      this.corpo(cursinhoId, usuarios),
+    );
+  }
+
   async buscarSimulados(
     cursinhoId: string,
     usuarios?: string[],
