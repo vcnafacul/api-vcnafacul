@@ -39,6 +39,17 @@ const montar = (over: any = {}) => {
     findEnrolledForRelatorio: jest
       .fn()
       .mockResolvedValue(over.estudantes ?? []),
+    // tickets/036: a turma inclui quem saiu dela; por padrão, os mesmos.
+    findUsuariosDaTurmaParaRelatorio: jest
+      .fn()
+      .mockResolvedValue(
+        over.usuariosDaTurma ??
+          (over.estudantes ?? []).map((e: { userId: string }) => e.userId),
+      ),
+    // tickets/036: quem enviou cartão e não está mais matriculado.
+    findPorUsuariosParaRelatorio: jest
+      .fn()
+      .mockResolvedValue(over.exMatriculados ?? []),
   };
   const classRepository = {
     findOneByIdWithPartner: jest
