@@ -1,7 +1,7 @@
 jest.mock('./qr-decoder');
 jest.mock('uuid', () => ({ v4: () => 'IMGID' }));
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
-import { decodeCartaoQr } from './qr-decoder';
+import { prepararFotoDoCartao } from './qr-decoder';
 import { CartaoUploadService } from './cartao-upload.service';
 
 function setup(over: any = {}) {
@@ -39,10 +39,15 @@ function setup(over: any = {}) {
 }
 
 it('happy: decode→R2→cache→A3', async () => {
-  (decodeCartaoQr as jest.Mock).mockResolvedValue({
-    simuladoId: '665',
-    cartaoCode: '7',
-  });
+  (prepararFotoDoCartao as jest.Mock).mockImplementation(
+    async (buffer: Buffer, mimetype?: string) => ({
+      simuladoId: '665',
+      cartaoCode: '7',
+      buffer,
+      contentType: mimetype ?? 'image/jpeg',
+      rotacao: 0,
+    }),
+  );
   const { svc, blob, omrCache, cartaoHttp } = setup();
   const file: any = { buffer: Buffer.from('IMG'), mimetype: 'image/jpeg' };
   const r = await svc.processar('u-colab', 'u-aluno', file);
@@ -65,7 +70,9 @@ it('happy: decode→R2→cache→A3', async () => {
 });
 
 it('QR ilegível: não sobe nem chama A3', async () => {
-  (decodeCartaoQr as jest.Mock).mockRejectedValue(new Error('QR ilegível'));
+  (prepararFotoDoCartao as jest.Mock).mockRejectedValue(
+    new Error('QR ilegível'),
+  );
   const { svc, blob, cartaoHttp } = setup();
   await expect(
     svc.processar('u-colab', 'u', { buffer: Buffer.from('X') } as any),
@@ -84,10 +91,15 @@ it('sem arquivo: 400 sem decodificar/subir', async () => {
 });
 
 it('repassa cursinho e turma do instante do envio', async () => {
-  (decodeCartaoQr as jest.Mock).mockResolvedValue({
-    simuladoId: '665',
-    cartaoCode: '7',
-  });
+  (prepararFotoDoCartao as jest.Mock).mockImplementation(
+    async (buffer: Buffer, mimetype?: string) => ({
+      simuladoId: '665',
+      cartaoCode: '7',
+      buffer,
+      contentType: mimetype ?? 'image/jpeg',
+      rotacao: 0,
+    }),
+  );
   const { svc, cartaoHttp } = setup();
   const file: any = { buffer: Buffer.from('IMG'), mimetype: 'image/jpeg' };
 
@@ -103,10 +115,15 @@ it('repassa cursinho e turma do instante do envio', async () => {
 });
 
 it('estudante sem turma vai sem turmaId, e o upload segue', async () => {
-  (decodeCartaoQr as jest.Mock).mockResolvedValue({
-    simuladoId: '665',
-    cartaoCode: '7',
-  });
+  (prepararFotoDoCartao as jest.Mock).mockImplementation(
+    async (buffer: Buffer, mimetype?: string) => ({
+      simuladoId: '665',
+      cartaoCode: '7',
+      buffer,
+      contentType: mimetype ?? 'image/jpeg',
+      rotacao: 0,
+    }),
+  );
   const { svc, cartaoHttp } = setup({
     studentCourseRepository: {
       findByUserIdAndPrepCourse: jest.fn().mockResolvedValue({ id: 's1' }),
@@ -122,10 +139,15 @@ it('estudante sem turma vai sem turmaId, e o upload segue', async () => {
 });
 
 it('recusa cartão de estudante que não é do cursinho de quem envia', async () => {
-  (decodeCartaoQr as jest.Mock).mockResolvedValue({
-    simuladoId: '665',
-    cartaoCode: '7',
-  });
+  (prepararFotoDoCartao as jest.Mock).mockImplementation(
+    async (buffer: Buffer, mimetype?: string) => ({
+      simuladoId: '665',
+      cartaoCode: '7',
+      buffer,
+      contentType: mimetype ?? 'image/jpeg',
+      rotacao: 0,
+    }),
+  );
   const { svc, cartaoHttp, blob } = setup({
     studentCourseRepository: {
       findByUserIdAndPrepCourse: jest.fn().mockResolvedValue(null),
@@ -142,4 +164,28 @@ it('recusa cartão de estudante que não é do cursinho de quem envia', async ()
   // recusa ANTES de subir o arquivo: nada de lixo no bucket
   expect(blob.putObjectAtKey).not.toHaveBeenCalled();
   expect(cartaoHttp.criarHistorico).not.toHaveBeenCalled();
+});
+
+it('⚠️ tickets/037: guarda e põe no cache a foto EM PÉ, não a enviada', async () => {
+  const emPe = Buffer.from('FOTO-EM-PE');
+  (prepararFotoDoCartao as jest.Mock).mockResolvedValue({
+    simuladoId: '665',
+    cartaoCode: '7',
+    buffer: emPe,
+    contentType: 'image/jpeg',
+    rotacao: 270,
+  });
+  const { svc, blob, omrCache } = setup();
+  const file: any = {
+    buffer: Buffer.from('FOTO-DEITADA'),
+    mimetype: 'image/png',
+  };
+
+  await svc.processar('u-colab', 'u', file);
+
+  expect(prepararFotoDoCartao).toHaveBeenCalledWith(file.buffer, 'image/png');
+  const [buffer, , key, contentType] = blob.putObjectAtKey.mock.calls[0];
+  expect(buffer).toBe(emPe);
+  expect(contentType).toBe('image/jpeg');
+  expect(omrCache.primeImagem).toHaveBeenCalledWith(key, emPe);
 });

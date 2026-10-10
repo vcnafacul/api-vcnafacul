@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { CursinhoResolverService } from '../prova/cursinho/cursinho-resolver.service';
 import { CartaoRespostaHttpService } from './cartao-resposta-http.service';
 import { OmrCacheService } from './omr-cache.service';
-import { decodeCartaoQr } from './qr-decoder';
+import { prepararFotoDoCartao } from './qr-decoder';
 
 @Injectable()
 export class CartaoReprocessoService {
@@ -44,18 +44,26 @@ export class CartaoReprocessoService {
       return;
     }
 
-    const { simuladoId, cartaoCode } = await decodeCartaoQr(file.buffer);
+    // tickets/037: a foto sai daqui EM PÉ — é ela que vai para o bucket, para o cache do
+    // ms-omr e para o "Baixar foto do cartão". Deitada, o OMR lia letras trocadas sem aviso.
+    const foto = await prepararFotoDoCartao(file.buffer, file.mimetype);
+    const { simuladoId, cartaoCode } = foto;
     const imageKey = `cartoes/${simuladoId}/${uuidv4()}.jpg`;
+    if (foto.rotacao !== 0) {
+      this.logger.log(
+        `foto do cartão girada ${foto.rotacao}° para ficar em pé (${imageKey})`,
+      );
+    }
 
     // ⚠️ Bucket ANTES do cache: se o cache falhar, o OMR busca do bucket, que
     // já tem a foto certa. Invertido, o cache vira a fonte da verdade.
     await this.blobService.putObjectAtKey(
-      file.buffer,
+      foto.buffer,
       this.env.get('BUCKET_CARTAO'),
       imageKey,
-      file.mimetype ?? 'image/jpeg',
+      foto.contentType,
     );
-    await this.omrCache.primeImagem(imageKey, file.buffer);
+    await this.omrCache.primeImagem(imageKey, foto.buffer);
 
     try {
       // ⚠️ O ms confere se o QR é do MESMO cartão — é lá que o histórico está.

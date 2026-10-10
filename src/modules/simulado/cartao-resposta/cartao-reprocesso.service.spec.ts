@@ -7,7 +7,7 @@ jest.mock('uuid', () => {
   let n = 0;
   return { v4: () => `uuid-${++n}` };
 });
-import { decodeCartaoQr } from './qr-decoder';
+import { prepararFotoDoCartao } from './qr-decoder';
 import { CartaoReprocessoService } from './cartao-reprocesso.service';
 
 const montar = (over: any = {}) => {
@@ -33,10 +33,15 @@ const arquivo = { buffer: Buffer.from('foto'), mimetype: 'image/jpeg' } as any;
 describe('CartaoReprocessoService (api)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (decodeCartaoQr as jest.Mock).mockResolvedValue({
-      simuladoId: 'sim-1',
-      cartaoCode: '7',
-    });
+    (prepararFotoDoCartao as jest.Mock).mockImplementation(
+      async (buffer: Buffer, mimetype?: string) => ({
+        simuladoId: 'sim-1',
+        cartaoCode: '7',
+        buffer,
+        contentType: mimetype ?? 'image/jpeg',
+        rotacao: 0,
+      }),
+    );
   });
 
   it('⚠️ cunha uma imageKey NOVA — nunca reusa a do histórico', async () => {
@@ -132,7 +137,9 @@ describe('CartaoReprocessoService (api)', () => {
   });
 
   it('QR ilegível: não sobe nada e não chama o ms', async () => {
-    (decodeCartaoQr as jest.Mock).mockRejectedValue(new Error('QR ilegível'));
+    (prepararFotoDoCartao as jest.Mock).mockRejectedValue(
+      new Error('QR ilegível'),
+    );
     const { svc, blobService, cartaoHttp } = montar();
 
     await expect(svc.processar('colab-1', 'h1', arquivo)).rejects.toThrow(
