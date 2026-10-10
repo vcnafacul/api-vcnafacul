@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
 } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { StudentCourseRepository } from 'src/modules/prepCourse/studentCourse/student-course.repository';
@@ -11,10 +12,12 @@ import { BlobService } from 'src/shared/services/blob/blob-service';
 import { CursinhoResolverService } from '../prova/cursinho/cursinho-resolver.service';
 import { CartaoRespostaHttpService } from './cartao-resposta-http.service';
 import { OmrCacheService } from './omr-cache.service';
-import { decodeCartaoQr } from './qr-decoder';
+import { prepararFotoDoCartao } from './qr-decoder';
 
 @Injectable()
 export class CartaoUploadService {
+  private readonly logger = new Logger(CartaoUploadService.name);
+
   constructor(
     @Inject('BlobService')
     private readonly blobService: BlobService,
@@ -40,16 +43,24 @@ export class CartaoUploadService {
       usuario,
     );
 
-    const { simuladoId, cartaoCode } = await decodeCartaoQr(file.buffer);
+    // tickets/037: a foto sai daqui EM PÉ — é ela que vai para o bucket, para o cache do
+    // ms-omr e para o "Baixar foto do cartão". Deitada, o OMR lia letras trocadas sem aviso.
+    const foto = await prepararFotoDoCartao(file.buffer, file.mimetype);
+    const { simuladoId, cartaoCode } = foto;
     const imageKey = `cartoes/${simuladoId}/${uuidv4()}.jpg`;
+    if (foto.rotacao !== 0) {
+      this.logger.log(
+        `foto do cartão girada ${foto.rotacao}° para ficar em pé (${imageKey})`,
+      );
+    }
 
     await this.blobService.putObjectAtKey(
-      file.buffer,
+      foto.buffer,
       this.env.get('BUCKET_CARTAO'),
       imageKey,
-      file.mimetype ?? 'image/jpeg',
+      foto.contentType,
     );
-    await this.omrCache.primeImagem(imageKey, file.buffer);
+    await this.omrCache.primeImagem(imageKey, foto.buffer);
 
     return this.cartaoHttp.criarHistorico({
       usuario,
