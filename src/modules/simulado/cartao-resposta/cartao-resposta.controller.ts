@@ -42,6 +42,8 @@ import {
   garantirQuePodeLer,
 } from '../ator/pode-alterar-material';
 import { SimuladoService } from '../simulado.service';
+import { ProvaService } from '../prova/prova.service';
+import { ObjectIdPipe } from 'src/shared/pipes/object-id.pipe';
 
 @ApiTags('Simulado - Cartão Resposta')
 @Controller('mssimulado/cartao-resposta')
@@ -55,6 +57,8 @@ export class CartaoRespostaController {
     private readonly atorService: AtorService,
     private readonly simuladoService: SimuladoService,
     private readonly exclusaoService: CartaoExclusaoService,
+    // tickets/038: dono da prova do cartão da prova. Último para os specs que montam na mão.
+    private readonly provaService?: ProvaService,
   ) {}
 
   /**
@@ -213,6 +217,40 @@ export class CartaoRespostaController {
       (req.user as User).id,
       matricula,
     );
+  }
+
+  /**
+   * Cartão DA PROVA (tickets/038, R5/R6). ⚠️ Dois segmentos, com o id restrito a 24 hex: não
+   * casa com `:simuladoId` (um segmento) nem com `:historicoId/imagem`.
+   */
+  @Get('prova/:provaId([0-9a-fA-F]{24})')
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'baixa o PDF do cartão da prova' })
+  @ApiResponse({ status: 409, description: 'algum simulado não está pronto' })
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.visualizarProvas,
+    Permissions.visualizarProvasCursinho,
+  ])
+  async baixarCartaoDaProva(
+    @Param('provaId', ObjectIdPipe) provaId: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    const ator = await this.atorService.resolver((req.user as User).id);
+    // Prova de outro cursinho não sai — a mesma regra do cartão do simulado.
+    garantirQuePodeLer(
+      (await this.provaService!.getProvaById(provaId, ator)) as DonoDoMaterial,
+      ator,
+    );
+    const { buffer, contentType } =
+      await this.service.baixarCartaoDaProva(provaId);
+    res.setHeader('Content-Type', contentType || 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="cartao-prova-${provaId}.pdf"`,
+    );
+    res.send(buffer);
   }
 
   @Get(':simuladoId')

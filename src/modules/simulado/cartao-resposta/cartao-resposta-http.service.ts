@@ -24,6 +24,13 @@ export class CartaoRespostaHttpService {
     return this.axios.getBinary(`v1/cartao-resposta/${simuladoId}`);
   }
 
+  /** tickets/038: o cartão DA PROVA (Enem Dia 1/2 do cursinho). */
+  async baixarCartaoDaProva(
+    provaId: string,
+  ): Promise<{ buffer: Buffer; contentType: string }> {
+    return this.axios.getBinary(`v1/cartao-resposta/prova/${provaId}`);
+  }
+
   async criarHistorico(payload: {
     usuario: string;
     imageKey: string;
