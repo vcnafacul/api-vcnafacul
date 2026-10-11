@@ -28,6 +28,8 @@ export class CartaoRespostaHttpService {
     usuario: string;
     imageKey: string;
     cartaoCode: string;
+    provaId?: string;
+    simuladoId?: string;
     cursinhoId?: string;
     turmaId?: string;
   }): Promise<{ historicoId: string }> {
@@ -47,6 +49,7 @@ export class CartaoRespostaHttpService {
     corpo: {
       cursinhoId: string;
       imageKey?: string;
+      provaId?: string;
       simuladoId?: string;
       cartaoCode?: string;
     },

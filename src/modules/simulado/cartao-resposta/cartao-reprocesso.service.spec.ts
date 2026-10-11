@@ -174,3 +174,28 @@ describe('CartaoReprocessoService (api)', () => {
     expect(mensagem).toContain('h1');
   });
 });
+
+describe('reenvio do cartão da prova (tickets/038 · 07)', () => {
+  it('foto nova na pasta da PROVA, e o ms recebe a prova', async () => {
+    (prepararFotoDoCartao as jest.Mock).mockImplementation(
+      async (buffer: Buffer) => ({
+        provaId: 'p1',
+        cartaoCode: '3',
+        buffer,
+        contentType: 'image/jpeg',
+        rotacao: 0,
+      }),
+    );
+    const { svc, blobService, cartaoHttp } = montar();
+
+    await svc.processar('colab-1', 'h1', arquivo);
+
+    expect(blobService.putObjectAtKey.mock.calls[0][2]).toMatch(
+      /^cartoes\/p1\/uuid-\d+\.jpg$/,
+    );
+    expect(cartaoHttp.reprocessar).toHaveBeenCalledWith(
+      'h1',
+      expect.objectContaining({ provaId: 'p1', simuladoId: undefined }),
+    );
+  });
+});

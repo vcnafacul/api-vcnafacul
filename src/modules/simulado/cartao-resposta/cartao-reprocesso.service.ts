@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { CursinhoResolverService } from '../prova/cursinho/cursinho-resolver.service';
 import { CartaoRespostaHttpService } from './cartao-resposta-http.service';
 import { OmrCacheService } from './omr-cache.service';
+import { idDaPastaDoCartao } from './pasta-do-cartao';
 import { prepararFotoDoCartao } from './qr-decoder';
 
 @Injectable()
@@ -47,8 +48,10 @@ export class CartaoReprocessoService {
     // tickets/037: a foto sai daqui EM PÉ — é ela que vai para o bucket, para o cache do
     // ms-omr e para o "Baixar foto do cartão". Deitada, o OMR lia letras trocadas sem aviso.
     const foto = await prepararFotoDoCartao(file.buffer, file.mimetype);
-    const { simuladoId, cartaoCode } = foto;
-    const imageKey = `cartoes/${simuladoId}/${uuidv4()}.jpg`;
+    const { provaId, simuladoId, cartaoCode } = foto;
+    // tickets/038 (R12): a pasta é a do simulado no cartão do simulado e a da prova no
+    // cartão da prova — o ms-omr acha o template por ela.
+    const imageKey = `cartoes/${idDaPastaDoCartao(foto)}/${uuidv4()}.jpg`;
     if (foto.rotacao !== 0) {
       this.logger.log(
         `foto do cartão girada ${foto.rotacao}° para ficar em pé (${imageKey})`,
@@ -70,6 +73,7 @@ export class CartaoReprocessoService {
       await this.cartaoHttp.reprocessar(historicoId, {
         cursinhoId,
         imageKey,
+        provaId,
         simuladoId,
         cartaoCode,
       });

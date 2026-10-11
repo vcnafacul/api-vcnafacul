@@ -63,10 +63,49 @@ it('happy: decode→R2→cache→A3', async () => {
     usuario: 'u-aluno',
     imageKey,
     cartaoCode: '7',
+    provaId: undefined,
+    simuladoId: '665',
     cursinhoId: 'cur-1',
     turmaId: 't-1',
   });
   expect(r).toEqual({ historicoId: 'h1' });
+});
+
+describe('cartão ligado à prova (tickets/038 · 07)', () => {
+  const comQr = (qr: object) =>
+    (prepararFotoDoCartao as jest.Mock).mockImplementation(
+      async (buffer: Buffer) => ({
+        ...qr,
+        buffer,
+        contentType: 'image/jpeg',
+        rotacao: 0,
+      }),
+    );
+  const arquivo: any = { buffer: Buffer.from('IMG'), mimetype: 'image/jpeg' };
+
+  it('QR novo do simulado: pasta do simulado, repassa prova e simulado', async () => {
+    comQr({ provaId: 'p1', simuladoId: 's1', cartaoCode: '7' });
+    const { svc, blob, cartaoHttp } = setup();
+    await svc.processar('u-colab', 'u-aluno', arquivo);
+    expect(blob.putObjectAtKey.mock.calls[0][2]).toBe('cartoes/s1/IMGID.jpg');
+    expect(cartaoHttp.criarHistorico).toHaveBeenCalledWith(
+      expect.objectContaining({ provaId: 'p1', simuladoId: 's1' }),
+    );
+  });
+
+  it('QR da prova: pasta da PROVA (o ms-omr acha o template por ela)', async () => {
+    comQr({ provaId: 'p1', cartaoCode: '3' });
+    const { svc, blob, cartaoHttp } = setup();
+    await svc.processar('u-colab', 'u-aluno', arquivo);
+    expect(blob.putObjectAtKey.mock.calls[0][2]).toBe('cartoes/p1/IMGID.jpg');
+    expect(cartaoHttp.criarHistorico).toHaveBeenCalledWith(
+      expect.objectContaining({
+        imageKey: 'cartoes/p1/IMGID.jpg',
+        provaId: 'p1',
+        simuladoId: undefined,
+      }),
+    );
+  });
 });
 
 it('QR ilegível: não sobe nem chama A3', async () => {
