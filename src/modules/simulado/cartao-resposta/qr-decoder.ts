@@ -7,8 +7,14 @@ import jsQR from 'jsqr';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const sharp = require('sharp');
 
+/**
+ * tickets/038 (R8a): o QR do cartão do SIMULADO traz `simuladoId` (e `provaId`, quando o
+ * simulado está numa prova); o cartão DA PROVA traz só `provaId`. O QR antigo
+ * (`{ simuladoId, cartaoCode }`) continua valendo.
+ */
 export interface CartaoQr {
-  simuladoId: string;
+  provaId?: string;
+  simuladoId?: string;
   cartaoCode: string;
 }
 
@@ -127,20 +133,42 @@ async function lerQr(buffer: Buffer) {
   return code;
 }
 
+/*
+  ⚠️ O id vira pasta no bucket (`cartoes/<id>/…`) e o QR vem de uma foto: só letras, números,
+  `_` e `-` passam — um `../` escreveria fora da pasta dos cartões. (Quem confere que é um
+  ObjectId de verdade é o ms.)
+*/
+const ID_SEGURO = /^[A-Za-z0-9_-]{1,64}$/;
+
 function payloadDoCartao(code: { data: string }): CartaoQr {
-  let payload: { simuladoId?: unknown; cartaoCode?: unknown };
+  let payload: {
+    provaId?: unknown;
+    simuladoId?: unknown;
+    cartaoCode?: unknown;
+  };
   try {
     payload = JSON.parse(code.data);
   } catch {
     throw new BadRequestException(TEXTOS_DO_QR.naoECartao);
   }
 
-  if (!payload?.simuladoId || !payload?.cartaoCode) {
+  const id = (v: unknown) =>
+    v === undefined || v === null ? undefined : String(v);
+  const provaId = id(payload?.provaId);
+  const simuladoId = id(payload?.simuladoId);
+  const valido = (v?: string) => v === undefined || ID_SEGURO.test(v);
+  if (
+    !payload?.cartaoCode ||
+    (!provaId && !simuladoId) ||
+    !valido(provaId) ||
+    !valido(simuladoId)
+  ) {
     throw new BadRequestException(TEXTOS_DO_QR.naoECartao);
   }
 
   return {
-    simuladoId: String(payload.simuladoId),
+    ...(provaId ? { provaId } : {}),
+    ...(simuladoId ? { simuladoId } : {}),
     cartaoCode: String(payload.cartaoCode),
   };
 }

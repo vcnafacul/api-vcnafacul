@@ -24,10 +24,19 @@ export class CartaoRespostaHttpService {
     return this.axios.getBinary(`v1/cartao-resposta/${simuladoId}`);
   }
 
+  /** tickets/038: o cartão DA PROVA (Enem Dia 1/2 do cursinho). */
+  async baixarCartaoDaProva(
+    provaId: string,
+  ): Promise<{ buffer: Buffer; contentType: string }> {
+    return this.axios.getBinary(`v1/cartao-resposta/prova/${provaId}`);
+  }
+
   async criarHistorico(payload: {
     usuario: string;
     imageKey: string;
     cartaoCode: string;
+    provaId?: string;
+    simuladoId?: string;
     cursinhoId?: string;
     turmaId?: string;
   }): Promise<{ historicoId: string }> {
@@ -47,6 +56,7 @@ export class CartaoRespostaHttpService {
     corpo: {
       cursinhoId: string;
       imageKey?: string;
+      provaId?: string;
       simuladoId?: string;
       cartaoCode?: string;
     },

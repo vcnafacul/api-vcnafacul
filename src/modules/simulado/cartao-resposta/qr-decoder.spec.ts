@@ -41,6 +41,46 @@ it('decodifica QR → {simuladoId, cartaoCode}', async () => {
   });
 });
 
+describe('QR com a prova (tickets/038 · 07)', () => {
+  const qr = (payload: object) =>
+    (jsQR as jest.Mock).mockReturnValue({ data: JSON.stringify(payload) });
+
+  it('QR novo do simulado: prova + simulado', async () => {
+    qr({ provaId: 'p1', simuladoId: 's1', cartaoCode: '7' });
+    await expect(decodeCartaoQr(Buffer.from('X'))).resolves.toEqual({
+      provaId: 'p1',
+      simuladoId: 's1',
+      cartaoCode: '7',
+    });
+  });
+
+  it('QR da prova: só a prova', async () => {
+    qr({ provaId: 'p1', cartaoCode: '3' });
+    await expect(decodeCartaoQr(Buffer.from('X'))).resolves.toEqual({
+      provaId: 'p1',
+      cartaoCode: '3',
+    });
+  });
+
+  it('sem nenhum id → 400 com a mensagem de hoje', async () => {
+    qr({ cartaoCode: '3' });
+    await expect(decodeCartaoQr(Buffer.from('X'))).rejects.toThrow(
+      TEXTOS_DO_QR.naoECartao,
+    );
+  });
+
+  it('⚠️ id que escaparia da pasta do bucket → 400', async () => {
+    qr({ provaId: '../essays', cartaoCode: '3' });
+    await expect(decodeCartaoQr(Buffer.from('X'))).rejects.toThrow(
+      TEXTOS_DO_QR.naoECartao,
+    );
+    qr({ simuladoId: 'a/b', cartaoCode: '3' });
+    await expect(decodeCartaoQr(Buffer.from('X'))).rejects.toThrow(
+      TEXTOS_DO_QR.naoECartao,
+    );
+  });
+});
+
 it('jsqr null → 400', async () => {
   (jsQR as jest.Mock).mockReturnValue(null);
   await expect(decodeCartaoQr(Buffer.from('X'))).rejects.toBeInstanceOf(

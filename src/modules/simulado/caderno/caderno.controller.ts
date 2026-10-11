@@ -24,6 +24,7 @@ import {
   garantirQuePodeLer,
 } from '../ator/pode-alterar-material';
 import { SimuladoService } from '../simulado.service';
+import { ProvaService } from '../prova/prova.service';
 
 @ApiTags('Simulado - Caderno')
 @Controller('mssimulado/caderno')
@@ -33,7 +34,46 @@ export class CadernoController {
     private readonly logos: CadernoLogosService,
     private readonly atorService: AtorService,
     private readonly simuladoService: SimuladoService,
+    // tickets/038: dono da prova do caderno da prova. Último para os specs que montam na mão.
+    private readonly provaService?: ProvaService,
   ) {}
+
+  /**
+   * Caderno DA PROVA (tickets/038, R5/R6). ⚠️ Dois segmentos, id restrito a 24 hex: não casa
+   * com `:simuladoId` (um segmento) nem com as rotas de `template/*`.
+   */
+  @Get('prova/:provaId([0-9a-fA-F]{24})')
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'baixa o zip do caderno da prova' })
+  @ApiResponse({ status: 409, description: 'algum simulado não está pronto' })
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, [
+    Permissions.visualizarProvas,
+    Permissions.visualizarProvasCursinho,
+  ])
+  async baixarDaProva(
+    @Param('provaId', ObjectIdPipe) provaId: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    const ator = await this.atorService.resolver((req.user as User).id);
+    garantirQuePodeLer(
+      (await this.provaService!.getProvaById(provaId, ator)) as DonoDoMaterial,
+      ator,
+    );
+    const logos = await this.logos.resolver((req.user as User).id);
+    const { buffer, contentType, avisos } = await this.http.baixarDaProva(
+      provaId,
+      logos,
+    );
+    res.setHeader('Content-Type', contentType || 'application/zip');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="caderno-prova-${provaId}.zip"`,
+    );
+    if (avisos !== undefined) res.setHeader('X-Caderno-Avisos', avisos);
+    res.send(buffer);
+  }
 
   /**
    * ⚠️ **O param e RESTRITO a 24 hex no proprio path, e e ISSO que impede a
