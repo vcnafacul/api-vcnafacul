@@ -77,6 +77,22 @@ export class CadernoHttpService {
     // É a mesma forma do outro lado do hop: o `decodificarLogos` do
     // ms-simulado percorre `Object.keys(NOMES_DOS_LOGOS)` em vez do corpo
     // recebido, pelo mesmo motivo. As duas pontas simétricas.
+    return this.postar(rota, logos);
+  }
+
+  /** tickets/038: o caderno DA PROVA (Enem Dia 1/2 do cursinho). Sem rascunho. */
+  async baixarDaProva(
+    provaId: string,
+    logos: LogosDoCaderno,
+  ): Promise<{ buffer: Buffer; contentType: string; avisos?: string }> {
+    // O `provaId` já veio validado pelo ObjectIdPipe.
+    return this.postar(`v1/caderno/prova/${provaId}`, logos);
+  }
+
+  private async postar(
+    rota: string,
+    logos: LogosDoCaderno,
+  ): Promise<{ buffer: Buffer; contentType: string; avisos?: string }> {
     const corpo: CorpoDoCaderno = { logos: {} };
     for (const chave of CHAVES_DE_LOGO) {
       const buffer = logos[chave];
