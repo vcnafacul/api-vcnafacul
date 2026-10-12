@@ -3,10 +3,17 @@ import { InjectEntityManager } from '@nestjs/typeorm';
 import { BaseRepository } from 'src/shared/modules/base/base.repository';
 import { EntityManager, In, IsNull, LessThanOrEqual, MoreThan } from 'typeorm';
 import { EventoSimuladoInscricao } from './evento-simulado-inscricao.entity';
-import { EventoSimuladoProva } from './evento-simulado-prova.entity';
+import {
+  EventoSimuladoProva,
+  SimuladoDaProvaDoEvento,
+} from './evento-simulado-prova.entity';
 import { EventoSimulado } from './evento-simulado.entity';
 
-export type ProvaNova = { provaId: string; nomeDaProva: string };
+export type ProvaNova = {
+  provaId: string;
+  nomeDaProva: string;
+  simulados: SimuladoDaProvaDoEvento[];
+};
 
 /**
  * ⚠️ `deletedAt` do `BaseEntity` é coluna comum, não `@DeleteDateColumn`: o
@@ -60,6 +67,33 @@ export class EventoSimuladoRepository extends BaseRepository<EventoSimulado> {
     return out;
   }
 
+  /**
+   * `{ simuladoId → quantos inscritos }` de cada evento pedido (tickets/039).
+   * Inscrições de antes, sem simulado, não entram.
+   */
+  async inscritosPorSimulado(
+    eventoIds: string[],
+  ): Promise<Map<string, Map<string, number>>> {
+    const out = new Map<string, Map<string, number>>();
+    if (!eventoIds.length) return out;
+    const linhas = await this._entityManager
+      .getRepository(EventoSimuladoInscricao)
+      .createQueryBuilder('i')
+      .select('i.evento_id', 'eventoId')
+      .addSelect('i.simulado_id', 'simuladoId')
+      .addSelect('COUNT(*)', 'total')
+      .where('i.evento_id IN (:...eventoIds)', { eventoIds })
+      .andWhere('i.simulado_id IS NOT NULL')
+      .groupBy('i.evento_id')
+      .addGroupBy('i.simulado_id')
+      .getRawMany<{ eventoId: string; simuladoId: string; total: string }>();
+    for (const l of linhas) {
+      if (!out.has(l.eventoId)) out.set(l.eventoId, new Map());
+      out.get(l.eventoId).set(l.simuladoId, Number(l.total));
+    }
+    return out;
+  }
+
   /** Grava o evento e SUBSTITUI as provas, numa transação. */
   async salvarComProvas(
     evento: Partial<EventoSimulado>,
@@ -74,6 +108,16 @@ export class EventoSimuladoRepository extends BaseRepository<EventoSimulado> {
       );
       return salvo.id;
     });
+  }
+
+  /** Completa os simulados de uma prova de evento salvo antes da 039. */
+  async completarSimulados(
+    id: string,
+    simulados: SimuladoDaProvaDoEvento[],
+  ): Promise<void> {
+    await this._entityManager
+      .getRepository(EventoSimuladoProva)
+      .update({ id }, { simulados });
   }
 
   // ---- aluno (card 03) ----
@@ -120,12 +164,21 @@ export class EventoSimuladoRepository extends BaseRepository<EventoSimulado> {
     return this.inscricoes.findOne({ where: { eventoId, userId } });
   }
 
-  async inserirInscricao(eventoId: string, userId: string, provaId: string) {
-    await this.inscricoes.insert({ eventoId, userId, provaId });
+  async inserirInscricao(
+    eventoId: string,
+    userId: string,
+    provaId: string,
+    simuladoId: string | null,
+  ) {
+    await this.inscricoes.insert({ eventoId, userId, provaId, simuladoId });
   }
 
-  async trocarProva(inscricaoId: string, provaId: string) {
-    await this.inscricoes.update({ id: inscricaoId }, { provaId });
+  async trocarProva(
+    inscricaoId: string,
+    provaId: string,
+    simuladoId: string | null,
+  ) {
+    await this.inscricoes.update({ id: inscricaoId }, { provaId, simuladoId });
   }
 
   async apagarInscricao(eventoId: string, userId: string) {
