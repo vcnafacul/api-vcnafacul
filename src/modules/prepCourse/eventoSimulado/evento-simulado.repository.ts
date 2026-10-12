@@ -137,12 +137,21 @@ export class EventoSimuladoRepository extends BaseRepository<EventoSimulado> {
     return this.inscricoes.findOne({ where: { eventoId, userId } });
   }
 
-  async inserirInscricao(eventoId: string, userId: string, provaId: string) {
-    await this.inscricoes.insert({ eventoId, userId, provaId });
+  async inserirInscricao(
+    eventoId: string,
+    userId: string,
+    provaId: string,
+    simuladoId: string | null,
+  ) {
+    await this.inscricoes.insert({ eventoId, userId, provaId, simuladoId });
   }
 
-  async trocarProva(inscricaoId: string, provaId: string) {
-    await this.inscricoes.update({ id: inscricaoId }, { provaId });
+  async trocarProva(
+    inscricaoId: string,
+    provaId: string,
+    simuladoId: string | null,
+  ) {
+    await this.inscricoes.update({ id: inscricaoId }, { provaId, simuladoId });
   }
 
   async apagarInscricao(eventoId: string, userId: string) {

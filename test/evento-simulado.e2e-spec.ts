@@ -24,13 +24,18 @@ describe('Eventos de simulado (e2e)', () => {
   let app: INestApplication;
   let db: DataSource;
   let jwt: JwtService;
+  /**
+   * O simulado (único) de uma prova falsa: 24 caracteres, como um id do Mongo —
+   * a inscrição guarda o simulado numa coluna de 24 (tickets/039).
+   */
+  const simDe = (provaId: string) => provaId.split('').reverse().join('');
   const provasNoMs = new Map<
     string,
     {
       nome: string;
       cursinhoId: string;
       completa?: boolean;
-      // tickets/039: sem `simulados`, um só (`sim-<id>`, com o nome da prova).
+      // tickets/039: sem `simulados`, um só (`simDe(id)`, com o nome da prova).
       simulados?: { simuladoId: string; nome: string }[];
     }
   >();
@@ -70,7 +75,7 @@ describe('Eventos de simulado (e2e)', () => {
           // Card 38: completa por padrão; `prova(..., false)` cria incompleta.
           if (!p) return null;
           const simulados = p.simulados ?? [
-            { simuladoId: `sim-${id}`, nome: p.nome },
+            { simuladoId: simDe(id), nome: p.nome },
           ];
           return {
             id,
@@ -420,7 +425,7 @@ describe('Eventos de simulado (e2e)', () => {
         [vivo.body.id, p],
       );
       expect(JSON.parse(linha.simulados)).toEqual([
-        { simuladoId: `sim-${p}`, nome: 'Nome novo' },
+        { simuladoId: simDe(p), nome: 'Nome novo' },
       ]);
     });
   });
@@ -512,6 +517,61 @@ describe('Eventos de simulado (e2e)', () => {
         .set('Authorization', auth)
         .expect(204);
       expect((await meus(u))[0].minhaProvaId).toBeNull();
+    });
+
+    it('tickets/039: prova com dois simulados vira duas opções; o aluno escolhe e troca a língua', async () => {
+      const hex = () => randomUUID().replace(/-/g, '').slice(0, 24);
+      const dia1 = prova(A, 'Enem Dia 1');
+      const [sIng, sEsp] = [hex(), hex()];
+      provasNoMs.get(dia1)!.simulados = [
+        { simuladoId: sIng, nome: 'Enem Dia 1 Inglês' },
+        { simuladoId: sEsp, nome: 'Enem Dia 1 Espanhol' },
+      ];
+      const gestor = await colaborador(A, ['cadastrar_provas_cursinho']);
+      const ev = await request(app.getHttpServer())
+        .post('/eventos-simulado/cursinho')
+        .set('Authorization', await bearer(gestor))
+        .send(corpo([dia1], { nome: 'Evento do Dia 1' }))
+        .expect(201);
+      ids.eventos.push(ev.body.id);
+
+      const u = await aluno(A);
+      const auth = await bearer(u);
+      const doEvento = (await meus(u)).find(
+        (e: { id: string }) => e.id === ev.body.id,
+      );
+      expect(doEvento.opcoes).toEqual([
+        { provaId: dia1, simuladoId: sIng, nome: 'Enem Dia 1 Inglês' },
+        { provaId: dia1, simuladoId: sEsp, nome: 'Enem Dia 1 Espanhol' },
+      ]);
+
+      // Só a prova, sem dizer a língua: não dá para saber qual.
+      await request(app.getHttpServer())
+        .put(`/eventos-simulado/${ev.body.id}/inscricao`)
+        .set('Authorization', auth)
+        .send({ provaId: dia1 })
+        .expect(400);
+
+      const r1 = await request(app.getHttpServer())
+        .put(`/eventos-simulado/${ev.body.id}/inscricao`)
+        .set('Authorization', auth)
+        .send({ provaId: dia1, simuladoId: sEsp })
+        .expect(200);
+      expect(r1.body.resultado).toBe('nova');
+      expect(r1.body.evento.meuSimuladoId).toBe(sEsp);
+
+      const r2 = await request(app.getHttpServer())
+        .put(`/eventos-simulado/${ev.body.id}/inscricao`)
+        .set('Authorization', auth)
+        .send({ provaId: dia1, simuladoId: sIng })
+        .expect(200);
+      expect(r2.body.resultado).toBe('troca');
+
+      const [linha] = await db.query(
+        'SELECT prova_id, simulado_id FROM simulado_evento_inscricao WHERE evento_id = ? AND user_id = ?',
+        [ev.body.id, u],
+      );
+      expect(linha).toEqual({ prova_id: dia1, simulado_id: sIng });
     });
 
     it('evento agendado (fora da janela) → 404', async () => {
@@ -723,7 +783,7 @@ describe('Eventos de simulado (e2e)', () => {
           .send({ provaId: p })
           .expect(200);
       }
-      participantes.set(`sim-${en}`, [veio, semInscricao]);
+      participantes.set(simDe(en), [veio, semInscricao]);
 
       const r = await request(app.getHttpServer())
         .get(`/eventos-simulado/cursinho/${criado.body.id}/engajamento`)
