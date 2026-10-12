@@ -572,6 +572,26 @@ describe('Eventos de simulado (e2e)', () => {
         [ev.body.id, u],
       );
       expect(linha).toEqual({ prova_id: dia1, simulado_id: sIng });
+
+      // Card 04: a lista do cursinho quebra a prova por simulado.
+      const lista = await request(app.getHttpServer())
+        .get('/eventos-simulado/cursinho')
+        .set('Authorization', await bearer(gestor))
+        .expect(200);
+      const doDia1 = lista.body.find(
+        (e: { id: string }) => e.id === ev.body.id,
+      );
+      expect(doDia1.provas).toEqual([
+        {
+          provaId: dia1,
+          nome: 'Enem Dia 1',
+          inscritos: 1,
+          simulados: [
+            { simuladoId: sIng, nome: 'Enem Dia 1 Inglês', inscritos: 1 },
+            { simuladoId: sEsp, nome: 'Enem Dia 1 Espanhol', inscritos: 0 },
+          ],
+        },
+      ]);
     });
 
     it('evento agendado (fora da janela) → 404', async () => {
@@ -791,22 +811,33 @@ describe('Eventos de simulado (e2e)', () => {
         .expect(200);
 
       expect(r.body.porProva).toEqual([
-        {
+        expect.objectContaining({
           provaId: en,
           nome: 'Simulado Inglês',
           inscritos: 1,
           fizeram: 1,
           trocaram: 0,
           naoVieram: 0,
-        },
-        {
+          // tickets/039: prova de um simulado — uma linha, igual à da prova.
+          simulados: [
+            {
+              simuladoId: simDe(en),
+              nome: 'Simulado Inglês',
+              inscritos: 1,
+              fizeram: 1,
+              trocaram: 0,
+              naoVieram: 0,
+            },
+          ],
+        }),
+        expect.objectContaining({
           provaId: es,
           nome: 'Simulado Espanhol',
           inscritos: 1,
           fizeram: 0,
           trocaram: 0,
           naoVieram: 1,
-        },
+        }),
       ]);
       expect(r.body).toMatchObject({
         totalInscritos: 2,
@@ -817,7 +848,7 @@ describe('Eventos de simulado (e2e)', () => {
         r.body.inscritos.map((i: { fez: boolean }) => i.fez).sort(),
       ).toEqual([false, true]);
       expect(r.body.fizeramSemInscricao).toEqual([
-        { nome: 'Ana Teste', provaId: en },
+        { nome: 'Ana Teste', provaId: en, simuladoId: simDe(en) },
       ]);
     });
   });

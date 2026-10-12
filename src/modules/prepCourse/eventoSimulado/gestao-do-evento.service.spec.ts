@@ -17,6 +17,7 @@ describe('GestaoDoEventoService (026 · 02)', () => {
       findDoCursinho: jest.fn().mockResolvedValue([]),
       findUmDoCursinho: jest.fn(),
       inscritosPorProva: jest.fn().mockResolvedValue(new Map()),
+      inscritosPorSimulado: jest.fn().mockResolvedValue(new Map()),
       salvarComProvas: jest.fn().mockResolvedValue('e1'),
       excluir: jest.fn(),
       inscricoesDoEvento: jest.fn().mockResolvedValue([]),
