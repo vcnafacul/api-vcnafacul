@@ -7,4 +7,13 @@ export class InscreverDtoInput {
   @IsOptional()
   @IsMongoId()
   provaId?: string;
+
+  /**
+   * tickets/039: o simulado escolhido. Obrigatório quando a prova tem mais de
+   * um (Enem Dia 1: Inglês ou Espanhol).
+   */
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsMongoId()
+  simuladoId?: string;
 }

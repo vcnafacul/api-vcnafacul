@@ -14,6 +14,7 @@ import { AvisoDeAberturaTask } from './aviso-de-abertura.task';
 import { EngajamentoDoEventoService } from './engajamento-do-evento.service';
 import { PushDoEventoService } from './push-do-evento.service';
 import { ProvasDoMsService } from './provas-do-ms.service';
+import { SimuladosDasProvasService } from './simulados-das-provas.service';
 
 /** Eventos de simulado presencial do cursinho (tickets/026). */
 @Module({
@@ -35,6 +36,7 @@ import { ProvasDoMsService } from './provas-do-ms.service';
     AvisoDeAberturaTask,
     EngajamentoDoEventoService,
     ProvasDoMsService,
+    SimuladosDasProvasService,
     HttpServiceAxiosFactory,
   ],
   exports: [EventoSimuladoRepository],

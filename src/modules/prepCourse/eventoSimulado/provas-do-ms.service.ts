@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EnvService } from 'src/shared/modules/env/env.service';
+import { SimuladoDaProvaDoEvento } from './evento-simulado-prova.entity';
 import { provaCompleta } from './regras-do-evento';
 import {
   HttpServiceAxios,
@@ -11,6 +12,8 @@ export type ProvaDoMs = {
   nome: string;
   cursinhoId: string | null;
   simuladoIds: string[];
+  /** Os simulados com o nome (tickets/039): o aluno escolhe o simulado. */
+  simulados: SimuladoDaProvaDoEvento[];
   /** Card 38: a mesma regra do "Completa" da tela — ver `provaCompleta`. */
   completa: boolean;
 };
@@ -46,7 +49,7 @@ export class ProvasDoMsService {
         _id: string;
         nome: string;
         cursinhoId?: string | null;
-        simulados?: (string | { _id: string })[];
+        simulados?: (string | { _id: string; nome?: string })[];
         totalQuestao?: number | null;
         totalQuestaoValidadas?: number;
         questoes?: unknown[];
@@ -58,6 +61,12 @@ export class ProvasDoMsService {
         cursinhoId: p.cursinhoId ?? null,
         simuladoIds: (p.simulados ?? []).map((s) =>
           typeof s === 'string' ? s : String(s._id),
+        ),
+        // Sem nome (simulado não populado), vale o da prova.
+        simulados: (p.simulados ?? []).map((s) =>
+          typeof s === 'string'
+            ? { simuladoId: s, nome: p.nome }
+            : { simuladoId: String(s._id), nome: s.nome ?? p.nome },
         ),
         completa: provaCompleta({
           totalQuestao: p.totalQuestao ?? null,

@@ -21,4 +21,17 @@ export class EventoSimuladoProva extends BaseEntity {
 
   @Column({ type: 'int', default: 0 })
   ordem: number;
+
+  /**
+   * Os simulados da prova, copiados do ms ao salvar o evento (tickets/039): o
+   * aluno escolhe o SIMULADO — a prova Enem Dia 1 tem dois (Inglês e Espanhol).
+   * Nulo em evento salvo antes disso: quem lê completa pelo ms.
+   *
+   * `simple-json` (texto), e não `json`: no MariaDB de homol/prod `json` é outro
+   * tipo, e o texto se comporta igual nos dois bancos.
+   */
+  @Column({ type: 'simple-json', nullable: true })
+  simulados: SimuladoDaProvaDoEvento[] | null;
 }
+
+export type SimuladoDaProvaDoEvento = { simuladoId: string; nome: string };

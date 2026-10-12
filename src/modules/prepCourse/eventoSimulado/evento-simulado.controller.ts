@@ -123,6 +123,7 @@ export class EventoSimuladoController {
       (req.user as User).id,
       id,
       dto.provaId,
+      dto.simuladoId,
     );
   }
 
