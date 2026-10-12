@@ -1,3 +1,4 @@
+import { eAlunoDaTurma } from '../contagem-de-alunos';
 import {
   BadRequestException,
   Injectable,
@@ -9,7 +10,6 @@ import {
 } from '../analytics/utils/month-window';
 import { AnalyticsQueueService } from '../analytics/queue/analytics-queue.service';
 import { ClassService } from '../class.service';
-import { StatusApplication } from '../../studentCourse/enums/stastusApplication';
 import { ClassEssayAnalyticsRepository } from './class-essay-analytics.repository';
 import { ClassEssaySnapshot } from './class-essay-snapshot.entity';
 import { EssayMonthDtoOutput } from './dtos/essay-month.dto.output';
@@ -62,8 +62,8 @@ export class ClassEssayAnalyticsService {
         endDate: period.endDate.toISOString().slice(0, 10),
         isActive: isActivePeriod(period),
       },
-      totalStudents: (klass.students ?? []).filter(
-        (s) => s.status === StatusApplication.Enrolled,
+      totalStudents: (klass.students ?? []).filter((s) =>
+        eAlunoDaTurma(s.status),
       ).length,
       months,
     };

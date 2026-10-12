@@ -781,6 +781,34 @@ describe('Class (e2e)', () => {
     const comRestrito = await getTurma(tokenRestrito, classId);
     expect(comRestrito.students[0].email).toContain('*');
   }, 60000);
+  it('turma de período encerrado continua mostrando os alunos (Matrícula Encerrada); o cancelado fica de fora', async () => {
+    const { token, classId, estudantes } = await criarTurmaComEstudantes(2);
+    const [ativo, cancelado] = estudantes;
+    await studentCourseService.cancelEnrolled(cancelado.studentId, 'Rotina');
+
+    await dataSource.query(
+      `UPDATE course_periods SET endDate = DATE_SUB(CURDATE(), INTERVAL 1 DAY), startDate = DATE_SUB(CURDATE(), INTERVAL 60 DAY)
+       WHERE id = (SELECT course_period_id FROM classes WHERE id = ?)`,
+      [classId],
+    );
+    await coursePeriodService.closeExpiredCoursePeriods();
+
+    // Antes, com todo mundo encerrado, a turma do ano passado abria com 0.
+    const turma = await getTurma(token, classId);
+    expect(turma.students.map((e: { id: string }) => e.id)).toEqual([
+      ativo.studentId,
+    ]);
+    expect(turma.students[0].status).toBe(StatusApplication.EnrollmentClosed);
+
+    const lista = await request(app.getHttpServer())
+      .get('/class')
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    const daLista = lista.body.data.find(
+      (t: ClassDtoOutput) => t.id === classId,
+    );
+    expect(daLista.number_students).toBe(1);
+  }, 60000);
   it('⚠️ fim do período: encerra só os matriculados, com log; o cancelado continua cancelado', async () => {
     const { token, classId, estudantes } = await criarTurmaComEstudantes(2);
     const [ativo, cancelado] = estudantes;

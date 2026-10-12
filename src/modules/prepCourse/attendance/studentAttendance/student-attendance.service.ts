@@ -1,3 +1,4 @@
+import { presenceByClassIdKey } from '../../class/class-cache-keys';
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { CacheService } from 'src/shared/modules/cache/cache.service';
@@ -67,9 +68,7 @@ export class StudentAttendanceService extends BaseService<StudentAttendance> {
   ): Promise<void> {
     const sa = await this.repository.findOneWithClass(studentAttendanceId);
     if (sa?.attendanceRecord?.class?.id) {
-      await this.cache.del(
-        `presence_by_class_id_${sa.attendanceRecord.class.id}`,
-      );
+      await this.cache.del(presenceByClassIdKey(sa.attendanceRecord.class.id));
     }
   }
 

@@ -1,6 +1,6 @@
+import { eAlunoDaTurma } from '../../contagem-de-alunos';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { SimuladoHttpService } from 'src/shared/services/simulado-http.service';
-import { StatusApplication } from '../../../studentCourse/enums/stastusApplication';
 import { ClassService } from '../../class.service';
 import { ClassEssayAnalyticsService } from '../../essay-analytics/class-essay-analytics.service';
 import { computeMonthWindow } from '../utils/month-window';
@@ -51,7 +51,7 @@ export class AnalyticsWorkerService implements OnModuleInit {
     const { monthStart, monthEnd } = computeMonthWindow(month, period);
 
     const userIds = (klass.students ?? [])
-      .filter((s) => s.applicationStatus === StatusApplication.Enrolled)
+      .filter((s) => eAlunoDaTurma(s.applicationStatus))
       .map((s) => s.userId);
 
     try {

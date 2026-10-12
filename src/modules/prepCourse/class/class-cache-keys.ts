@@ -12,7 +12,9 @@
 
 /** Payload da turma com a lista de estudantes ativos e as metricas de presenca. */
 export function presenceByClassIdKey(classId: string) {
-  return `presence_by_class_id_${classId}`;
+  // v2: a lista passou a trazer os encerrados — sem trocar a chave, o
+  // payload antigo (só Matriculados) seguiria no cache por até 7 dias.
+  return `presence_by_class_id_v2_${classId}`;
 }
 
 /** Lista de estudantes com a matricula cancelada, com email NAO mascarado. */
