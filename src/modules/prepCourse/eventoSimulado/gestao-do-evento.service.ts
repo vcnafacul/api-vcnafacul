@@ -167,7 +167,11 @@ export class GestaoDoEventoService {
     if (provas.some((p) => !p.completa && !antigas.has(p.id))) {
       throw new BadRequestException(TEXTO_PROVA_INCOMPLETA);
     }
-    return provas.map((p) => ({ provaId: p.id, nomeDaProva: p.nome }));
+    return provas.map((p) => ({
+      provaId: p.id,
+      nomeDaProva: p.nome,
+      simulados: p.simulados,
+    }));
   }
 
   private async umDoCursinho(id: string, cursinhoId: string) {

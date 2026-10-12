@@ -3,10 +3,17 @@ import { InjectEntityManager } from '@nestjs/typeorm';
 import { BaseRepository } from 'src/shared/modules/base/base.repository';
 import { EntityManager, In, IsNull, LessThanOrEqual, MoreThan } from 'typeorm';
 import { EventoSimuladoInscricao } from './evento-simulado-inscricao.entity';
-import { EventoSimuladoProva } from './evento-simulado-prova.entity';
+import {
+  EventoSimuladoProva,
+  SimuladoDaProvaDoEvento,
+} from './evento-simulado-prova.entity';
 import { EventoSimulado } from './evento-simulado.entity';
 
-export type ProvaNova = { provaId: string; nomeDaProva: string };
+export type ProvaNova = {
+  provaId: string;
+  nomeDaProva: string;
+  simulados: SimuladoDaProvaDoEvento[];
+};
 
 /**
  * ⚠️ `deletedAt` do `BaseEntity` é coluna comum, não `@DeleteDateColumn`: o
@@ -74,6 +81,16 @@ export class EventoSimuladoRepository extends BaseRepository<EventoSimulado> {
       );
       return salvo.id;
     });
+  }
+
+  /** Completa os simulados de uma prova de evento salvo antes da 039. */
+  async completarSimulados(
+    id: string,
+    simulados: SimuladoDaProvaDoEvento[],
+  ): Promise<void> {
+    await this._entityManager
+      .getRepository(EventoSimuladoProva)
+      .update({ id }, { simulados });
   }
 
   // ---- aluno (card 03) ----

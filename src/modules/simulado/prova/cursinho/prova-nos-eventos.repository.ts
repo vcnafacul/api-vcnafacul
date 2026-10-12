@@ -35,8 +35,24 @@ export class ProvaNosEventosRepository {
    * antigo.
    */
   async renomearProva(provaId: string, nome: string): Promise<void> {
-    await this.manager
-      .getRepository(EventoSimuladoProva)
-      .update({ provaId }, { nomeDaProva: nome });
+    const repo = this.manager.getRepository(EventoSimuladoProva);
+    const linhas = await repo.find({ where: { provaId } });
+    for (const l of linhas) {
+      await repo.update(
+        { id: l.id },
+        {
+          nomeDaProva: nome,
+          // tickets/039: os simulados também guardam o nome copiado. O ms troca
+          // o nome da prova e mantém o sufixo ("… Inglês") — aqui, o mesmo.
+          simulados:
+            l.simulados?.map((s) => ({
+              ...s,
+              nome: s.nome.startsWith(l.nomeDaProva)
+                ? nome + s.nome.slice(l.nomeDaProva.length)
+                : s.nome,
+            })) ?? null,
+        },
+      );
+    }
   }
 }

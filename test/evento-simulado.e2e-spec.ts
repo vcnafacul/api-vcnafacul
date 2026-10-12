@@ -26,7 +26,13 @@ describe('Eventos de simulado (e2e)', () => {
   let jwt: JwtService;
   const provasNoMs = new Map<
     string,
-    { nome: string; cursinhoId: string; completa?: boolean }
+    {
+      nome: string;
+      cursinhoId: string;
+      completa?: boolean;
+      // tickets/039: sem `simulados`, um só (`sim-<id>`, com o nome da prova).
+      simulados?: { simuladoId: string; nome: string }[];
+    }
   >();
   // Push "ligado" e sem FCM: guarda para quem e o quê seria enviado.
   const push = {
@@ -62,9 +68,17 @@ describe('Eventos de simulado (e2e)', () => {
         buscar: async (id: string) => {
           const p = provasNoMs.get(id);
           // Card 38: completa por padrão; `prova(..., false)` cria incompleta.
-          return p
-            ? { id, completa: true, ...p, simuladoIds: [`sim-${id}`] }
-            : null;
+          if (!p) return null;
+          const simulados = p.simulados ?? [
+            { simuladoId: `sim-${id}`, nome: p.nome },
+          ];
+          return {
+            id,
+            completa: true,
+            ...p,
+            simulados,
+            simuladoIds: simulados.map((s) => s.simuladoId),
+          };
         },
         participantesPorCartao: async (simuladoIds: string[]) =>
           Object.fromEntries(
@@ -398,6 +412,16 @@ describe('Eventos de simulado (e2e)', () => {
         (e: { id: string }) => e.id === vivo.body.id,
       );
       expect(evento.provas[0].nome).toBe('Nome novo');
+
+      // tickets/039: o evento guardou os simulados ao salvar, e o nome deles
+      // acompanha o da prova.
+      const [linha] = await db.query(
+        'SELECT simulados FROM simulado_evento_prova WHERE evento_id = ? AND prova_id = ?',
+        [vivo.body.id, p],
+      );
+      expect(JSON.parse(linha.simulados)).toEqual([
+        { simuladoId: `sim-${p}`, nome: 'Nome novo' },
+      ]);
     });
   });
 
