@@ -67,6 +67,33 @@ export class EventoSimuladoRepository extends BaseRepository<EventoSimulado> {
     return out;
   }
 
+  /**
+   * `{ simuladoId → quantos inscritos }` de cada evento pedido (tickets/039).
+   * Inscrições de antes, sem simulado, não entram.
+   */
+  async inscritosPorSimulado(
+    eventoIds: string[],
+  ): Promise<Map<string, Map<string, number>>> {
+    const out = new Map<string, Map<string, number>>();
+    if (!eventoIds.length) return out;
+    const linhas = await this._entityManager
+      .getRepository(EventoSimuladoInscricao)
+      .createQueryBuilder('i')
+      .select('i.evento_id', 'eventoId')
+      .addSelect('i.simulado_id', 'simuladoId')
+      .addSelect('COUNT(*)', 'total')
+      .where('i.evento_id IN (:...eventoIds)', { eventoIds })
+      .andWhere('i.simulado_id IS NOT NULL')
+      .groupBy('i.evento_id')
+      .addGroupBy('i.simulado_id')
+      .getRawMany<{ eventoId: string; simuladoId: string; total: string }>();
+    for (const l of linhas) {
+      if (!out.has(l.eventoId)) out.set(l.eventoId, new Map());
+      out.get(l.eventoId).set(l.simuladoId, Number(l.total));
+    }
+    return out;
+  }
+
   /** Grava o evento e SUBSTITUI as provas, numa transação. */
   async salvarComProvas(
     evento: Partial<EventoSimulado>,

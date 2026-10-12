@@ -20,7 +20,16 @@ export type EventoDoCursinho = {
   inscricoesDe: Date;
   inscricoesAte: Date;
   status: StatusDoEvento;
-  provas: { provaId: string; nome: string; inscritos: number }[];
+  provas: {
+    provaId: string;
+    nome: string;
+    inscritos: number;
+    /**
+     * tickets/039: só na prova de mais de um simulado (Enem Dia 1) — quantos
+     * escolheram cada um. Inscrições de antes, sem simulado, só no total.
+     */
+    simulados?: { simuladoId: string; nome: string; inscritos: number }[];
+  }[];
   totalInscritos: number;
 };
 
@@ -57,10 +66,12 @@ export class GestaoDoEventoService {
   async listar(userId: string): Promise<EventoDoCursinho[]> {
     const cursinhoId = await this.cursinhoDoColaborador(userId);
     const eventos = await this.eventos.findDoCursinho(cursinhoId);
-    const inscritos = await this.eventos.inscritosPorProva(
-      eventos.map((e) => e.id),
+    const ids = eventos.map((e) => e.id);
+    const inscritos = await this.eventos.inscritosPorProva(ids);
+    const porSimulado = await this.eventos.inscritosPorSimulado(ids);
+    return eventos.map((e) =>
+      this.paraTela(e, inscritos.get(e.id), porSimulado.get(e.id)),
     );
-    return eventos.map((e) => this.paraTela(e, inscritos.get(e.id)));
   }
 
   async criar(userId: string, dto: SalvarEventoDtoInput) {
@@ -177,17 +188,27 @@ export class GestaoDoEventoService {
   private async umDoCursinho(id: string, cursinhoId: string) {
     const e = await this.eventos.findUmDoCursinho(id, cursinhoId);
     const inscritos = await this.eventos.inscritosPorProva([id]);
-    return this.paraTela(e, inscritos.get(id));
+    const porSimulado = await this.eventos.inscritosPorSimulado([id]);
+    return this.paraTela(e, inscritos.get(id), porSimulado.get(id));
   }
 
   private paraTela(
     e: EventoSimulado,
     inscritos?: Map<string, number>,
+    porSimulado?: Map<string, number>,
   ): EventoDoCursinho {
     const provas = (e.provas ?? []).map((p) => ({
       provaId: p.provaId,
       nome: p.nomeDaProva,
       inscritos: inscritos?.get(p.provaId) ?? 0,
+      // Só com a lista já guardada: a listagem não vai ao ms por evento antigo.
+      ...((p.simulados?.length ?? 0) > 1 && {
+        simulados: p.simulados.map((s) => ({
+          simuladoId: s.simuladoId,
+          nome: s.nome,
+          inscritos: porSimulado?.get(s.simuladoId) ?? 0,
+        })),
+      }),
     }));
     return {
       id: e.id,
