@@ -1,3 +1,4 @@
+import { STATUS_DOS_ALUNOS_DA_TURMA } from './contagem-de-alunos';
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { BaseRepository } from 'src/shared/modules/base/base.repository';
@@ -58,6 +59,7 @@ export class ClassRepository extends BaseRepository<Class> {
     };
   }
 
+  // Alunos da turma = Matriculados + Matricula Encerrada (contagem-de-alunos.ts).
   // O filtro de status vai na clausula do JOIN, e nao num andWhere: uma
   // condicao sobre a tabela juntada no WHERE transformaria o LEFT JOIN em
   // INNER JOIN, e uma turma sem nenhum aluno ativo deixaria de ser retornada —
@@ -69,8 +71,8 @@ export class ClassRepository extends BaseRepository<Class> {
       .leftJoinAndSelect(
         'entity.students',
         'student_course',
-        'student_course.applicationStatus = :status',
-        { status: StatusApplication.Enrolled },
+        'student_course.applicationStatus IN (:...status)',
+        { status: STATUS_DOS_ALUNOS_DA_TURMA },
       )
       .leftJoin('student_course.user', 'user')
       .addSelect([

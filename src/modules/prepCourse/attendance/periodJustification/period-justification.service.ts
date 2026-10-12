@@ -1,3 +1,4 @@
+import { presenceByClassIdKey } from '../../class/class-cache-keys';
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { CacheService } from 'src/shared/modules/cache/cache.service';
@@ -151,7 +152,7 @@ export class PeriodJustificationService {
     });
 
     if (studentCourse?.class?.id) {
-      await this.cache.del(`presence_by_class_id_${studentCourse.class.id}`);
+      await this.cache.del(presenceByClassIdKey(studentCourse.class.id));
     }
 
     return result;
@@ -224,6 +225,6 @@ export class PeriodJustificationService {
     });
 
     const turmaId = await this.repository.turmaDoAluno(pj.studentCourse.id);
-    if (turmaId) await this.cache.del(`presence_by_class_id_${turmaId}`);
+    if (turmaId) await this.cache.del(presenceByClassIdKey(turmaId));
   }
 }

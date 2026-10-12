@@ -1,3 +1,4 @@
+import { presenceByClassIdKey } from '../../class/class-cache-keys';
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { format } from 'date-fns/format';
@@ -169,7 +170,7 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
-    await this.cache.del(`presence_by_class_id_${dto.classId}`);
+    await this.cache.del(presenceByClassIdKey(dto.classId));
 
     // Invalidate student dashboard cache for all students in the class
     await Promise.all(
@@ -263,7 +264,7 @@ export class AttendanceRecordService extends BaseService<AttendanceRecord> {
     const record = await this.repository.findOneBy({ id });
     await this.repository.delete(id);
     if (record?.class?.id) {
-      await this.cache.del(`presence_by_class_id_${record.class.id}`);
+      await this.cache.del(presenceByClassIdKey(record.class.id));
     }
   }
 

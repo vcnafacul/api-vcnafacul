@@ -1,7 +1,7 @@
+import { STATUS_DOS_ALUNOS_DA_TURMA } from '../contagem-de-alunos';
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { StatusApplication } from '../../studentCourse/enums/stastusApplication';
 import {
   ClassEssayPayload,
   ClassEssaySnapshot,
@@ -81,11 +81,11 @@ export class ClassEssayAnalyticsRepository {
               AND er2.review_type = 'HUMAN'
           )
         WHERE sc.classId = ?
-          AND sc.applicationStatus = ?
+          AND sc.applicationStatus IN (?)
           AND e.status = 'REVIEWED'
           AND e.submitted_at BETWEEN ? AND ?
       `,
-      [classId, StatusApplication.Enrolled, monthStart, monthEnd],
+      [classId, STATUS_DOS_ALUNOS_DA_TURMA, monthStart, monthEnd],
     );
 
     // 2) Agrupa por aluno -> arrays de score
@@ -160,11 +160,11 @@ export class ClassEssayAnalyticsRepository {
           FROM essays e
           INNER JOIN student_course sc ON sc.user_id = e.user_id
           WHERE sc.classId = ?
-            AND sc.applicationStatus = ?
+            AND sc.applicationStatus IN (?)
             AND e.submitted_at BETWEEN ? AND ?
             AND e.status IN ('SUBMITTED', 'REVIEWED')
         `,
-      [classId, StatusApplication.Enrolled, monthStart, monthEnd],
+      [classId, STATUS_DOS_ALUNOS_DA_TURMA, monthStart, monthEnd],
     );
     const essaysSubmittedTotal = Number(submittedTotalRow[0]?.total ?? 0);
     const studentsSubmittedTotal = Number(
