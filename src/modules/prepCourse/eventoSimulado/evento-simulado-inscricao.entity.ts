@@ -4,7 +4,7 @@ import { User } from '../../user/user.entity';
 import { EventoSimulado } from './evento-simulado.entity';
 
 /**
- * A inscrição de um aluno num evento, com a prova escolhida. Uma por aluno e
+ * A inscrição de um aluno num evento, com a prova (e o simulado) escolhida. Uma por aluno e
  * evento (trocar de prova atualiza esta mesma linha; desistir apaga).
  */
 @Entity('simulado_evento_inscricao')
@@ -26,4 +26,11 @@ export class EventoSimuladoInscricao extends BaseEntity {
 
   @Column({ name: 'prova_id', length: 24 })
   provaId: string;
+
+  /**
+   * O simulado escolhido (tickets/039). Nulo nas inscrições de antes: numa prova
+   * de um simulado só, vale o único.
+   */
+  @Column({ name: 'simulado_id', type: 'varchar', length: 24, nullable: true })
+  simuladoId: string | null;
 }
