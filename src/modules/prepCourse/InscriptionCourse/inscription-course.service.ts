@@ -633,7 +633,27 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
     );
   }
 
-  async findOpen(): Promise<OpenInscriptionDtoOutput[]> {
+  /**
+   * Os processos abertos (em cache, iguais para todos) com a situação de
+   * `userId` em cada um — esta parte é por usuário e fica fora do cache.
+   */
+  async findOpenForUser(userId: string): Promise<OpenInscriptionDtoOutput[]> {
+    const open = await this.findOpen();
+    const statuses =
+      await this.studentRepository.findStatusByUserInInscriptions(
+        userId,
+        open.map((ic) => ic.id),
+      );
+    const byInscription = new Map(
+      statuses.map((s) => [s.inscriptionId, s.status]),
+    );
+    return open.map((ic) => ({
+      ...ic,
+      studentStatus: byInscription.get(ic.id) ?? null,
+    }));
+  }
+
+  async findOpen(): Promise<Omit<OpenInscriptionDtoOutput, 'studentStatus'>[]> {
     return this.cache.wrap(
       'inscription-course:open',
       async () => {

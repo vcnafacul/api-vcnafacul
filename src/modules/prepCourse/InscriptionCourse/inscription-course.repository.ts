@@ -255,6 +255,7 @@ export class InscriptionCourseRepository extends LinkedListRepository<
       .leftJoinAndSelect('ppc.geo', 'geo')
       .where('ic.endDate > :now', { now })
       .andWhere('ic.actived = :actived', { actived: Status.Approved })
+      .andWhere('ic.isTest = :isTest', { isTest: false })
       .getMany();
   }
 

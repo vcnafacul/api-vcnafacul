@@ -834,6 +834,25 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .getOne();
   }
 
+  /**
+   * Situação do usuário em cada processo de `inscriptionIds` em que ele se
+   * inscreveu — a coluna "Status" de "Processos seletivos abertos".
+   */
+  async findStatusByUserInInscriptions(
+    userId: string,
+    inscriptionIds: string[],
+  ): Promise<{ inscriptionId: string; status: StatusApplication }[]> {
+    if (inscriptionIds.length === 0) return [];
+    return this.repository
+      .createQueryBuilder('entity')
+      .innerJoin('entity.inscriptionCourse', 'ic')
+      .select('ic.id', 'inscriptionId')
+      .addSelect('entity.applicationStatus', 'status')
+      .where('entity.userId = :userId', { userId })
+      .andWhere('ic.id IN (:...inscriptionIds)', { inscriptionIds })
+      .getRawMany();
+  }
+
   async findEnrolledByUserId(userId: string): Promise<StudentCourse | null> {
     return this.repository.findOne({
       where: {
