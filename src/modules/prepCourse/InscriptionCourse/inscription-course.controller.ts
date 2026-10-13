@@ -146,8 +146,8 @@ export class InscriptionCourseController {
 
   @UseGuards(JwtAuthGuard)
   @Get('open')
-  async findOpen(): Promise<OpenInscriptionDtoOutput[]> {
-    return this.service.findOpen();
+  async findOpen(@Req() req: Request): Promise<OpenInscriptionDtoOutput[]> {
+    return this.service.findOpenForUser((req.user as User).id);
   }
 
   @Get(':id')
