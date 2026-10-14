@@ -398,8 +398,8 @@ export class UserService extends BaseService<User> {
       roleId: user.role.id,
       roleName: user.role.name,
       // Só com o filtro de cursinho (card 06): o join só existe nele.
-      ...(partnerId && user.collaborator
-        ? { colaborador: { ativo: user.collaborator.actived } }
+      ...(partnerId && user.collaborators?.length
+        ? { colaborador: { ativo: user.collaborators[0].actived } }
         : {}),
     }));
 

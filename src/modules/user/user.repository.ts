@@ -74,7 +74,7 @@ export class UserRepository extends BaseRepository<User> {
     // `collaborator` vem junto, para a tela dizer quem está ativo.
     if (partnerId) {
       query
-        .innerJoinAndSelect('entity.collaborator', 'collaborator')
+        .innerJoinAndSelect('entity.collaborators', 'collaborator')
         .innerJoin('collaborator.partnerPrepCourse', 'cursinho')
         .andWhere('cursinho.id = :partnerId', { partnerId });
     }
