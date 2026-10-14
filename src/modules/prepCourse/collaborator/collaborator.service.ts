@@ -9,6 +9,8 @@ import { ROLE_ALUNO, RoleRepository } from 'src/modules/role/role.repository';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { User } from 'src/modules/user/user.entity';
+import { ExMembroDtoOutput } from './dtos/ex-membro.dto.output';
 import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { chaveDosColaboradoresDoCursinho } from './cache-dos-colaboradores';
 import { EnvService } from 'src/shared/modules/env/env.service';
@@ -388,6 +390,40 @@ export class CollaboratorService extends BaseService<Collaborator> {
       this.logger.warn(`Cache da página não foi limpo: ${err}`);
     }
     return { id: collaborator.id, role: { id: role.id, name: role.name } };
+  }
+
+  /** Ex-membros do cursinho de quem pede (tickets/040, card 05). */
+  async getExMembros(
+    quemPedeId: string,
+    page: number,
+    limit: number,
+  ): Promise<GetAllOutput<ExMembroDtoOutput>> {
+    const cursinho =
+      await this.partnerPrepCourseService.getByUserId(quemPedeId);
+    const [data, totalItems] = await this.repository.findExMembros(
+      cursinho.id,
+      page,
+      limit,
+    );
+    const nome = (u?: User | null) =>
+      u
+        ? `${u.useSocialName && u.socialName ? u.socialName : u.firstName} ${u.lastName}`
+        : null;
+    return {
+      data: data.map((c) => ({
+        id: c.id,
+        nome: nome(c.user),
+        foto: c.photo ?? null,
+        entrada: c.createdAt,
+        saida: c.deletedAt,
+        funcaoQueTinha: c.roleBeforeInactive?.name ?? null,
+        funcaoDada: c.roleGiven?.name ?? null,
+        excluidoPor: nome(c.excludedBy),
+      })),
+      totalItems,
+      page,
+      limit,
+    };
   }
 
   private async perfilRecomendado(roleId: string) {
