@@ -23,6 +23,7 @@ import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { CollaboratorService } from './collaborator.service';
 import { ChangeActiveDtoInput } from './dtos/change-active.dto.input';
+import { ExcluirColaboradorDtoInput } from './dtos/excluir-colaborador.dto.input';
 import { UpdateCollaboratorFrentesDtoInput } from './dtos/update-collaborator-frentes.dto.input';
 
 @ApiTags('Collaborator')
@@ -101,6 +102,21 @@ export class CollaboratorController {
       (req.user as User).id,
       body?.actived,
     );
+  }
+
+  /**
+   * Exclui o colaborador: vira ex-membro (tickets/040). `PATCH` e não
+   * `DELETE`: o corpo (`roleId`) não sobrevive a todo proxy num DELETE.
+   */
+  @Patch(':id/excluir')
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarColaboradores)
+  async excluir(
+    @Param('id') id: string,
+    @Body() body: ExcluirColaboradorDtoInput,
+    @Req() req: Request,
+  ) {
+    return await this.service.excluir(id, (req.user as User).id, body?.roleId);
   }
 
   @Patch(':id/description')

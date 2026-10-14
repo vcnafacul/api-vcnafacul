@@ -5,7 +5,20 @@ import { BaseRepository } from 'src/shared/modules/base/base.repository';
 import { GetAllWhereInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { EntityManager } from 'typeorm';
+import { Role } from 'src/modules/role/role.entity';
+import { User } from 'src/modules/user/user.entity';
 import { Collaborator } from './collaborator.entity';
+
+/** O que a exclusão grava (tickets/040, card 04). */
+export interface ExclusaoDoColaborador {
+  collaboratorId: string;
+  userId: string;
+  /** O perfil que a pessoa recebe. */
+  roleId: string;
+  /** A função que ela tinha — vira a "função que tinha" dos ex-membros. */
+  funcaoAnteriorId: string | null;
+  excluidoPorId: string;
+}
 
 @Injectable()
 export class CollaboratorRepository extends BaseRepository<Collaborator> {
@@ -77,6 +90,44 @@ export class CollaboratorRepository extends BaseRepository<Collaborator> {
       .leftJoinAndSelect('anterior.partnerPrepCourse', 'anteriorPrep')
       .where('entity.id = :id', { id })
       .getOne();
+  }
+
+  /**
+   * Exclui o colaborador: vira ex-membro (soft delete), perde a função e as
+   * turmas que administrava. Tudo ou nada — sem a transação, uma falha no
+   * meio deixaria alguém sem cursinho e com a função de colaborador.
+   */
+  async excluir(e: ExclusaoDoColaborador): Promise<void> {
+    await this._entityManager.transaction(async (m) => {
+      await m
+        .getRepository(User)
+        .update({ id: e.userId }, { role: { id: e.roleId } as Role });
+      await m.getRepository(Collaborator).update(
+        { id: e.collaboratorId },
+        {
+          actived: false,
+          roleBeforeInactive: e.funcaoAnteriorId
+            ? ({ id: e.funcaoAnteriorId } as Role)
+            : null,
+          excludedBy: { id: e.excluidoPorId } as User,
+          roleGiven: { id: e.roleId } as Role,
+        },
+      );
+      await m.query(
+        'DELETE FROM classes_collaborators WHERE collaborator_id = ?',
+        [e.collaboratorId],
+      );
+      await m.getRepository(Collaborator).softDelete({ id: e.collaboratorId });
+    });
+  }
+
+  /** O representante do cursinho (user id). */
+  async representanteDoCursinho(cursinhoId: string): Promise<string | null> {
+    const [r] = await this._entityManager.query(
+      'SELECT representative AS id FROM partner_prep_course WHERE id = ?',
+      [cursinhoId],
+    );
+    return r?.id ?? null;
   }
 
   /** O cursinho do colaborador (id), sem carregar mais nada. */
