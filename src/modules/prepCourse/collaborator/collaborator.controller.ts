@@ -41,6 +41,21 @@ export class CollaboratorController {
     });
   }
 
+  /**
+   * Ex-membros do cursinho de quem pede (tickets/040, card 05).
+   * ⚠️ Literal antes de qualquer `:id` (ver `collaborator-rotas.controller.spec.ts`).
+   */
+  @Get('ex-membros')
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarColaboradores)
+  async getExMembros(@Query() query: GetAllDtoInput, @Req() req: Request) {
+    return await this.service.getExMembros(
+      (req.user as User).id,
+      query.page,
+      query.limit,
+    );
+  }
+
   @Get('frentes/batch')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarColaboradores)

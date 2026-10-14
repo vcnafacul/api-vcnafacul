@@ -738,6 +738,51 @@ describe('CollaboratorService — photo handling', () => {
     });
   });
 
+  describe('ex-membros (tickets/040, card 05)', () => {
+    it('lista do cursinho de quem pede, com nome social e sem contato', async () => {
+      (repository as any).findExMembros = jest.fn().mockResolvedValue([
+        [
+          {
+            id: 'c-1',
+            photo: 'collaborators/x.webp',
+            createdAt: new Date('2025-01-01'),
+            deletedAt: new Date('2026-06-01'),
+            user: {
+              firstName: 'Caio',
+              lastName: 'Lima',
+              socialName: 'Cai',
+              useSocialName: true,
+              email: 'nao@deve.sair',
+            },
+            roleBeforeInactive: { name: 'Professor' },
+            roleGiven: { name: 'Revisor' },
+            excludedBy: { firstName: 'Gestor', lastName: 'G' },
+          },
+        ],
+        1,
+      ]);
+
+      const r = await service.getExMembros('gestor', 1, 25);
+
+      expect((repository as any).findExMembros).toHaveBeenCalledWith(
+        'cursinho-A',
+        1,
+        25,
+      );
+      expect(r.totalItems).toBe(1);
+      expect(r.data[0]).toEqual({
+        id: 'c-1',
+        nome: 'Cai Lima',
+        foto: 'collaborators/x.webp',
+        entrada: new Date('2025-01-01'),
+        saida: new Date('2026-06-01'),
+        funcaoQueTinha: 'Professor',
+        funcaoDada: 'Revisor',
+        excluidoPor: 'Gestor G',
+      });
+    });
+  });
+
   describe('frentes do colaborador (tickets-documentacao, card 42)', () => {
     it('do próprio cursinho: devolve as frentes', async () => {
       await expect(

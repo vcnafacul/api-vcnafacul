@@ -121,6 +121,53 @@ export class CollaboratorRepository extends BaseRepository<Collaborator> {
     });
   }
 
+  /**
+   * Ex-membros do cursinho (tickets/040, card 05): excluídos que **não**
+   * voltaram para ele; quem saiu mais de uma vez aparece pela saída mais
+   * recente. `withDeleted` é o que deixa ver as linhas excluídas.
+   */
+  async findExMembros(
+    cursinhoId: string,
+    page: number,
+    limit: number,
+  ): Promise<[Collaborator[], number]> {
+    return await this.repository
+      .createQueryBuilder('c')
+      .withDeleted()
+      .innerJoin('c.user', 'u')
+      .addSelect([
+        'u.id',
+        'u.firstName',
+        'u.lastName',
+        'u.socialName',
+        'u.useSocialName',
+      ])
+      .leftJoin('c.roleBeforeInactive', 'antes')
+      .addSelect(['antes.id', 'antes.name'])
+      .leftJoin('c.roleGiven', 'dada')
+      .addSelect(['dada.id', 'dada.name'])
+      .leftJoin('c.excludedBy', 'por')
+      .addSelect([
+        'por.id',
+        'por.firstName',
+        'por.lastName',
+        'por.socialName',
+        'por.useSocialName',
+      ])
+      .where('c.partner_prep_course_id = :cursinhoId', { cursinhoId })
+      .andWhere('c.deleted_at IS NOT NULL')
+      .andWhere(
+        `NOT EXISTS (SELECT 1 FROM collaborators v
+          WHERE v.user_id = c.user_id
+            AND v.partner_prep_course_id = c.partner_prep_course_id
+            AND (v.deleted_at IS NULL OR v.deleted_at > c.deleted_at))`,
+      )
+      .orderBy('c.deletedAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+  }
+
   /** O representante do cursinho (user id). */
   async representanteDoCursinho(cursinhoId: string): Promise<string | null> {
     const [r] = await this._entityManager.query(
