@@ -21,6 +21,9 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
   async findOneBy(where: object): Promise<AttendanceRecord> {
     return await this.repository
       .createQueryBuilder('entity')
+      // ⚠️ Quem registrou pode ter virado ex-membro (tickets/040): sem o
+      // `withDeleted` o join o ignora e a chamada some.
+      .withDeleted()
       .innerJoinAndSelect('entity.registeredBy', 'registeredBy')
       .innerJoin('registeredBy.user', 'userRegisteredBy')
       .addSelect([
@@ -118,6 +121,8 @@ export class AttendanceRecordRepository extends BaseRepository<AttendanceRecord>
         .orderBy('entity.registeredAt', 'DESC')
         .skip((page - 1) * limit)
         .take(limit)
+        // ⚠️ Ver `findOneBy`: ex-membro que registrou não pode sumir a chamada.
+        .withDeleted()
         .innerJoinAndSelect('entity.registeredBy', 'registeredBy')
         .innerJoin('registeredBy.user', 'userRegisteredBy')
         .addSelect(['userRegisteredBy.firstName', 'userRegisteredBy.lastName'])

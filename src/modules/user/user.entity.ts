@@ -1,12 +1,5 @@
 import { Exclude } from 'class-transformer';
-import {
-  BeforeInsert,
-  Column,
-  Entity,
-  ManyToOne,
-  OneToMany,
-  OneToOne,
-} from 'typeorm';
+import { BeforeInsert, Column, Entity, ManyToOne, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../shared/modules/base/entity.base';
 import { Collaborator } from '../prepCourse/collaborator/collaborator.entity';
 import { StudentCourse } from '../prepCourse/studentCourse/student-course.entity';
@@ -88,8 +81,13 @@ export class User extends BaseEntity {
   )
   studentCourse: StudentCourse[];
 
-  @OneToOne(() => Collaborator, (collaborator) => collaborator.user)
-  collaborator?: Collaborator;
+  /**
+   * Os colaboradores da pessoa — no máximo um não excluído; os excluídos são
+   * as passagens como ex-membro (tickets/040). Joins do TypeORM já ignoram os
+   * excluídos.
+   */
+  @OneToMany(() => Collaborator, (collaborator) => collaborator.user)
+  collaborators?: Collaborator[];
 
   @BeforeInsert()
   async hashPassword() {

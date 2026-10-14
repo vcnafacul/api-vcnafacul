@@ -38,6 +38,8 @@ export class PeriodJustificationRepository extends BaseRepository<PeriodJustific
         deletedAt: IsNull(),
       },
       relations: ['createdBy', 'createdBy.user'],
+      // Quem lançou pode ter virado ex-membro (tickets/040): o nome continua.
+      withDeleted: true,
       order: { startDate: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
