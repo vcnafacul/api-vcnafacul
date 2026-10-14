@@ -312,7 +312,7 @@ export class EssayService {
     // Find the collaborator's prepCourse
     const [collaborator] = await this.entityManager.query(
       `SELECT c.partner_prep_course_id FROM collaborators c
-       WHERE c.user_id = ? AND c.actived = 1 LIMIT 1`,
+       WHERE c.user_id = ? AND c.actived = 1 AND c.deleted_at IS NULL LIMIT 1`,
       [userId],
     );
 
@@ -472,7 +472,8 @@ export class EssayService {
     // Check if reviewer is a collaborator of that prep course
     const [collaborator] = await this.entityManager.query(
       `SELECT c.id FROM collaborators c
-       WHERE c.user_id = ? AND c.partner_prep_course_id = ? AND c.actived = 1`,
+       WHERE c.user_id = ? AND c.partner_prep_course_id = ? AND c.actived = 1
+         AND c.deleted_at IS NULL`,
       [reviewerUserId, studentCourse.partner_prep_course_id],
     );
 
@@ -498,7 +499,8 @@ export class EssayService {
 
     const [collaborator] = await this.entityManager.query(
       `SELECT c.id FROM collaborators c
-       WHERE c.user_id = ? AND c.partner_prep_course_id = ? AND c.actived = 1`,
+       WHERE c.user_id = ? AND c.partner_prep_course_id = ? AND c.actived = 1
+         AND c.deleted_at IS NULL`,
       [userId, prepCourseId],
     );
 

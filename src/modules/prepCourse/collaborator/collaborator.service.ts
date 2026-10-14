@@ -5,10 +5,12 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
-import { RoleRepository } from 'src/modules/role/role.repository';
+import { ROLE_ALUNO, RoleRepository } from 'src/modules/role/role.repository';
 import { UserRepository } from 'src/modules/user/user.repository';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
+import { User } from 'src/modules/user/user.entity';
+import { ExMembroDtoOutput } from './dtos/ex-membro.dto.output';
 import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { chaveDosColaboradoresDoCursinho } from './cache-dos-colaboradores';
 import { EnvService } from 'src/shared/modules/env/env.service';
@@ -32,7 +34,15 @@ import { LogPartnerRepository } from '../partnerPrepCourse/log-partner/log-partn
 import {
   motivosParaNaoAtivar,
   TEXTO_DO_MOTIVO_DE_ATIVACAO,
+  TEXTO_DO_MOTIVO_DE_EXCLUSAO,
 } from '../partnerPrepCourse/atribuicao-de-funcao';
+
+/** Resposta de `PATCH collaborator/:id/excluir`. */
+export type ResultadoDaExclusao = {
+  id: string;
+  /** O perfil que a pessoa recebeu. */
+  role: { id: string; name: string };
+};
 
 /** Resposta de `PATCH collaborator/:id/active`. */
 export type ResultadoDaAtivacao = {
@@ -300,6 +310,131 @@ export class CollaboratorService extends BaseService<Collaborator> {
 
     await this.limparCacheDaPagina(collaborator.id);
     return this.resultadoDaAtivacao(collaborator, funcaoRestaurada);
+  }
+
+  /**
+   * Exclui um colaborador do cursinho de quem pede (tickets/040, card 04): ele
+   * vira **ex-membro** — some da lista e deixa de ser colaborador para tudo —,
+   * recebe `roleId` (um perfil recomendado) ou `aluno`, e sai das turmas.
+   *
+   * Mesmas regras de escopo e escalada de inativar (`motivosParaNaoAtivar`),
+   * mais: o representante do cursinho não sai, e o perfil tem de estar em
+   * `GET /role/recommended` — senão o coordenador daria qualquer perfil do
+   * projeto, inclusive o de admin.
+   */
+  async excluir(
+    id: string,
+    quemPedeId: string,
+    roleId?: string,
+  ): Promise<ResultadoDaExclusao> {
+    const cursinho =
+      await this.partnerPrepCourseService.getByUserId(quemPedeId);
+    const [collaborator, quemPede] = await Promise.all([
+      this.repository.findOneParaAtivacao(id),
+      this.userRepository.findOneBy({ id: quemPedeId }),
+    ]);
+    if (!collaborator || collaborator.partnerPrepCourse?.id !== cursinho.id) {
+      // 404 e não 403: não revela colaborador de outro cursinho.
+      throw new HttpException(
+        'Colaborador não encontrado',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    const user = collaborator.user;
+    // Inativo já perdeu a função: a que vale é a de antes da inativação.
+    const funcaoAnterior = collaborator.actived
+      ? user.role
+      : collaborator.roleBeforeInactive;
+
+    const motivos = motivosParaNaoAtivar({
+      quemPedeId,
+      quemPedeEhAdmin: !!quemPede?.role?.gerenciarPermissoesCursinho,
+      cursinhoId: cursinho.id,
+      alvo: {
+        userId: user.id,
+        cursinhoId: cursinho.id,
+        ehAdmin: !!funcaoAnterior?.gerenciarPermissoesCursinho,
+      },
+    }).map((m) => TEXTO_DO_MOTIVO_DE_EXCLUSAO[m]);
+    if (
+      (await this.repository.representanteDoCursinho(cursinho.id)) === user.id
+    ) {
+      motivos.push('O representante do cursinho não pode ser excluído.');
+    }
+    if (motivos.length > 0) {
+      throw new HttpException(motivos.join(' '), HttpStatus.FORBIDDEN);
+    }
+
+    const role = roleId
+      ? await this.perfilRecomendado(roleId)
+      : await this.roleRepository.findOneBy({ name: ROLE_ALUNO });
+
+    await this.repository.excluir({
+      collaboratorId: collaborator.id,
+      userId: user.id,
+      roleId: role.id,
+      funcaoAnteriorId: funcaoAnterior?.id ?? null,
+      excluidoPorId: quemPedeId,
+    });
+
+    const log = new LogPartner();
+    log.partnerId = cursinho.id;
+    log.description = `Colaborador ${user.firstName} ${user.lastName} excluído (perfil depois da saída: "${role.name}")`;
+    await this.logPartnerRepository.create(log);
+
+    // ⚠️ Direto pelo cursinho: depois de excluído, `cursinhoDoColaborador` já
+    // não o acha (ver `limparCacheDaPagina`).
+    try {
+      await this.cache.del(chaveDosColaboradoresDoCursinho(cursinho.id));
+    } catch (err) {
+      this.logger.warn(`Cache da página não foi limpo: ${err}`);
+    }
+    return { id: collaborator.id, role: { id: role.id, name: role.name } };
+  }
+
+  /** Ex-membros do cursinho de quem pede (tickets/040, card 05). */
+  async getExMembros(
+    quemPedeId: string,
+    page: number,
+    limit: number,
+  ): Promise<GetAllOutput<ExMembroDtoOutput>> {
+    const cursinho =
+      await this.partnerPrepCourseService.getByUserId(quemPedeId);
+    const [data, totalItems] = await this.repository.findExMembros(
+      cursinho.id,
+      page,
+      limit,
+    );
+    const nome = (u?: User | null) =>
+      u
+        ? `${u.useSocialName && u.socialName ? u.socialName : u.firstName} ${u.lastName}`
+        : null;
+    return {
+      data: data.map((c) => ({
+        id: c.id,
+        nome: nome(c.user),
+        foto: c.photo ?? null,
+        entrada: c.createdAt,
+        saida: c.deletedAt,
+        funcaoQueTinha: c.roleBeforeInactive?.name ?? null,
+        funcaoDada: c.roleGiven?.name ?? null,
+        excluidoPor: nome(c.excludedBy),
+      })),
+      totalItems,
+      page,
+      limit,
+    };
+  }
+
+  private async perfilRecomendado(roleId: string) {
+    const recomendados = await this.roleRepository.findRecommended();
+    if (!recomendados.some((r) => r.id === roleId)) {
+      throw new HttpException(
+        'Este perfil não está entre os recomendados pelo projeto.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    return await this.roleRepository.findOneBy({ id: roleId });
   }
 
   private resultadoDaAtivacao(

@@ -603,6 +603,186 @@ describe('CollaboratorService — photo handling', () => {
     });
   });
 
+  describe('excluir (tickets/040, card 04)', () => {
+    const funcaoProfessor = {
+      id: 'r-prof',
+      name: 'Professor',
+      gerenciarPermissoesCursinho: false,
+    };
+    const funcaoAdmin = {
+      ...funcaoProfessor,
+      id: 'r-admin',
+      gerenciarPermissoesCursinho: true,
+    };
+    const colaborador = (over: Record<string, unknown> = {}): any => ({
+      id: 'c-1',
+      actived: true,
+      partnerPrepCourse: { id: 'cursinho-A' },
+      roleBeforeInactive: null,
+      user: {
+        id: 'u-1',
+        firstName: 'Ana',
+        lastName: 'Lima',
+        role: funcaoProfessor,
+      },
+      ...over,
+    });
+    const repo = () => repository as any;
+    const status = async (p: Promise<unknown>) => {
+      try {
+        await p;
+      } catch (e) {
+        return (e as HttpException).getStatus();
+      }
+      throw new Error('não lançou');
+    };
+
+    beforeEach(() => {
+      repo().excluir = jest.fn();
+      repo().representanteDoCursinho = jest.fn().mockResolvedValue('rep');
+      (roleRepository as any).findRecommended = jest
+        .fn()
+        .mockResolvedValue([{ id: 'r-revisor', name: 'Revisor' }]);
+      roleRepository.findOneBy.mockImplementation(async (w: any) =>
+        w.name === 'aluno'
+          ? { id: 'r-aluno', name: 'aluno' }
+          : { id: w.id, name: 'Revisor' },
+      );
+      repository.findOneParaAtivacao.mockResolvedValue(colaborador());
+    });
+
+    it('sem perfil: vira aluno, guarda a função atual e quem excluiu', async () => {
+      const r = await service.excluir('c-1', 'gestor');
+      expect(r.role).toEqual({ id: 'r-aluno', name: 'aluno' });
+      expect(repo().excluir).toHaveBeenCalledWith({
+        collaboratorId: 'c-1',
+        userId: 'u-1',
+        roleId: 'r-aluno',
+        funcaoAnteriorId: 'r-prof',
+        excluidoPorId: 'gestor',
+      });
+      expect(cache.del).toHaveBeenCalled();
+      expect(logPartnerRepository.create).toHaveBeenCalled();
+    });
+
+    it('com perfil recomendado: recebe o perfil', async () => {
+      const r = await service.excluir('c-1', 'gestor', 'r-revisor');
+      expect(r.role.id).toBe('r-revisor');
+      expect(repo().excluir).toHaveBeenCalledWith(
+        expect.objectContaining({ roleId: 'r-revisor' }),
+      );
+    });
+
+    it('perfil fora dos recomendados → 400, sem excluir', async () => {
+      expect(await status(service.excluir('c-1', 'gestor', 'r-admin'))).toBe(
+        400,
+      );
+      expect(repo().excluir).not.toHaveBeenCalled();
+    });
+
+    it('inativo: a função guardada é a de antes da inativação', async () => {
+      repository.findOneParaAtivacao.mockResolvedValue(
+        colaborador({
+          actived: false,
+          roleBeforeInactive: funcaoProfessor,
+          user: {
+            id: 'u-1',
+            firstName: 'A',
+            lastName: 'L',
+            role: { id: 'r-aluno' },
+          },
+        }),
+      );
+      await service.excluir('c-1', 'gestor');
+      expect(repo().excluir).toHaveBeenCalledWith(
+        expect.objectContaining({ funcaoAnteriorId: 'r-prof' }),
+      );
+    });
+
+    it.each([
+      [
+        'de outro cursinho (ou já excluído) → 404',
+        { partnerPrepCourse: { id: 'cursinho-B' } },
+        404,
+      ],
+      [
+        'a si mesmo → 403',
+        { user: { id: 'gestor', role: funcaoProfessor } },
+        403,
+      ],
+      [
+        'o representante → 403',
+        { user: { id: 'rep', role: funcaoProfessor } },
+        403,
+      ],
+    ])('%s', async (_, over, esperado) => {
+      repository.findOneParaAtivacao.mockResolvedValue(colaborador(over));
+      expect(await status(service.excluir('c-1', 'gestor'))).toBe(esperado);
+      expect(repo().excluir).not.toHaveBeenCalled();
+    });
+
+    it('não encontrado → 404', async () => {
+      repository.findOneParaAtivacao.mockResolvedValue(null);
+      expect(await status(service.excluir('x', 'gestor'))).toBe(404);
+    });
+
+    it('admin do cursinho só sai por outro admin', async () => {
+      repository.findOneParaAtivacao.mockResolvedValue(
+        colaborador({ user: { id: 'u-1', role: funcaoAdmin } }),
+      );
+      userRepository.findOneBy.mockResolvedValue({
+        id: 'gestor',
+        role: { gerenciarPermissoesCursinho: false },
+      });
+      expect(await status(service.excluir('c-1', 'gestor'))).toBe(403);
+    });
+  });
+
+  describe('ex-membros (tickets/040, card 05)', () => {
+    it('lista do cursinho de quem pede, com nome social e sem contato', async () => {
+      (repository as any).findExMembros = jest.fn().mockResolvedValue([
+        [
+          {
+            id: 'c-1',
+            photo: 'collaborators/x.webp',
+            createdAt: new Date('2025-01-01'),
+            deletedAt: new Date('2026-06-01'),
+            user: {
+              firstName: 'Caio',
+              lastName: 'Lima',
+              socialName: 'Cai',
+              useSocialName: true,
+              email: 'nao@deve.sair',
+            },
+            roleBeforeInactive: { name: 'Professor' },
+            roleGiven: { name: 'Revisor' },
+            excludedBy: { firstName: 'Gestor', lastName: 'G' },
+          },
+        ],
+        1,
+      ]);
+
+      const r = await service.getExMembros('gestor', 1, 25);
+
+      expect((repository as any).findExMembros).toHaveBeenCalledWith(
+        'cursinho-A',
+        1,
+        25,
+      );
+      expect(r.totalItems).toBe(1);
+      expect(r.data[0]).toEqual({
+        id: 'c-1',
+        nome: 'Cai Lima',
+        foto: 'collaborators/x.webp',
+        entrada: new Date('2025-01-01'),
+        saida: new Date('2026-06-01'),
+        funcaoQueTinha: 'Professor',
+        funcaoDada: 'Revisor',
+        excluidoPor: 'Gestor G',
+      });
+    });
+  });
+
   describe('frentes do colaborador (tickets-documentacao, card 42)', () => {
     it('do próprio cursinho: devolve as frentes', async () => {
       await expect(
