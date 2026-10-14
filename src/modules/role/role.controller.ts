@@ -21,6 +21,10 @@ import { RoleService } from './role.service';
 import { UpdateRoleDtoInput } from './dto/update.role.dto';
 import { PERMISSION_HIERARCHY } from './permissions/permission-hierarchy';
 import { PermissionGroupResponseDto } from './dto/permission-group-response.dto';
+import {
+  RecommendedRoleDtoOutput,
+  SetRecommendedDtoInput,
+} from './dto/recommended-role.dto';
 
 @ApiTags('Role')
 @Controller('role')
@@ -42,6 +46,21 @@ export class RoleController {
   @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
   async findAll() {
     return await this.roleService.findAll();
+  }
+
+  /**
+   * Perfis que o coordenador pode indicar a quem ele exclui do cursinho.
+   *
+   * ⚠️ Antes do `@Get(':id')`: declarada depois, o `:id` engolia
+   * "recommended" (ver `role-rotas.controller.spec.ts`).
+   */
+  @Get('recommended')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarColaboradores)
+  @ApiOkResponse({ type: [RecommendedRoleDtoOutput] })
+  async findRecommended(): Promise<RecommendedRoleDtoOutput[]> {
+    return await this.roleService.findRecommended();
   }
 
   @Get('permissions/hierarchy')
@@ -74,6 +93,17 @@ export class RoleController {
   @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
   async create(@Body() dto: CreateRoleDtoInput) {
     return await this.roleService.create(dto);
+  }
+
+  @Patch(':id/recommended')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
+  async setRecommended(
+    @Param('id') id: string,
+    @Body() dto: SetRecommendedDtoInput,
+  ) {
+    await this.roleService.setRecommended(id, dto.isRecommended);
   }
 
   @Patch()

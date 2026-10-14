@@ -175,6 +175,17 @@ export class Role extends BaseEntity {
   @Column({ name: Permissions.validarQuestoesCursinho, default: false })
   validarQuestoesCursinho: boolean;
 
+  /**
+   * Perfil que o coordenador pode indicar a quem ele exclui do cursinho, no
+   * lugar de deixá-lo só como aluno.
+   *
+   * ⚠️ Só perfil do projeto, nunca o `aluno` e nunca com `alterarPermissao`:
+   * quem indica é o coordenador, e um perfil com `alterarPermissao` na lista
+   * daria a ele o poder de criar admins (`RoleService.setRecommended`).
+   */
+  @Column({ name: 'is_recommended', default: false })
+  isRecommended: boolean;
+
   @OneToMany(() => User, (user) => user.role)
   users: User[];
 

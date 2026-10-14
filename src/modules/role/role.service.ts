@@ -1,4 +1,10 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { BaseService } from 'src/shared/modules/base/base.service';
 import { GetAllInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
@@ -8,7 +14,12 @@ import { CreateRoleDtoInput } from './dto/create-role.dto';
 import { GetAllRoleDto } from './dto/get-all-role.dto';
 import { UpdateRoleDtoInput } from './dto/update.role.dto';
 import { Role } from './role.entity';
-import { RoleRepository } from './role.repository';
+import { ROLE_ALUNO, RoleRepository } from './role.repository';
+import { RecommendedRoleDtoOutput } from './dto/recommended-role.dto';
+
+/** Por que um perfil recomendado não pode ter `alterarPermissao`. */
+const RECOMENDADO_SEM_ALTERAR_PERMISSAO =
+  'Perfil recomendado não pode ter "Alterar Permissão": o coordenador poderia criar admins ao indicá-lo';
 import { Permissions } from './permissions/permissions';
 import { resolveImpliedPermissions } from './permissions/permission-resolver';
 import { PERMISSION_FIELD_MAP } from './permissions/permission-field-map';
@@ -210,6 +221,10 @@ export class RoleService extends BaseService<Role> {
         resolved[Permissions.alterarPermissao] ?? false;
     }
 
+    if (role.isRecommended && role.alterarPermissao) {
+      throw new BadRequestException(RECOMENDADO_SEM_ALTERAR_PERMISSAO);
+    }
+
     // Propagate base permissions down to children
     if (role.children?.length > 0) {
       const BASE_PERMISSIONS: Permissions[] = [
@@ -253,6 +268,35 @@ export class RoleService extends BaseService<Role> {
     }
 
     return await this.roleRepository.update(role);
+  }
+
+  /** Marca/desmarca o perfil como recomendado — ver `Role.isRecommended`. */
+  async setRecommended(id: string, isRecommended: boolean): Promise<void> {
+    const role = await this.roleRepository.findOneByIdWithPartner(id);
+    if (!role) throw new NotFoundException('Perfil não encontrado');
+
+    if (isRecommended) {
+      if (role.partnerPrepCourse) {
+        throw new BadRequestException(
+          'Só perfis do projeto podem ser recomendados',
+        );
+      }
+      if (role.name === ROLE_ALUNO) {
+        throw new BadRequestException(
+          'O perfil aluno já é o padrão de quem sai do cursinho',
+        );
+      }
+      if (role.alterarPermissao) {
+        throw new BadRequestException(RECOMENDADO_SEM_ALTERAR_PERMISSAO);
+      }
+    }
+
+    role.isRecommended = isRecommended;
+    await this.roleRepository.update(role);
+  }
+
+  async findRecommended(): Promise<RecommendedRoleDtoOutput[]> {
+    return await this.roleRepository.findRecommended();
   }
 
   async findOneById(id: string) {
