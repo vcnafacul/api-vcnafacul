@@ -1,13 +1,15 @@
+import { Exclude } from 'class-transformer';
 import {
   Column,
+  DeleteDateColumn,
   Entity,
   Index,
   JoinColumn,
   ManyToMany,
   ManyToOne,
   OneToMany,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
-import { BaseEntity } from '../../../shared/modules/base/entity.base';
 import { Role } from '../../role/role.entity';
 import { User } from '../../user/user.entity';
 import { AttendanceRecord } from '../attendance/attendanceRecord/attendance-record.entity';
@@ -28,7 +30,35 @@ import { PartnerPrepCourse } from '../partnerPrepCourse/partner-prep-course.enti
 @Index('UQ_collaborator_nao_excluido_por_usuario', ['activeUserId'], {
   unique: true,
 })
-export class Collaborator extends BaseEntity {
+export class Collaborator {
+  /*
+   * ⚠️ Sem `BaseEntity`, de propósito: lá o `deleted_at` é coluna comum e o
+   * TypeORM não filtra nada. Aqui ele é `@DeleteDateColumn` (mesmo tipo, sem
+   * mudar o schema) e **toda** consulta e join do TypeORM ignora o ex-membro
+   * — inclusive o `members` do cursinho, que resolve "o cursinho de quem
+   * pede". Histórico que precisa do nome de quem registrou usa `withDeleted`
+   * (tickets/040, card 03). SQL cru continua filtrando à mão (card 02).
+   */
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column({
+    type: 'timestamp',
+    default: () => 'CURRENT_TIMESTAMP',
+    name: 'created_at',
+  })
+  public createdAt: Date;
+
+  @Column({
+    type: 'timestamp',
+    default: () => 'CURRENT_TIMESTAMP',
+    name: 'updated_at',
+  })
+  public updatedAt: Date;
+
+  @Exclude()
+  @DeleteDateColumn({ type: 'timestamp', name: 'deleted_at', nullable: true })
+  public deletedAt?: Date;
   @ManyToOne(() => User, (user) => user.collaborators, {
     eager: true,
   })

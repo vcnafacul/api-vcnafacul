@@ -113,6 +113,17 @@ export const TEXTO_DO_MOTIVO_DE_ATIVACAO: Record<MotivoParaNaoAtivar, string> =
       'Você não pode inativar o seu próprio cadastro.',
   };
 
+/** Os mesmos motivos, ditos para a exclusão (tickets/040, card 04). */
+export const TEXTO_DO_MOTIVO_DE_EXCLUSAO: Record<MotivoParaNaoAtivar, string> =
+  {
+    [MotivoParaNaoAtivar.alvoForaDoCursinho]:
+      TEXTO_DO_MOTIVO[MotivoParaNaoAtribuir.alvoForaDoCursinho],
+    [MotivoParaNaoAtivar.alvoEhAdmin]:
+      'Só o administrador do cursinho pode excluir outro administrador.',
+    [MotivoParaNaoAtivar.proprioCadastro]:
+      'Você não pode excluir o seu próprio cadastro.',
+  };
+
 export interface SituacaoDaAtivacao {
   quemPedeId: string;
   /** Quem pede tem `gerenciarPermissoesCursinho`. */

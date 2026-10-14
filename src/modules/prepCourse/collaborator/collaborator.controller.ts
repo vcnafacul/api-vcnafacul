@@ -23,6 +23,7 @@ import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { CollaboratorService } from './collaborator.service';
 import { ChangeActiveDtoInput } from './dtos/change-active.dto.input';
+import { ExcluirColaboradorDtoInput } from './dtos/excluir-colaborador.dto.input';
 import { UpdateCollaboratorFrentesDtoInput } from './dtos/update-collaborator-frentes.dto.input';
 
 @ApiTags('Collaborator')
@@ -38,6 +39,21 @@ export class CollaboratorController {
       ...query,
       userId: (req.user as User).id,
     });
+  }
+
+  /**
+   * Ex-membros do cursinho de quem pede (tickets/040, card 05).
+   * ⚠️ Literal antes de qualquer `:id` (ver `collaborator-rotas.controller.spec.ts`).
+   */
+  @Get('ex-membros')
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarColaboradores)
+  async getExMembros(@Query() query: GetAllDtoInput, @Req() req: Request) {
+    return await this.service.getExMembros(
+      (req.user as User).id,
+      query.page,
+      query.limit,
+    );
   }
 
   @Get('frentes/batch')
@@ -101,6 +117,21 @@ export class CollaboratorController {
       (req.user as User).id,
       body?.actived,
     );
+  }
+
+  /**
+   * Exclui o colaborador: vira ex-membro (tickets/040). `PATCH` e não
+   * `DELETE`: o corpo (`roleId`) não sobrevive a todo proxy num DELETE.
+   */
+  @Patch(':id/excluir')
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarColaboradores)
+  async excluir(
+    @Param('id') id: string,
+    @Body() body: ExcluirColaboradorDtoInput,
+    @Req() req: Request,
+  ) {
+    return await this.service.excluir(id, (req.user as User).id, body?.roleId);
   }
 
   @Patch(':id/description')
