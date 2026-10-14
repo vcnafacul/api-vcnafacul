@@ -17,9 +17,15 @@ import { EntityManager } from 'typeorm';
 export class EscopoDaFrequencia {
   constructor(@InjectEntityManager() private readonly em: EntityManager) {}
 
+  /**
+   * ⚠️ `deleted_at IS NULL`: SQL cru não tem o filtro de soft delete do
+   * TypeORM. Sem ele, o ex-membro (tickets/040) seguia com o escopo do cursinho
+   * antigo — e quem voltou por outro cursinho podia cair no antigo.
+   */
   private async cursinhoDe(userId: string): Promise<string | null> {
     const [c] = await this.em.query(
-      `SELECT partner_prep_course_id AS id FROM collaborators WHERE user_id = ?`,
+      `SELECT partner_prep_course_id AS id FROM collaborators
+        WHERE user_id = ? AND deleted_at IS NULL`,
       [userId],
     );
     return c?.id ?? null;
