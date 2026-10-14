@@ -1,8 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
-import { EntityManager } from 'typeorm';
+import { EntityManager, IsNull, Not } from 'typeorm';
 import { BaseRepository } from '../../shared/modules/base/base.repository';
 import { Role } from './role.entity';
+
+/** O perfil de quem não tem permissão nenhuma (seed `1-role`). */
+export const ROLE_ALUNO = 'aluno';
 
 @Injectable()
 export class RoleRepository extends BaseRepository<Role> {
@@ -41,6 +44,19 @@ export class RoleRepository extends BaseRepository<Role> {
       where: { id },
       relations: ['partnerPrepCourse', 'roleBase'],
       cache: false,
+    });
+  }
+
+  /** Perfis do projeto marcados como recomendados, sem o `aluno`. */
+  async findRecommended(): Promise<Pick<Role, 'id' | 'name'>[]> {
+    return await this.repository.find({
+      select: { id: true, name: true },
+      where: {
+        isRecommended: true,
+        partnerPrepCourse: IsNull(),
+        name: Not(ROLE_ALUNO),
+      },
+      order: { name: 'ASC' },
     });
   }
 
