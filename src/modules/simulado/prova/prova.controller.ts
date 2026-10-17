@@ -1,12 +1,14 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   SetMetadata,
@@ -26,6 +28,7 @@ import { garantirQuePodeAlterar } from '../ator/pode-alterar-material';
 import { AplicarAtualizacoesDTOInput } from './dtos/aplicar-atualizacoes.dto.input';
 import { ReceberNovasVersoesDTOInput } from './dtos/receber-novas-versoes.dto.input';
 import { ProvaService } from './prova.service';
+import { AnularQuestaoDTOInput } from '../dtos/anulacao.dto.input';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 
 /**
@@ -37,6 +40,16 @@ const LER_PROVA = [
   Permissions.visualizarProvasCursinho,
   Permissions.visualizarQuestao,
   Permissions.visualizarQuestoesCursinho,
+  Permissions.editarQuestoesCursinho,
+];
+
+/**
+ * Quem compõe prova — a mesma lista do adicionar/remover questão
+ * (tickets/023). Anular entra aqui (tickets/042); o "em qual prova" é do ms.
+ */
+const COMPOR_PROVA = [
+  Permissions.criarQuestao,
+  Permissions.validarQuestao,
   Permissions.editarQuestoesCursinho,
 ];
 
@@ -70,6 +83,59 @@ export class ProvaController {
     return await this.provaService.alterarReceberNovasVersoes(
       id,
       dto.valor,
+      await this.atorService.resolver((req.user as User).id),
+    );
+  }
+
+  /**
+   * Anular (ou editar a anulação de) uma questão nesta prova (tickets/042,
+   * card 06). Abre para quem compõe prova; quem decide em QUAL prova é o ms
+   * (`podeAnularNaProva`: cursinho só nas dele, plataforma em todas).
+   *
+   * ⚠️ Ids restritos a 24 hex no path, e `JwtAuthGuard` junto: sem token é 401,
+   * não o 403 do `PermissionsGuard` sozinho.
+   */
+  @Put(
+    ':provaId([0-9a-fA-F]{24})/questoes/:questaoId([0-9a-fA-F]{24})/anulacao',
+  )
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'anula a questão nesta prova' })
+  @ApiResponse({
+    status: 403,
+    description: 'prova de outro cursinho / oficial',
+  })
+  @ApiResponse({ status: 409, description: 'prova já aplicada (temporário)' })
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, COMPOR_PROVA)
+  public async anularQuestao(
+    @Param('provaId') provaId: string,
+    @Param('questaoId') questaoId: string,
+    @Body() dto: AnularQuestaoDTOInput,
+    @Req() req: Request,
+  ) {
+    return await this.provaService.anularQuestao(
+      provaId,
+      questaoId,
+      dto,
+      await this.atorService.resolver((req.user as User).id),
+    );
+  }
+
+  @Delete(
+    ':provaId([0-9a-fA-F]{24})/questoes/:questaoId([0-9a-fA-F]{24})/anulacao',
+  )
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'desanula a questão nesta prova' })
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, COMPOR_PROVA)
+  public async desanularQuestao(
+    @Param('provaId') provaId: string,
+    @Param('questaoId') questaoId: string,
+    @Req() req: Request,
+  ) {
+    return await this.provaService.desanularQuestao(
+      provaId,
+      questaoId,
       await this.atorService.resolver((req.user as User).id),
     );
   }

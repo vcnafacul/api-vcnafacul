@@ -38,6 +38,18 @@ const CHAVES_DE_LOGO = Object.keys({
   cursinho: null,
 } satisfies Record<keyof LogosDoCaderno, null>) as (keyof LogosDoCaderno)[];
 
+/**
+ * A query da chamada interna, só com literais (`=true`): nunca o valor que
+ * veio do client — concatená-lo injetaria parâmetro na chamada ao ms.
+ */
+function consulta(flags: { draft?: boolean; confirmarAnuladas?: boolean }) {
+  const partes = [
+    flags.draft ? 'draft=true' : null,
+    flags.confirmarAnuladas ? 'confirmarAnuladas=true' : null,
+  ].filter(Boolean);
+  return partes.length ? `?${partes.join('&')}` : '';
+}
+
 @Injectable()
 export class CadernoHttpService {
   private readonly axios: HttpServiceAxios;
@@ -63,11 +75,16 @@ export class CadernoHttpService {
     simuladoId: string,
     draft: boolean,
     logos: LogosDoCaderno,
+    /** tickets/042 (D8): quem pediu já confirmou o modal das anuladas. */
+    confirmarAnuladas = false,
   ): Promise<{ buffer: Buffer; contentType: string; avisos?: string }> {
     // ⚠️ O literal, não o valor recebido: concatenar o que veio na query
     // injeta parâmetro na chamada interna. O `simuladoId` já veio validado
     // pelo ObjectIdPipe.
-    const rota = `v1/caderno/${simuladoId}${draft ? '?draft=true' : ''}`;
+    const rota = `v1/caderno/${simuladoId}${consulta({
+      draft,
+      confirmarAnuladas,
+    })}`;
 
     // ⚠️ O base64 é feito aqui, não no `CadernoLogosService`: quem fala HTTP é
     // quem codifica para HTTP. E a chave é OMITIDA quando não há logo — o
@@ -84,9 +101,13 @@ export class CadernoHttpService {
   async baixarDaProva(
     provaId: string,
     logos: LogosDoCaderno,
+    confirmarAnuladas = false,
   ): Promise<{ buffer: Buffer; contentType: string; avisos?: string }> {
     // O `provaId` já veio validado pelo ObjectIdPipe.
-    return this.postar(`v1/caderno/prova/${provaId}`, logos);
+    return this.postar(
+      `v1/caderno/prova/${provaId}${consulta({ confirmarAnuladas })}`,
+      logos,
+    );
   }
 
   private async postar(
