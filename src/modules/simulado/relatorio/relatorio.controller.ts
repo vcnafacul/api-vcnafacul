@@ -1,7 +1,9 @@
 import {
   Controller,
   Get,
+  HttpCode,
   Param,
+  Post,
   ParseUUIDPipe,
   Req,
   SetMetadata,
@@ -197,6 +199,44 @@ export class RelatorioController {
     @Req() req: Request,
   ): Promise<QuestoesDoRelatorioDtoOutput> {
     return this.service.consultarQuestoes((req.user as User).id, simuladoId);
+  }
+
+  /** tickets/042, card 14: divergência e recálculo por anulação. */
+  @Get(':simuladoId([0-9a-fA-F]{24})/recalculo-anulacao')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: '{ divergentes, anulacoes, jobAtivo, ultimoJob }',
+  })
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
+  async consultarRecalculo(
+    @Param('simuladoId') simuladoId: string,
+    @Req() req: Request,
+  ) {
+    return this.service.consultarRecalculo(
+      (req.user as User).id,
+      'relatorio-simulado',
+      simuladoId,
+    );
+  }
+
+  @Post(':simuladoId([0-9a-fA-F]{24})/recalculo-anulacao')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'cria o job, devolve o ativo, ou "nada a recalcular"',
+  })
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
+  async pedirRecalculo(
+    @Param('simuladoId') simuladoId: string,
+    @Req() req: Request,
+  ) {
+    return this.service.pedirRecalculo(
+      (req.user as User).id,
+      'relatorio-simulado',
+      simuladoId,
+    );
   }
 
   @Get(':simuladoId')

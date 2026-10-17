@@ -1,6 +1,8 @@
 import {
   Controller,
   Get,
+  HttpCode,
+  Post,
   Param,
   Req,
   SetMetadata,
@@ -89,6 +91,35 @@ export class RelatorioDaProvaController {
   ): Promise<QuestoesDaProvaDtoOutput> {
     return this.service.consultarQuestoesDaProva(
       (req.user as User).id,
+      provaId,
+    );
+  }
+
+  /** tickets/042, card 14: divergência e recálculo por anulação da prova. */
+  @Get(':provaId([0-9a-fA-F]{24})/recalculo-anulacao')
+  @ApiBearerAuth()
+  @ApiResponse(RESPOSTA_403)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
+  async consultarRecalculo(
+    @Param('provaId') provaId: string,
+    @Req() req: Request,
+  ) {
+    return this.service.consultarRecalculo(
+      (req.user as User).id,
+      'relatorio-prova',
+      provaId,
+    );
+  }
+
+  @Post(':provaId([0-9a-fA-F]{24})/recalculo-anulacao')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiResponse(RESPOSTA_403)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
+  async pedirRecalculo(@Param('provaId') provaId: string, @Req() req: Request) {
+    return this.service.pedirRecalculo(
+      (req.user as User).id,
+      'relatorio-prova',
       provaId,
     );
   }
