@@ -26,6 +26,7 @@ import { CartaoImagemService } from './cartao-resposta/cartao-imagem.service';
 import { CartaoExclusaoService } from './cartao-resposta/cartao-exclusao.service';
 import { ResultadoCartaoModule } from '../push/resultado-cartao/resultado-cartao.module';
 import { AnalyticsQueueModule } from '../prepCourse/class/analytics/queue/analytics-queue.module';
+import { RecalculoAnulacaoPushModule } from '../push/recalculo-anulacao/recalculo-anulacao-push.module';
 import { FimDoRecalculoController } from './recalculo-anulacao/fim-do-recalculo.controller';
 import { FimDoRecalculoService } from './recalculo-anulacao/fim-do-recalculo.service';
 import { CategoriaProxyController } from './categoria/categoria.controller';
@@ -71,6 +72,8 @@ import { SubjectProxyService } from './subject/subject.service';
     ResultadoCartaoModule,
     // tickets/042, card 14: indicadores das turmas ao fim do recálculo.
     AnalyticsQueueModule,
+    // tickets/042, card 17: push "nota atualizada".
+    RecalculoAnulacaoPushModule,
     // ⚠️ `forwardRef` obrigatório: o `CollaboratorModule` importa de volta o
     // `SimuladoModule` (via `PartnerPrepCourseModule`), fechando o ciclo
     // SimuladoModule → PartnerPrepCourseModule → CollaboratorModule →
