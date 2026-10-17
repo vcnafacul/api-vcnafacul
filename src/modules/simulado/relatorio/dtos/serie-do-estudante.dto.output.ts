@@ -49,6 +49,9 @@ export class PontoDaSerieDtoOutput {
    * `baseGeral` do card 16.
    */
   @ApiProperty() baseDoRecorte: number;
+
+  /** tickets/042: sobre quantas questões (sem as anuladas). */
+  @ApiProperty({ required: false }) totalConsiderado?: number;
 }
 
 export class SerieDoEstudanteDtoOutput {

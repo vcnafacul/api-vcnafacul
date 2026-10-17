@@ -19,6 +19,12 @@ export class RespostaDoEstudanteDtoOutput {
 
   @ApiProperty({ enum: ['acerto', 'erro', 'sem_leitura'] })
   resultado: ResultadoDaQuestao;
+
+  /** tickets/042: fora da nota gravada. */
+  @ApiProperty({ required: false }) anulada?: boolean;
+  /** tickets/042: o porquê, se está anulada agora. */
+  @ApiProperty({ required: false })
+  anulacao?: { motivo: string; justificativa: string };
 }
 
 export class DetalheDoEstudanteDtoOutput {
@@ -43,4 +49,10 @@ export class DetalheDoEstudanteDtoOutput {
 
   @ApiProperty({ type: [RespostaDoEstudanteDtoOutput] })
   respostas: RespostaDoEstudanteDtoOutput[];
+
+  /** tickets/042, card 16. */
+  @ApiProperty({ required: false }) divergente?: boolean;
+  @ApiProperty({ required: false }) totalConsiderado?: number;
+  @ApiProperty({ required: false, type: [Number] }) numerosAnulados?: number[];
+  @ApiProperty({ required: false }) recalculadoEm?: string;
 }

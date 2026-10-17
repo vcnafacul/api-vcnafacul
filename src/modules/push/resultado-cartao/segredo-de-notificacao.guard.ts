@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { timingSafeEqual } from 'crypto';
 import { EnvService } from 'src/shared/modules/env/env.service';
 
@@ -16,9 +21,16 @@ export class SegredoDeNotificacaoGuard implements CanActivate {
   canActivate(ctx: ExecutionContext): boolean {
     const esperado = this.env.get('NOTIFICACAO_SECRET') ?? '';
     const recebido = ctx.switchToHttp().getRequest().headers?.[HEADER_SEGREDO];
-    if (!esperado || typeof recebido !== 'string') return false;
-    const a = Buffer.from(esperado);
-    const b = Buffer.from(recebido);
-    return a.length === b.length && timingSafeEqual(a, b);
+    /*
+      ⚠️ 401, e não o 403 do `false` (tickets/042, card 14): segredo errado é
+      falha de AUTENTICAÇÃO do serviço chamador. O ms só registra o status.
+    */
+    const ok =
+      !!esperado &&
+      typeof recebido === 'string' &&
+      Buffer.from(esperado).length === Buffer.from(recebido).length &&
+      timingSafeEqual(Buffer.from(esperado), Buffer.from(recebido));
+    if (!ok) throw new UnauthorizedException('segredo de notificação inválido');
+    return true;
   }
 }
