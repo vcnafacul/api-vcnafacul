@@ -22,6 +22,10 @@ export class QuestaoAnswerDTO {
   @ApiProperty({ nullable: true })
   public numero: number | null;
 
-  @ApiProperty()
-  public imageId: string;
+  /** tickets/042 (D5): anulada — a tela marca e pula, e não há imagem. */
+  @ApiProperty({ required: false })
+  public anulada?: boolean;
+
+  @ApiProperty({ required: false, description: 'Ausente na questão anulada.' })
+  public imageId?: string;
 }

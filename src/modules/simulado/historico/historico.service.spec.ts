@@ -110,3 +110,26 @@ describe('HistoricoService.getAllByUser', () => {
     expect(url).toContain('userId=u-jwt');
   });
 });
+
+describe('HistoricoService.getById — anulada (tickets/042, card 10)', () => {
+  it('repassa os campos da anulação do ms sem tocar (cliente antigo ignora)', async () => {
+    const { svc, axios } = montar();
+    const doMs = {
+      divergente: true,
+      totalConsiderado: 89,
+      numerosAnulados: [45],
+      simulado: {
+        questoes: [
+          {
+            numero: 45,
+            anulada: true,
+            anulacao: { motivo: 'outro', justificativa: 'x' },
+          },
+        ],
+      },
+      respostas: [{ numero: 45, anulada: true }],
+    };
+    axios.get.mockResolvedValueOnce(doMs);
+    expect(await svc.getById('h1', 'u')).toBe(doMs);
+  });
+});
