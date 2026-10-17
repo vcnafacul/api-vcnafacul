@@ -1,11 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { EnvService } from 'src/shared/modules/env/env.service';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AnalyticsQueueService } from 'src/modules/prepCourse/class/analytics/queue/analytics-queue.service';
 import { StudentCourseRepository } from 'src/modules/prepCourse/studentCourse/student-course.repository';
 import { FimDoRecalculoDtoInput } from './fim-do-recalculo.dto';
 import { RecalculoAnulacaoJob } from './recalculo-anulacao-job.entity';
-import { PushRecalculoAnulacaoRepository } from 'src/modules/push/recalculo-anulacao/push-recalculo-anulacao.repository';
+import {
+  ESPERA_PADRAO_MS,
+  PushRecalculoAnulacaoRepository,
+} from 'src/modules/push/recalculo-anulacao/push-recalculo-anulacao.repository';
 
 /**
  * O fim de um recálculo por anulação (tickets/042, card 14): os indicadores
@@ -25,6 +29,8 @@ export class FimDoRecalculoService {
     private readonly analytics: AnalyticsQueueService,
     // tickets/042, card 17.
     private readonly pushes: PushRecalculoAnulacaoRepository,
+    // tickets/042, card 20: a espera do push.
+    @Optional() private readonly env?: EnvService,
   ) {}
 
   async receber(
@@ -49,7 +55,14 @@ export class FimDoRecalculoService {
         tickets/042, card 17: os pushes "nota atualizada" entram na MESMA
         transação do job — ou os dois, ou nenhum (e o retry do ms refaz).
       */
-      return { pushes: await this.pushes.registrar(m, dto) };
+      return {
+        pushes: await this.pushes.registrar(
+          m,
+          dto,
+          new Date(),
+          this.env?.get('PUSH_RECALCULO_ESPERA_MS') ?? ESPERA_PADRAO_MS,
+        ),
+      };
     });
     if (!novo) return { duplicado: true, enfileirados: 0, pushes: 0 };
 

@@ -79,6 +79,41 @@ describe('push "nota atualizada" (042/17) — envio calmo', () => {
     );
   });
 
+  it('card 20: nota igual à de antes → descartada (ignorado), sem push nem central', async () => {
+    const { task, fila, push, central } = montar(0);
+    fila.pendentesVencidos.mockResolvedValue([
+      {
+        ...linha(0),
+        acertosAntes: 50,
+        totalAntes: 90,
+        acertosDepois: 50,
+        totalDepois: 90,
+      },
+      {
+        ...linha(1),
+        acertosAntes: 50,
+        totalAntes: 90,
+        acertosDepois: 49,
+        totalDepois: 89,
+      },
+      // Histórico antigo sem a contagem: avisa.
+      {
+        ...linha(2),
+        acertosAntes: null,
+        totalAntes: 90,
+        acertosDepois: 49,
+        totalDepois: 89,
+      },
+    ]);
+    expect(await task.rodar(new Date())).toBe(2);
+    expect(fila.ignorarPendentes).toHaveBeenCalledWith(['p0']);
+    expect(push.sendToUsers.mock.calls.map((c) => c[0])).toEqual([
+      ['aluno-1'],
+      ['aluno-2'],
+    ]);
+    expect(central.gravar).toHaveBeenCalledTimes(2);
+  });
+
   it('fora de prod: tira da fila sem enviar e grava na central', async () => {
     const { task, fila, push, central } = montar(2);
     push.garantirHabilitado.mockImplementation(() => {

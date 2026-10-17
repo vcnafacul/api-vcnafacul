@@ -4,6 +4,7 @@ import {
   ArrayMaxSize,
   IsArray,
   IsInt,
+  IsOptional,
   IsString,
   Length,
   Matches,
@@ -16,6 +17,17 @@ export class AfetadoDoRecalculoDto {
   @ApiProperty() @IsString() @Length(24, 24) historicoId: string;
   /** `YYYY-MM` em São Paulo — o mês do agregado da turma. */
   @ApiProperty() @Matches(/^\d{4}-(0[1-9]|1[0-2])$/) mes: string;
+  /** A nota antes e depois do recálculo (card 20). Opcionais: ms antigo não manda. */
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  acertosAntes?: number;
+  @ApiProperty({ required: false }) @IsOptional() @IsInt() totalAntes?: number;
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  acertosDepois?: number;
+  @ApiProperty({ required: false }) @IsOptional() @IsInt() totalDepois?: number;
 }
 
 /** O corpo do aviso do ms ao fim do recálculo (tickets/042, card 12 → 14). */

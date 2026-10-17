@@ -4,7 +4,10 @@ import { CentralRepository } from '../central/central.repository';
 import { EnvioCalmoDePush } from '../fila/envio-calmo';
 import { PushService } from '../push.service';
 import { PushRecalculoAnulacao } from './push-recalculo-anulacao.entity';
-import { PushRecalculoAnulacaoRepository } from './push-recalculo-anulacao.repository';
+import {
+  notaNaoMudou,
+  PushRecalculoAnulacaoRepository,
+} from './push-recalculo-anulacao.repository';
 import { textoDoRecalculo } from './texto-do-recalculo';
 
 /**
@@ -25,6 +28,11 @@ export class EnvioDoRecalculoTask extends EnvioCalmoDePush<PushRecalculoAnulacao
 
   protected texto(linha: PushRecalculoAnulacao) {
     return textoDoRecalculo(linha);
+  }
+
+  /** Card 20: a nota voltou ao que era — "nota atualizada" seria falso. */
+  protected override descartar(linha: PushRecalculoAnulacao) {
+    return notaNaoMudou(linha);
   }
 
   protected rotulo(linha: PushRecalculoAnulacao) {
