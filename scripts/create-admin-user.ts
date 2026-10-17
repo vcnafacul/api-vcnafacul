@@ -1,6 +1,5 @@
 import 'dotenv/config';
 import { DataSource } from 'typeorm';
-import * as bcrypt from 'bcrypt';
 import { Role } from '../src/modules/role/role.entity';
 import { User } from '../src/modules/user/user.entity';
 import { Gender } from '../src/modules/user/enum/gender';
@@ -41,7 +40,21 @@ function parseArgs(argv: string[]): Args {
       throw new Error(`Argumento --${k} é obrigatório`);
     }
   }
-  return out as Args;
+  return { ...(out as Args), gender: parseGender(String(out.gender)) };
+}
+
+/** Aceita o número do enum (`2`) ou o nome (`other`, `Other`). */
+function parseGender(valor: string): Gender {
+  const porNome = Object.entries(Gender).find(
+    ([nome, n]) =>
+      typeof n === 'number' && nome.toLowerCase() === valor.toLowerCase(),
+  );
+  if (porNome) return porNome[1] as Gender;
+  const n = Number(valor);
+  if (Number.isInteger(n) && Gender[n] !== undefined) return n as Gender;
+  throw new Error(
+    `--gender inválido: "${valor}" (use male, female, other ou 0, 1, 2)`,
+  );
 }
 
 async function main() {
@@ -80,7 +93,9 @@ async function main() {
 
     const user = new User();
     user.email = args.email;
-    user.password = await bcrypt.hash(args.password, 10);
+    // ⚠️ Em texto puro: o @BeforeInsert da User gera o hash. Hash aqui virava hash do
+    // hash e o login respondia "password invalid".
+    user.password = args.password;
     user.firstName = args.firstName;
     user.lastName = args.lastName;
     user.phone = args.phone;
@@ -89,6 +104,9 @@ async function main() {
     user.city = args.city;
     user.gender = args.gender;
     user.lgpd = true;
+    // A coluna tem DEFAULT CURRENT_TIMESTAMP: preenchida, o login responde "waiting email
+    // validation" nas primeiras 2h. Nulo = e-mail já confirmado.
+    user.emailConfirmSended = null;
     user.role = adminRole;
 
     const saved = await userRepo.save(user);
