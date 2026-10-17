@@ -36,12 +36,14 @@ describe('fim do recálculo → indicadores (042/14)', () => {
     const manager = {
       transaction: async (fn: any) => fn({ createQueryBuilder: () => qb }),
     };
+    const registrar = jest.fn().mockResolvedValue(5);
     const svc = new FimDoRecalculoService(
       manager as never,
       { findTurmasDosUsuarios } as never,
       { enqueueMany } as never,
+      { registrar } as never,
     );
-    return { svc, enqueueMany, findTurmasDosUsuarios, qb };
+    return { svc, enqueueMany, findTurmasDosUsuarios, qb, registrar };
   };
   const dto = (n: number): FimDoRecalculoDtoInput => ({
     jobId: JOB,
@@ -58,7 +60,7 @@ describe('fim do recálculo → indicadores (042/14)', () => {
   it('300 alunos em 4 turmas e 2 meses → 8 itens na fila, sem repetir', async () => {
     const { svc, enqueueMany } = montar();
     const r = await svc.receber(dto(300));
-    expect(r).toEqual({ duplicado: false, enfileirados: 8 });
+    expect(r).toEqual({ duplicado: false, enfileirados: 8, pushes: 5 });
     const itens = enqueueMany.mock.calls[0][0];
     expect(itens).toHaveLength(8);
     expect(new Set(itens.map((i: any) => `${i.classId}|${i.month}`)).size).toBe(
@@ -68,13 +70,16 @@ describe('fim do recálculo → indicadores (042/14)', () => {
   });
 
   it('callback repetido (mesmo jobId) não enfileira de novo', async () => {
-    const { svc, enqueueMany, findTurmasDosUsuarios } = montar(false);
+    const { svc, enqueueMany, findTurmasDosUsuarios, registrar } =
+      montar(false);
     expect(await svc.receber(dto(3))).toEqual({
       duplicado: true,
       enfileirados: 0,
+      pushes: 0,
     });
     expect(enqueueMany).not.toHaveBeenCalled();
     expect(findTurmasDosUsuarios).not.toHaveBeenCalled();
+    expect(registrar).not.toHaveBeenCalled();
   });
 
   it('aluno sem turma não enfileira nada', async () => {
@@ -83,6 +88,7 @@ describe('fim do recálculo → indicadores (042/14)', () => {
     expect(await svc.receber(dto(2))).toEqual({
       duplicado: false,
       enfileirados: 0,
+      pushes: 5,
     });
     expect(enqueueMany).not.toHaveBeenCalled();
   });
