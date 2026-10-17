@@ -118,7 +118,7 @@ describe('cartão e caderno da prova — rotas', () => {
     await request(app.getHttpServer())
       .get(`/mssimulado/caderno/prova/${ID}`)
       .expect(200);
-    expect(cadernoHttp.baixarDaProva).toHaveBeenCalledWith(ID, {});
+    expect(cadernoHttp.baixarDaProva).toHaveBeenCalledWith(ID, {}, false);
     expect(cadernoHttp.baixar).not.toHaveBeenCalled();
 
     await request(app.getHttpServer())

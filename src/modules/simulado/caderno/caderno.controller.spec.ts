@@ -99,6 +99,7 @@ describe('CadernoController', () => {
         '65ecc850a528b39d273e7900',
         false,
         resolvidos,
+        false, // tickets/042: sem ?confirmarAnuladas=true
       );
     });
 

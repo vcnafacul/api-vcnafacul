@@ -27,6 +27,7 @@ import { Status } from '../enum/status.enum';
 import { AtorService } from '../ator/ator.service';
 import { SinalizarRevisaoDTOInput } from '../dtos/sinalizar-revisao.dto.input';
 import { QuestaoService } from './questao.service';
+import { AdicionarEmProvaDTOInput } from '../dtos/anulacao.dto.input';
 
 /**
  * Quem vê o banco de questões: o projeto e o cursinho (tickets/023, card 01).
@@ -294,6 +295,16 @@ export class QuestaoController {
     return await this.questaoService.linhagem(id);
   }
 
+  /** tickets/042, card 06: em quais provas está anulada, e por quê. */
+  @Get(':id/anulacoes')
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'anulações da questão por prova' })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, VER_QUESTOES)
+  public async anulacoes(@Param('id') id: string) {
+    return await this.questaoService.anulacoes(id);
+  }
+
   @Post(':id/provas')
   @ApiBearerAuth()
   @ApiResponse({ status: 200, description: 'adiciona questão a uma prova' })
@@ -305,7 +316,8 @@ export class QuestaoController {
   ])
   public async adicionarEmProva(
     @Param('id') id: string,
-    @Body() body: { provaId: string; numero: number },
+    // tickets/042: DTO de verdade — `modo`/`anulacao` validados aqui.
+    @Body() body: AdicionarEmProvaDTOInput,
     @Req() req: Request,
   ) {
     return await this.questaoService.adicionarEmProva(
