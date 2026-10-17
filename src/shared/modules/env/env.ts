@@ -121,6 +121,9 @@ export const envSchema = z.object({
     .default('true')
     .transform((v) => v === 'true'),
   PUSH_DEFAULT_ICON_URL: z.string().default(''),
+  // tickets/042, card 20: o push "nota atualizada" espera este tempo depois do
+  // ÚLTIMO recálculo da prova (cada recálculo novo reinicia). Padrão 30 min.
+  PUSH_RECALCULO_ESPERA_MS: z.coerce.number().int().min(0).default(1_800_000),
 });
 
 export type Env = z.infer<typeof envSchema>;

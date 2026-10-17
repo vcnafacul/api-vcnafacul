@@ -69,6 +69,12 @@ describe('fim do recálculo → indicadores (042/14)', () => {
     expect(itens.every((i: any) => i.type === 'simulado')).toBe(true);
   });
 
+  it('card 20: o push sai com a espera da env (padrão 30 min)', async () => {
+    const { svc, registrar } = montar();
+    await svc.receber(dto(2));
+    expect(registrar.mock.calls[0][3]).toBe(30 * 60 * 1000);
+  });
+
   it('callback repetido (mesmo jobId) não enfileira de novo', async () => {
     const { svc, enqueueMany, findTurmasDosUsuarios, registrar } =
       montar(false);

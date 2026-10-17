@@ -33,6 +33,14 @@ export abstract class EnvioCalmoDePush<L extends LinhaDaFila> {
   protected abstract texto(linha: L): PushPayload;
   /** Como a linha aparece no log. */
   protected abstract rotulo(linha: L): string;
+  /**
+   * Linha que não deve mais sair (fica `ignorado`, sem push nem central). Ex.:
+   * a nota do recálculo voltou ao que era (tickets/042, card 20).
+   */
+  protected descartar(linha: L): boolean {
+    void linha;
+    return false;
+  }
 
   /** Separado para o teste não esperar de verdade. */
   pausa = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -67,7 +75,16 @@ export abstract class EnvioCalmoDePush<L extends LinhaDaFila> {
     this.rodando = true;
     try {
       await this.pendentes.destravarEnviando(DESTRAVAR_APOS_MIN, agora);
-      const lote = await this.pendentes.pendentesVencidos(LOTE, agora);
+      const vencidos = await this.pendentes.pendentesVencidos(LOTE, agora);
+      if (!vencidos.length) return 0;
+      const descartadas = vencidos.filter((l) => this.descartar(l));
+      if (descartadas.length) {
+        await this.pendentes.ignorarPendentes(descartadas.map((l) => l.id));
+        this.logger.log(
+          `${descartadas.length} push(es) descartado(s): ${descartadas.map((l) => this.rotulo(l)).join(', ')}`,
+        );
+      }
+      const lote = vencidos.filter((l) => !descartadas.includes(l));
       if (!lote.length) return 0;
 
       // Fora de prod o push não existe: tira da fila para ela não crescer.

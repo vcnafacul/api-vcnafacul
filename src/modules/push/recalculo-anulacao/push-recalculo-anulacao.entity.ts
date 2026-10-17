@@ -12,7 +12,7 @@ import { StatusDoPushDeResultado } from '../resultado-cartao/push-resultado-cart
  *
  * Único em `(job_id, user_id)`: o retry do callback não duplica. O índice
  * `(recorte, user_id, created_at)` serve o limite de 1 por prova por aluno por
- * dia.
+ * dia e a busca da linha pendente que um recálculo novo atualiza (card 20).
  */
 @Entity('push_recalculo_anulacao')
 @Index('UQ_push_recalculo_job_usuario', ['jobId', 'userId'], { unique: true })
@@ -45,6 +45,24 @@ export class PushRecalculoAnulacao extends BaseEntity {
     default: StatusDoPushDeResultado.Pendente,
   })
   status: StatusDoPushDeResultado;
+
+  /**
+   * A nota de ANTES da primeira vez que esta linha entrou pendente, e a de
+   * depois do último recálculo (card 20). Igual → o push não sai: a nota voltou
+   * ao que era (anular → recalcular → desanular → recalcular).
+   * `acertos_antes` nulo = histórico antigo sem a contagem: o push sai.
+   */
+  @Column({ name: 'acertos_antes', type: 'int', nullable: true })
+  acertosAntes: number | null;
+
+  @Column({ name: 'total_antes', type: 'int', nullable: true })
+  totalAntes: number | null;
+
+  @Column({ name: 'acertos_depois', type: 'int', nullable: true })
+  acertosDepois: number | null;
+
+  @Column({ name: 'total_depois', type: 'int', nullable: true })
+  totalDepois: number | null;
 
   @Column({ type: 'int', default: 0 })
   envios: number;
