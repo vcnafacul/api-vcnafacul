@@ -145,6 +145,32 @@ export class RelatorioHttpService {
   }
 
   /**
+   * tickets/042, card 14: o recálculo por anulação. `alvo` é o recorte do
+   * relatório (`relatorio-simulado/:id` ou `relatorio-prova/:id`).
+   */
+  async consultarRecalculo(
+    alvo: 'relatorio-simulado' | 'relatorio-prova',
+    id: string,
+    cursinhoId: string,
+  ): Promise<unknown> {
+    return this.axios.get(
+      `v1/${alvo}/${this.seg(id)}/recalculo-anulacao?${this.query(cursinhoId)}`,
+    );
+  }
+
+  async pedirRecalculo(
+    alvo: 'relatorio-simulado' | 'relatorio-prova',
+    id: string,
+    cursinhoId: string,
+    solicitadoPor: string,
+  ): Promise<unknown> {
+    return this.axios.post(`v1/${alvo}/${this.seg(id)}/recalculo-anulacao`, {
+      cursinhoId,
+      solicitadoPor,
+    });
+  }
+
+  /**
    * Um único segmento de caminho, escapado. Ver o docblock da classe: sem
    * isto o valor cru do chamador reescreve a URL do ms.
    */

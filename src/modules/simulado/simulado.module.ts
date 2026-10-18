@@ -25,6 +25,10 @@ import { OmrCacheService } from './cartao-resposta/omr-cache.service';
 import { CartaoImagemService } from './cartao-resposta/cartao-imagem.service';
 import { CartaoExclusaoService } from './cartao-resposta/cartao-exclusao.service';
 import { ResultadoCartaoModule } from '../push/resultado-cartao/resultado-cartao.module';
+import { AnalyticsQueueModule } from '../prepCourse/class/analytics/queue/analytics-queue.module';
+import { RecalculoAnulacaoPushModule } from '../push/recalculo-anulacao/recalculo-anulacao-push.module';
+import { FimDoRecalculoController } from './recalculo-anulacao/fim-do-recalculo.controller';
+import { FimDoRecalculoService } from './recalculo-anulacao/fim-do-recalculo.service';
 import { CategoriaProxyController } from './categoria/categoria.controller';
 import { CursinhoCategoriaController } from './categoria/cursinho/cursinho-categoria.controller';
 import { CategoriaProxyService } from './categoria/categoria.service';
@@ -66,6 +70,10 @@ import { SubjectProxyService } from './subject/subject.service';
     AuditLogModule,
     // Card 36: o "Excluir envio" tira da fila o push do resultado.
     ResultadoCartaoModule,
+    // tickets/042, card 14: indicadores das turmas ao fim do recálculo.
+    AnalyticsQueueModule,
+    // tickets/042, card 17: push "nota atualizada".
+    RecalculoAnulacaoPushModule,
     // ⚠️ `forwardRef` obrigatório: o `CollaboratorModule` importa de volta o
     // `SimuladoModule` (via `PartnerPrepCourseModule`), fechando o ciclo
     // SimuladoModule → PartnerPrepCourseModule → CollaboratorModule →
@@ -73,6 +81,8 @@ import { SubjectProxyService } from './subject/subject.service';
     forwardRef(() => PartnerPrepCourseModule),
   ],
   controllers: [
+    // tickets/042, card 14 — rota interna do ms (segredo do 028).
+    FimDoRecalculoController,
     SimuladoController,
     ProvaController,
     CursinhoProvaController,
@@ -99,6 +109,7 @@ import { SubjectProxyService } from './subject/subject.service';
     RelatorioDaProvaController,
   ],
   providers: [
+    FimDoRecalculoService,
     SimuladoService,
     ProvaService,
     QuestaoService,
