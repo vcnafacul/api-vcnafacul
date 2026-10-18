@@ -206,7 +206,7 @@ export class RelatorioController {
   @ApiBearerAuth()
   @ApiResponse({
     status: 200,
-    description: '{ divergentes, anulacoes, jobAtivo, ultimoJob }',
+    description: '{ divergentes, anulacoes, desanuladas, jobAtivo, ultimoJob }',
   })
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciarEstudantes)
   async consultarRecalculo(

@@ -85,7 +85,12 @@ interface DoMs {
   /** tickets/042, card 13 — repassados do ms. Ausentes no ms antigo. */
   totalConsiderado?: number;
   anuladas?: { numero: number; motivo: string; justificativa: string }[];
-  anulacao?: { divergentes: number; jobAtivo: unknown | null };
+  anulacao?: {
+    divergentes: number;
+    /** Card 20: o que voltou a valer (desanulado). */
+    desanuladas?: number[];
+    jobAtivo: unknown | null;
+  };
 }
 
 type DoMsDoSimulado = Omit<DoMs, 'titulo'> & { simuladoNome: string | null };

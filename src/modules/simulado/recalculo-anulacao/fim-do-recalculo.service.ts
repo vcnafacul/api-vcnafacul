@@ -1,10 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { EnvService } from 'src/shared/modules/env/env.service';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AnalyticsQueueService } from 'src/modules/prepCourse/class/analytics/queue/analytics-queue.service';
 import { StudentCourseRepository } from 'src/modules/prepCourse/studentCourse/student-course.repository';
 import { FimDoRecalculoDtoInput } from './fim-do-recalculo.dto';
 import { RecalculoAnulacaoJob } from './recalculo-anulacao-job.entity';
+import {
+  ESPERA_PADRAO_MS,
+  PushRecalculoAnulacaoRepository,
+} from 'src/modules/push/recalculo-anulacao/push-recalculo-anulacao.repository';
 
 /**
  * O fim de um recálculo por anulação (tickets/042, card 14): os indicadores
@@ -22,11 +27,15 @@ export class FimDoRecalculoService {
     @InjectEntityManager() private readonly manager: EntityManager,
     private readonly estudantes: StudentCourseRepository,
     private readonly analytics: AnalyticsQueueService,
+    // tickets/042, card 17.
+    private readonly pushes: PushRecalculoAnulacaoRepository,
+    // tickets/042, card 20: a espera do push.
+    @Optional() private readonly env?: EnvService,
   ) {}
 
   async receber(
     dto: FimDoRecalculoDtoInput,
-  ): Promise<{ duplicado: boolean; enfileirados: number }> {
+  ): Promise<{ duplicado: boolean; enfileirados: number; pushes: number }> {
     const novo = await this.manager.transaction(async (m) => {
       const r = await m
         .createQueryBuilder()
@@ -41,16 +50,27 @@ export class FimDoRecalculoService {
         .execute();
       // MySQL/MariaDB: `INSERT IGNORE` com a chave já presente afeta 0 linhas.
       const inseriu = (r.raw as { affectedRows?: number })?.affectedRows === 1;
-      // O card 17 grava aqui, na mesma transação, os pushes "nota atualizada".
-      return inseriu;
+      if (!inseriu) return null;
+      /*
+        tickets/042, card 17: os pushes "nota atualizada" entram na MESMA
+        transação do job — ou os dois, ou nenhum (e o retry do ms refaz).
+      */
+      return {
+        pushes: await this.pushes.registrar(
+          m,
+          dto,
+          new Date(),
+          this.env?.get('PUSH_RECALCULO_ESPERA_MS') ?? ESPERA_PADRAO_MS,
+        ),
+      };
     });
-    if (!novo) return { duplicado: true, enfileirados: 0 };
+    if (!novo) return { duplicado: true, enfileirados: 0, pushes: 0 };
 
     const enfileirados = await this.enfileirarIndicadores(dto);
     this.logger.log(
       `recálculo ${dto.jobId}: ${dto.afetados.length} afetados, ${enfileirados} indicadores na fila`,
     );
-    return { duplicado: false, enfileirados };
+    return { duplicado: false, enfileirados, pushes: novo.pushes };
   }
 
   /** (turma atual, mês) de cada afetado, sem repetir. */
