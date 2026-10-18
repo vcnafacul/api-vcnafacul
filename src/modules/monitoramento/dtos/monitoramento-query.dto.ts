@@ -1,6 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
-import { IsBoolean, IsEnum, IsOptional, IsUUID } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import {
+  IsBoolean,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsUUID,
+  Max,
+  Min,
+} from 'class-validator';
 import { Period } from 'src/modules/user/enum/period';
 
 /** tickets/044 — o recorte é obrigatório nas rotas do monitoramento. */
@@ -23,4 +31,20 @@ export class MonitoramentoPerfilQueryDto extends MonitoramentoQueryDto {
   @Transform(({ value }) => value === true || value === 'true')
   @IsBoolean()
   baseOnly = false;
+}
+
+/** Últimos processos: sem `cursinhoId`, a plataforma inteira (D7). */
+export class UltimosProcessosQueryDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  cursinhoId?: string;
+
+  @ApiPropertyOptional({ default: 10, minimum: 1, maximum: 50 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  limite = 10;
 }

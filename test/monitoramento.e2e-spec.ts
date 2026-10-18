@@ -5,6 +5,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 import { randomUUID } from 'crypto';
 import { AppModule } from 'src/app.module';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
+import { HttpServiceAxiosFactory } from 'src/shared/services/axios/http-service-axios.factory';
 import * as request from 'supertest';
 import { DataSource } from 'typeorm';
 import { createNestAppTest } from './utils/createNestAppTest';
@@ -21,6 +22,8 @@ describe('Monitoramento por cursinho (e2e)', () => {
   let app: INestApplication;
   let db: DataSource;
   let jwt: JwtService;
+  // ms-simulado de mentira (card 05): só as rotas do monitoramento respondem
+  const msGet = jest.fn();
 
   const ids = {
     users: [] as string[],
@@ -40,6 +43,16 @@ describe('Monitoramento por cursinho (e2e)', () => {
       .useValue({ sendMessage: jest.fn() })
       .overrideGuard(ThrottlerGuard)
       .useValue({ canActivate: () => true })
+      .overrideProvider(HttpServiceAxiosFactory)
+      .useValue({
+        create: () => ({
+          get: msGet,
+          post: jest.fn(),
+          put: jest.fn(),
+          patch: jest.fn(),
+          delete: jest.fn(),
+        }),
+      })
       .compile();
     app = createNestAppTest(mod);
     await app.init();
@@ -326,6 +339,146 @@ describe('Monitoramento por cursinho (e2e)', () => {
       expect(res.body).toEqual([
         { name: `Professor ${roleA.slice(0, 8)}`, total: '2' },
       ]);
+    });
+  });
+
+  describe('processos (card 03)', () => {
+    it('inscrições por período: só o cursinho', async () => {
+      const A = await cursinho();
+      const B = await cursinho();
+      const pA = await processo(A);
+      const pB = await processo(B);
+      await inscricao(A, pA, { criadaEm: '2026-03-10 10:00:00' });
+      await inscricao(A, pA, { criadaEm: '2026-03-11 10:00:00' });
+      await inscricao(B, pB, { criadaEm: '2026-03-12 10:00:00' });
+      const res = await get(
+        `/monitoramento/inscricoes-por-periodo?cursinhoId=${A}&groupBy=month`,
+        admin,
+      ).expect(200);
+      const marco = res.body.find(
+        (r: { period: string }) => r.period === '2026-03',
+      );
+      expect(marco.totalInscriptions).toBe(2);
+    });
+
+    it('últimos processos do cursinho: sem teste nem excluído, com inscrições e matrículas', async () => {
+      const A = await cursinho('Cursinho Monitorado');
+      const antigo = await processo(A, {
+        nome: 'Antigo',
+        inicio: '2025-01-10',
+        fim: '2025-02-10',
+      });
+      const recente = await processo(A, {
+        nome: 'Recente',
+        inicio: '2026-01-10',
+        fim: '2026-02-10',
+      });
+      await processo(A, {
+        nome: 'Teste',
+        isTest: true,
+        inicio: '2026-06-01',
+        fim: '2026-06-30',
+      });
+      await processo(A, {
+        nome: 'Excluído',
+        excluido: true,
+        inicio: '2026-07-01',
+        fim: '2026-07-30',
+      });
+      await inscricao(A, recente, { matricula: true });
+      await inscricao(A, recente);
+      await inscricao(A, recente, { excluida: true, matricula: true });
+
+      const res = await get(
+        `/monitoramento/ultimos-processos?cursinhoId=${A}`,
+        admin,
+      ).expect(200);
+      expect(res.body.map((p: { nome: string }) => p.nome)).toEqual([
+        'Recente',
+        'Antigo',
+      ]);
+      expect(res.body[0]).toMatchObject({
+        id: recente,
+        cursinho: { id: A, nome: 'Cursinho Monitorado' },
+        situacao: 'encerrado',
+        inscricoes: 2,
+        matriculas: 1,
+      });
+      expect(res.body[1]).toMatchObject({
+        id: antigo,
+        inscricoes: 0,
+        matriculas: 0,
+      });
+    });
+
+    it('global: processos de vários cursinhos, com o nome; limite validado', async () => {
+      const A = await cursinho('Global A');
+      const B = await cursinho('Global B');
+      await processo(A, {
+        nome: 'Futuro A',
+        inicio: '2099-01-01',
+        fim: '2099-02-01',
+      });
+      await processo(B, {
+        nome: 'Futuro B',
+        inicio: '2098-01-01',
+        fim: '2098-02-01',
+      });
+      const res = await get(
+        `/monitoramento/ultimos-processos?limite=2`,
+        admin,
+      ).expect(200);
+      expect(res.body).toHaveLength(2);
+      expect(res.body[0]).toMatchObject({
+        nome: 'Futuro A',
+        cursinho: { nome: 'Global A' },
+        situacao: 'futuro',
+      });
+      expect(res.body[1].cursinho.nome).toBe('Global B');
+      await get(`/monitoramento/ultimos-processos?limite=0`, admin).expect(400);
+      await get(`/monitoramento/ultimos-processos?limite=51`, admin).expect(
+        400,
+      );
+      await get(`/monitoramento/ultimos-processos`).expect(401);
+    });
+  });
+
+  describe('simulados (card 05)', () => {
+    it('repassa ao ms; cursinho inexistente 404 sem chamar o ms; ms fora → 502', async () => {
+      const A = await cursinho();
+      msGet.mockResolvedValueOnce({ historicTotal: 7, historicCompleted: 5 });
+      const res = await get(
+        `/monitoramento/simulados/resumo?cursinhoId=${A}`,
+        admin,
+      ).expect(200);
+      expect(res.body).toEqual({ historicTotal: 7, historicCompleted: 5 });
+      expect(msGet).toHaveBeenLastCalledWith(
+        `v1/monitoramento/historico/resumo?cursinhoId=${A}`,
+      );
+
+      msGet.mockClear();
+      await get(
+        `/monitoramento/simulados/resumo?cursinhoId=${randomUUID()}`,
+        admin,
+      ).expect(404);
+      expect(msGet).not.toHaveBeenCalled();
+
+      const B = await cursinho();
+      msGet.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+      await get(
+        `/monitoramento/simulados/por-periodo?cursinhoId=${B}&groupBy=month`,
+        admin,
+      ).expect(502);
+      // o erro não ficou no cache: a próxima chamada vai ao ms de novo
+      msGet.mockResolvedValueOnce([]);
+      await get(
+        `/monitoramento/simulados/por-periodo?cursinhoId=${B}&groupBy=month`,
+        admin,
+      ).expect(200);
+
+      await get(`/monitoramento/simulados/por-tipo?cursinhoId=${B}`).expect(
+        401,
+      );
     });
   });
 });

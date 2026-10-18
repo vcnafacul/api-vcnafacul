@@ -6,9 +6,11 @@ import { StudentCourseRepository } from '../prepCourse/studentCourse/student-cou
 import { AggregateUsersByRoleDtoOutput } from '../user/dto/aggregate-users-by-role.dto.output';
 import { Period } from '../user/enum/period';
 import { UserRepository } from '../user/user.repository';
+import { AggregateStudentCoursePeriodDtoOutput } from '../prepCourse/studentCourse/dtos/aggregate-student-course-period.dto.output';
 import {
   MonitoramentoRepository,
   UltimoAcessoDoCursinho,
+  UltimoProcesso,
 } from './monitoramento.repository';
 import {
   chaveDoMonitoramento,
@@ -111,6 +113,30 @@ export class MonitoramentoService {
     return this.cache.wrap(
       chaveDoMonitoramento('ultimo-acesso', cursinhoId, groupBy),
       () => this.consultas.ultimoAcesso(cursinhoId, groupBy),
+      TTL_MONITORAMENTO,
+    );
+  }
+
+  async inscricoesPorPeriodo(
+    cursinhoId: string,
+    groupBy: Period,
+  ): Promise<AggregateStudentCoursePeriodDtoOutput[]> {
+    await this.garantirCursinho(cursinhoId);
+    return this.cache.wrap(
+      chaveDoMonitoramento('inscricoes-por-periodo', cursinhoId, groupBy),
+      () => this.estudantes.aggregateStudentCourseByPeriod(groupBy, cursinhoId),
+      TTL_MONITORAMENTO,
+    );
+  }
+
+  async ultimosProcessos(
+    limite: number,
+    cursinhoId?: string,
+  ): Promise<UltimoProcesso[]> {
+    if (cursinhoId) await this.garantirCursinho(cursinhoId);
+    return this.cache.wrap(
+      chaveDoMonitoramento('ultimos-processos', cursinhoId ?? 'global', limite),
+      () => this.consultas.ultimosProcessos(limite, cursinhoId),
       TTL_MONITORAMENTO,
     );
   }

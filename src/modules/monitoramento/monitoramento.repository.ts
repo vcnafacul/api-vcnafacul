@@ -4,6 +4,29 @@ import { EntityManager } from 'typeorm';
 import { Period } from '../user/enum/period';
 import { serieCompleta } from './serie-completa';
 
+export type SituacaoDoProcesso = 'aberto' | 'encerrado' | 'futuro';
+
+export type UltimoProcesso = {
+  id: string;
+  nome: string;
+  cursinho: { id: string; nome: string };
+  inicio: Date;
+  fim: Date;
+  situacao: SituacaoDoProcesso;
+  inscricoes: number;
+  matriculas: number;
+};
+
+export function situacaoDoProcesso(
+  inicio: Date,
+  fim: Date,
+  agora = new Date(),
+): SituacaoDoProcesso {
+  if (agora < inicio) return 'futuro';
+  if (agora > fim) return 'encerrado';
+  return 'aberto';
+}
+
 export type UltimoAcessoDoCursinho = {
   period: string;
   colaboradores: number;
@@ -98,5 +121,68 @@ export class MonitoramentoRepository {
       (period) =>
         porPeriodo.get(period) ?? { period, colaboradores: 0, estudantes: 0 },
     );
+  }
+
+  /**
+   * Os últimos processos seletivos (D7): sem teste e sem excluídos, os mais
+   * recentes por início. Inscrição = aluno sem `deleted_at`; matrícula =
+   * `cod_enrolled` preenchido (a regra do `student-course/summary`).
+   *
+   * Uma consulta só: a tabela derivada escolhe os processos (o LIMIT antes do
+   * JOIN), e o LEFT JOIN conta os alunos de cada um. Nunca N+1.
+   */
+  async ultimosProcessos(
+    limite: number,
+    cursinhoId?: string,
+  ): Promise<UltimoProcesso[]> {
+    const filtroCursinho = cursinhoId ? 'AND p.partner_prep_course_id = ?' : '';
+    const params = cursinhoId ? [cursinhoId, limite] : [limite];
+    const linhas: {
+      id: string;
+      nome: string;
+      inicio: Date;
+      fim: Date;
+      cursinhoId: string;
+      cursinhoNome: string;
+      inscricoes: string;
+      matriculas: string | null;
+    }[] = await this.db.query(
+      `SELECT ic.id, ic.name AS nome, ic.start_date AS inicio, ic.end_date AS fim,
+              ppc.id AS cursinhoId, g.name AS cursinhoNome,
+              COUNT(sc.id) AS inscricoes,
+              SUM(CASE WHEN sc.cod_enrolled IS NOT NULL THEN 1 ELSE 0 END) AS matriculas
+         FROM (
+           SELECT p.id, p.name, p.start_date, p.end_date, p.partner_prep_course_id
+             FROM inscription_course p
+            WHERE p.is_test = 0
+              AND p.deleted_at IS NULL
+              ${filtroCursinho}
+            ORDER BY p.start_date DESC, p.id
+            LIMIT ?
+         ) ic
+         INNER JOIN partner_prep_course ppc ON ppc.id = ic.partner_prep_course_id
+         INNER JOIN geolocations g ON g.id = ppc.geo_id
+         LEFT JOIN student_course sc
+           ON sc.inscriptionCourseId = ic.id
+          AND sc.deleted_at IS NULL
+        GROUP BY ic.id, ic.name, ic.start_date, ic.end_date, ppc.id, g.name
+        ORDER BY ic.start_date DESC, ic.id`,
+      params,
+    );
+    const agora = new Date();
+    return linhas.map((l) => {
+      const inicio = new Date(l.inicio);
+      const fim = new Date(l.fim);
+      return {
+        id: l.id,
+        nome: l.nome,
+        cursinho: { id: l.cursinhoId, nome: l.cursinhoNome },
+        inicio,
+        fim,
+        situacao: situacaoDoProcesso(inicio, fim, agora),
+        inscricoes: Number(l.inscricoes),
+        matriculas: Number(l.matriculas ?? 0),
+      };
+    });
   }
 }
