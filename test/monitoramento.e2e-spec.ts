@@ -5,6 +5,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 import { randomUUID } from 'crypto';
 import { AppModule } from 'src/app.module';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
+import { HttpServiceAxiosFactory } from 'src/shared/services/axios/http-service-axios.factory';
 import * as request from 'supertest';
 import { DataSource } from 'typeorm';
 import { createNestAppTest } from './utils/createNestAppTest';
@@ -21,6 +22,8 @@ describe('Monitoramento por cursinho (e2e)', () => {
   let app: INestApplication;
   let db: DataSource;
   let jwt: JwtService;
+  // ms-simulado de mentira (card 05): só as rotas do monitoramento respondem
+  const msGet = jest.fn();
 
   const ids = {
     users: [] as string[],
@@ -40,6 +43,16 @@ describe('Monitoramento por cursinho (e2e)', () => {
       .useValue({ sendMessage: jest.fn() })
       .overrideGuard(ThrottlerGuard)
       .useValue({ canActivate: () => true })
+      .overrideProvider(HttpServiceAxiosFactory)
+      .useValue({
+        create: () => ({
+          get: msGet,
+          post: jest.fn(),
+          put: jest.fn(),
+          patch: jest.fn(),
+          delete: jest.fn(),
+        }),
+      })
       .compile();
     app = createNestAppTest(mod);
     await app.init();
@@ -427,6 +440,45 @@ describe('Monitoramento por cursinho (e2e)', () => {
         400,
       );
       await get(`/monitoramento/ultimos-processos`).expect(401);
+    });
+  });
+
+  describe('simulados (card 05)', () => {
+    it('repassa ao ms; cursinho inexistente 404 sem chamar o ms; ms fora → 502', async () => {
+      const A = await cursinho();
+      msGet.mockResolvedValueOnce({ historicTotal: 7, historicCompleted: 5 });
+      const res = await get(
+        `/monitoramento/simulados/resumo?cursinhoId=${A}`,
+        admin,
+      ).expect(200);
+      expect(res.body).toEqual({ historicTotal: 7, historicCompleted: 5 });
+      expect(msGet).toHaveBeenLastCalledWith(
+        `v1/monitoramento/historico/resumo?cursinhoId=${A}`,
+      );
+
+      msGet.mockClear();
+      await get(
+        `/monitoramento/simulados/resumo?cursinhoId=${randomUUID()}`,
+        admin,
+      ).expect(404);
+      expect(msGet).not.toHaveBeenCalled();
+
+      const B = await cursinho();
+      msGet.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+      await get(
+        `/monitoramento/simulados/por-periodo?cursinhoId=${B}&groupBy=month`,
+        admin,
+      ).expect(502);
+      // o erro não ficou no cache: a próxima chamada vai ao ms de novo
+      msGet.mockResolvedValueOnce([]);
+      await get(
+        `/monitoramento/simulados/por-periodo?cursinhoId=${B}&groupBy=month`,
+        admin,
+      ).expect(200);
+
+      await get(`/monitoramento/simulados/por-tipo?cursinhoId=${B}`).expect(
+        401,
+      );
     });
   });
 });
