@@ -58,13 +58,7 @@ export class QuestaoService {
   }
 
   public async getAllQuestoes(query: QuestaoDTOInput) {
-    let baseUrl = 'v1/questao?';
-
-    Object.keys(query).forEach((key) => {
-      baseUrl = baseUrl + `${key}=${query[key]}&`;
-    });
-
-    return await this.axios.get(baseUrl);
+    return await this.axios.get(urlDaListagem(query));
   }
 
   /** Com o ator e o nome do cursinho dono de cada prova (023 · 07). */
@@ -512,4 +506,17 @@ export class QuestaoService {
       };
     }
   }
+}
+
+/**
+ * A URL da listagem no ms (tickets/043, card 02). ⚠️ Valores codificados: antes
+ * um texto de busca com `&` ou `#` quebrava a query; vazio/ausente não vai.
+ */
+export function urlDaListagem(query: object): string {
+  const params = Object.entries(query)
+    .filter(([, v]) => v !== undefined && v !== null && v !== '')
+    .map(
+      ([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`,
+    );
+  return `v1/questao?${params.join('&')}`;
 }
