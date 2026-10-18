@@ -125,6 +125,14 @@ export class PartnerPrepCourseRepository extends BaseRepository<PartnerPrepCours
       .getCount();
   }
 
+  /** Existe um cursinho com este id? (tickets/044 — o recorte do monitoramento). */
+  async existe(id: string): Promise<boolean> {
+    return this.repository
+      .createQueryBuilder('entity')
+      .where('entity.id = :id', { id })
+      .getExists();
+  }
+
   //criar um findOne que retorne o mesmo que o findAllBy, mas que retorne apenas um objeto
   async findAllLogos(): Promise<PartnerPrepCourse[]> {
     return await this.repository

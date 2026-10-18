@@ -1,0 +1,143 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { CacheService } from 'src/shared/modules/cache/cache.service';
+import { InscriptionCourseRepository } from '../prepCourse/InscriptionCourse/inscription-course.repository';
+import { PartnerPrepCourseRepository } from '../prepCourse/partnerPrepCourse/partner-prep-course.repository';
+import { StudentCourseRepository } from '../prepCourse/studentCourse/student-course.repository';
+import { AggregateUsersByRoleDtoOutput } from '../user/dto/aggregate-users-by-role.dto.output';
+import { Period } from '../user/enum/period';
+import { UserRepository } from '../user/user.repository';
+import { AggregateStudentCoursePeriodDtoOutput } from '../prepCourse/studentCourse/dtos/aggregate-student-course-period.dto.output';
+import {
+  MonitoramentoRepository,
+  UltimoAcessoDoCursinho,
+  UltimoProcesso,
+} from './monitoramento.repository';
+import {
+  chaveDoMonitoramento,
+  TTL_MONITORAMENTO,
+} from './chave-do-monitoramento';
+
+export type ResumoDoCursinho = {
+  processosNaoTeste: number;
+  processosTotal: number;
+  inscricoesNaoTeste: number;
+  matriculasNaoTeste: number;
+};
+
+export type EstudantesDoCursinho = {
+  estudantesAtendidos: number;
+  estudantesAtivos: number;
+};
+
+/**
+ * Os números do Monitoramento recortados por cursinho (tickets/044). As mesmas
+ * regras da visão da plataforma, com o filtro do cursinho, em cache de 1 h (D6).
+ */
+@Injectable()
+export class MonitoramentoService {
+  constructor(
+    private readonly cursinhos: PartnerPrepCourseRepository,
+    private readonly inscricoes: InscriptionCourseRepository,
+    private readonly estudantes: StudentCourseRepository,
+    private readonly cache: CacheService,
+    private readonly usuarios: UserRepository,
+    private readonly consultas: MonitoramentoRepository,
+  ) {}
+
+  /** 404 antes de qualquer conta (e antes do cache): id inexistente não vira chave. */
+  async garantirCursinho(cursinhoId: string): Promise<void> {
+    if (!(await this.cursinhos.existe(cursinhoId))) {
+      throw new NotFoundException('Cursinho não encontrado');
+    }
+  }
+
+  async resumo(cursinhoId: string): Promise<ResumoDoCursinho> {
+    await this.garantirCursinho(cursinhoId);
+    return this.cache.wrap(
+      chaveDoMonitoramento('resumo', cursinhoId),
+      async () => {
+        const [processosNaoTeste, processosTotal, inscricoes, matriculas] =
+          await Promise.all([
+            this.inscricoes.getTotalNonTest(cursinhoId),
+            this.inscricoes.getTotalEntity(cursinhoId),
+            this.estudantes.getTotalNonTest(cursinhoId),
+            this.estudantes.getTotalEnrolledNonTest(cursinhoId),
+          ]);
+        return {
+          processosNaoTeste,
+          processosTotal,
+          inscricoesNaoTeste: inscricoes,
+          matriculasNaoTeste: matriculas,
+        };
+      },
+      TTL_MONITORAMENTO,
+    );
+  }
+
+  /** Atendidos e ativos: as contagens da página do cursinho (025). */
+  async estudantesDoCursinho(
+    cursinhoId: string,
+  ): Promise<EstudantesDoCursinho> {
+    await this.garantirCursinho(cursinhoId);
+    return this.cache.wrap(
+      chaveDoMonitoramento('estudantes', cursinhoId),
+      async () => {
+        const [atendidos, ativos] = await Promise.all([
+          this.estudantes.countStudentsEffectivelyServed(cursinhoId),
+          this.estudantes.countStudentsCurrentlyEnrolled(cursinhoId),
+        ]);
+        return { estudantesAtendidos: atendidos, estudantesAtivos: ativos };
+      },
+      TTL_MONITORAMENTO,
+    );
+  }
+
+  /** Por perfil: o filtro que o card "Usuários por Perfil" já usava (`role.partnerPrepCourse`). */
+  async usuariosPorPerfil(
+    cursinhoId: string,
+    baseOnly: boolean,
+  ): Promise<AggregateUsersByRoleDtoOutput[]> {
+    await this.garantirCursinho(cursinhoId);
+    return this.cache.wrap(
+      chaveDoMonitoramento('usuarios-por-perfil', cursinhoId, baseOnly),
+      () => this.usuarios.aggregateUsersByRole(cursinhoId, baseOnly),
+      TTL_MONITORAMENTO,
+    );
+  }
+
+  async ultimoAcesso(
+    cursinhoId: string,
+    groupBy: Period,
+  ): Promise<UltimoAcessoDoCursinho[]> {
+    await this.garantirCursinho(cursinhoId);
+    return this.cache.wrap(
+      chaveDoMonitoramento('ultimo-acesso', cursinhoId, groupBy),
+      () => this.consultas.ultimoAcesso(cursinhoId, groupBy),
+      TTL_MONITORAMENTO,
+    );
+  }
+
+  async inscricoesPorPeriodo(
+    cursinhoId: string,
+    groupBy: Period,
+  ): Promise<AggregateStudentCoursePeriodDtoOutput[]> {
+    await this.garantirCursinho(cursinhoId);
+    return this.cache.wrap(
+      chaveDoMonitoramento('inscricoes-por-periodo', cursinhoId, groupBy),
+      () => this.estudantes.aggregateStudentCourseByPeriod(groupBy, cursinhoId),
+      TTL_MONITORAMENTO,
+    );
+  }
+
+  async ultimosProcessos(
+    limite: number,
+    cursinhoId?: string,
+  ): Promise<UltimoProcesso[]> {
+    if (cursinhoId) await this.garantirCursinho(cursinhoId);
+    return this.cache.wrap(
+      chaveDoMonitoramento('ultimos-processos', cursinhoId ?? 'global', limite),
+      () => this.consultas.ultimosProcessos(limite, cursinhoId),
+      TTL_MONITORAMENTO,
+    );
+  }
+}

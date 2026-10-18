@@ -551,23 +551,34 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
   // O innerJoin descarta inscricoes sem processo seletivo (contam como teste).
   // deletedAt nao e @DeleteDateColumn, entao processos removidos continuam no
   // join e valem pelo proprio isTest.
-  async getTotalNonTest() {
-    return this.repository
+  // `cursinhoId` opcional (tickets/044): sem ele, a plataforma inteira.
+  async getTotalNonTest(cursinhoId?: string) {
+    const qb = this.repository
       .createQueryBuilder('entity')
       .innerJoin('entity.inscriptionCourse', 'inscriptionCourse')
       .where('entity.deletedAt IS NULL')
-      .andWhere('inscriptionCourse.isTest = :isTest', { isTest: false })
-      .getCount();
+      .andWhere('inscriptionCourse.isTest = :isTest', { isTest: false });
+    if (cursinhoId) {
+      qb.andWhere('entity.partner_prep_course_id = :cursinhoId', {
+        cursinhoId,
+      });
+    }
+    return qb.getCount();
   }
 
-  async getTotalEnrolledNonTest() {
-    return this.repository
+  async getTotalEnrolledNonTest(cursinhoId?: string) {
+    const qb = this.repository
       .createQueryBuilder('entity')
       .innerJoin('entity.inscriptionCourse', 'inscriptionCourse')
       .where('entity.deletedAt IS NULL')
       .andWhere('entity.cod_enrolled IS NOT NULL')
-      .andWhere('inscriptionCourse.isTest = :isTest', { isTest: false })
-      .getCount();
+      .andWhere('inscriptionCourse.isTest = :isTest', { isTest: false });
+    if (cursinhoId) {
+      qb.andWhere('entity.partner_prep_course_id = :cursinhoId', {
+        cursinhoId,
+      });
+    }
+    return qb.getCount();
   }
 
   async entityByStatus(status: StatusApplication) {
@@ -1042,8 +1053,10 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .getOne();
   }
 
+  /** `cursinhoId` opcional (tickets/044): sem ele, a plataforma inteira. */
   async aggregateStudentCourseByPeriod(
     groupBy: Period,
+    cursinhoId?: string,
   ): Promise<AggregateStudentCoursePeriodDtoOutput[]> {
     let inscriptionDateExpr: string;
     let enrolmentDateExpr: string;
@@ -1068,19 +1081,29 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
         throw new Error('Invalid groupBy value');
     }
 
-    const inscriptions = await this.repository
-      .createQueryBuilder('sc')
-      .select(inscriptionDateExpr, 'period')
-      .addSelect('COUNT(*)', 'totalInscriptions')
+    const doCursinho = <T extends SelectQueryBuilder<StudentCourse>>(qb: T) =>
+      cursinhoId
+        ? qb.andWhere('sc.partner_prep_course_id = :cursinhoId', { cursinhoId })
+        : qb;
+
+    const inscriptions = await doCursinho(
+      this.repository
+        .createQueryBuilder('sc')
+        .select(inscriptionDateExpr, 'period')
+        .addSelect('COUNT(*)', 'totalInscriptions')
+        .where('1 = 1'),
+    )
       .groupBy('period')
       .orderBy('period', 'ASC')
       .getRawMany();
 
-    const enrolments = await this.repository
-      .createQueryBuilder('sc')
-      .select(enrolmentDateExpr, 'period')
-      .addSelect('COUNT(*)', 'totalEnrolments')
-      .where('sc.selectEnrolledAt IS NOT NULL')
+    const enrolments = await doCursinho(
+      this.repository
+        .createQueryBuilder('sc')
+        .select(enrolmentDateExpr, 'period')
+        .addSelect('COUNT(*)', 'totalEnrolments')
+        .where('sc.selectEnrolledAt IS NOT NULL'),
+    )
       .groupBy('period')
       .orderBy('period', 'ASC')
       .getRawMany();
