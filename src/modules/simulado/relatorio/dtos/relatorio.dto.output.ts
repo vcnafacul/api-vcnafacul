@@ -243,9 +243,14 @@ export class ResumoDoRelatorioDtoOutput {
   @ApiProperty({
     required: false,
     description:
-      '{ divergentes, jobAtivo } — "relatório desatualizado" e o recálculo em andamento',
+      '{ divergentes, desanuladas, jobAtivo } — "relatório desatualizado" e o recálculo em andamento',
   })
-  anulacao?: { divergentes: number; jobAtivo: unknown | null };
+  anulacao?: {
+    divergentes: number;
+    /** Card 20: o que voltou a valer (desanulado). */
+    desanuladas?: number[];
+    jobAtivo: unknown | null;
+  };
 }
 
 export class RelatorioDtoOutput {
