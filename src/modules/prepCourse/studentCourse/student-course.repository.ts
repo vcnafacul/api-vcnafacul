@@ -1053,8 +1053,10 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .getOne();
   }
 
+  /** `cursinhoId` opcional (tickets/044): sem ele, a plataforma inteira. */
   async aggregateStudentCourseByPeriod(
     groupBy: Period,
+    cursinhoId?: string,
   ): Promise<AggregateStudentCoursePeriodDtoOutput[]> {
     let inscriptionDateExpr: string;
     let enrolmentDateExpr: string;
@@ -1079,19 +1081,29 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
         throw new Error('Invalid groupBy value');
     }
 
-    const inscriptions = await this.repository
-      .createQueryBuilder('sc')
-      .select(inscriptionDateExpr, 'period')
-      .addSelect('COUNT(*)', 'totalInscriptions')
+    const doCursinho = <T extends SelectQueryBuilder<StudentCourse>>(qb: T) =>
+      cursinhoId
+        ? qb.andWhere('sc.partner_prep_course_id = :cursinhoId', { cursinhoId })
+        : qb;
+
+    const inscriptions = await doCursinho(
+      this.repository
+        .createQueryBuilder('sc')
+        .select(inscriptionDateExpr, 'period')
+        .addSelect('COUNT(*)', 'totalInscriptions')
+        .where('1 = 1'),
+    )
       .groupBy('period')
       .orderBy('period', 'ASC')
       .getRawMany();
 
-    const enrolments = await this.repository
-      .createQueryBuilder('sc')
-      .select(enrolmentDateExpr, 'period')
-      .addSelect('COUNT(*)', 'totalEnrolments')
-      .where('sc.selectEnrolledAt IS NOT NULL')
+    const enrolments = await doCursinho(
+      this.repository
+        .createQueryBuilder('sc')
+        .select(enrolmentDateExpr, 'period')
+        .addSelect('COUNT(*)', 'totalEnrolments')
+        .where('sc.selectEnrolledAt IS NOT NULL'),
+    )
       .groupBy('period')
       .orderBy('period', 'ASC')
       .getRawMany();

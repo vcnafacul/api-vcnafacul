@@ -7,6 +7,7 @@ import {
   MonitoramentoPerfilQueryDto,
   MonitoramentoPeriodoQueryDto,
   MonitoramentoQueryDto,
+  UltimosProcessosQueryDto,
 } from './dtos/monitoramento-query.dto';
 import { MonitoramentoService } from './monitoramento.service';
 
@@ -54,5 +55,23 @@ export class MonitoramentoController {
     @Query() { cursinhoId, groupBy }: MonitoramentoPeriodoQueryDto,
   ) {
     return this.service.ultimoAcesso(cursinhoId, groupBy);
+  }
+
+  @Get('inscricoes-por-periodo')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  async inscricoesPorPeriodo(
+    @Query() { cursinhoId, groupBy }: MonitoramentoPeriodoQueryDto,
+  ) {
+    return this.service.inscricoesPorPeriodo(cursinhoId, groupBy);
+  }
+
+  @Get('ultimos-processos')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  async ultimosProcessos(
+    @Query() { cursinhoId, limite }: UltimosProcessosQueryDto,
+  ) {
+    return this.service.ultimosProcessos(limite, cursinhoId);
   }
 }

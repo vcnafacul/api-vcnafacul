@@ -328,4 +328,105 @@ describe('Monitoramento por cursinho (e2e)', () => {
       ]);
     });
   });
+
+  describe('processos (card 03)', () => {
+    it('inscrições por período: só o cursinho', async () => {
+      const A = await cursinho();
+      const B = await cursinho();
+      const pA = await processo(A);
+      const pB = await processo(B);
+      await inscricao(A, pA, { criadaEm: '2026-03-10 10:00:00' });
+      await inscricao(A, pA, { criadaEm: '2026-03-11 10:00:00' });
+      await inscricao(B, pB, { criadaEm: '2026-03-12 10:00:00' });
+      const res = await get(
+        `/monitoramento/inscricoes-por-periodo?cursinhoId=${A}&groupBy=month`,
+        admin,
+      ).expect(200);
+      const marco = res.body.find(
+        (r: { period: string }) => r.period === '2026-03',
+      );
+      expect(marco.totalInscriptions).toBe(2);
+    });
+
+    it('últimos processos do cursinho: sem teste nem excluído, com inscrições e matrículas', async () => {
+      const A = await cursinho('Cursinho Monitorado');
+      const antigo = await processo(A, {
+        nome: 'Antigo',
+        inicio: '2025-01-10',
+        fim: '2025-02-10',
+      });
+      const recente = await processo(A, {
+        nome: 'Recente',
+        inicio: '2026-01-10',
+        fim: '2026-02-10',
+      });
+      await processo(A, {
+        nome: 'Teste',
+        isTest: true,
+        inicio: '2026-06-01',
+        fim: '2026-06-30',
+      });
+      await processo(A, {
+        nome: 'Excluído',
+        excluido: true,
+        inicio: '2026-07-01',
+        fim: '2026-07-30',
+      });
+      await inscricao(A, recente, { matricula: true });
+      await inscricao(A, recente);
+      await inscricao(A, recente, { excluida: true, matricula: true });
+
+      const res = await get(
+        `/monitoramento/ultimos-processos?cursinhoId=${A}`,
+        admin,
+      ).expect(200);
+      expect(res.body.map((p: { nome: string }) => p.nome)).toEqual([
+        'Recente',
+        'Antigo',
+      ]);
+      expect(res.body[0]).toMatchObject({
+        id: recente,
+        cursinho: { id: A, nome: 'Cursinho Monitorado' },
+        situacao: 'encerrado',
+        inscricoes: 2,
+        matriculas: 1,
+      });
+      expect(res.body[1]).toMatchObject({
+        id: antigo,
+        inscricoes: 0,
+        matriculas: 0,
+      });
+    });
+
+    it('global: processos de vários cursinhos, com o nome; limite validado', async () => {
+      const A = await cursinho('Global A');
+      const B = await cursinho('Global B');
+      await processo(A, {
+        nome: 'Futuro A',
+        inicio: '2099-01-01',
+        fim: '2099-02-01',
+      });
+      await processo(B, {
+        nome: 'Futuro B',
+        inicio: '2098-01-01',
+        fim: '2098-02-01',
+      });
+      const res = await get(
+        `/monitoramento/ultimos-processos?limite=2`,
+        admin,
+      ).expect(200);
+      expect(res.body).toHaveLength(2);
+      expect(res.body[0]).toMatchObject({
+        nome: 'Futuro A',
+        cursinho: { nome: 'Global A' },
+        situacao: 'futuro',
+      });
+      expect(res.body[1].cursinho.nome).toBe('Global B');
+      await get(`/monitoramento/ultimos-processos?limite=0`, admin).expect(400);
+      await get(`/monitoramento/ultimos-processos?limite=51`, admin).expect(
+        400,
+      );
+      await get(`/monitoramento/ultimos-processos`).expect(401);
+    });
+  });
 });
