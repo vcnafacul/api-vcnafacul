@@ -72,6 +72,12 @@ export class QuestaoDTOInput extends GetAllDtoInput {
   @IsMongoId()
   categoria?: string;
 
+  /** tickets/043, card 09: ano da prova. */
+  @ApiProperty({ required: false, example: '2023' })
+  @IsOptional()
+  @Matches(/^\d{4}$/, { message: 'ano deve ter 4 dígitos' })
+  ano?: string;
+
   /** Flags de revisão separadas por vírgula, todas exigidas ("e"). */
   @ApiProperty({ required: false, example: 'textClassification,reported' })
   @IsOptional()
