@@ -18,6 +18,7 @@ import { Ator, headerDoAtor } from '../ator/ator';
 import { CursinhoNomeService } from './cursinho/cursinho-nome.service';
 import { CreateProvaDTOInput } from './dtos/prova-create.dto.input';
 
+import { AnularQuestaoDTOInput } from '../dtos/anulacao.dto.input';
 @Injectable()
 export class ProvaService {
   private readonly axios: HttpServiceAxios;
@@ -39,6 +40,34 @@ export class ProvaService {
    * Liga/desliga o "aplicar novas versões automaticamente" da prova
    * (tickets/023, card 05). Quem decide se pode é o ms (só o dono), pelo ator.
    */
+  /**
+   * tickets/042, card 06: anular (ou editar a anulação) e desanular. A
+   * permissão é do ms (`podeAnularNaProva`), com o ator do header.
+   */
+  public async anularQuestao(
+    provaId: string,
+    questaoId: string,
+    dto: AnularQuestaoDTOInput,
+    ator: Ator,
+  ) {
+    return await this.axios.put(
+      `v1/prova/${encodeURIComponent(provaId)}/questoes/${encodeURIComponent(questaoId)}/anulacao`,
+      { motivo: dto.motivo, justificativa: dto.justificativa },
+      headerDoAtor(ator),
+    );
+  }
+
+  public async desanularQuestao(
+    provaId: string,
+    questaoId: string,
+    ator: Ator,
+  ) {
+    return await this.axios.delete(
+      `v1/prova/${encodeURIComponent(provaId)}/questoes/${encodeURIComponent(questaoId)}/anulacao`,
+      headerDoAtor(ator),
+    );
+  }
+
   public async alterarReceberNovasVersoes(
     id: string,
     valor: boolean,

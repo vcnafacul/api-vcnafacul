@@ -55,6 +55,8 @@ export class CadernoController {
     @Param('provaId', ObjectIdPipe) provaId: string,
     @Req() req: Request,
     @Res() res: Response,
+    // tickets/042 (D8): por último, para não deslocar os parâmetros de antes.
+    @Query('confirmarAnuladas') confirmarAnuladas?: string,
   ): Promise<void> {
     const ator = await this.atorService.resolver((req.user as User).id);
     garantirQuePodeLer(
@@ -65,6 +67,7 @@ export class CadernoController {
     const { buffer, contentType, avisos } = await this.http.baixarDaProva(
       provaId,
       logos,
+      confirmarAnuladas === 'true',
     );
     res.setHeader('Content-Type', contentType || 'application/zip');
     res.setHeader(
@@ -99,6 +102,7 @@ export class CadernoController {
   @Get(':simuladoId([0-9a-fA-F]{24})')
   @ApiBearerAuth()
   @ApiQuery({ name: 'draft', required: false, enum: ['true'] })
+  @ApiQuery({ name: 'confirmarAnuladas', required: false, enum: ['true'] })
   @ApiResponse({ status: 200, description: 'baixa o zip do caderno (LaTeX)' })
   @ApiResponse({ status: 409, description: 'simulado não está pronto' })
   // ⚠️ `JwtAuthGuard` junto, diferente do `baixarCartao`. O `PermissionsGuard`
@@ -116,6 +120,9 @@ export class CadernoController {
     @Query('draft') draft: string | undefined,
     @Req() req: Request,
     @Res() res: Response,
+    // tickets/042 (D8): o 409 CADERNO_COM_ANULADAS volta com o corpo; o client
+    // confirma e reenvia com `?confirmarAnuladas=true`.
+    @Query('confirmarAnuladas') confirmarAnuladas?: string,
   ): Promise<void> {
     // Simulado de outro cursinho não sai (card 32).
     garantirQuePodeLer(
@@ -130,6 +137,7 @@ export class CadernoController {
       simuladoId,
       draft === 'true',
       logos,
+      confirmarAnuladas === 'true',
     );
 
     res.setHeader('Content-Type', contentType || 'application/zip');

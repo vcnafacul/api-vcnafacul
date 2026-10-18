@@ -140,6 +140,15 @@ export class LinhaDoRelatorioDtoOutput {
    */
   @ApiProperty({ required: false, type: Object })
   falha?: Record<string, unknown>;
+
+  /**
+   * tickets/042, card 13: a nota gravada foi calculada antes da última
+   * anulação do simulado — a tela marca a linha. Só com leitura concluída.
+   */
+  @ApiProperty({ required: false }) divergente?: boolean;
+
+  /** Sobre quantas questões a nota foi calculada (sem as anuladas). */
+  @ApiProperty({ required: false }) totalConsiderado?: number;
 }
 
 export class ResumoDoRelatorioDtoOutput {
@@ -221,6 +230,27 @@ export class ResumoDoRelatorioDtoOutput {
    */
   @ApiProperty({ required: true, nullable: true })
   ultimoCartaoEm: string | null;
+
+  /** tickets/042, card 13: o total menos as anuladas — a base da análise. */
+  @ApiProperty({ required: false }) totalConsiderado?: number;
+
+  @ApiProperty({
+    required: false,
+    description: '[{ numero, motivo, justificativa }] — as anuladas agora',
+  })
+  anuladas?: { numero: number; motivo: string; justificativa: string }[];
+
+  @ApiProperty({
+    required: false,
+    description:
+      '{ divergentes, desanuladas, jobAtivo } — "relatório desatualizado" e o recálculo em andamento',
+  })
+  anulacao?: {
+    divergentes: number;
+    /** Card 20: o que voltou a valer (desanulado). */
+    desanuladas?: number[];
+    jobAtivo: unknown | null;
+  };
 }
 
 export class RelatorioDtoOutput {

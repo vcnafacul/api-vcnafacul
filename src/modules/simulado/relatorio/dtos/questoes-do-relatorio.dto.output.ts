@@ -115,9 +115,22 @@ export class QuestaoDoRelatorioDtoOutput {
    * questão antiga e somar os números.
    */
   @ApiProperty() ehVersao: boolean;
+
+  /** tickets/042, card 13: anulada — na tabela, fora da análise. */
+  @ApiProperty({ required: false }) anulada?: boolean;
+  @ApiProperty({ required: false }) motivoAnulacao?: string;
+  @ApiProperty({ required: false }) justificativaAnulacao?: string;
 }
 
 export class QuestoesDoRelatorioDtoOutput {
   @ApiProperty({ type: [QuestaoDoRelatorioDtoOutput] })
   questoes: QuestaoDoRelatorioDtoOutput[];
+
+  /** tickets/042: por que a discriminação veio `null` — `divergente`. */
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    enum: ['divergente', 'composicao'],
+  })
+  semDiscriminacao?: 'divergente' | 'composicao' | null;
 }

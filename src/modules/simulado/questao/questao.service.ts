@@ -17,6 +17,7 @@ import {
 import { QuestaoDTOInput } from '../dtos/questao.dto.input';
 import { Status } from '../enum/status.enum';
 import { Ator, headerDoAtor, semAtor } from '../ator/ator';
+import { AdicionarEmProvaDTOInput } from '../dtos/anulacao.dto.input';
 import { CursinhoNomeService } from '../prova/cursinho/cursinho-nome.service';
 
 @Injectable()
@@ -280,9 +281,21 @@ export class QuestaoService {
     return await this.axios.get(`v1/questao/${id}/linhagem`);
   }
 
+  /** tickets/042, card 06: em quais provas a questão está anulada, e por quê. */
+  public async anulacoes(id: string) {
+    return await this.axios.get(
+      `v1/questao/${encodeURIComponent(id)}/anulacoes`,
+    );
+  }
+
+  /**
+   * ⚠️ tickets/042: `modo` e `anulacao` seguem no corpo. O 409
+   * `QUESTAO_ANULADA` do ms volta com o corpo inteiro (`HttpServiceAxios` +
+   * `ControllerExceptionsFilter`): é ele que abre o modal no client.
+   */
   public async adicionarEmProva(
     id: string,
-    body: { provaId: string; numero: number },
+    body: AdicionarEmProvaDTOInput,
     ator: Ator,
   ) {
     return await this.axios.post(

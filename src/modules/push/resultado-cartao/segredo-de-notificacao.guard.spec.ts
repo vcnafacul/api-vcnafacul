@@ -1,3 +1,4 @@
+import { UnauthorizedException } from '@nestjs/common';
 import { SegredoDeNotificacaoGuard } from './segredo-de-notificacao.guard';
 
 describe('SegredoDeNotificacaoGuard (028 · 02)', () => {
@@ -17,13 +18,15 @@ describe('SegredoDeNotificacaoGuard (028 · 02)', () => {
     ['tamanho diferente', { 'x-notificacao-secret': 'abc' }],
     ['ausente', {}],
     ['não-string', { 'x-notificacao-secret': ['abc123'] }],
-  ])('%s → recusa', (_n, headers) => {
-    expect(guard('abc123').canActivate(ctx(headers))).toBe(false);
+  ])('%s → recusa com 401 (tickets/042)', (_n, headers) => {
+    expect(() => guard('abc123').canActivate(ctx(headers))).toThrow(
+      UnauthorizedException,
+    );
   });
 
   it('⚠️ segredo vazio na api recusa tudo (nunca aberto por omissão)', () => {
-    expect(guard('').canActivate(ctx({ 'x-notificacao-secret': '' }))).toBe(
-      false,
-    );
+    expect(() =>
+      guard('').canActivate(ctx({ 'x-notificacao-secret': '' })),
+    ).toThrow(UnauthorizedException);
   });
 });

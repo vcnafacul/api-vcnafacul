@@ -35,4 +35,10 @@ export class QuestaoDTOInput extends GetAllDtoInput {
   @IsOptional()
   @IsIn(['true'])
   reported?: 'true';
+
+  /** tickets/042, card 06: repassado ao ms — `todas`, `esconder` ou `somente`. */
+  @ApiProperty({ required: false, enum: ['todas', 'esconder', 'somente'] })
+  @IsOptional()
+  @IsIn(['todas', 'esconder', 'somente'])
+  anulada?: 'todas' | 'esconder' | 'somente';
 }
