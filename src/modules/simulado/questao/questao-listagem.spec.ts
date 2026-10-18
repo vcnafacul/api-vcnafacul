@@ -16,6 +16,7 @@ describe('listagem do banco de questões (043/02)', () => {
       categoria: '64ea7f7023b75cddf33b67e7',
       revisoes: 'textClassification,reported',
       semImagem: 'true',
+      ano: '2023',
       lixo: 'x',
     });
     expect(dto).toMatchObject({
@@ -24,12 +25,14 @@ describe('listagem do banco de questões (043/02)', () => {
       revisoes: 'textClassification,reported',
       semImagem: 'true',
     });
+    expect(dto.ano).toBe('2023');
     expect(dto).not.toHaveProperty('lixo');
   });
 
   it('flag de revisão desconhecida e exame que não é ObjectId → 400', async () => {
     await expect(passar({ revisoes: 'reported,imageId' })).rejects.toThrow();
     await expect(passar({ exame: 'enem' })).rejects.toThrow();
+    await expect(passar({ ano: '23' })).rejects.toThrow();
   });
 
   it('a URL codifica os valores e não manda vazio', () => {
