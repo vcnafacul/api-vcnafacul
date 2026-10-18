@@ -10,6 +10,7 @@ import {
   UltimosProcessosQueryDto,
 } from './dtos/monitoramento-query.dto';
 import { MonitoramentoService } from './monitoramento.service';
+import { SimuladosDoCursinhoService } from './simulados-do-cursinho.service';
 
 /**
  * A tela de Monitoramento recortada por cursinho (tickets/044).
@@ -23,7 +24,10 @@ import { MonitoramentoService } from './monitoramento.service';
 @ApiBearerAuth()
 @Controller('monitoramento')
 export class MonitoramentoController {
-  constructor(private readonly service: MonitoramentoService) {}
+  constructor(
+    private readonly service: MonitoramentoService,
+    private readonly simulados: SimuladosDoCursinhoService,
+  ) {}
 
   @Get('resumo')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -73,5 +77,33 @@ export class MonitoramentoController {
     @Query() { cursinhoId, limite }: UltimosProcessosQueryDto,
   ) {
     return this.service.ultimosProcessos(limite, cursinhoId);
+  }
+
+  @Get('simulados/resumo')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  async simuladosResumo(@Query() { cursinhoId }: MonitoramentoQueryDto) {
+    await this.service.garantirCursinho(cursinhoId);
+    return this.simulados.resumo(cursinhoId);
+  }
+
+  @Get('simulados/por-periodo')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  async simuladosPorPeriodo(
+    @Query() { cursinhoId, groupBy }: MonitoramentoPeriodoQueryDto,
+  ) {
+    await this.service.garantirCursinho(cursinhoId);
+    return this.simulados.porPeriodo(cursinhoId, groupBy);
+  }
+
+  @Get('simulados/por-tipo')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  async simuladosPorTipo(
+    @Query() { cursinhoId, groupBy }: MonitoramentoPeriodoQueryDto,
+  ) {
+    await this.service.garantirCursinho(cursinhoId);
+    return this.simulados.porTipo(cursinhoId, groupBy);
   }
 }
