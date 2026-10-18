@@ -170,11 +170,17 @@ export class InscriptionCourseRepository extends LinkedListRepository<
     );
   }
 
-  async getTotalEntity() {
-    return this.repository
+  /** `cursinhoId` opcional (tickets/044): sem ele, a plataforma inteira. */
+  async getTotalEntity(cursinhoId?: string) {
+    const qb = this.repository
       .createQueryBuilder('entity')
-      .where('entity.deletedAt IS NULL')
-      .getCount();
+      .where('entity.deletedAt IS NULL');
+    if (cursinhoId) {
+      qb.andWhere('entity.partner_prep_course_id = :cursinhoId', {
+        cursinhoId,
+      });
+    }
+    return qb.getCount();
   }
 
   /** `cursinhoId` opcional: sem ele, a plataforma inteira (tickets/025). */

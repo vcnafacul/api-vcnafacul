@@ -30,6 +30,7 @@ import { IndicadoresModule } from './modules/prepCourse/indicadores/indicadores.
 import { InscriptionCourseModule } from './modules/prepCourse/InscriptionCourse/inscription-course.module';
 import { PartnerPrepCourseModule } from './modules/prepCourse/partnerPrepCourse/partner-prep-course.module';
 import { PaginaCursinhoModule } from './modules/prepCourse/paginaCursinho/pagina-cursinho.module';
+import { MonitoramentoModule } from './modules/monitoramento/monitoramento.module';
 import { EventoSimuladoModule } from './modules/prepCourse/eventoSimulado/evento-simulado.module';
 import { ResultadoCartaoModule } from './modules/push/resultado-cartao/resultado-cartao.module';
 import { ConviteColaboradorModule } from './modules/prepCourse/conviteColaborador/convite-colaborador.module';
@@ -104,6 +105,7 @@ const throttlerProvider: Provider = isTestEnv
     GeoModule,
     PartnerPrepCourseModule,
     PaginaCursinhoModule,
+    MonitoramentoModule,
     EventoSimuladoModule,
     ResultadoCartaoModule,
     ConviteColaboradorModule,

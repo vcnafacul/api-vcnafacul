@@ -551,23 +551,34 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
   // O innerJoin descarta inscricoes sem processo seletivo (contam como teste).
   // deletedAt nao e @DeleteDateColumn, entao processos removidos continuam no
   // join e valem pelo proprio isTest.
-  async getTotalNonTest() {
-    return this.repository
+  // `cursinhoId` opcional (tickets/044): sem ele, a plataforma inteira.
+  async getTotalNonTest(cursinhoId?: string) {
+    const qb = this.repository
       .createQueryBuilder('entity')
       .innerJoin('entity.inscriptionCourse', 'inscriptionCourse')
       .where('entity.deletedAt IS NULL')
-      .andWhere('inscriptionCourse.isTest = :isTest', { isTest: false })
-      .getCount();
+      .andWhere('inscriptionCourse.isTest = :isTest', { isTest: false });
+    if (cursinhoId) {
+      qb.andWhere('entity.partner_prep_course_id = :cursinhoId', {
+        cursinhoId,
+      });
+    }
+    return qb.getCount();
   }
 
-  async getTotalEnrolledNonTest() {
-    return this.repository
+  async getTotalEnrolledNonTest(cursinhoId?: string) {
+    const qb = this.repository
       .createQueryBuilder('entity')
       .innerJoin('entity.inscriptionCourse', 'inscriptionCourse')
       .where('entity.deletedAt IS NULL')
       .andWhere('entity.cod_enrolled IS NOT NULL')
-      .andWhere('inscriptionCourse.isTest = :isTest', { isTest: false })
-      .getCount();
+      .andWhere('inscriptionCourse.isTest = :isTest', { isTest: false });
+    if (cursinhoId) {
+      qb.andWhere('entity.partner_prep_course_id = :cursinhoId', {
+        cursinhoId,
+      });
+    }
+    return qb.getCount();
   }
 
   async entityByStatus(status: StatusApplication) {
