@@ -21,6 +21,7 @@ describe('MonitoramentoController — guard em cada rota (044)', () => {
   const permissaoEsperada: Record<string, Permissions> = {
     resumo: Permissions.criarQuestao,
     estudantes: Permissions.visualizarEstudantes,
+    simuladosResumo: Permissions.criarQuestao,
   };
 
   it('a classe não carrega guard nem permissão', () => {
