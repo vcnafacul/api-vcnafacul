@@ -33,7 +33,18 @@ interface LinhaDoMs {
   acertos?: number;
   aproveitamentoPorMateria?: MateriaDoEstudanteDtoOutput[];
   falha?: Record<string, unknown>;
+  /** tickets/042, card 13: nota gravada antes da última anulação. */
+  divergente?: boolean;
+  totalConsiderado?: number;
 }
+
+/**
+ * tickets/042, card 14: 1 pedido de recálculo por recorte a cada 30 s. O ms já
+ * deduplica (um job ativo por recorte); isto só evita martelar. Em memória: o
+ * pior caso com duas instâncias é um pedido a mais, que o ms absorve.
+ */
+export const INTERVALO_DO_PEDIDO_MS = 30_000;
+const ultimoPedido = new Map<string, number>();
 
 /**
  * Um estudante por usuário (tickets/036).
@@ -71,6 +82,15 @@ interface DoMs {
   /** O nome do simulado, ou o da prova — o título do relatório. */
   titulo: string | null;
   ultimoCartaoEm: string | null;
+  /** tickets/042, card 13 — repassados do ms. Ausentes no ms antigo. */
+  totalConsiderado?: number;
+  anuladas?: { numero: number; motivo: string; justificativa: string }[];
+  anulacao?: {
+    divergentes: number;
+    /** Card 20: o que voltou a valer (desanulado). */
+    desanuladas?: number[];
+    jobAtivo: unknown | null;
+  };
 }
 
 type DoMsDoSimulado = Omit<DoMs, 'titulo'> & { simuladoNome: string | null };
@@ -341,6 +361,13 @@ export class RelatorioService {
           `undefined`, e a tela mostra só o percentual em vez de "61/undefined".
         */
         totalDeQuestoes: doMs.totalDeQuestoes ?? 0,
+        /*
+          tickets/042: a base da análise e o aviso de relatório desatualizado.
+          Repassados; ms antigo → o total e nada anulado.
+        */
+        totalConsiderado: doMs.totalConsiderado ?? doMs.totalDeQuestoes ?? 0,
+        anuladas: doMs.anuladas ?? [],
+        anulacao: doMs.anulacao ?? { divergentes: 0, jobAtivo: null },
         // ⚠️ Repassados do ms — `null` quando o simulado foi apagado.
         simuladoNome: doMs.titulo ?? null,
         ultimoCartaoEm: doMs.ultimoCartaoEm ?? null,
@@ -579,6 +606,51 @@ export class RelatorioService {
       // docblock do campo no DTO.
       aproveitamentoPorMateria: doMs?.aproveitamentoPorMateria,
       falha: doMs?.falha,
+      // tickets/042, card 13.
+      divergente: doMs?.divergente,
+      totalConsiderado: doMs?.totalConsiderado,
     };
+  }
+
+  /**
+   * tickets/042, card 14: o estado do recálculo por anulação do relatório
+   * (divergentes, anulações, job). Mesmo escopo do relatório: o cursinho vem
+   * do JWT, nunca do corpo.
+   */
+  async consultarRecalculo(
+    colaboradorUserId: string,
+    alvo: 'relatorio-simulado' | 'relatorio-prova',
+    id: string,
+  ) {
+    const cursinhoId = await this.resolverEscopo(colaboradorUserId);
+    return this.http.consultarRecalculo(alvo, id, cursinhoId);
+  }
+
+  async pedirRecalculo(
+    colaboradorUserId: string,
+    alvo: 'relatorio-simulado' | 'relatorio-prova',
+    id: string,
+    agora = Date.now(),
+  ) {
+    const cursinhoId = await this.resolverEscopo(colaboradorUserId);
+    const chave = `${cursinhoId}:${alvo}:${id}`;
+    const antes = ultimoPedido.get(chave);
+    if (antes !== undefined && agora - antes < INTERVALO_DO_PEDIDO_MS) {
+      // Repetido no intervalo: devolve o estado, sem pedir de novo ao ms.
+      const estado = (await this.http.consultarRecalculo(
+        alvo,
+        id,
+        cursinhoId,
+      )) as {
+        jobAtivo?: unknown;
+      };
+      return {
+        criado: false,
+        job: estado?.jobAtivo ?? null,
+        mensagem: 'Pedido repetido: aguarde alguns segundos.',
+      };
+    }
+    ultimoPedido.set(chave, agora);
+    return this.http.pedirRecalculo(alvo, id, cursinhoId, colaboradorUserId);
   }
 }

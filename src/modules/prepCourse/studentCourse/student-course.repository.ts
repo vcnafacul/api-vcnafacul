@@ -795,6 +795,28 @@ export class StudentCourseRepository extends NodeRepository<StudentCourse> {
       .getMany();
   }
 
+  /**
+   * A turma ATUAL de cada usuário (tickets/042, card 14): para enfileirar os
+   * indicadores das turmas cuja nota mudou no recálculo por anulação. Só quem
+   * tem turma; qualquer status (quem saiu da turma continua contando nela).
+   */
+  async findTurmasDosUsuarios(
+    userIds: string[],
+  ): Promise<{ userId: string; classId: string }[]> {
+    if (userIds.length === 0) return [];
+    const linhas = await this.repository
+      .createQueryBuilder('entity')
+      // ⚠️ Pela relação, nunca pelo nome da coluna (`classId`, herdado da
+      // migração 1739972656373) — ver o docblock do topo deste arquivo.
+      .innerJoin('entity.class', 'class')
+      .select('entity.user_id', 'userId')
+      .addSelect('class.id', 'classId')
+      .where('entity.user_id IN (:...userIds)', { userIds })
+      .andWhere('entity.deletedAt IS NULL')
+      .getRawMany<{ userId: string; classId: string }>();
+    return linhas;
+  }
+
   async findEnrolledForRelatorio(
     prepCourseId: string,
     classId?: string,

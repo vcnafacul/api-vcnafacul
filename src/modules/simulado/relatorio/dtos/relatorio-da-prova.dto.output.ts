@@ -16,6 +16,9 @@ export class SimuladoDoRelatorioDtoOutput {
   @ApiProperty() cartoes: number;
 
   @ApiProperty() totalDeQuestoes: number;
+
+  /** tickets/042: sem as anuladas deste simulado. */
+  @ApiProperty({ required: false }) totalConsiderado?: number;
 }
 
 /**
@@ -52,4 +55,12 @@ export class QuestoesDaProvaDtoOutput {
 
   /** `false` ⇒ a discriminação vem `null` em toda questão. */
   @ApiProperty() mesmasQuestoes: boolean;
+
+  /** tickets/042: `divergente` ou `composicao` quando a discriminação veio `null`. */
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    enum: ['divergente', 'composicao'],
+  })
+  semDiscriminacao?: 'divergente' | 'composicao' | null;
 }

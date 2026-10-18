@@ -5,6 +5,7 @@ import { User } from 'src/modules/user/user.entity';
 import { AggregatePeriodDtoInput } from 'src/shared/dtos/aggregate-period.dto.input';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { GetHistoricoDTOInput } from '../dtos/get-historico.dto';
+import { HistoricoComAnuladaDTO } from '../dtos/historico-anulada.dto.output';
 import { HistoricoService } from './historico.service';
 
 @ApiTags('Historico')
@@ -76,6 +77,8 @@ export class HistoricoController {
   @ApiResponse({
     status: 200,
     description: 'obtém histórico detalhado por ID',
+    // tickets/042: os campos de anulação que o ms acrescenta.
+    type: HistoricoComAnuladaDTO,
   })
   @UseGuards(JwtAuthGuard)
   async getById(@Param('id') id: string, @Req() req: Request) {
