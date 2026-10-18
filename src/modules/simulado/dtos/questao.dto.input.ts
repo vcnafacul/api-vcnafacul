@@ -1,7 +1,23 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsIn, IsNumberString, IsOptional, IsString } from 'class-validator';
+import {
+  IsIn,
+  IsMongoId,
+  IsNumberString,
+  IsOptional,
+  IsString,
+  Matches,
+} from 'class-validator';
 import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 import { Status } from '../enum/status.enum';
+
+/** tickets/043: as flags de revisão que o ms filtra (mesma lista do ms). */
+const REVISOES = [
+  'provaClassification',
+  'subjectClassification',
+  'reported',
+  'textClassification',
+  'alternativeClassfication',
+].join('|');
 
 export class QuestaoDTOInput extends GetAllDtoInput {
   @ApiProperty()
@@ -41,4 +57,31 @@ export class QuestaoDTOInput extends GetAllDtoInput {
   @IsOptional()
   @IsIn(['todas', 'esconder', 'somente'])
   anulada?: 'todas' | 'esconder' | 'somente';
+
+  /**
+   * tickets/043, card 02: repassados ao ms. ⚠️ Sem estar aqui, o
+   * `ValidationPipe` com `whitelist` descarta o parâmetro calado.
+   */
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsMongoId()
+  exame?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsMongoId()
+  categoria?: string;
+
+  /** Flags de revisão separadas por vírgula, todas exigidas ("e"). */
+  @ApiProperty({ required: false, example: 'textClassification,reported' })
+  @IsOptional()
+  @Matches(new RegExp(`^(${REVISOES})(,(${REVISOES}))*$`), {
+    message: 'revisoes com flag desconhecida',
+  })
+  revisoes?: string;
+
+  @ApiProperty({ required: false, enum: ['true'] })
+  @IsOptional()
+  @IsIn(['true'])
+  semImagem?: 'true';
 }
