@@ -18,13 +18,35 @@ describe('MonitoramentoService (044/01)', () => {
     const cache = {
       wrap: jest.fn((...args: [string, () => unknown, number?]) => args[1]()),
     };
+    const usuarios = {
+      aggregateUsersByRole: jest
+        .fn()
+        .mockResolvedValue([{ name: 'Professor', total: 4 }]),
+    };
+    const consultas = {
+      ultimoAcesso: jest
+        .fn()
+        .mockResolvedValue([
+          { period: '2026-03', colaboradores: 2, estudantes: 9 },
+        ]),
+    };
     const service = new MonitoramentoService(
       cursinhos as never,
       inscricoes as never,
       estudantes as never,
       cache as never,
+      usuarios as never,
+      consultas as never,
     );
-    return { service, cursinhos, inscricoes, estudantes, cache };
+    return {
+      service,
+      cursinhos,
+      inscricoes,
+      estudantes,
+      cache,
+      usuarios,
+      consultas,
+    };
   };
 
   it('resumo: tudo filtrado pelo cursinho, em cache de 1 h', async () => {
@@ -62,5 +84,25 @@ describe('MonitoramentoService (044/01)', () => {
     );
     expect(cache.wrap).not.toHaveBeenCalled();
     expect(inscricoes.getTotalNonTest).not.toHaveBeenCalled();
+  });
+
+  it('usuários por perfil (02): filtro do cursinho e chave com o baseOnly', async () => {
+    const { service, usuarios, cache } = montar();
+    await service.usuariosPorPerfil('A', true);
+    expect(usuarios.aggregateUsersByRole).toHaveBeenCalledWith('A', true);
+    expect(cache.wrap.mock.calls[0][0]).toBe(
+      'monitoramento:usuarios-por-perfil:A:true',
+    );
+  });
+
+  it('último acesso (02): chave com o período', async () => {
+    const { service, consultas, cache } = montar();
+    await expect(service.ultimoAcesso('A', 'month' as never)).resolves.toEqual([
+      { period: '2026-03', colaboradores: 2, estudantes: 9 },
+    ]);
+    expect(consultas.ultimoAcesso).toHaveBeenCalledWith('A', 'month');
+    expect(cache.wrap.mock.calls[0][0]).toBe(
+      'monitoramento:ultimo-acesso:A:month',
+    );
   });
 });

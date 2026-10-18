@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsUUID } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsBoolean, IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { Period } from 'src/modules/user/enum/period';
 
 /** tickets/044 — o recorte é obrigatório nas rotas do monitoramento. */
@@ -14,4 +15,12 @@ export class MonitoramentoPeriodoQueryDto extends MonitoramentoQueryDto {
   @IsOptional()
   @IsEnum(Period)
   groupBy: Period = Period.month;
+}
+
+export class MonitoramentoPerfilQueryDto extends MonitoramentoQueryDto {
+  @ApiPropertyOptional({ description: 'Só os papéis base' })
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  baseOnly = false;
 }

@@ -5,6 +5,7 @@ import { StudentCourseModule } from '../prepCourse/studentCourse/student-course.
 import { UserModule } from '../user/user.module';
 import { EnvModule } from 'src/shared/modules/env/env.module';
 import { MonitoramentoController } from './monitoramento.controller';
+import { MonitoramentoRepository } from './monitoramento.repository';
 import { MonitoramentoService } from './monitoramento.service';
 
 /**
@@ -21,6 +22,6 @@ import { MonitoramentoService } from './monitoramento.service';
     InscriptionCourseModule,
   ],
   controllers: [MonitoramentoController],
-  providers: [MonitoramentoService],
+  providers: [MonitoramentoService, MonitoramentoRepository],
 })
 export class MonitoramentoModule {}

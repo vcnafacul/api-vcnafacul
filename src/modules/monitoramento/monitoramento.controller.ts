@@ -3,7 +3,11 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { Permissions } from '../role/permissions/permissions';
-import { MonitoramentoQueryDto } from './dtos/monitoramento-query.dto';
+import {
+  MonitoramentoPerfilQueryDto,
+  MonitoramentoPeriodoQueryDto,
+  MonitoramentoQueryDto,
+} from './dtos/monitoramento-query.dto';
 import { MonitoramentoService } from './monitoramento.service';
 
 /**
@@ -32,5 +36,23 @@ export class MonitoramentoController {
   @SetMetadata(PermissionsGuard.name, Permissions.visualizarEstudantes)
   async estudantes(@Query() { cursinhoId }: MonitoramentoQueryDto) {
     return this.service.estudantesDoCursinho(cursinhoId);
+  }
+
+  @Get('usuarios-por-perfil')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  async usuariosPorPerfil(
+    @Query() { cursinhoId, baseOnly }: MonitoramentoPerfilQueryDto,
+  ) {
+    return this.service.usuariosPorPerfil(cursinhoId, baseOnly);
+  }
+
+  @Get('ultimo-acesso')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.criarQuestao)
+  async ultimoAcesso(
+    @Query() { cursinhoId, groupBy }: MonitoramentoPeriodoQueryDto,
+  ) {
+    return this.service.ultimoAcesso(cursinhoId, groupBy);
   }
 }

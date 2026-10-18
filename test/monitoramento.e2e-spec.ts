@@ -55,10 +55,11 @@ describe('Monitoramento por cursinho (e2e)', () => {
     await apaga('collaborators', ids.colaboradores);
     await apaga('student_course', ids.alunos);
     await apaga('inscription_course', ids.inscricoes);
-    await apaga('partner_prep_course', ids.cursinhos);
-    await apaga('geolocations', ids.geos);
+    // users → roles (FK roleId) → cursinho (FK roles.partnerPrepCourseId)
     await apaga('users', ids.users);
     await apaga('roles', ids.roles);
+    await apaga('partner_prep_course', ids.cursinhos);
+    await apaga('geolocations', ids.geos);
     if (app) await app.close();
   });
 
@@ -169,6 +170,20 @@ describe('Monitoramento por cursinho (e2e)', () => {
     return uid;
   };
 
+  const colaborador = async (
+    cursinhoId: string,
+    userId: string,
+    desligado = false,
+  ) => {
+    const id = randomUUID();
+    await db.query(
+      `INSERT INTO collaborators (id, user_id, partner_prep_course_id, actived, deleted_at)
+       VALUES (?, ?, ?, 1, ?)`,
+      [id, userId, cursinhoId, desligado ? new Date() : null],
+    );
+    ids.colaboradores.push(id);
+  };
+
   const bearer = async (userId: string) =>
     `Bearer ${await jwt.signAsync({ user: { id: userId } })}`;
 
@@ -236,6 +251,81 @@ describe('Monitoramento por cursinho (e2e)', () => {
         adminComEstudantes,
       ).expect(200);
       expect(res.body).toEqual({ estudantesAtendidos: 0, estudantesAtivos: 0 });
+    });
+  });
+
+  describe('usuários do cursinho (card 02)', () => {
+    it('último acesso: colaboradores ativos × estudantes não teste, sem duplicar', async () => {
+      const A = await cursinho();
+      const B = await cursinho();
+      const p = await processo(A);
+      const teste = await processo(A, { isTest: true });
+
+      // março: 1 colaborador ativo (que também é estudante), 1 desligado, 1 de outro cursinho
+      const colabEstudante = await usuario([], {
+        lastAccess: '2026-03-05 10:00:00',
+      });
+      await colaborador(A, colabEstudante);
+      await inscricao(A, p, { userId: colabEstudante });
+      await colaborador(
+        A,
+        await usuario([], { lastAccess: '2026-03-06 10:00:00' }),
+        true,
+      );
+      await colaborador(
+        B,
+        await usuario([], { lastAccess: '2026-03-07 10:00:00' }),
+      );
+
+      // maio: estudante com duas inscrições no A conta 1; estudante só de teste não conta
+      const duasInscricoes = await usuario([], {
+        lastAccess: '2026-05-02 10:00:00',
+      });
+      await inscricao(A, p, { userId: duasInscricoes });
+      await inscricao(A, p, { userId: duasInscricoes });
+      await inscricao(A, teste, {
+        userId: await usuario([], { lastAccess: '2026-05-03 10:00:00' }),
+      });
+
+      const res = await get(
+        `/monitoramento/ultimo-acesso?cursinhoId=${A}&groupBy=month`,
+        admin,
+      ).expect(200);
+      expect(res.body).toEqual([
+        { period: '2026-03', colaboradores: 1, estudantes: 1 },
+        { period: '2026-04', colaboradores: 0, estudantes: 0 },
+        { period: '2026-05', colaboradores: 0, estudantes: 1 },
+      ]);
+    });
+
+    it('cursinho sem acesso nenhum → lista vazia', async () => {
+      const A = await cursinho();
+      const res = await get(
+        `/monitoramento/ultimo-acesso?cursinhoId=${A}`,
+        admin,
+      ).expect(200);
+      expect(res.body).toEqual([]);
+    });
+
+    it('por perfil: só os papéis do cursinho', async () => {
+      const A = await cursinho();
+      const roleA = randomUUID();
+      await db.query(
+        `INSERT INTO roles (id, name, partnerPrepCourseId) VALUES (?, ?, ?)`,
+        [roleA, `Professor ${roleA.slice(0, 8)}`, A],
+      );
+      ids.roles.push(roleA);
+      for (let i = 0; i < 2; i++) {
+        const u = await usuario();
+        await db.query(`UPDATE users SET roleId = ? WHERE id = ?`, [roleA, u]);
+      }
+      const res = await get(
+        `/monitoramento/usuarios-por-perfil?cursinhoId=${A}`,
+        admin,
+      ).expect(200);
+      expect(res.body).toEqual([
+        { name: `Professor ${roleA.slice(0, 8)}`, total: '2' },
+      ]);
     });
   });
 });
