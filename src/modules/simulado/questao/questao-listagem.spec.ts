@@ -15,14 +15,14 @@ describe('listagem do banco de questões (043/02)', () => {
       exame: '64cae409573a2b3d03e58d37',
       categoria: '64ea7f7023b75cddf33b67e7',
       revisoes: 'textClassification,reported',
-      comImagem: 'true',
+      semImagem: 'true',
       lixo: 'x',
     });
     expect(dto).toMatchObject({
       exame: '64cae409573a2b3d03e58d37',
       categoria: '64ea7f7023b75cddf33b67e7',
       revisoes: 'textClassification,reported',
-      comImagem: 'true',
+      semImagem: 'true',
     });
     expect(dto).not.toHaveProperty('lixo');
   });
@@ -39,11 +39,11 @@ describe('listagem do banco de questões (043/02)', () => {
         text: 'a&b #2',
         materia: '',
         revisoes: 'textClassification,reported',
-        comImagem: 'true',
+        semImagem: 'true',
         exame: undefined,
       }),
     ).toBe(
-      'v1/questao?page=1&text=a%26b%20%232&revisoes=textClassification%2Creported&comImagem=true',
+      'v1/questao?page=1&text=a%26b%20%232&revisoes=textClassification%2Creported&semImagem=true',
     );
   });
 });

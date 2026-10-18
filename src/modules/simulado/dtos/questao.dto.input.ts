@@ -83,5 +83,5 @@ export class QuestaoDTOInput extends GetAllDtoInput {
   @ApiProperty({ required: false, enum: ['true'] })
   @IsOptional()
   @IsIn(['true'])
-  comImagem?: 'true';
+  semImagem?: 'true';
 }
