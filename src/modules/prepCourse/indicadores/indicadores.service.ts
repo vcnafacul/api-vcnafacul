@@ -44,7 +44,17 @@ export class IndicadoresService {
   }
 
   async periodos(userId: string): Promise<PeriodosDoCursinhoDtoOutput> {
-    const cursinhoId = await this.cursinhoDe(userId);
+    return this.periodosDoCursinho(await this.cursinhoDe(userId));
+  }
+
+  /**
+   * As contas por cursinho. As rotas do colaborador resolvem o cursinho do
+   * logado e chamam estas; as do admin (tickets/045) passam o cursinho
+   * escolhido. Mesma conta, os dois lados nunca divergem.
+   */
+  async periodosDoCursinho(
+    cursinhoId: string,
+  ): Promise<PeriodosDoCursinhoDtoOutput> {
     const [periodos, turmasSemPeriodo] = await Promise.all([
       this.repository.periodosDoCursinho(cursinhoId),
       this.repository.turmasSemPeriodo(cursinhoId),
@@ -60,7 +70,13 @@ export class IndicadoresService {
     periodoId: string,
     userId: string,
   ): Promise<IndicadoresDtoOutput> {
-    const cursinhoId = await this.cursinhoDe(userId);
+    return this.obterDoCursinho(periodoId, await this.cursinhoDe(userId));
+  }
+
+  async obterDoCursinho(
+    periodoId: string,
+    cursinhoId: string,
+  ): Promise<IndicadoresDtoOutput> {
     const periodo = await this.repository.periodoDoCursinho(
       periodoId,
       cursinhoId,
@@ -84,14 +100,20 @@ export class IndicadoresService {
   async resumo(userId: string): Promise<ResumoDosIndicadoresDtoOutput> {
     const cursinho = await this.partnerRepository.findOneByUserId(userId);
     if (!cursinho) return { cursinho: false, periodos: [], metricas: null };
+    return this.resumoDoCursinho(cursinho.id);
+  }
+
+  async resumoDoCursinho(
+    cursinhoId: string,
+  ): Promise<ResumoDosIndicadoresDtoOutput> {
     const nenhum = { cursinho: true, periodos: [], metricas: null };
     const hoje = diaEmSaoPaulo();
-    const abertos = (await this.repository.periodosDoCursinho(cursinho.id))
+    const abertos = (await this.repository.periodosDoCursinho(cursinhoId))
       .map((p) => paraSaida(p, hoje))
       .filter((p) => p.emAndamento);
     if (abertos.length === 0) return nenhum;
     const indicadores = await Promise.all(
-      abertos.map((p) => this.obter(p.id, userId)),
+      abertos.map((p) => this.obterDoCursinho(p.id, cursinhoId)),
     );
     return {
       cursinho: true,
@@ -109,7 +131,22 @@ export class IndicadoresService {
     periodoId: string,
     userId: string,
   ): Promise<AlunoSumindoDtoOutput[]> {
-    const cursinhoId = await this.cursinhoDe(userId);
+    const [cursinhoId, verTelefone] = await Promise.all([
+      this.cursinhoDe(userId),
+      this.repository.podeGerenciarEstudantes(userId),
+    ]);
+    return this.sumindoDoCursinho(periodoId, cursinhoId, verTelefone);
+  }
+
+  /**
+   * `verTelefone`: na rota do colaborador, quem pode gerenciar estudantes (R7);
+   * na do admin, nunca (tickets/045, D1).
+   */
+  async sumindoDoCursinho(
+    periodoId: string,
+    cursinhoId: string,
+    verTelefone: boolean,
+  ): Promise<AlunoSumindoDtoOutput[]> {
     const periodo = await this.repository.periodoDoCursinho(
       periodoId,
       cursinhoId,
@@ -130,10 +167,10 @@ export class IndicadoresService {
     );
     if (sumindo.length === 0) return [];
 
-    const [dados, podeVerTelefone] = await Promise.all([
-      this.repository.contatosDosAlunos(sumindo.map((s) => s.alunoId)),
-      this.repository.podeGerenciarEstudantes(userId),
-    ]);
+    const dados = await this.repository.contatosDosAlunos(
+      sumindo.map((s) => s.alunoId),
+    );
+    const podeVerTelefone = verTelefone;
     const nomeDaTurma = new Map(turmas.map((t) => [t.id, t.nome]));
     return sumindo
       .map((s) => {

@@ -35,6 +35,7 @@ import { EmailService } from 'src/shared/services/email/email.service';
 import { DiscordWebhook } from 'src/shared/services/webhooks/discord';
 import * as request from 'supertest';
 import { DataSource } from 'typeorm';
+import { AuditLog } from 'src/modules/audit-log/audit-log.entity';
 import { CreateGeoDTOInputFaker } from './faker/create-geo.dto.input.faker';
 import { CreateInscriptionCourseDTOInputFaker } from './faker/create-inscription-course.dto.faker';
 import { createStudentCourseDTOInputFaker } from './faker/create-student-course.dto.input.faker';
@@ -989,6 +990,154 @@ describe('Indicadores do cursinho (e2e)', () => {
         periodos: [],
         metricas: null,
       });
+    });
+  });
+
+  describe('visão do admin (tickets/045)', () => {
+    afterEach(() => {
+      for (const metodo of [
+        RelatorioHttpService.prototype.buscarSimulados,
+        SimuladoHttpService.prototype.listUserGroupAggregates,
+      ] as jest.Mock[])
+        metodo.mockRestore?.();
+    });
+
+    /** Admin da plataforma, de outro cursinho (o dele não importa aqui). */
+    const novoAdmin = async (extra: Partial<CreateRoleDtoInput> = {}) => {
+      const userDto = CreateUserDtoInputFaker();
+      await userService.create(userDto);
+      const admin = await userRepository.findOneBy({ email: userDto.email });
+      admin.role = await papel({ alterarPermissao: true, ...extra });
+      await userRepository.update(admin);
+      return {
+        id: admin.id,
+        bearer: `Bearer ${await jwt.signAsync({ user: { id: admin.id } }, { expiresIn: '1h' })}`,
+      };
+    };
+
+    const rota = (cursinhoId: string, resto = '') =>
+      `/indicadores/cursinho/${cursinhoId}${resto}`;
+
+    it('mesmos números que o colaborador do cursinho vê, nas cinco rotas', async () => {
+      const c = await novoCursinho({
+        visualizarEstudantes: true,
+        gerenciarTurmas: true,
+      });
+      const p = await novoPeriodo(c, dia(-30), dia(30));
+      const t = await novaTurma(c, p.id, 'Manhã');
+      await matricular(c, t);
+      await matricular(c, t);
+      const admin = await novoAdmin();
+      const id = c.cursinho.id;
+
+      const comoCursinho = await indicadores(c, p.id).expect(200);
+      const comoAdmin = await http()
+        .get(rota(id, `?periodoId=${p.id}`))
+        .set('Authorization', admin.bearer)
+        .expect(200);
+      expect(comoAdmin.body).toEqual(comoCursinho.body);
+
+      for (const [doCursinho, doAdmin] of [
+        ['/indicadores/periodos', rota(id, '/periodos')],
+        ['/indicadores/resumo', rota(id, '/resumo')],
+        [
+          `/indicadores/sumindo?periodoId=${p.id}`,
+          rota(id, `/sumindo?periodoId=${p.id}`),
+        ],
+      ]) {
+        const a = await http()
+          .get(doCursinho)
+          .set('Authorization', c.bearer)
+          .expect(200);
+        const b = await http()
+          .get(doAdmin)
+          .set('Authorization', admin.bearer)
+          .expect(200);
+        expect(b.body).toEqual(a.body);
+      }
+
+      jest
+        .spyOn(RelatorioHttpService.prototype, 'buscarSimulados')
+        .mockImplementation(async () => ({ simulados: [] }));
+      jest
+        .spyOn(SimuladoHttpService.prototype, 'listUserGroupAggregates')
+        .mockImplementation(async () => []);
+      const dA = await http()
+        .get(`/indicadores/desempenho?periodoId=${p.id}`)
+        .set('Authorization', c.bearer)
+        .expect(200);
+      const dB = await http()
+        .get(rota(id, `/desempenho?periodoId=${p.id}`))
+        .set('Authorization', admin.bearer)
+        .expect(200);
+      expect(dB.body).toEqual(dA.body);
+    });
+
+    it('⚠️ 401 sem token, 403 sem alterarPermissao (mesmo com visualizarEstudantes), 404 cursinho inexistente, 400 id inválido', async () => {
+      const c = await novoCursinho();
+      const id = c.cursinho.id;
+      await http().get(rota(id, '/periodos')).expect(403);
+      // colaborador do próprio cursinho também não usa a rota do admin
+      await http()
+        .get(rota(id, '/periodos'))
+        .set('Authorization', c.bearer)
+        .expect(403);
+      const admin = await novoAdmin();
+      await http()
+        .get(rota('8f8f8f8f-8f8f-4f8f-8f8f-8f8f8f8f8f8f', '/periodos'))
+        .set('Authorization', admin.bearer)
+        .expect(404);
+      await http()
+        .get(rota('abc', '/periodos'))
+        .set('Authorization', admin.bearer)
+        .expect(400);
+    });
+
+    it('⚠️ período de outro cursinho na rota do cursinho A → 404', async () => {
+      const a = await novoCursinho();
+      const b = await novoCursinho();
+      const pB = await novoPeriodo(b, dia(-30), dia(30));
+      const admin = await novoAdmin();
+      await http()
+        .get(rota(a.cursinho.id, `?periodoId=${pB.id}`))
+        .set('Authorization', admin.bearer)
+        .expect(404);
+    });
+
+    it('sumindo do admin: nomes sem telefone, mesmo com gerenciarEstudantes', async () => {
+      const c = await novoCursinho({
+        visualizarEstudantes: true,
+        gerenciarTurmas: true,
+      });
+      const p = await novoPeriodo(c, dia(-30), dia(30));
+      const t = await novaTurma(c, p.id, 'Noite');
+      const sumiu = await matricular(c, t);
+      const presente = await matricular(c, t);
+      await chamada(c, t, dia(-4), [presente]);
+      await chamada(c, t, dia(-3), [presente]);
+      await chamada(c, t, dia(-1), [presente]);
+      const admin = await novoAdmin({ gerenciarEstudantes: true });
+      const { body } = await http()
+        .get(rota(c.cursinho.id, `/sumindo?periodoId=${p.id}`))
+        .set('Authorization', admin.bearer)
+        .expect(200);
+      expect(body.map((a: { alunoId: string }) => a.alunoId)).toEqual([sumiu]);
+      expect(body[0].nome).toBeTruthy();
+      expect(body[0]).not.toHaveProperty('telefone');
+    });
+
+    it('abrir os períodos do cursinho grava a auditoria', async () => {
+      const c = await novoCursinho();
+      const admin = await novoAdmin();
+      await http()
+        .get(rota(c.cursinho.id, '/periodos'))
+        .set('Authorization', admin.bearer)
+        .expect(200);
+      const linhas = await db.getRepository(AuditLog).find({
+        where: { entityType: 'IndicadoresCursinho', entityId: c.cursinho.id },
+      });
+      expect(linhas).toHaveLength(1);
+      expect(linhas[0].updatedBy).toBe(admin.id);
     });
   });
 });

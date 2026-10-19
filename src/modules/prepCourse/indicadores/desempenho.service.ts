@@ -56,6 +56,15 @@ export class DesempenhoService {
   async obter(periodoId: string, userId: string): Promise<DesempenhoDtoOutput> {
     const cursinho = await this.partnerRepository.findOneByUserId(userId);
     if (!cursinho) throw new NotFoundException('Cursinho não encontrado');
+    return this.obterDoCursinho(periodoId, cursinho.id);
+  }
+
+  /** A mesma conta, para o cursinho escolhido pelo admin (tickets/045). */
+  async obterDoCursinho(
+    periodoId: string,
+    cursinhoId: string,
+  ): Promise<DesempenhoDtoOutput> {
+    const cursinho = { id: cursinhoId };
     const periodo = await this.repository.periodoDoCursinho(
       periodoId,
       cursinho.id,

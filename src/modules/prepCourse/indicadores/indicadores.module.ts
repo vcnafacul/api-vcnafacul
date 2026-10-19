@@ -9,13 +9,21 @@ import { PartnerPrepCourseModule } from '../partnerPrepCourse/partner-prep-cours
 import { CalculoDosIndicadores } from './calculo-dos-indicadores';
 import { DesempenhoService } from './desempenho.service';
 import { IndicadoresController } from './indicadores.controller';
+import { IndicadoresDoAdminController } from './indicadores-do-admin.controller';
+import { AuditLogModule } from 'src/modules/audit-log/audit-log.module';
 import { IndicadoresRepository } from './indicadores.repository';
 import { IndicadoresService } from './indicadores.service';
 import { IndicadoresTask } from './indicadores.task';
 
 @Module({
-  imports: [PartnerPrepCourseModule, UserModule, EnvModule, HttpModule],
-  controllers: [IndicadoresController],
+  imports: [
+    PartnerPrepCourseModule,
+    UserModule,
+    EnvModule,
+    HttpModule,
+    AuditLogModule,
+  ],
+  controllers: [IndicadoresController, IndicadoresDoAdminController],
   providers: [
     IndicadoresRepository,
     CalculoDosIndicadores,
