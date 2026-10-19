@@ -8,6 +8,7 @@ import {
   Put,
   Query,
   Req,
+  Res,
   SetMetadata,
   UploadedFile,
   UseGuards,
@@ -15,7 +16,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags } from '@nestjs/swagger';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { Permissions } from 'src/modules/role/permissions/permissions';
 import { User } from 'src/modules/user/user.entity';
 import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
@@ -25,6 +26,9 @@ import { CollaboratorService } from './collaborator.service';
 import { ChangeActiveDtoInput } from './dtos/change-active.dto.input';
 import { ExcluirColaboradorDtoInput } from './dtos/excluir-colaborador.dto.input';
 import { UpdateCollaboratorFrentesDtoInput } from './dtos/update-collaborator-frentes.dto.input';
+
+/** A foto pública do colaborador: a URL é imutável (ver `getPhoto`). */
+export const CACHE_DA_FOTO = 'public, max-age=31536000, immutable';
 
 @ApiTags('Collaborator')
 @Controller('collaborator')
@@ -153,10 +157,22 @@ export class CollaboratorController {
   }
 
   @Get(':imageKey/photo')
-  async getPhoto(@Param('imageKey') imageKey: string) {
+  async getPhoto(
+    @Param('imageKey') imageKey: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     // Keys com prefix (collaborators/<uuid>.<ext>) chegam URL-encoded do
     // client. Decode pra recompor a chave original do R2.
-    return await this.service.getPhoto(decodeURIComponent(imageKey));
+    const foto = await this.service.getPhoto(decodeURIComponent(imageKey));
+    /*
+      Cache no navegador (2026-10-19), além do Redis de 30 dias no servidor.
+      ⚠️ Seguro guardar "para sempre": toda foto nova nasce com uma chave nova
+      (`collaborators/<uuid>.<ext>`), e trocar ou remover apaga a antiga do R2
+      e do Redis — a mesma URL nunca muda de conteúdo. Só no sucesso: um erro
+      (chave que não existe) nunca fica guardado no navegador.
+    */
+    res.setHeader('Cache-Control', CACHE_DA_FOTO);
+    return foto;
   }
 
   @Put('me/frentes')

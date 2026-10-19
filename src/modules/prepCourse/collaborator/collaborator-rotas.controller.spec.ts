@@ -3,7 +3,11 @@ import { Test } from '@nestjs/testing';
 import * as request from 'supertest';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
-import { CollaboratorController } from './collaborator.controller';
+import { HttpException } from '@nestjs/common';
+import {
+  CACHE_DA_FOTO,
+  CollaboratorController,
+} from './collaborator.controller';
 import { CollaboratorService } from './collaborator.service';
 
 /**
@@ -58,5 +62,34 @@ describe('CollaboratorController — rotas de ex-membro', () => {
       .send({ roleId: 'r-rev' });
     expect(res.status).toBe(200);
     expect(service.excluir).toHaveBeenCalledWith('c1', 'gestor', 'r-rev');
+  });
+
+  describe('GET /collaborator/:imageKey/photo — cache no navegador (2026-10-19)', () => {
+    it('sucesso: devolve a foto com Cache-Control imutável e decodifica a chave', async () => {
+      service.getPhoto.mockResolvedValueOnce({
+        buffer: 'AAA',
+        contentType: 'image/png',
+      });
+      const res = await request(app.getHttpServer()).get(
+        `/collaborator/${encodeURIComponent('collaborators/abc.png')}/photo`,
+      );
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ buffer: 'AAA', contentType: 'image/png' });
+      expect(res.headers['cache-control']).toBe(CACHE_DA_FOTO);
+      expect(service.getPhoto).toHaveBeenLastCalledWith(
+        'collaborators/abc.png',
+      );
+    });
+
+    it('⚠️ erro (chave que não existe): sem Cache-Control, o navegador não guarda o erro', async () => {
+      service.getPhoto.mockRejectedValueOnce(
+        new HttpException('não achou', 404),
+      );
+      const res = await request(app.getHttpServer()).get(
+        '/collaborator/nao-existe/photo',
+      );
+      expect(res.status).toBe(404);
+      expect(res.headers['cache-control']).not.toBe(CACHE_DA_FOTO);
+    });
   });
 });
