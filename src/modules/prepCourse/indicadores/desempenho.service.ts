@@ -64,55 +64,100 @@ export class DesempenhoService {
     periodoId: string,
     cursinhoId: string,
   ): Promise<DesempenhoDtoOutput> {
-    const cursinho = { id: cursinhoId };
     const periodo = await this.repository.periodoDoCursinho(
       periodoId,
-      cursinho.id,
+      cursinhoId,
     );
     if (!periodo) throw new NotFoundException('Período letivo não encontrado');
 
     return this.cache.wrap(
       `indicadores:desempenho:${periodoId}`,
-      async () => {
-        const turmas = await this.repository.turmasDoPeriodo(periodo.id);
-        const usuarios = await this.repository.usuariosDasTurmas(
-          turmas.map((t) => t.id),
-        );
-        const inicio = diaDoPeriodo(periodo.startDate).slice(0, 7);
-        const fim = [diaDoPeriodo(periodo.endDate), diaEmSaoPaulo()]
-          .sort()[0]
-          .slice(0, 7);
+      async () =>
+        this.montar(
+          cursinhoId,
+          await this.repository.turmasDoPeriodo(periodo.id),
+          diaDoPeriodo(periodo.startDate),
+          diaDoPeriodo(periodo.endDate),
+        ),
+      HORA,
+    );
+  }
 
-        const [aplicacoes, porTurma, porMes] = await Promise.all([
-          this.aplicacoes(
-            cursinho.id,
-            usuarios.map((u) => u.userId),
-          ),
-          Promise.all(
-            turmas.map(async (t) => {
-              const daTurma = usuarios
-                .filter((u) => u.turmaId === t.id)
-                .map((u) => u.userId);
-              const lista = await this.aplicacoes(cursinho.id, daTurma);
-              const ultima = [...lista].reverse().find((a) => a.media !== null);
-              return {
-                turmaId: t.id,
-                ultimaAplicacao: ultima
-                  ? { nome: ultima.nome, media: ultima.media }
-                  : null,
-              };
-            }),
-          ),
-          this.porMes(
-            turmas.map((t) => t.id),
-            inicio,
-            fim,
-          ),
-        ]);
-        return { aplicacoes, porTurma, porMes };
+  async obterTodos(userId: string): Promise<DesempenhoDtoOutput> {
+    const cursinho = await this.partnerRepository.findOneByUserId(userId);
+    if (!cursinho) throw new NotFoundException('Cursinho não encontrado');
+    return this.obterTodosDoCursinho(cursinho.id);
+  }
+
+  /**
+   * tickets/046 — todos os períodos: os alunos de todas as turmas, do início
+   * do primeiro período ao fim do último (até hoje). Mesma conta.
+   */
+  async obterTodosDoCursinho(cursinhoId: string): Promise<DesempenhoDtoOutput> {
+    return this.cache.wrap(
+      `indicadores:desempenho:todos:${cursinhoId}`,
+      async () => {
+        const periodos = await this.repository.periodosDoCursinho(cursinhoId);
+        if (periodos.length === 0)
+          return { aplicacoes: [], porTurma: [], porMes: [] };
+        const turmas = (
+          await Promise.all(
+            periodos.map((p) => this.repository.turmasDoPeriodo(p.id)),
+          )
+        ).flat();
+        const inicios = periodos.map((p) => diaDoPeriodo(p.startDate)).sort();
+        const fins = periodos.map((p) => diaDoPeriodo(p.endDate)).sort();
+        return this.montar(
+          cursinhoId,
+          turmas,
+          inicios[0],
+          fins[fins.length - 1],
+        );
       },
       HORA,
     );
+  }
+
+  /** A conta do desempenho para as turmas dadas, de `inicio` a `fim` (dias). */
+  private async montar(
+    cursinhoId: string,
+    turmas: { id: string }[],
+    inicioDia: string,
+    fimDia: string,
+  ): Promise<DesempenhoDtoOutput> {
+    const usuarios = await this.repository.usuariosDasTurmas(
+      turmas.map((t) => t.id),
+    );
+    const inicio = inicioDia.slice(0, 7);
+    const fim = [fimDia, diaEmSaoPaulo()].sort()[0].slice(0, 7);
+
+    const [aplicacoes, porTurma, porMes] = await Promise.all([
+      this.aplicacoes(
+        cursinhoId,
+        usuarios.map((u) => u.userId),
+      ),
+      Promise.all(
+        turmas.map(async (t) => {
+          const daTurma = usuarios
+            .filter((u) => u.turmaId === t.id)
+            .map((u) => u.userId);
+          const lista = await this.aplicacoes(cursinhoId, daTurma);
+          const ultima = [...lista].reverse().find((a) => a.media !== null);
+          return {
+            turmaId: t.id,
+            ultimaAplicacao: ultima
+              ? { nome: ultima.nome, media: ultima.media }
+              : null,
+          };
+        }),
+      ),
+      this.porMes(
+        turmas.map((t) => t.id),
+        inicio,
+        fim,
+      ),
+    ]);
+    return { aplicacoes, porTurma, porMes };
   }
 
   /** Aplicações por cartão dos alunos dados, da mais antiga à mais nova. */

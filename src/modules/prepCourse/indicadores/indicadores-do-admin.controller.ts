@@ -20,6 +20,7 @@ import { DesempenhoService } from './desempenho.service';
 import { DesempenhoDtoOutput } from './dtos/desempenho.dto.output';
 import {
   AlunoSumindoDtoOutput,
+  IndicadoresDeTodosDtoOutput,
   IndicadoresDtoOutput,
   PeriodosDoCursinhoDtoOutput,
   ResumoDosIndicadoresDtoOutput,
@@ -93,10 +94,13 @@ export class IndicadoresDoAdminController {
   @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
   async obterDesempenho(
     @Param('cursinhoId', ParseUUIDPipe) cursinhoId: string,
-    @Query('periodoId', ParseUUIDPipe) periodoId: string,
+    @Query('periodoId', new ParseUUIDPipe({ optional: true }))
+    periodoId?: string,
   ): Promise<DesempenhoDtoOutput> {
     await this.garantirCursinho(cursinhoId);
-    return this.desempenho.obterDoCursinho(periodoId, cursinhoId);
+    return periodoId
+      ? this.desempenho.obterDoCursinho(periodoId, cursinhoId)
+      : this.desempenho.obterTodosDoCursinho(cursinhoId);
   }
 
   /** D1: o admin vê os nomes, nunca o telefone. */
@@ -105,10 +109,13 @@ export class IndicadoresDoAdminController {
   @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
   async sumindo(
     @Param('cursinhoId', ParseUUIDPipe) cursinhoId: string,
-    @Query('periodoId', ParseUUIDPipe) periodoId: string,
+    @Query('periodoId', new ParseUUIDPipe({ optional: true }))
+    periodoId?: string,
   ): Promise<AlunoSumindoDtoOutput[]> {
     await this.garantirCursinho(cursinhoId);
-    return this.service.sumindoDoCursinho(periodoId, cursinhoId, false);
+    return periodoId
+      ? this.service.sumindoDoCursinho(periodoId, cursinhoId, false)
+      : this.service.sumindoDeTodosDoCursinho(cursinhoId, false);
   }
 
   @Get()
@@ -116,9 +123,12 @@ export class IndicadoresDoAdminController {
   @SetMetadata(PermissionsGuard.name, Permissions.alterarPermissao)
   async obter(
     @Param('cursinhoId', ParseUUIDPipe) cursinhoId: string,
-    @Query('periodoId', ParseUUIDPipe) periodoId: string,
-  ): Promise<IndicadoresDtoOutput> {
+    @Query('periodoId', new ParseUUIDPipe({ optional: true }))
+    periodoId?: string,
+  ): Promise<IndicadoresDtoOutput | IndicadoresDeTodosDtoOutput> {
     await this.garantirCursinho(cursinhoId);
-    return this.service.obterDoCursinho(periodoId, cursinhoId);
+    return periodoId
+      ? this.service.obterDoCursinho(periodoId, cursinhoId)
+      : this.service.obterTodosDoCursinho(cursinhoId);
   }
 }

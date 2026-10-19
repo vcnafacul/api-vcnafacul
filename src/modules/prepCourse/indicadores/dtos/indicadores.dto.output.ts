@@ -27,6 +27,36 @@ export interface IndicadoresDtoOutput {
   serie: { dia: string; metricas: Metricas }[];
 }
 
+/**
+ * tickets/046 — todos os períodos do cursinho, cada um no seu dia de
+ * referência e somados (D1). Mesmas contas da visão de um período.
+ */
+export interface IndicadoresDeTodosDtoOutput {
+  todos: true;
+  periodos: PeriodoDoIndicadorDtoOutput[];
+  atualizadoEm: string;
+  /** Soma de todos os períodos (matrículas contam em cada período, D1). */
+  cursinho: Metricas;
+  /** Soma só dos períodos em andamento (ativos, sumindo: D2); `null` se nenhum. */
+  emAndamento: Metricas | null;
+  turmas: {
+    id: string;
+    nome: string;
+    periodoId: string;
+    periodoNome: string;
+    metricas: Metricas;
+  }[];
+  /** Um item por período, do mais antigo ao mais novo (D3). */
+  comparativo: {
+    periodoId: string;
+    nome: string;
+    inicio: string;
+    fim: string;
+    emAndamento: boolean;
+    metricas: Metricas;
+  }[];
+}
+
 export interface AlunoSumindoDtoOutput {
   alunoId: string;
   nome: string;
@@ -34,6 +64,8 @@ export interface AlunoSumindoDtoOutput {
   /** `YYYY-MM-DD`; `null` se nunca veio. */
   ultimaPresenca: string | null;
   faltasSeguidas: number;
+  /** Na visão de todos os períodos (046): de qual período é o aluno. */
+  periodo?: string;
   /** Só para quem tem `gerenciarEstudantes` (R7). */
   telefone?: string | null;
 }

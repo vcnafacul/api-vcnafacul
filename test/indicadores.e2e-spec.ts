@@ -1140,4 +1140,152 @@ describe('Indicadores do cursinho (e2e)', () => {
       expect(linhas[0].updatedBy).toBe(admin.id);
     });
   });
+
+  describe('todos os períodos (tickets/046)', () => {
+    afterEach(() => {
+      for (const metodo of [
+        RelatorioHttpService.prototype.buscarSimulados,
+        SimuladoHttpService.prototype.listUserGroupAggregates,
+      ] as jest.Mock[])
+        metodo.mockRestore?.();
+    });
+
+    /** Cursinho com 2025 (encerrado, 2 alunos) e 2026 (em andamento, 3 alunos). */
+    const doisPeriodos = async () => {
+      const c = await novoCursinho({
+        visualizarEstudantes: true,
+        gerenciarTurmas: true,
+      });
+      // aberto para matricular; depois vai para o passado (como no card 03)
+      const antigo = await novoPeriodo(c, dia(-60), dia(30), 'Extensivo 2025');
+      const atual = await novoPeriodo(c, dia(-30), dia(30), 'Extensivo 2026');
+      const tAntiga = await novaTurma(c, antigo.id, 'Turma 2025');
+      const tAtual = await novaTurma(c, atual.id, 'Turma 2026');
+      for (let i = 0; i < 2; i++) {
+        const aluno = await matricular(c, tAntiga);
+        // a matrícula foi no período antigo
+        await recuarLogs(aluno, 350);
+      }
+      await db.query(
+        'UPDATE course_periods SET startDate = ?, endDate = ? WHERE id = ?',
+        [
+          new Date(`${dia(-400)}T12:00:00Z`),
+          new Date(`${dia(-300)}T12:00:00Z`),
+          antigo.id,
+        ],
+      );
+      for (let i = 0; i < 3; i++) await matricular(c, tAtual);
+      return { c, antigo, atual };
+    };
+
+    it('sem periodoId: soma dos períodos, em andamento à parte, comparativo e turmas com o período', async () => {
+      const { c, antigo, atual } = await doisPeriodos();
+      const [deAntigo, deAtual, todos] = await Promise.all([
+        indicadores(c, antigo.id).expect(200),
+        indicadores(c, atual.id).expect(200),
+        http().get('/indicadores').set('Authorization', c.bearer).expect(200),
+      ]);
+      expect(deAntigo.body.cursinho.alunos).toBe(2);
+      expect(deAtual.body.cursinho.alunos).toBe(3);
+
+      expect(todos.body.todos).toBe(true);
+      expect(todos.body.cursinho.alunos).toBe(5);
+      expect(todos.body.emAndamento).toEqual(deAtual.body.cursinho);
+      expect(
+        todos.body.comparativo.map((p: { nome: string }) => p.nome),
+      ).toEqual(['Extensivo 2025', 'Extensivo 2026']);
+      expect(todos.body.comparativo[0].metricas).toEqual(
+        deAntigo.body.cursinho,
+      );
+      expect(
+        todos.body.turmas.map(
+          (t: { nome: string; periodoNome: string }) =>
+            `${t.nome}/${t.periodoNome}`,
+        ),
+      ).toEqual(['Turma 2025/Extensivo 2025', 'Turma 2026/Extensivo 2026']);
+    });
+
+    it('nenhum período em andamento: emAndamento null e sumindo vazio', async () => {
+      const c = await novoCursinho();
+      await novoPeriodo(c, dia(-400), dia(-300), 'Antigo');
+      const { body } = await http()
+        .get('/indicadores')
+        .set('Authorization', c.bearer)
+        .expect(200);
+      expect(body.emAndamento).toBeNull();
+      const sumindo = await http()
+        .get('/indicadores/sumindo')
+        .set('Authorization', c.bearer)
+        .expect(200);
+      expect(sumindo.body).toEqual([]);
+    });
+
+    it('sumindo sem periodoId = os períodos em andamento, com o nome do período', async () => {
+      const c = await novoCursinho({
+        visualizarEstudantes: true,
+        gerenciarTurmas: true,
+      });
+      const p = await novoPeriodo(c, dia(-30), dia(30), 'Semi 2026');
+      const t = await novaTurma(c, p.id, 'Noite');
+      const sumiu = await matricular(c, t);
+      const presente = await matricular(c, t);
+      await chamada(c, t, dia(-4), [presente]);
+      await chamada(c, t, dia(-3), [presente]);
+      await chamada(c, t, dia(-1), [presente]);
+      const { body } = await http()
+        .get('/indicadores/sumindo')
+        .set('Authorization', c.bearer)
+        .expect(200);
+      expect(body).toHaveLength(1);
+      expect(body[0]).toMatchObject({ alunoId: sumiu, periodo: 'Semi 2026' });
+    });
+
+    it('desempenho sem periodoId: alunos de todos os períodos, meses do primeiro ao último', async () => {
+      const { c } = await doisPeriodos();
+      const busca = jest
+        .spyOn(RelatorioHttpService.prototype, 'buscarSimulados')
+        .mockImplementation(async () => ({ simulados: [] }));
+      const meses = jest
+        .spyOn(SimuladoHttpService.prototype, 'listUserGroupAggregates')
+        .mockImplementation(async () => []);
+      const { body } = await http()
+        .get('/indicadores/desempenho')
+        .set('Authorization', c.bearer)
+        .expect(200);
+      expect(body.porTurma).toHaveLength(2);
+      // a 1ª chamada é a do cursinho inteiro: os 5 alunos dos dois períodos
+      expect((busca.mock.calls[0][1] as string[]).length).toBe(5);
+      expect(meses).toHaveBeenCalled();
+    });
+
+    it('rotas do admin sem periodoId: o mesmo corpo do colaborador', async () => {
+      const { c } = await doisPeriodos();
+      const userDto = CreateUserDtoInputFaker();
+      await userService.create(userDto);
+      const admin = await userRepository.findOneBy({ email: userDto.email });
+      admin.role = await papel({ alterarPermissao: true });
+      await userRepository.update(admin);
+      const bearer = `Bearer ${await jwt.signAsync({ user: { id: admin.id } }, { expiresIn: '1h' })}`;
+      const [comoCursinho, comoAdmin] = await Promise.all([
+        http().get('/indicadores').set('Authorization', c.bearer).expect(200),
+        http()
+          .get(`/indicadores/cursinho/${c.cursinho.id}`)
+          .set('Authorization', bearer)
+          .expect(200),
+      ]);
+      const sem = (b: { atualizadoEm?: string }) => ({
+        ...b,
+        atualizadoEm: undefined,
+      });
+      expect(sem(comoAdmin.body)).toEqual(sem(comoCursinho.body));
+    });
+
+    it('periodoId inválido continua 400', async () => {
+      const c = await novoCursinho();
+      await http()
+        .get('/indicadores?periodoId=abc')
+        .set('Authorization', c.bearer)
+        .expect(400);
+    });
+  });
 });

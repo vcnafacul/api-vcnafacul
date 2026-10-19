@@ -14,6 +14,7 @@ import { User } from 'src/modules/user/user.entity';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import {
   AlunoSumindoDtoOutput,
+  IndicadoresDeTodosDtoOutput,
   IndicadoresDtoOutput,
   PeriodosDoCursinhoDtoOutput,
   ResumoDosIndicadoresDtoOutput,
@@ -79,10 +80,15 @@ export class IndicadoresController {
       'Desempenho dos alunos do período: simulados aplicados por cartão e médias por mês',
   })
   async obterDesempenho(
-    @Query('periodoId', ParseUUIDPipe) periodoId: string,
+    @Query('periodoId', new ParseUUIDPipe({ optional: true }))
+    periodoId: string | undefined,
     @Req() req: Request,
   ): Promise<DesempenhoDtoOutput> {
-    return this.desempenho.obter(periodoId, (req.user as User).id);
+    const userId = (req.user as User).id;
+    // tickets/046 — sem período: todos os períodos
+    return periodoId
+      ? this.desempenho.obter(periodoId, userId)
+      : this.desempenho.obterTodos(userId);
   }
 
   @Get('sumindo')
@@ -98,10 +104,14 @@ export class IndicadoresController {
       'Alunos ativos que faltaram às 3 últimas chamadas seguidas da turma',
   })
   async sumindo(
-    @Query('periodoId', ParseUUIDPipe) periodoId: string,
+    @Query('periodoId', new ParseUUIDPipe({ optional: true }))
+    periodoId: string | undefined,
     @Req() req: Request,
   ): Promise<AlunoSumindoDtoOutput[]> {
-    return this.service.sumindo(periodoId, (req.user as User).id);
+    const userId = (req.user as User).id;
+    return periodoId
+      ? this.service.sumindo(periodoId, userId)
+      : this.service.sumindoDeTodos(userId);
   }
 
   @Get()
@@ -116,9 +126,13 @@ export class IndicadoresController {
     description: 'Indicadores do cursinho e de cada turma no período letivo',
   })
   async obter(
-    @Query('periodoId', ParseUUIDPipe) periodoId: string,
+    @Query('periodoId', new ParseUUIDPipe({ optional: true }))
+    periodoId: string | undefined,
     @Req() req: Request,
-  ): Promise<IndicadoresDtoOutput> {
-    return this.service.obter(periodoId, (req.user as User).id);
+  ): Promise<IndicadoresDtoOutput | IndicadoresDeTodosDtoOutput> {
+    const userId = (req.user as User).id;
+    return periodoId
+      ? this.service.obter(periodoId, userId)
+      : this.service.obterTodos(userId);
   }
 }
