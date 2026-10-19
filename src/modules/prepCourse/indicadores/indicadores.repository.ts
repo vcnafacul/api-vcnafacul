@@ -130,6 +130,15 @@ export class IndicadoresRepository {
   }
 
   /** O papel da pessoa tem `gerenciarEstudantes`? */
+  /** O cursinho escolhido pelo admin existe? (tickets/045) */
+  async cursinhoExiste(cursinhoId: string): Promise<boolean> {
+    const [linha] = await this.em.query(
+      `SELECT 1 AS existe FROM partner_prep_course WHERE id = ? LIMIT 1`,
+      [cursinhoId],
+    );
+    return !!linha;
+  }
+
   async podeGerenciarEstudantes(userId: string): Promise<boolean> {
     const [linha] = await this.em.query(
       `SELECT r.gerenciar_estudantes AS pode
