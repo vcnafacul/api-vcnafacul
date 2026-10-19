@@ -9,6 +9,7 @@ import {
 import { diaDoPeriodo, diaEmSaoPaulo, diasEntre, fimDoDia } from './datas';
 import {
   AlunoSumindoDtoOutput,
+  IndicadoresDeTodosDtoOutput,
   IndicadoresDtoOutput,
   PeriodoDoIndicadorDtoOutput,
   PeriodosDoCursinhoDtoOutput,
@@ -73,6 +74,18 @@ export class IndicadoresService {
     return this.obterDoCursinho(periodoId, await this.cursinhoDe(userId));
   }
 
+  async obterTodos(userId: string): Promise<IndicadoresDeTodosDtoOutput> {
+    return this.obterTodosDoCursinho(await this.cursinhoDe(userId));
+  }
+
+  async sumindoDeTodos(userId: string): Promise<AlunoSumindoDtoOutput[]> {
+    const [cursinhoId, verTelefone] = await Promise.all([
+      this.cursinhoDe(userId),
+      this.repository.podeGerenciarEstudantes(userId),
+    ]);
+    return this.sumindoDeTodosDoCursinho(cursinhoId, verTelefone);
+  }
+
   async obterDoCursinho(
     periodoId: string,
     cursinhoId: string,
@@ -97,6 +110,71 @@ export class IndicadoresService {
    * e semiextensivo): soma. Nenhum, ou a pessoa não é de um cursinho: lista
    * vazia e `metricas: null` — um `null` puro chegaria como corpo vazio.
    */
+  /**
+   * tickets/046 — todos os períodos: cada um pelo `obterDoCursinho` (mesma conta
+   * e mesmo cache por período) e somados. Nunca uma conta nova.
+   */
+  async obterTodosDoCursinho(
+    cursinhoId: string,
+  ): Promise<IndicadoresDeTodosDtoOutput> {
+    const { periodos } = await this.periodosDoCursinho(cursinhoId);
+    const porPeriodo = await Promise.all(
+      periodos.map((p) => this.obterDoCursinho(p.id, cursinhoId)),
+    );
+    // mais antigo → mais novo (a lista de períodos vem do mais recente)
+    const ordenados = [...porPeriodo].sort((a, b) =>
+      a.periodo.inicio.localeCompare(b.periodo.inicio),
+    );
+    const abertos = ordenados.filter((i) => i.periodo.emAndamento);
+    return {
+      todos: true,
+      periodos,
+      atualizadoEm: new Date().toISOString(),
+      cursinho: somarMetricas(ordenados.map((i) => i.cursinho)),
+      emAndamento: abertos.length
+        ? somarMetricas(abertos.map((i) => i.cursinho))
+        : null,
+      turmas: ordenados.flatMap((i) =>
+        i.turmas.map((t) => ({
+          ...t,
+          periodoId: i.periodo.id,
+          periodoNome: i.periodo.nome,
+        })),
+      ),
+      comparativo: ordenados.map((i) => ({
+        periodoId: i.periodo.id,
+        nome: i.periodo.nome,
+        inicio: i.periodo.inicio,
+        fim: i.periodo.fim,
+        emAndamento: i.periodo.emAndamento,
+        metricas: i.cursinho,
+      })),
+    };
+  }
+
+  /** tickets/046 — sumindo de todos os períodos = os em andamento, com o nome do período. */
+  async sumindoDeTodosDoCursinho(
+    cursinhoId: string,
+    verTelefone: boolean,
+  ): Promise<AlunoSumindoDtoOutput[]> {
+    const { periodos } = await this.periodosDoCursinho(cursinhoId);
+    const listas = await Promise.all(
+      periodos
+        .filter((p) => p.emAndamento)
+        .map(async (p) =>
+          (await this.sumindoDoCursinho(p.id, cursinhoId, verTelefone)).map(
+            (a) => ({ ...a, periodo: p.nome }),
+          ),
+        ),
+    );
+    return listas
+      .flat()
+      .sort(
+        (a, b) =>
+          b.faltasSeguidas - a.faltasSeguidas || a.nome.localeCompare(b.nome),
+      );
+  }
+
   async resumo(userId: string): Promise<ResumoDosIndicadoresDtoOutput> {
     const cursinho = await this.partnerRepository.findOneByUserId(userId);
     if (!cursinho) return { cursinho: false, periodos: [], metricas: null };
