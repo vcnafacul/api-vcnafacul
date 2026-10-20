@@ -27,6 +27,11 @@ import { GetAllDtoInput } from 'src/shared/dtos/get-all.dto.input';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/shared/guards/permission.guard';
 import { ContentProxyService } from './content.service';
+import { ChangeOrderDto } from './dtos/change-order.dto';
+import { ChangeStatusDto } from './dtos/change-status.dto';
+import { CreateContentDto } from './dtos/create-content.dto';
+import { ReviewProposalDto } from './dtos/review-proposal.dto';
+import { docxUploadOptions } from './upload-docx.options';
 
 @ApiTags('Content')
 @Controller('content')
@@ -36,7 +41,7 @@ export class ContentProxyController {
   @Post()
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.validarDemanda)
-  async create(@Body() dto: any, @Req() req: Request) {
+  async create(@Body() dto: CreateContentDto, @Req() req: Request) {
     return await this.contentService.create(dto, (req.user as User).id);
   }
 
@@ -67,18 +72,19 @@ export class ContentProxyController {
   @Patch('order')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
-  async changeOrder(@Body() dto: any) {
+  async changeOrder(@Body() dto: ChangeOrderDto) {
     return await this.contentService.changeOrder(dto);
   }
 
   @Patch('status')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.validarDemanda)
-  async changeStatus(@Body() dto: any, @Req() req: Request) {
+  async changeStatus(@Body() dto: ChangeStatusDto, @Req() req: Request) {
     return await this.contentService.changeStatus(
       dto.id,
       dto.status,
       (req.user as User).id,
+      dto.reason,
     );
   }
 
@@ -92,7 +98,7 @@ export class ContentProxyController {
   @Post('upload/:id')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.uploadDemanda)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', docxUploadOptions))
   async upload(
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
@@ -112,17 +118,31 @@ export class ContentProxyController {
     return await this.contentService.delete(id);
   }
 
+  /**
+   * ⚠️ Só JWT, sem permissão de demanda: é por aqui que o ALUNO lê o
+   * material na página do tema. Estava sem guard nenhum — o id do
+   * `FileContent` aparece para qualquer logado em `/content/order`, e o link
+   * baixava o arquivo sem login.
+   */
   @Get('file/:id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   async getFile(@Param('id') id: string) {
     return await this.contentService.getFile(id);
   }
 
+  // As três estatísticas abaixo só são lidas pelo painel logado
+  // (`client/pages/analytics/content`); estavam abertas sem motivo.
   @Get('summary')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   async getSummary() {
     return await this.contentService.getSummary();
   }
 
   @Get('stats-by-frente')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Obter estatísticas de conteúdos agrupadas por frente',
   })
@@ -135,6 +155,8 @@ export class ContentProxyController {
   }
 
   @Get('snapshot-content-status')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Obter snapshot de estatísticas de conteúdos',
   })
@@ -149,7 +171,7 @@ export class ContentProxyController {
   @Post(':id/proposal')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.uploadDemanda)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', docxUploadOptions))
   async uploadProposal(
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
@@ -176,7 +198,7 @@ export class ContentProxyController {
   @SetMetadata(PermissionsGuard.name, Permissions.validarDemanda)
   async reviewProposal(
     @Param('id') id: string,
-    @Body() dto: { status: number },
+    @Body() dto: ReviewProposalDto,
     @Req() req: Request,
   ) {
     return await this.contentService.reviewProposal(
