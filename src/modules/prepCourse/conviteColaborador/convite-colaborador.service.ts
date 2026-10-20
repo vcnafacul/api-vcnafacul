@@ -97,46 +97,56 @@ export class ConviteColaboradorService {
     const agora = new Date();
     let convite: ConviteColaborador;
     try {
-      convite = await this.dataSource.transaction(async (manager) => {
-        const repo = manager.getRepository(ConviteColaborador);
-        /*
+      /*
+        ⚠️ **Deadlock no duplo clique.** Três POSTs iguais ao mesmo tempo:
+        cada transação faz UPDATE (trava o intervalo da chave no índice único),
+        SELECT e INSERT; o InnoDB detecta o ciclo e mata uma delas com
+        `ER_LOCK_DEADLOCK`, que saía como 500 (CI 2026-10-20, run 39375210546).
+        Repetir a transação resolve: na segunda vez o convite do vencedor já
+        existe e a resposta é o 409 de sempre.
+      */
+      convite = await comRetentativaEmDeadlock(() =>
+        this.dataSource.transaction(async (manager) => {
+          const repo = manager.getRepository(ConviteColaborador);
+          /*
           ⚠️ O pendente VENCIDO ocupa a `chave_ativa` — vira `expirado` aqui,
           na mesma transação, e libera a chave para o novo.
         */
-        await repo.update(
-          {
-            email,
-            partnerPrepCourseId: cursinho.id,
-            status: StatusDoConvite.pendente,
-            expiraEm: LessThanOrEqual(agora),
-          },
-          { status: StatusDoConvite.expirado },
-        );
-        const vigente = await repo.findOne({
-          where: {
-            email,
-            partnerPrepCourseId: cursinho.id,
-            status: StatusDoConvite.pendente,
-          },
-        });
-        if (vigente) {
-          throw new HttpException(
-            `Já existe um convite pendente para este email, válido até ${dataCurta(vigente.expiraEm)}.`,
-            HttpStatus.CONFLICT,
+          await repo.update(
+            {
+              email,
+              partnerPrepCourseId: cursinho.id,
+              status: StatusDoConvite.pendente,
+              expiraEm: LessThanOrEqual(agora),
+            },
+            { status: StatusDoConvite.expirado },
           );
-        }
-        return await repo.save(
-          repo.create({
-            email,
-            partnerPrepCourseId: cursinho.id,
-            roleId: role.id,
-            convidadoPorId: quemPedeId,
-            tokenHash: hash,
-            status: StatusDoConvite.pendente,
-            expiraEm: new Date(agora.getTime() + VALIDADE_DO_CONVITE_MS),
-          }),
-        );
-      });
+          const vigente = await repo.findOne({
+            where: {
+              email,
+              partnerPrepCourseId: cursinho.id,
+              status: StatusDoConvite.pendente,
+            },
+          });
+          if (vigente) {
+            throw new HttpException(
+              `Já existe um convite pendente para este email, válido até ${dataCurta(vigente.expiraEm)}.`,
+              HttpStatus.CONFLICT,
+            );
+          }
+          return await repo.save(
+            repo.create({
+              email,
+              partnerPrepCourseId: cursinho.id,
+              roleId: role.id,
+              convidadoPorId: quemPedeId,
+              tokenHash: hash,
+              status: StatusDoConvite.pendente,
+              expiraEm: new Date(agora.getTime() + VALIDADE_DO_CONVITE_MS),
+            }),
+          );
+        }),
+      );
     } catch (erro) {
       /*
         ⚠️ **A corrida que a checagem acima não fecha.** Duas requisições iguais
@@ -634,4 +644,28 @@ export class ConviteColaboradorService {
       createdAt: convite.createdAt,
     };
   }
+}
+
+/** Código do MySQL/MariaDB para "Deadlock found when trying to get lock". */
+export const ER_LOCK_DEADLOCK = 'ER_LOCK_DEADLOCK';
+
+/**
+ * Roda `fn` de novo quando o banco mata a transação por deadlock. Só deadlock:
+ * qualquer outro erro sobe na hora. Depois de `tentativas` deadlocks seguidos,
+ * o último sobe (vai virar 500 — e aí é caso de olhar o banco).
+ */
+export async function comRetentativaEmDeadlock<T>(
+  fn: () => Promise<T>,
+  tentativas = 3,
+): Promise<T> {
+  let ultimo: unknown;
+  for (let i = 0; i < tentativas; i++) {
+    try {
+      return await fn();
+    } catch (erro) {
+      if ((erro as { code?: string })?.code !== ER_LOCK_DEADLOCK) throw erro;
+      ultimo = erro;
+    }
+  }
+  throw ultimo;
 }
