@@ -102,4 +102,35 @@ describe('Conteúdos em vídeo (e2e)', () => {
       );
     });
   });
+
+  describe('POST /content/:id/proposal com url (049/03)', () => {
+    it('só url no FormData → 201; serviço recebe url, comentário e nenhum arquivo', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/content/c1/proposal')
+        .set('Authorization', await comPapel({ uploadDemanda: true }))
+        .field('url', 'https://youtu.be/dQw4w9WgXcQ')
+        .field('comment', 'troca');
+      expect(res.status).toBe(201);
+      const [id, , file, comment, url] = proxy.uploadProposal.mock.calls[0];
+      expect(id).toBe('c1');
+      expect(file).toBeUndefined();
+      expect(comment).toBe('troca');
+      expect(url).toBe('https://youtu.be/dQw4w9WgXcQ');
+    });
+
+    it('arquivo .docx sem url continua chegando como arquivo, com url undefined', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/content/c1/proposal')
+        .set('Authorization', await comPapel({ uploadDemanda: true }))
+        .attach('file', Buffer.from('PK'), {
+          filename: 'a.docx',
+          contentType:
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        });
+      expect(res.status).toBe(201);
+      const [, , file, , url] = proxy.uploadProposal.mock.calls[0];
+      expect(file.originalname).toBe('a.docx');
+      expect(url).toBeUndefined();
+    });
+  });
 });
