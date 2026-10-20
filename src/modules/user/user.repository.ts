@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
-import { EntityManager, Brackets } from 'typeorm';
+import { Brackets, EntityManager, In } from 'typeorm';
 import { BaseRepository } from '../../shared/modules/base/base.repository';
 import { AggregateUserLastAcessDtoOutput } from './dto/aggregate-user-last-acess.dto.output';
 import { AggregateUserPeriodDtoOutput } from './dto/aggregate-user-period.dto.output';
@@ -20,6 +20,18 @@ export class UserRepository extends BaseRepository<User> {
     protected readonly _entityManager: EntityManager,
   ) {
     super(_entityManager.getRepository(User));
+  }
+
+  /**
+   * Só o que compõe o nome de exibição, para uma lista de ids de uma vez.
+   * Sem `role` nem `cache`: é leitura de rótulo, não de sessão.
+   */
+  async findNomesPorIds(ids: string[]): Promise<User[]> {
+    if (ids.length === 0) return [];
+    return await this.repository.find({
+      where: { id: In(ids) },
+      select: ['id', 'firstName', 'lastName', 'socialName', 'useSocialName'],
+    });
   }
 
   async findOneBy(where: object): Promise<User> {
