@@ -70,7 +70,7 @@ const montar = (
     { create: jest.fn() } as any,
     { lerCadastro: jest.fn() } as any,
   );
-  return { service, repoTx, repo, emailService, salvos };
+  return { service, repoTx, repo, emailService, salvos, dataSource };
 };
 
 const erroDe = (p: Promise<unknown>) =>
@@ -161,6 +161,46 @@ describe('ConviteColaboradorService.criar', () => {
     const erro = await erroDe(service.criar('gestor', 'ana@x.com', 'r1'));
 
     expect(erro?.getStatus()).toBe(409);
+  });
+
+  it('⚠️ DEADLOCK no duplo clique: repete a transação e devolve o 409 de sempre', async () => {
+    // 1ª transação morre em deadlock; na 2ª o convite do vencedor já existe.
+    const { service, dataSource, repoTx } = montar({
+      vigente: { expiraEm: new Date('2026-10-01T15:00:00Z') },
+    });
+    const original = dataSource.transaction.getMockImplementation()!;
+    dataSource.transaction
+      .mockRejectedValueOnce({ code: 'ER_LOCK_DEADLOCK' })
+      .mockImplementation(original);
+
+    const erro = await erroDe(service.criar('gestor', 'ana@x.com', 'r1'));
+
+    expect(erro?.getStatus()).toBe(409);
+    expect(dataSource.transaction).toHaveBeenCalledTimes(2);
+    expect(repoTx.save).not.toHaveBeenCalled();
+  });
+
+  it('deadlock e depois a vaga está livre: cria no 2º tentativa', async () => {
+    const { service, dataSource, salvos } = montar();
+    const original = dataSource.transaction.getMockImplementation()!;
+    dataSource.transaction
+      .mockRejectedValueOnce({ code: 'ER_LOCK_DEADLOCK' })
+      .mockImplementation(original);
+
+    await service.criar('gestor', 'ana@x.com', 'r1');
+
+    expect(dataSource.transaction).toHaveBeenCalledTimes(2);
+    expect(salvos).toHaveLength(1);
+  });
+
+  it('erro que não é deadlock não é repetido', async () => {
+    const { service, dataSource } = montar();
+    dataSource.transaction.mockRejectedValueOnce(new Error('caiu o banco'));
+
+    await expect(service.criar('gestor', 'ana@x.com', 'r1')).rejects.toThrow(
+      'caiu o banco',
+    );
+    expect(dataSource.transaction).toHaveBeenCalledTimes(1);
   });
 
   it('já é colaboradora DESTE cursinho: 409', async () => {
