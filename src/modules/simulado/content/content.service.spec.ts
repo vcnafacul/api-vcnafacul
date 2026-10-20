@@ -227,6 +227,109 @@ describe('ContentProxyService', () => {
     });
   });
 
+  describe('proposta e leitura com vídeo (049/03)', () => {
+    it('proposta com url → standalone de vídeo + adjustment-proposal, sem R2', async () => {
+      mockAxios.get.mockResolvedValue({ _id: 'c1', subject: {} });
+      mockAxios.post
+        .mockResolvedValueOnce({ _id: 'fc-v' })
+        .mockResolvedValueOnce({ _id: 'p1' });
+
+      await service.uploadProposal(
+        'c1',
+        'u1',
+        undefined,
+        'troca pelo vídeo',
+        'https://youtu.be/dQw4w9WgXcQ',
+      );
+
+      expect(mockAxios.post).toHaveBeenNthCalledWith(
+        1,
+        'v1/file-content/standalone',
+        { tipo: 'video', videoId: 'dQw4w9WgXcQ', content: 'c1', uploadedBy: 'u1' },
+      );
+      expect(mockAxios.post).toHaveBeenNthCalledWith(2, 'v1/adjustment-proposal', {
+        content: 'c1',
+        file: 'fc-v',
+        author: 'u1',
+        comment: 'troca pelo vídeo',
+      });
+      expect(mockBlobService.uploadFile).not.toHaveBeenCalled();
+    });
+
+    it('proposta com arquivo continua indo ao R2 e ao standalone de documento', async () => {
+      mockAxios.get.mockResolvedValue({ _id: 'c1', title: 'T', subject: {} });
+      mockBlobService.uploadFile.mockResolvedValue('k1');
+      mockAxios.post
+        .mockResolvedValueOnce({ _id: 'fc-d' })
+        .mockResolvedValueOnce({ _id: 'p1' });
+
+      await service.uploadProposal('c1', 'u1', {
+        originalname: 'a.docx',
+      } as any);
+
+      expect(mockBlobService.uploadFile).toHaveBeenCalledTimes(1);
+      expect(mockAxios.post).toHaveBeenNthCalledWith(
+        1,
+        'v1/file-content/standalone',
+        { fileKey: 'k1', originalName: 'a.docx', content: 'c1', uploadedBy: 'u1' },
+      );
+    });
+
+    it('sem arquivo e sem url → 400; os dois → 400; url de shorts → 400', async () => {
+      await expect(service.uploadProposal('c1', 'u1')).rejects.toMatchObject({
+        status: 400,
+      });
+      await expect(
+        service.uploadProposal(
+          'c1',
+          'u1',
+          { originalname: 'a.docx' } as any,
+          undefined,
+          'https://youtu.be/dQw4w9WgXcQ',
+        ),
+      ).rejects.toMatchObject({ status: 400 });
+      await expect(
+        service.uploadProposal(
+          'c1',
+          'u1',
+          undefined,
+          undefined,
+          'https://www.youtube.com/shorts/dQw4w9WgXcQ',
+        ),
+      ).rejects.toMatchObject({ status: 400 });
+      expect(mockAxios.get).not.toHaveBeenCalled();
+      expect(mockAxios.post).not.toHaveBeenCalled();
+    });
+
+    it('getFile de vídeo → 400 sem ir ao R2', async () => {
+      mockAxios.get.mockResolvedValue({
+        _id: 'fc-v',
+        tipo: 'video',
+        videoId: 'dQw4w9WgXcQ',
+      });
+      await expect(service.getFile('fc-v')).rejects.toMatchObject({
+        status: 400,
+      });
+      expect(mockBlobService.getFile).not.toHaveBeenCalled();
+    });
+
+    it('delete: apaga do R2 só o que tem fileKey', async () => {
+      mockAxios.get.mockResolvedValue([
+        { _id: 'fc-d', fileKey: 'k1' },
+        { _id: 'fc-v', tipo: 'video', videoId: 'dQw4w9WgXcQ' },
+      ]);
+      mockAxios.delete.mockResolvedValue({});
+
+      await service.delete('c1');
+
+      expect(mockBlobService.deleteFile).toHaveBeenCalledTimes(1);
+      expect(mockBlobService.deleteFile).toHaveBeenCalledWith('k1', 'test-bucket');
+      expect(mockAxios.delete).toHaveBeenCalledWith('v1/file-content/fc-d');
+      expect(mockAxios.delete).toHaveBeenCalledWith('v1/file-content/fc-v');
+      expect(mockAxios.delete).toHaveBeenCalledWith('v1/content/c1');
+    });
+  });
+
   describe('getAll', () => {
     it('should forward materia ObjectId directly in query', async () => {
       mockAxios.get.mockResolvedValue({ data: [] });

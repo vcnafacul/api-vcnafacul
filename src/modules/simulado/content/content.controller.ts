@@ -191,8 +191,10 @@ export class ContentProxyController {
   @UseInterceptors(FileInterceptor('file', docxUploadOptions))
   async uploadProposal(
     @Param('id') id: string,
-    @UploadedFile() file: Express.Multer.File,
-    @Body('comment') comment: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Body('comment') comment: string | undefined,
+    // Vídeo: o client manda `url` no mesmo FormData, sem `file`.
+    @Body('url') url: string | undefined,
     @Req() req: Request,
   ) {
     return await this.contentService.uploadProposal(
@@ -200,6 +202,7 @@ export class ContentProxyController {
       (req.user as User).id,
       file,
       comment,
+      url,
     );
   }
 
