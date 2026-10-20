@@ -112,17 +112,31 @@ export class ContentProxyController {
     return await this.contentService.delete(id);
   }
 
+  /**
+   * ⚠️ Só JWT, sem permissão de demanda: é por aqui que o ALUNO lê o
+   * material na página do tema. Estava sem guard nenhum — o id do
+   * `FileContent` aparece para qualquer logado em `/content/order`, e o link
+   * baixava o arquivo sem login.
+   */
   @Get('file/:id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   async getFile(@Param('id') id: string) {
     return await this.contentService.getFile(id);
   }
 
+  // As três estatísticas abaixo só são lidas pelo painel logado
+  // (`client/pages/analytics/content`); estavam abertas sem motivo.
   @Get('summary')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   async getSummary() {
     return await this.contentService.getSummary();
   }
 
   @Get('stats-by-frente')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Obter estatísticas de conteúdos agrupadas por frente',
   })
@@ -135,6 +149,8 @@ export class ContentProxyController {
   }
 
   @Get('snapshot-content-status')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Obter snapshot de estatísticas de conteúdos',
   })
