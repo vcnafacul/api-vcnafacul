@@ -31,6 +31,7 @@ import { ChangeOrderDto } from './dtos/change-order.dto';
 import { ChangeStatusDto } from './dtos/change-status.dto';
 import { CreateContentDto } from './dtos/create-content.dto';
 import { ReviewProposalDto } from './dtos/review-proposal.dto';
+import { SendVideoDto } from './dtos/send-video.dto';
 import { docxUploadOptions } from './upload-docx.options';
 
 @ApiTags('Content')
@@ -108,6 +109,22 @@ export class ContentProxyController {
       id,
       (req.user as User).id,
       file,
+    );
+  }
+
+  /** Envio de vídeo do YouTube: o "upload" quando a lição é um vídeo (tickets/049). */
+  @Post(':id/video')
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.uploadDemanda)
+  async sendVideo(
+    @Param('id') id: string,
+    @Body() dto: SendVideoDto,
+    @Req() req: Request,
+  ) {
+    return await this.contentService.sendVideo(
+      id,
+      (req.user as User).id,
+      dto.url,
     );
   }
 

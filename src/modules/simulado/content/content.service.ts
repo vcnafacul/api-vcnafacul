@@ -8,6 +8,7 @@ import {
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { UserService } from 'src/modules/user/user.service';
 import { cleanString } from 'src/utils/cleanString';
+import { extrairYoutubeId } from './youtube-id';
 
 @Injectable()
 export class ContentProxyService {
@@ -191,6 +192,35 @@ export class ContentProxyService {
     });
 
     return { fileKey };
+  }
+
+  static readonly MENSAGEM_LINK_INVALIDO =
+    'Informe um link do YouTube válido (vídeo normal, não Shorts ou live).';
+
+  /**
+   * Envio de vídeo: o mesmo "upload" do documento, sem R2. O ms grava um
+   * `FileContent` de tipo vídeo, que vira o vigente (status → Pending).
+   * Como o upload, não mexe em cache: Pending não entra na lista do aluno.
+   */
+  async sendVideo(id: string, userId: string, url: string) {
+    const videoId = extrairYoutubeId(url);
+    if (!videoId) {
+      throw new HttpException(
+        ContentProxyService.MENSAGEM_LINK_INVALIDO,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const content = await this.axios.get<any>(`v1/content/${id}/populated`);
+    if (!content) {
+      throw new HttpException('demand not found', HttpStatus.NOT_FOUND);
+    }
+    await this.axios.post('v1/file-content', {
+      tipo: 'video',
+      videoId,
+      content: id,
+      uploadedBy: userId,
+    });
+    return { videoId };
   }
 
   private getDirectory(content: any): string {

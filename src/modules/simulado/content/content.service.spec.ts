@@ -185,6 +185,48 @@ describe('ContentProxyService', () => {
     });
   });
 
+  describe('sendVideo (049/02)', () => {
+    it('link válido → file-content de vídeo no ms, sem R2', async () => {
+      mockAxios.get.mockResolvedValue({ _id: 'c1', subject: {} });
+      mockAxios.post.mockResolvedValue({ _id: 'fc1' });
+
+      const out = await service.sendVideo(
+        'c1',
+        'user-1',
+        'https://youtu.be/dQw4w9WgXcQ?si=x',
+      );
+
+      expect(mockAxios.post).toHaveBeenCalledWith('v1/file-content', {
+        tipo: 'video',
+        videoId: 'dQw4w9WgXcQ',
+        content: 'c1',
+        uploadedBy: 'user-1',
+      });
+      expect(mockBlobService.uploadFile).not.toHaveBeenCalled();
+      expect(out).toEqual({ videoId: 'dQw4w9WgXcQ' });
+    });
+
+    it('link de shorts → 400 e nada vai ao ms', async () => {
+      await expect(
+        service.sendVideo(
+          'c1',
+          'user-1',
+          'https://www.youtube.com/shorts/dQw4w9WgXcQ',
+        ),
+      ).rejects.toMatchObject({ status: 400 });
+      expect(mockAxios.get).not.toHaveBeenCalled();
+      expect(mockAxios.post).not.toHaveBeenCalled();
+    });
+
+    it('demanda inexistente → 404', async () => {
+      mockAxios.get.mockResolvedValue(null);
+      await expect(
+        service.sendVideo('nope', 'user-1', 'https://youtu.be/dQw4w9WgXcQ'),
+      ).rejects.toMatchObject({ status: 404 });
+      expect(mockAxios.post).not.toHaveBeenCalled();
+    });
+  });
+
   describe('getAll', () => {
     it('should forward materia ObjectId directly in query', async () => {
       mockAxios.get.mockResolvedValue({ data: [] });
