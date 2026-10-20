@@ -9,9 +9,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ⚠️ 4 shards em paralelo, cada um com SEU MySQL (tickets/051 · 01). Os e2e
+  # fazem UPDATE/DELETE por tabela, então o paralelismo é entre jobs, nunca
+  # entre workers no mesmo banco. A cobertura de cada shard vira artifact e o
+  # job COBERTURA junta e confere os limites do jest-e2e.json.
+  # Não usa o `test.sh`: ele sobe outro MySQL e repete as migrations.
   CI:
     if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened')
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     services:
       mysql:
         image: mysql:8.0
@@ -21,11 +30,7 @@ jobs:
           MYSQL_ROOT_PASSWORD: 123456
           MYSQL_DATABASE: vcnafacul
     steps:
-      - name: Docker login
-        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USER }}" --password-stdin
       - uses: actions/checkout@v3
-      - name: Iniciando CI
-        run: echo "Iniciando CI"
       - uses: actions/setup-node@v1
         with:
           node-version: 20.x
@@ -34,6 +39,7 @@ jobs:
       - name: Install depends
         run: yarn
       - name: Build app vCnafacul
+        if: matrix.shard == 1
         run: yarn build
       - name: Install Dotenv-cli
         run: npm install -g dotenv-cli
@@ -49,9 +55,33 @@ jobs:
           done
       - name: Run Migrations
         run: dotenv -e ./test/.env.test -- yarn typeorm migration:run
-      - name: Run tests
-        run: dotenv -e ./test/.env.test -- yarn test:cov --forceExit --detectOpenHandles
-        timeout-minutes: 15
+      - name: Run tests (shard ${{ matrix.shard }}/4)
+        # coverageThreshold vazio: um shard sozinho nunca bate 74%; quem confere é o COBERTURA.
+        run: dotenv -e ./test/.env.test -- yarn jest --config ./test/config/jest-e2e.json --shard=${{ matrix.shard }}/4 --coverage --coverageThreshold='{}' --forceExit --detectOpenHandles
+        timeout-minutes: 10
+      - name: Publicar cobertura do shard
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-${{ matrix.shard }}
+          path: coverage/coverage-final.json
+          retention-days: 3
+  COBERTURA:
+    if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened')
+    needs: CI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 20.x
+      - name: Install depends
+        run: yarn
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cobertura-*
+          path: coberturas
+      - name: Juntar e conferir
+        run: node test/utils/checar-cobertura.js coberturas/*/coverage-final.json
   PUSH:
     if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
     runs-on: ubuntu-latest
