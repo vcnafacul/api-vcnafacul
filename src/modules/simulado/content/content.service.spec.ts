@@ -324,9 +324,9 @@ describe('ContentProxyService', () => {
       mockAxios.get.mockResolvedValue({
         subject: { frente: { materia: { _id: 'mat-1' } } },
       });
-      await service.changeStatus('id-1', 2, 'user-1');
+      await service.changeStatus('id-1', 1, 'user-1');
       expect(mockAxios.patch).toHaveBeenCalledWith('v1/content/id-1/status', {
-        status: 2,
+        status: 1,
         userId: 'user-1',
       });
       expect(mockCache.del).toHaveBeenCalledWith('content:summary');
@@ -334,6 +334,17 @@ describe('ContentProxyService', () => {
       expect(mockCache.del).toHaveBeenCalledWith(
         'frente:materiawithcontent:mat-1',
       );
+    });
+
+    it('changeStatus com motivo manda `message` ao ms (rejeição, 048/03)', async () => {
+      mockAxios.patch.mockResolvedValue({});
+      mockAxios.get.mockResolvedValue({});
+      await service.changeStatus('id-1', 2, 'user-1', 'Faltou a bibliografia');
+      expect(mockAxios.patch).toHaveBeenCalledWith('v1/content/id-1/status', {
+        status: 2,
+        userId: 'user-1',
+        message: 'Faltou a bibliografia',
+      });
     });
 
     it('reset should patch with userId and invalidate caches', async () => {

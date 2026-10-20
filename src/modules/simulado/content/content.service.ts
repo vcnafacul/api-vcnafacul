@@ -79,10 +79,17 @@ export class ContentProxyService {
     );
   }
 
-  async changeStatus(id: string, status: number, userId: string) {
+  async changeStatus(
+    id: string,
+    status: number,
+    userId: string,
+    reason?: string,
+  ) {
     const result = await this.axios.patch(`v1/content/${id}/status`, {
       status,
       userId,
+      // O ms grava o motivo na demanda (`rejectionReason`) e no AuditLog.
+      ...(reason ? { message: reason } : {}),
     });
     await this.invalidateContentCaches(id);
     return result;
