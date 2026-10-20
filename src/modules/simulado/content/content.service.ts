@@ -8,6 +8,8 @@ import {
 import { BlobService } from 'src/shared/services/blob/blob-service';
 import { UserService } from 'src/modules/user/user.service';
 import { cleanString } from 'src/utils/cleanString';
+import { extrairYoutubeId } from './youtube-id';
+import { EventoDaTimeline, montarTimeline } from './content-timeline';
 
 @Injectable()
 export class ContentProxyService {
@@ -58,6 +60,7 @@ export class ContentProxyService {
         c.userId,
         c.file?.uploadedBy,
         c.lastEditedBy,
+        c.approvedBy,
       ]),
     );
     return conteudos.map((c) => ({
@@ -69,7 +72,36 @@ export class ContentProxyService {
       ...(c.lastEditedBy
         ? { lastEditedByName: nomes.get(c.lastEditedBy) }
         : {}),
+      ...(c.approvedBy ? { approvedByName: nomes.get(c.approvedBy) } : {}),
     }));
+  }
+
+  /**
+   * Linha do tempo da demanda (050/02): os quatro cadastros do ms em
+   * paralelo, montados em eventos, nomes resolvidos num lote só.
+   */
+  async getTimeline(contentId: string): Promise<{ eventos: EventoDaTimeline[] }> {
+    const content = await this.axios.get<any>(
+      `v1/content/${contentId}/populated`,
+    );
+    if (!content) {
+      throw new HttpException('demand not found', HttpStatus.NOT_FOUND);
+    }
+    const [historico, propostas, auditLog] = await Promise.all([
+      this.axios.get<any[]>(`v1/content-file-history/content/${contentId}`),
+      this.axios.get<any[]>(`v1/adjustment-proposal/content/${contentId}`),
+      this.axios.get<any[]>(`v1/auditLog/${contentId}`),
+    ]);
+    const eventos = montarTimeline({
+      content,
+      historico: Array.isArray(historico) ? historico : [],
+      propostas: Array.isArray(propostas) ? propostas : [],
+      auditLog: Array.isArray(auditLog) ? auditLog : [],
+    });
+    const nomes = await this.nomesDe(eventos.map((e) => e.porId));
+    return {
+      eventos: eventos.map((e) => ({ ...e, por: nomes.get(e.porId) ?? e.porId })),
+    };
   }
 
   async create(body: any, userId: string) {
@@ -193,6 +225,35 @@ export class ContentProxyService {
     return { fileKey };
   }
 
+  static readonly MENSAGEM_LINK_INVALIDO =
+    'Informe um link do YouTube válido (vídeo normal, não Shorts ou live).';
+
+  /**
+   * Envio de vídeo: o mesmo "upload" do documento, sem R2. O ms grava um
+   * `FileContent` de tipo vídeo, que vira o vigente (status → Pending).
+   * Como o upload, não mexe em cache: Pending não entra na lista do aluno.
+   */
+  async sendVideo(id: string, userId: string, url: string) {
+    const videoId = extrairYoutubeId(url);
+    if (!videoId) {
+      throw new HttpException(
+        ContentProxyService.MENSAGEM_LINK_INVALIDO,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const content = await this.axios.get<any>(`v1/content/${id}/populated`);
+    if (!content) {
+      throw new HttpException('demand not found', HttpStatus.NOT_FOUND);
+    }
+    await this.axios.post('v1/file-content', {
+      tipo: 'video',
+      videoId,
+      content: id,
+      uploadedBy: userId,
+    });
+    return { videoId };
+  }
+
   private getDirectory(content: any): string {
     const title = cleanString(content.title);
     const subjectName = cleanString(content.subject?.name || '');
@@ -210,6 +271,13 @@ export class ContentProxyService {
     if (!fileContent) {
       throw new HttpException('File not found', HttpStatus.NOT_FOUND);
     }
+    // O player usa o `videoId` que já vem na listagem; aqui não há o que baixar.
+    if (fileContent.tipo === 'video' || !fileContent.fileKey) {
+      throw new HttpException(
+        'Conteúdo em vídeo não tem arquivo para baixar',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     return await this.blobService.getFile(
       fileContent.fileKey,
       this.envService.get('BUCKET_CONTENT'),
@@ -223,10 +291,13 @@ export class ContentProxyService {
 
     if (fileContents && Array.isArray(fileContents)) {
       for (const fc of fileContents) {
-        await this.blobService.deleteFile(
-          fc.fileKey,
-          this.envService.get('BUCKET_CONTENT'),
-        );
+        // Vídeo não tem nada no R2; só o registro no ms.
+        if (fc.fileKey) {
+          await this.blobService.deleteFile(
+            fc.fileKey,
+            this.envService.get('BUCKET_CONTENT'),
+          );
+        }
         await this.axios.delete(`v1/file-content/${fc._id}`);
       }
     }
@@ -262,14 +333,36 @@ export class ContentProxyService {
     );
   }
 
+  /**
+   * Proposta de ajuste: um `.docx` OU um link do YouTube, mais um comentário.
+   * O `FileContent` da proposta nasce "standalone" (não vira vigente); virar
+   * vigente é a aprovação. Pode trocar o tipo do conteúdo (tickets/049, D4).
+   */
   async uploadProposal(
     contentId: string,
     userId: string,
-    file: Express.Multer.File,
+    file?: Express.Multer.File,
     comment?: string,
+    url?: string,
   ) {
-    if (!file) {
-      throw new HttpException('file not found', HttpStatus.BAD_REQUEST);
+    if (!file && !url) {
+      throw new HttpException(
+        'Envie um arquivo .docx ou um link do YouTube',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (file && url) {
+      throw new HttpException(
+        'Envie o arquivo OU o link, não os dois',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const videoId = url ? extrairYoutubeId(url) : null;
+    if (url && !videoId) {
+      throw new HttpException(
+        ContentProxyService.MENSAGEM_LINK_INVALIDO,
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     const content = await this.axios.get<any>(
@@ -279,31 +372,39 @@ export class ContentProxyService {
       throw new HttpException('demand not found', HttpStatus.NOT_FOUND);
     }
 
-    const directory = this.getDirectory(content);
-    const fileKey = await this.blobService.uploadFile(
-      file,
-      this.envService.get('BUCKET_CONTENT'),
-      undefined,
-      directory,
-    );
-
-    if (!fileKey) {
-      throw new HttpException('error to upload file', HttpStatus.BAD_REQUEST);
-    }
-
-    const fileContent = await this.axios.post<any>(
-      'v1/file-content/standalone',
-      {
+    let versao: { _id: string };
+    if (videoId) {
+      versao = await this.axios.post<any>('v1/file-content/standalone', {
+        tipo: 'video',
+        videoId,
+        content: contentId,
+        uploadedBy: userId,
+      });
+    } else {
+      const directory = this.getDirectory(content);
+      const fileKey = await this.blobService.uploadFile(
+        file,
+        this.envService.get('BUCKET_CONTENT'),
+        undefined,
+        directory,
+      );
+      if (!fileKey) {
+        throw new HttpException(
+          'error to upload file',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      versao = await this.axios.post<any>('v1/file-content/standalone', {
         fileKey,
         originalName: file.originalname,
         content: contentId,
         uploadedBy: userId,
-      },
-    );
+      });
+    }
 
     return await this.axios.post('v1/adjustment-proposal', {
       content: contentId,
-      file: fileContent._id,
+      file: versao._id,
       author: userId,
       comment,
     });

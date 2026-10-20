@@ -185,6 +185,190 @@ describe('ContentProxyService', () => {
     });
   });
 
+  describe('sendVideo (049/02)', () => {
+    it('link válido → file-content de vídeo no ms, sem R2', async () => {
+      mockAxios.get.mockResolvedValue({ _id: 'c1', subject: {} });
+      mockAxios.post.mockResolvedValue({ _id: 'fc1' });
+
+      const out = await service.sendVideo(
+        'c1',
+        'user-1',
+        'https://youtu.be/dQw4w9WgXcQ?si=x',
+      );
+
+      expect(mockAxios.post).toHaveBeenCalledWith('v1/file-content', {
+        tipo: 'video',
+        videoId: 'dQw4w9WgXcQ',
+        content: 'c1',
+        uploadedBy: 'user-1',
+      });
+      expect(mockBlobService.uploadFile).not.toHaveBeenCalled();
+      expect(out).toEqual({ videoId: 'dQw4w9WgXcQ' });
+    });
+
+    it('link de shorts → 400 e nada vai ao ms', async () => {
+      await expect(
+        service.sendVideo(
+          'c1',
+          'user-1',
+          'https://www.youtube.com/shorts/dQw4w9WgXcQ',
+        ),
+      ).rejects.toMatchObject({ status: 400 });
+      expect(mockAxios.get).not.toHaveBeenCalled();
+      expect(mockAxios.post).not.toHaveBeenCalled();
+    });
+
+    it('demanda inexistente → 404', async () => {
+      mockAxios.get.mockResolvedValue(null);
+      await expect(
+        service.sendVideo('nope', 'user-1', 'https://youtu.be/dQw4w9WgXcQ'),
+      ).rejects.toMatchObject({ status: 404 });
+      expect(mockAxios.post).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('proposta e leitura com vídeo (049/03)', () => {
+    it('proposta com url → standalone de vídeo + adjustment-proposal, sem R2', async () => {
+      mockAxios.get.mockResolvedValue({ _id: 'c1', subject: {} });
+      mockAxios.post
+        .mockResolvedValueOnce({ _id: 'fc-v' })
+        .mockResolvedValueOnce({ _id: 'p1' });
+
+      await service.uploadProposal(
+        'c1',
+        'u1',
+        undefined,
+        'troca pelo vídeo',
+        'https://youtu.be/dQw4w9WgXcQ',
+      );
+
+      expect(mockAxios.post).toHaveBeenNthCalledWith(
+        1,
+        'v1/file-content/standalone',
+        { tipo: 'video', videoId: 'dQw4w9WgXcQ', content: 'c1', uploadedBy: 'u1' },
+      );
+      expect(mockAxios.post).toHaveBeenNthCalledWith(2, 'v1/adjustment-proposal', {
+        content: 'c1',
+        file: 'fc-v',
+        author: 'u1',
+        comment: 'troca pelo vídeo',
+      });
+      expect(mockBlobService.uploadFile).not.toHaveBeenCalled();
+    });
+
+    it('proposta com arquivo continua indo ao R2 e ao standalone de documento', async () => {
+      mockAxios.get.mockResolvedValue({ _id: 'c1', title: 'T', subject: {} });
+      mockBlobService.uploadFile.mockResolvedValue('k1');
+      mockAxios.post
+        .mockResolvedValueOnce({ _id: 'fc-d' })
+        .mockResolvedValueOnce({ _id: 'p1' });
+
+      await service.uploadProposal('c1', 'u1', {
+        originalname: 'a.docx',
+      } as any);
+
+      expect(mockBlobService.uploadFile).toHaveBeenCalledTimes(1);
+      expect(mockAxios.post).toHaveBeenNthCalledWith(
+        1,
+        'v1/file-content/standalone',
+        { fileKey: 'k1', originalName: 'a.docx', content: 'c1', uploadedBy: 'u1' },
+      );
+    });
+
+    it('sem arquivo e sem url → 400; os dois → 400; url de shorts → 400', async () => {
+      await expect(service.uploadProposal('c1', 'u1')).rejects.toMatchObject({
+        status: 400,
+      });
+      await expect(
+        service.uploadProposal(
+          'c1',
+          'u1',
+          { originalname: 'a.docx' } as any,
+          undefined,
+          'https://youtu.be/dQw4w9WgXcQ',
+        ),
+      ).rejects.toMatchObject({ status: 400 });
+      await expect(
+        service.uploadProposal(
+          'c1',
+          'u1',
+          undefined,
+          undefined,
+          'https://www.youtube.com/shorts/dQw4w9WgXcQ',
+        ),
+      ).rejects.toMatchObject({ status: 400 });
+      expect(mockAxios.get).not.toHaveBeenCalled();
+      expect(mockAxios.post).not.toHaveBeenCalled();
+    });
+
+    it('getFile de vídeo → 400 sem ir ao R2', async () => {
+      mockAxios.get.mockResolvedValue({
+        _id: 'fc-v',
+        tipo: 'video',
+        videoId: 'dQw4w9WgXcQ',
+      });
+      await expect(service.getFile('fc-v')).rejects.toMatchObject({
+        status: 400,
+      });
+      expect(mockBlobService.getFile).not.toHaveBeenCalled();
+    });
+
+    it('delete: apaga do R2 só o que tem fileKey', async () => {
+      mockAxios.get.mockResolvedValue([
+        { _id: 'fc-d', fileKey: 'k1' },
+        { _id: 'fc-v', tipo: 'video', videoId: 'dQw4w9WgXcQ' },
+      ]);
+      mockAxios.delete.mockResolvedValue({});
+
+      await service.delete('c1');
+
+      expect(mockBlobService.deleteFile).toHaveBeenCalledTimes(1);
+      expect(mockBlobService.deleteFile).toHaveBeenCalledWith('k1', 'test-bucket');
+      expect(mockAxios.delete).toHaveBeenCalledWith('v1/file-content/fc-d');
+      expect(mockAxios.delete).toHaveBeenCalledWith('v1/file-content/fc-v');
+      expect(mockAxios.delete).toHaveBeenCalledWith('v1/content/c1');
+    });
+  });
+
+  describe('getTimeline (050/02)', () => {
+    const porUrl = (url: string) => {
+      if (url.endsWith('/populated'))
+        return { _id: 'c1', userId: 'u-ana', createdAt: '2026-09-01T12:00:00.000Z', approvedBy: 'u-bia' };
+      if (url.includes('content-file-history'))
+        return [{ createdAt: '2026-09-01T12:10:00.000Z', uploadedBy: 'u-bia', source: 'initial_upload', file: { _id: 'f1' } }];
+      if (url.includes('adjustment-proposal')) return [];
+      if (url.includes('auditLog'))
+        return [{ user: 'u-bia', entityType: 'Content', createdAt: '2026-09-01T12:20:00.000Z', changes: '{"status":1,"message":"x"}' }];
+      return undefined;
+    };
+
+    it('junta as fontes, ordena e resolve os nomes numa consulta só', async () => {
+      mockAxios.get.mockImplementation(async (url: string) => porUrl(url));
+
+      const { eventos } = await service.getTimeline('c1');
+
+      expect(eventos.map((e) => `${e.tipo}:${e.por}`)).toEqual([
+        'criada:Ana Souza',
+        'enviada:Bia Lima',
+        'aprovada:Bia Lima',
+      ]);
+      expect(mockUserService.findNomesPorIds).toHaveBeenCalledTimes(1);
+      expect([...mockUserService.findNomesPorIds.mock.calls[0][0]].sort()).toEqual(['u-ana', 'u-bia']);
+    });
+
+    it('demanda inexistente → 404 antes das outras chamadas', async () => {
+      mockAxios.get.mockResolvedValue(null);
+      await expect(service.getTimeline('nope')).rejects.toMatchObject({ status: 404 });
+      expect(mockAxios.get).toHaveBeenCalledTimes(1);
+    });
+
+    it('listagem anexa approvedByName', async () => {
+      mockAxios.get.mockResolvedValue({ data: [{ _id: '1', userId: 'u-ana', approvedBy: 'u-bia' }] });
+      const out = await service.getAll({});
+      expect(out.data[0]).toMatchObject({ createdByName: 'Ana Souza', approvedByName: 'Bia Lima' });
+    });
+  });
+
   describe('getAll', () => {
     it('should forward materia ObjectId directly in query', async () => {
       mockAxios.get.mockResolvedValue({ data: [] });
