@@ -9,9 +9,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ⚠️ 4 shards em paralelo, cada um com SEU MySQL (tickets/051 · 01). Os e2e
+  # fazem UPDATE/DELETE por tabela, então o paralelismo é entre jobs, nunca
+  # entre workers no mesmo banco. A cobertura de cada shard vira artifact e o
+  # job COBERTURA junta e confere os limites do jest-e2e.json.
+  # Não usa o `test.sh`: ele sobe outro MySQL e repete as migrations.
+  # Cache do yarn pelo setup-node (051 · 02): o `yarn add sharp` que havia aqui
+  # era redundante — o sharp já está no package.json.
   CI:
     if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened')
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     services:
       mysql:
         image: mysql:8.0
@@ -21,19 +32,16 @@ jobs:
           MYSQL_ROOT_PASSWORD: 123456
           MYSQL_DATABASE: vcnafacul
     steps:
-      - name: Docker login
-        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USER }}" --password-stdin
-      - uses: actions/checkout@v3
-      - name: Iniciando CI
-        run: echo "Iniciando CI"
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20.x
-      - name: Install sharp depend
-        run: yarn add sharp --ignore-engines
+          cache: "yarn"
       - name: Install depends
-        run: yarn
+        # --frozen-lockfile: a CI instala o que está no lock, nunca o atualiza.
+        run: yarn install --frozen-lockfile --ignore-engines
       - name: Build app vCnafacul
+        if: matrix.shard == 1
         run: yarn build
       - name: Install Dotenv-cli
         run: npm install -g dotenv-cli
@@ -49,27 +57,57 @@ jobs:
           done
       - name: Run Migrations
         run: dotenv -e ./test/.env.test -- yarn typeorm migration:run
-      - name: Run tests
-        run: dotenv -e ./test/.env.test -- yarn test:cov --forceExit --detectOpenHandles
-        timeout-minutes: 15
+      - name: Run tests (shard ${{ matrix.shard }}/4)
+        # coverageThreshold vazio: um shard sozinho nunca bate 74%; quem confere é o COBERTURA.
+        # ⚠️ reporter `json` explícito: o jest-e2e.json só tem text/lcov, e sem o json
+        # não existe coverage-final.json para publicar (primeiro run deste card).
+        run: dotenv -e ./test/.env.test -- yarn jest --config ./test/config/jest-e2e.json --shard=${{ matrix.shard }}/4 --coverage --coverageThreshold='{}' --coverageReporters=json --coverageReporters=text-summary --forceExit --detectOpenHandles
+        timeout-minutes: 10
+      - name: Publicar cobertura do shard
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-${{ matrix.shard }}
+          path: coverage/coverage-final.json
+          if-no-files-found: error
+          retention-days: 3
+  COBERTURA:
+    if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened')
+    needs: CI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: "yarn"
+      - name: Install depends
+        # --frozen-lockfile: a CI instala o que está no lock, nunca o atualiza.
+        run: yarn install --frozen-lockfile --ignore-engines
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cobertura-*
+          path: coberturas
+      - name: Juntar e conferir
+        # `find` em vez de glob: sem arquivo o script recebe lista vazia e falha com uso claro.
+        run: node test/utils/checar-cobertura.js $(find coberturas -name coverage-final.json)
   PUSH:
     if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       # Checkout develop para a imagem refletir o estado da branch (evita “sumir” em homol)
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: develop
           fetch-depth: 0
       - name: Iniciando CI
         run: echo "Iniciando PUSH"
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v4
         with:
           node-version: 20.x
-      - name: Install sharp depend
-        run: yarn add sharp --ignore-engines
+          cache: "yarn"
       - name: Install depends
-        run: yarn
+        # --frozen-lockfile: a CI instala o que está no lock, nunca o atualiza.
+        run: yarn install --frozen-lockfile --ignore-engines
       - name: Build app vCnafacul
         run: yarn build
       - name: Build Image
@@ -99,12 +137,13 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.base_ref == 'develop'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: develop
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v4
         with:
           node-version: 20.x
+          cache: "yarn"
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
       - name: Deploy Firestore indexes
