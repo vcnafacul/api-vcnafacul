@@ -228,6 +228,14 @@ export class ContentProxyController {
     );
   }
 
+  /** Tudo que aconteceu com a demanda, em ordem, com quem e quando (050/02). */
+  @Get(':id/timeline')
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarDemanda)
+  async getTimeline(@Param('id') id: string) {
+    return await this.contentService.getTimeline(id);
+  }
+
   @Get(':id/file-history')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.visualizarDemanda)

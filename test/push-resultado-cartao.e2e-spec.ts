@@ -2,6 +2,7 @@
 process.env.NOTIFICACAO_SECRET = 'segredo-de-teste';
 
 import { INestApplication } from '@nestjs/common';
+import { SchedulerRegistry } from '@nestjs/schedule';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { AppModule } from 'src/app.module';
@@ -27,6 +28,7 @@ describe('Push do resultado do cartão (e2e)', () => {
   let db: DataSource;
   const historicos: string[] = [];
   let task: EnvioDeResultadoTask;
+  let cron: ReturnType<SchedulerRegistry['getCronJob']>;
   const push = {
     habilitado: true,
     garantirHabilitado: jest.fn(() => {
@@ -51,6 +53,19 @@ describe('Push do resultado do cartão (e2e)', () => {
     db = mod.get(DataSource);
     task = mod.get(EnvioDeResultadoTask);
     task.pausa = async () => undefined; // sem esperar de verdade no teste
+    /*
+      ⚠️ O cron de 15 s do task roda DENTRO do app de teste. Um tick no
+      meio de um `rodar()` manual faz o manual devolver 0 (lock `rodando`) ou
+      ler a linha antes de o tick gravar `tentativas` — foi o que derrubou a CI
+      em 2026-10-20 (run 39364680458, verde e vermelho no MESMO commit).
+      Aqui quem roda a rodada é o teste; o relógio fica parado.
+    */
+    cron = mod.get(SchedulerRegistry).getCronJob('push-resultado-cartao');
+    cron.stop();
+  });
+
+  it('⚠️ o cron de 15 s fica parado durante a suíte (senão as rodadas manuais disputam com ele)', () => {
+    expect(cron.running).toBe(false);
   });
 
   afterAll(async () => {
