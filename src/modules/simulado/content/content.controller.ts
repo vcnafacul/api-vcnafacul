@@ -31,6 +31,7 @@ import { ChangeOrderDto } from './dtos/change-order.dto';
 import { ChangeStatusDto } from './dtos/change-status.dto';
 import { CreateContentDto } from './dtos/create-content.dto';
 import { ReviewProposalDto } from './dtos/review-proposal.dto';
+import { SendVideoDto } from './dtos/send-video.dto';
 import { docxUploadOptions } from './upload-docx.options';
 
 @ApiTags('Content')
@@ -111,6 +112,22 @@ export class ContentProxyController {
     );
   }
 
+  /** Envio de vídeo do YouTube: o "upload" quando a lição é um vídeo (tickets/049). */
+  @Post(':id/video')
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.uploadDemanda)
+  async sendVideo(
+    @Param('id') id: string,
+    @Body() dto: SendVideoDto,
+    @Req() req: Request,
+  ) {
+    return await this.contentService.sendVideo(
+      id,
+      (req.user as User).id,
+      dto.url,
+    );
+  }
+
   @Delete(':id')
   @UseGuards(PermissionsGuard)
   @SetMetadata(PermissionsGuard.name, Permissions.gerenciadorDemanda)
@@ -174,8 +191,10 @@ export class ContentProxyController {
   @UseInterceptors(FileInterceptor('file', docxUploadOptions))
   async uploadProposal(
     @Param('id') id: string,
-    @UploadedFile() file: Express.Multer.File,
-    @Body('comment') comment: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Body('comment') comment: string | undefined,
+    // Vídeo: o client manda `url` no mesmo FormData, sem `file`.
+    @Body('url') url: string | undefined,
     @Req() req: Request,
   ) {
     return await this.contentService.uploadProposal(
@@ -183,6 +202,7 @@ export class ContentProxyController {
       (req.user as User).id,
       file,
       comment,
+      url,
     );
   }
 
