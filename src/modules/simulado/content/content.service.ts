@@ -9,6 +9,7 @@ import { BlobService } from 'src/shared/services/blob/blob-service';
 import { UserService } from 'src/modules/user/user.service';
 import { cleanString } from 'src/utils/cleanString';
 import { extrairYoutubeId } from './youtube-id';
+import { EventoDaTimeline, montarTimeline } from './content-timeline';
 
 @Injectable()
 export class ContentProxyService {
@@ -59,6 +60,7 @@ export class ContentProxyService {
         c.userId,
         c.file?.uploadedBy,
         c.lastEditedBy,
+        c.approvedBy,
       ]),
     );
     return conteudos.map((c) => ({
@@ -70,7 +72,36 @@ export class ContentProxyService {
       ...(c.lastEditedBy
         ? { lastEditedByName: nomes.get(c.lastEditedBy) }
         : {}),
+      ...(c.approvedBy ? { approvedByName: nomes.get(c.approvedBy) } : {}),
     }));
+  }
+
+  /**
+   * Linha do tempo da demanda (050/02): os quatro cadastros do ms em
+   * paralelo, montados em eventos, nomes resolvidos num lote só.
+   */
+  async getTimeline(contentId: string): Promise<{ eventos: EventoDaTimeline[] }> {
+    const content = await this.axios.get<any>(
+      `v1/content/${contentId}/populated`,
+    );
+    if (!content) {
+      throw new HttpException('demand not found', HttpStatus.NOT_FOUND);
+    }
+    const [historico, propostas, auditLog] = await Promise.all([
+      this.axios.get<any[]>(`v1/content-file-history/content/${contentId}`),
+      this.axios.get<any[]>(`v1/adjustment-proposal/content/${contentId}`),
+      this.axios.get<any[]>(`v1/auditLog/${contentId}`),
+    ]);
+    const eventos = montarTimeline({
+      content,
+      historico: Array.isArray(historico) ? historico : [],
+      propostas: Array.isArray(propostas) ? propostas : [],
+      auditLog: Array.isArray(auditLog) ? auditLog : [],
+    });
+    const nomes = await this.nomesDe(eventos.map((e) => e.porId));
+    return {
+      eventos: eventos.map((e) => ({ ...e, por: nomes.get(e.porId) ?? e.porId })),
+    };
   }
 
   async create(body: any, userId: string) {

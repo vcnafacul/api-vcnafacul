@@ -330,6 +330,45 @@ describe('ContentProxyService', () => {
     });
   });
 
+  describe('getTimeline (050/02)', () => {
+    const porUrl = (url: string) => {
+      if (url.endsWith('/populated'))
+        return { _id: 'c1', userId: 'u-ana', createdAt: '2026-09-01T12:00:00.000Z', approvedBy: 'u-bia' };
+      if (url.includes('content-file-history'))
+        return [{ createdAt: '2026-09-01T12:10:00.000Z', uploadedBy: 'u-bia', source: 'initial_upload', file: { _id: 'f1' } }];
+      if (url.includes('adjustment-proposal')) return [];
+      if (url.includes('auditLog'))
+        return [{ user: 'u-bia', entityType: 'Content', createdAt: '2026-09-01T12:20:00.000Z', changes: '{"status":1,"message":"x"}' }];
+      return undefined;
+    };
+
+    it('junta as fontes, ordena e resolve os nomes numa consulta só', async () => {
+      mockAxios.get.mockImplementation(async (url: string) => porUrl(url));
+
+      const { eventos } = await service.getTimeline('c1');
+
+      expect(eventos.map((e) => `${e.tipo}:${e.por}`)).toEqual([
+        'criada:Ana Souza',
+        'enviada:Bia Lima',
+        'aprovada:Bia Lima',
+      ]);
+      expect(mockUserService.findNomesPorIds).toHaveBeenCalledTimes(1);
+      expect([...mockUserService.findNomesPorIds.mock.calls[0][0]].sort()).toEqual(['u-ana', 'u-bia']);
+    });
+
+    it('demanda inexistente → 404 antes das outras chamadas', async () => {
+      mockAxios.get.mockResolvedValue(null);
+      await expect(service.getTimeline('nope')).rejects.toMatchObject({ status: 404 });
+      expect(mockAxios.get).toHaveBeenCalledTimes(1);
+    });
+
+    it('listagem anexa approvedByName', async () => {
+      mockAxios.get.mockResolvedValue({ data: [{ _id: '1', userId: 'u-ana', approvedBy: 'u-bia' }] });
+      const out = await service.getAll({});
+      expect(out.data[0]).toMatchObject({ createdByName: 'Ana Souza', approvedByName: 'Bia Lima' });
+    });
+  });
+
   describe('getAll', () => {
     it('should forward materia ObjectId directly in query', async () => {
       mockAxios.get.mockResolvedValue({ data: [] });
