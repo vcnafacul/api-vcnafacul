@@ -15,7 +15,7 @@ describe('ContentProxyService', () => {
     deleteFile: jest.Mock;
   };
   let mockCache: { wrap: jest.Mock; del: jest.Mock };
-  let mockUserService: { findUserById: jest.Mock };
+  let mockUserService: { findUserById: jest.Mock; findNomesPorIds: jest.Mock };
 
   beforeEach(() => {
     mockAxios = {
@@ -40,6 +40,16 @@ describe('ContentProxyService', () => {
         lastName: 'Silva',
         socialName: null,
         useSocialName: false,
+      }),
+      // Nomes em lote: `u-ana` → Ana, `u-bia` → Bia; os outros ficam sem nome.
+      findNomesPorIds: jest.fn(async (ids: string[]) => {
+        const todos = new Map([
+          ['u-ana', 'Ana Souza'],
+          ['u-bia', 'Bia Lima'],
+        ]);
+        return new Map(
+          ids.filter((id) => todos.has(id)).map((id) => [id, todos.get(id)]),
+        );
       }),
     };
 
@@ -86,6 +96,92 @@ describe('ContentProxyService', () => {
       const calledBody = mockAxios.post.mock.calls[0][1];
       expect(calledBody).not.toHaveProperty('subjectId');
       expect(calledBody).toHaveProperty('subject', 'sub-1');
+    });
+  });
+
+  describe('nomes na listagem (048/06)', () => {
+    it('⚠️ 3 demandas do mesmo criador → UMA consulta de usuários, com ids únicos', async () => {
+      mockAxios.get.mockResolvedValue({
+        data: [
+          { _id: '1', userId: 'u-ana', file: { uploadedBy: 'u-bia' } },
+          { _id: '2', userId: 'u-ana', file: { uploadedBy: 'u-ana' } },
+          { _id: '3', userId: 'u-ana' },
+        ],
+        page: 1,
+        limit: 40,
+        totalItems: 3,
+      });
+
+      const out = await service.getAll({ status: 3 });
+
+      expect(mockUserService.findNomesPorIds).toHaveBeenCalledTimes(1);
+      expect([...mockUserService.findNomesPorIds.mock.calls[0][0]].sort()).toEqual(
+        ['u-ana', 'u-bia'],
+      );
+      expect(out.data[0]).toMatchObject({
+        createdByName: 'Ana Souza',
+        uploadedByName: 'Bia Lima',
+      });
+      expect(out.data[1].uploadedByName).toBe('Ana Souza');
+      expect(out).toMatchObject({ page: 1, totalItems: 3 });
+    });
+
+    it('demanda sem arquivo não ganha uploadedByName; id sem usuário vira o próprio id', async () => {
+      mockAxios.get.mockResolvedValue({
+        data: [{ _id: '3', userId: 'u-sumido' }],
+      });
+
+      const out = await service.getAll({});
+
+      expect(out.data[0]).not.toHaveProperty('uploadedByName');
+      expect(out.data[0].createdByName).toBe('u-sumido');
+    });
+
+    it('o que o ms mandar que não seja página passa intacto', async () => {
+      mockAxios.get.mockResolvedValue(undefined);
+      expect(await service.getAll({})).toBeUndefined();
+      expect(mockUserService.findNomesPorIds).not.toHaveBeenCalled();
+    });
+
+    it('propostas: autor e revisor resolvidos numa consulta só', async () => {
+      mockAxios.get.mockResolvedValue([
+        { _id: 'p1', author: 'u-ana', reviewedBy: 'u-bia' },
+        { _id: 'p2', author: 'u-bia' },
+      ]);
+
+      const out = await service.getProposalsByContent('c1');
+
+      expect(mockUserService.findNomesPorIds).toHaveBeenCalledTimes(1);
+      expect(out[0]).toMatchObject({
+        authorName: 'Ana Souza',
+        reviewedByName: 'Bia Lima',
+      });
+      expect(out[1].authorName).toBe('Bia Lima');
+      expect(out[1]).not.toHaveProperty('reviewedByName');
+    });
+
+    it('histórico: uma consulta para todas as entradas', async () => {
+      mockAxios.get.mockResolvedValue([
+        { _id: 'h1', uploadedBy: 'u-ana' },
+        { _id: 'h2', uploadedBy: 'u-ana' },
+      ]);
+
+      const out = await service.getFileHistory('c1');
+
+      expect(mockUserService.findNomesPorIds).toHaveBeenCalledTimes(1);
+      expect(out.map((h) => h.uploadedByName)).toEqual([
+        'Ana Souza',
+        'Ana Souza',
+      ]);
+    });
+
+    it('banco fora → nomes viram ids, sem derrubar a listagem', async () => {
+      mockUserService.findNomesPorIds.mockRejectedValueOnce(new Error('db'));
+      mockAxios.get.mockResolvedValue({ data: [{ _id: '1', userId: 'u-ana' }] });
+
+      const out = await service.getAll({});
+
+      expect(out.data[0].createdByName).toBe('u-ana');
     });
   });
 
@@ -305,10 +401,21 @@ describe('ContentProxyService', () => {
   });
 
   describe('simple proxy methods', () => {
-    it('getById should call correct URL', async () => {
-      mockAxios.get.mockResolvedValue({ _id: 'abc', title: 'Test' });
-      await service.getById('abc');
-      expect(mockAxios.get).toHaveBeenCalledWith('v1/content/abc');
+    it('getById lê a rota populada e anexa criador e quem enviou', async () => {
+      mockAxios.get.mockResolvedValue({
+        _id: 'abc',
+        title: 'Test',
+        userId: 'u-ana',
+        file: { _id: 'f1', uploadedBy: 'u-bia' },
+        lastEditedBy: 'u-bia',
+      });
+      const out = await service.getById('abc');
+      expect(mockAxios.get).toHaveBeenCalledWith('v1/content/abc/populated');
+      expect(out).toMatchObject({
+        createdByName: 'Ana Souza',
+        uploadedByName: 'Bia Lima',
+        lastEditedByName: 'Bia Lima',
+      });
     });
 
     it('getDemands should pass page and limit', async () => {

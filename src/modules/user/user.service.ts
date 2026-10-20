@@ -227,6 +227,23 @@ export class UserService extends BaseService<User> {
     return await this.userRepository.findOneBy({ id });
   }
 
+  /**
+   * Nome de exibição (social, se usa) por id, numa consulta só.
+   * Id sem usuário fica fora do mapa — quem chama decide o fallback.
+   */
+  async findNomesPorIds(ids: string[]): Promise<Map<string, string>> {
+    const unicos = [...new Set(ids.filter(Boolean))];
+    const usuarios = await this.userRepository.findNomesPorIds(unicos);
+    return new Map(
+      usuarios.map((u) => [
+        u.id,
+        u.useSocialName
+          ? `${u.socialName} ${u.lastName}`
+          : `${u.firstName} ${u.lastName}`,
+      ]),
+    );
+  }
+
   async update(updateUser: UpdateUserDTOInput, id: string) {
     const user = await this.userRepository.findOneBy({ id });
 

@@ -25,17 +25,51 @@ export class ContentProxyService {
     );
   }
 
-  private async resolveUserName(userId: string): Promise<string> {
+  /**
+   * Nomes de exibição para um conjunto de ids, numa consulta só. Id sem
+   * usuário (ou falha no banco) devolve o próprio id, como antes.
+   *
+   * ⚠️ Era um `findUserById` por item: a lista de propostas e o histórico
+   * faziam N consultas, e a listagem de demandas não resolvia nome nenhum.
+   */
+  private async nomesDe(ids: (string | undefined)[]): Promise<Map<string, string>> {
+    const unicos = [...new Set(ids.filter((id): id is string => !!id))];
+    const nomes = new Map<string, string>();
     try {
-      const user = await this.userService.findUserById(userId);
-      if (!user) return userId;
-      const displayName = user.useSocialName
-        ? `${user.socialName} ${user.lastName}`
-        : `${user.firstName} ${user.lastName}`;
-      return displayName;
+      const achados = await this.userService.findNomesPorIds(unicos);
+      achados.forEach((nome, id) => nomes.set(id, nome));
     } catch {
-      return userId;
+      // sem nome, fica o id
     }
+    unicos.forEach((id) => nomes.has(id) || nomes.set(id, id));
+    return nomes;
+  }
+
+  /**
+   * Anexa `createdByName` (quem abriu a demanda) e `uploadedByName` (quem
+   * enviou o arquivo vigente) a cada conteúdo. Quem fez a última edição
+   * continua em `lastEditedByName`.
+   */
+  private async comNomes<T extends Record<string, any>>(
+    conteudos: T[],
+  ): Promise<T[]> {
+    const nomes = await this.nomesDe(
+      conteudos.flatMap((c) => [
+        c.userId,
+        c.file?.uploadedBy,
+        c.lastEditedBy,
+      ]),
+    );
+    return conteudos.map((c) => ({
+      ...c,
+      ...(c.userId ? { createdByName: nomes.get(c.userId) } : {}),
+      ...(c.file?.uploadedBy
+        ? { uploadedByName: nomes.get(c.file.uploadedBy) }
+        : {}),
+      ...(c.lastEditedBy
+        ? { lastEditedByName: nomes.get(c.lastEditedBy) }
+        : {}),
+    }));
   }
 
   async create(body: any, userId: string) {
@@ -54,17 +88,23 @@ export class ContentProxyService {
         params.append(key, String(value));
       }
     }
-    return await this.axios.get(`v1/content?${params.toString()}`);
+    const pagina = await this.axios.get<any>(
+      `v1/content?${params.toString()}`,
+    );
+    if (!Array.isArray(pagina?.data)) return pagina;
+    return { ...pagina, data: await this.comNomes(pagina.data) };
   }
 
+  /**
+   * ⚠️ A rota populada, não a crua: só ela traz `file.uploadedBy` (e o tema
+   * com frente e matéria). O client não chama este GET hoje; o painel lê a
+   * listagem.
+   */
   async getById(id: string) {
-    const content = await this.axios.get<any>(`v1/content/${id}`);
-    if (content?.lastEditedBy) {
-      content.lastEditedByName = await this.resolveUserName(
-        content.lastEditedBy,
-      );
-    }
-    return content;
+    const content = await this.axios.get<any>(`v1/content/${id}/populated`);
+    if (!content) return content;
+    const [comNomes] = await this.comNomes([content]);
+    return comNomes;
   }
 
   async getBySubject(subjectId: string, status?: number) {
@@ -275,15 +315,14 @@ export class ContentProxyService {
     );
     if (!proposals || !Array.isArray(proposals)) return proposals;
 
-    return await Promise.all(
-      proposals.map(async (p) => ({
-        ...p,
-        authorName: await this.resolveUserName(p.author),
-        ...(p.reviewedBy
-          ? { reviewedByName: await this.resolveUserName(p.reviewedBy) }
-          : {}),
-      })),
+    const nomes = await this.nomesDe(
+      proposals.flatMap((p) => [p.author, p.reviewedBy]),
     );
+    return proposals.map((p) => ({
+      ...p,
+      authorName: nomes.get(p.author),
+      ...(p.reviewedBy ? { reviewedByName: nomes.get(p.reviewedBy) } : {}),
+    }));
   }
 
   async reviewProposal(proposalId: string, status: number, reviewedBy: string) {
@@ -318,11 +357,10 @@ export class ContentProxyService {
     );
     if (!history || !Array.isArray(history)) return history;
 
-    return await Promise.all(
-      history.map(async (h) => ({
-        ...h,
-        uploadedByName: await this.resolveUserName(h.uploadedBy),
-      })),
-    );
+    const nomes = await this.nomesDe(history.map((h) => h.uploadedBy));
+    return history.map((h) => ({
+      ...h,
+      uploadedByName: nomes.get(h.uploadedBy),
+    }));
   }
 }
