@@ -57,13 +57,16 @@ jobs:
         run: dotenv -e ./test/.env.test -- yarn typeorm migration:run
       - name: Run tests (shard ${{ matrix.shard }}/4)
         # coverageThreshold vazio: um shard sozinho nunca bate 74%; quem confere é o COBERTURA.
-        run: dotenv -e ./test/.env.test -- yarn jest --config ./test/config/jest-e2e.json --shard=${{ matrix.shard }}/4 --coverage --coverageThreshold='{}' --forceExit --detectOpenHandles
+        # ⚠️ reporter `json` explícito: o jest-e2e.json só tem text/lcov, e sem o json
+        # não existe coverage-final.json para publicar (primeiro run deste card).
+        run: dotenv -e ./test/.env.test -- yarn jest --config ./test/config/jest-e2e.json --shard=${{ matrix.shard }}/4 --coverage --coverageThreshold='{}' --coverageReporters=json --coverageReporters=text-summary --forceExit --detectOpenHandles
         timeout-minutes: 10
       - name: Publicar cobertura do shard
         uses: actions/upload-artifact@v4
         with:
           name: cobertura-${{ matrix.shard }}
           path: coverage/coverage-final.json
+          if-no-files-found: error
           retention-days: 3
   COBERTURA:
     if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened')
@@ -81,7 +84,8 @@ jobs:
           pattern: cobertura-*
           path: coberturas
       - name: Juntar e conferir
-        run: node test/utils/checar-cobertura.js coberturas/*/coverage-final.json
+        # `find` em vez de glob: sem arquivo o script recebe lista vazia e falha com uso claro.
+        run: node test/utils/checar-cobertura.js $(find coberturas -name coverage-final.json)
   PUSH:
     if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
     runs-on: ubuntu-latest
