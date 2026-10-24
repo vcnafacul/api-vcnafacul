@@ -1,8 +1,8 @@
 # Seed demo (tickets/053)
 
 Monta o "Cursinho Popular Semear" com 3 anos de história (2024–2026: processos, períodos, turmas, alunos,
-frequência, formulário e indicadores) em bancos **locais e dedicados**, para gravar o vídeo de apresentação.
-Nunca usa o `.env` da api nem o do form.
+frequência, formulário e indicadores) e mais o **Processo Seletivo 2027 com inscrições abertas**, em bancos
+**locais e dedicados**, para gravar o vídeo de apresentação. Nunca usa o `.env` da api nem o do form.
 
 ## Primeira vez
 1. `cp scripts/seed-demo/.env.seed-demo.example scripts/seed-demo/.env.seed-demo` e troque `SEED_DEMO_SENHA`.
@@ -20,6 +20,15 @@ Nunca usa o `.env` da api nem o do form.
 
 ⚠️ **Rodou o seed com a api ou o form no ar? Reinicie os dois.** O cache é em memória
 (`CACHE_DRIVER=InMemory`): sem reiniciar, as telas mostram o que estava antes do seed.
+
+### O que existe
+- **4 processos seletivos**: 2024, 2025 e 2026 *Encerrado* (inscrições 05/01–20/02) e **2027 *Ativo*** — começou
+  10 dias antes do dia em que o seed roda e termina 30 dias depois, então está sempre aberto ao rodar de novo.
+  Cada um com FormFull e rule-set no Mongo.
+- **2027**: 9 inscritos *Em Análise* (inscrição entre o início e ontem), sem turma, período nem número de
+  matrícula — não entram em frequência nem indicadores. 2027 não tem período nem turmas.
+- **2024–2026**: 135 matriculados (45 por ano) + 6 candidatos da 2ª chamada de 2026 → 150 `student_course`,
+  150 submissions.
 
 ### O que está pronto para as cenas ao vivo
 - **2ª chamada** (processo de 2026), 6 candidatos: 1 *Declarou Interesse* — é o que se confirma ao vivo

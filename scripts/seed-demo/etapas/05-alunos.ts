@@ -1,49 +1,27 @@
-import { ObjectId } from 'mongodb';
 import { InscriptionCourse } from '../../../src/modules/prepCourse/InscriptionCourse/inscription-course.entity';
 import { StatusApplication as S } from '../../../src/modules/prepCourse/studentCourse/enums/stastusApplication';
-import { LogStudent } from '../../../src/modules/prepCourse/studentCourse/log-student/log-student.entity';
-import { StudentCourse } from '../../../src/modules/prepCourse/studentCourse/student-course.entity';
-import { SocioeconomicAnswer } from '../../../src/modules/prepCourse/studentCourse/types/student-course-full';
-import { Role } from '../../../src/modules/role/role.entity';
-import { Gender } from '../../../src/modules/user/enum/gender';
-import { User } from '../../../src/modules/user/user.entity';
-import { entre, escolher, faker } from '../aleatorio';
+import { entre, faker } from '../aleatorio';
 import { inicioDoDia, somarDias } from '../calendario';
 import {
   ALUNOS_POR_TURMA,
   ANO_ATUAL,
   ANOS,
-  DOMINIO_DEMO,
   EVASAO,
   datasDoAno,
 } from '../config';
 import { Contexto } from '../contexto';
-import { lerFixture } from '../formulario';
 import { planejarHistorias } from '../historia';
-import { montarResposta } from '../respostas';
+import { criarInscritor, emSP } from '../inscricao';
 
 /**
  * Datas, em dois formatos (ver 04 e 06):
  * - `log_student.created_at` / `student_course.created_at` (timestamp) são
- *   instantes: gravados em hora do dia de São Paulo (`emSP`), longe da
- *   meia-noite, para o dia ser o mesmo lido com fuso `Z` (seed, 07) ou com o
- *   fuso do processo da api (SP).
+ *   instantes em hora do dia de São Paulo (`emSP`, em `inscricao.ts`).
  * - `selectEnrolledAt` / `limitEnrolledAt` (datetime) são horário de parede
  *   de SP: o `scheduleEnrolled` grava `setHours(0,0,0,0)` com TZ=SP, e a
  *   conexão `Z` do seed grava as partes UTC como o texto — então
  *   `meiaNoiteSP(dia)` = meia-noite UTC do dia.
  */
-/** `hora` de SP até 20h: o texto gravado (hora + 3) fica no mesmo dia. */
-const emSP = (dia: Date, hora: number, minuto = 0) =>
-  new Date(
-    Date.UTC(
-      dia.getUTCFullYear(),
-      dia.getUTCMonth(),
-      dia.getUTCDate(),
-      hora + 3,
-      minuto,
-    ),
-  );
 const meiaNoiteSP = inicioDoDia;
 /** `toLocaleDateString('pt-BR')` de uma meia-noite de SP. */
 const dataBR = (dia: Date) =>
@@ -88,26 +66,6 @@ const CURSOS = [
   'Letras',
 ] as const;
 
-/** CPF com dígitos verificadores válidos (só números, como a inscrição grava). */
-function gerarCpf() {
-  const n = Array.from({ length: 9 }, () => entre(0, 9));
-  for (const tam of [9, 10]) {
-    const soma = n
-      .slice(0, tam)
-      .reduce((acc, d, i) => acc + d * (tam + 1 - i), 0);
-    const resto = (soma * 10) % 11;
-    n.push(resto === 10 ? 0 : resto);
-  }
-  return n.join('');
-}
-
-const semAcento = (s: string) =>
-  s
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '');
-
 type Candidato =
   | 'convocado'
   | 'declarou-interesse'
@@ -134,162 +92,10 @@ const CANDIDATOS_EXTRAS: Candidato[] = [
 
 export async function executar(ctx: Contexto) {
   if (!ctx.cursinhoId) throw new Error('05 alunos: rode o 02 antes');
-  const fx = lerFixture();
-  const roleAluno = await ctx.ds
-    .getRepository(Role)
-    .findOneByOrFail({ name: 'aluno' });
-  const users = ctx.ds.getRepository(User);
-  const alunos = ctx.ds.getRepository(StudentCourse);
   const processos = ctx.ds.getRepository(InscriptionCourse);
   const nomesDasTurmas = new Map(ctx.turmas.map((t) => [t.id, t.nome]));
-
-  // texto da pergunta → _id, do FormFull de cada ano (a submission aponta
-  // para as perguntas do FormFull do processo dela)
-  const perguntasDoAno = new Map<number, Map<string, ObjectId>>();
-  for (const ano of ANOS) {
-    const ff = await ctx.form
-      .collection('formfulls')
-      .findOne({ _id: ctx.formFull[ano] });
-    if (!ff) throw new Error(`05 alunos: FormFull de ${ano} não existe`);
-    const m = new Map<string, ObjectId>();
-    for (const s of ff.sections)
-      for (const q of s.questions) m.set(q.text, q._id as ObjectId);
-    perguntasDoAno.set(ano, m);
-  }
-
-  const logs: Partial<LogStudent>[] = [];
-  const submissions: Record<string, unknown>[] = [];
-  const emails = new Set<string>();
-
-  const log = (
-    studentId: string,
-    applicationStatus: S,
-    description: string,
-    quando: Date,
-  ) =>
-    logs.push({
-      studentId,
-      applicationStatus,
-      description,
-      createdAt: quando,
-      updatedAt: quando,
-    });
-
-  /** E-mail único e determinístico: nome.sobrenome, depois nome.sobrenome2, 3… */
-  function emailUnico(firstName: string, lastName: string) {
-    const base = `${semAcento(firstName)}.${semAcento(lastName.split(' ')[0])}`;
-    let email = `${base}@${DOMINIO_DEMO}`;
-    for (let n = 2; emails.has(email); n++)
-      email = `${base}${n}@${DOMINIO_DEMO}`;
-    emails.add(email);
-    return email;
-  }
-
-  async function criarPessoa(ano: number, criadoEm: Date) {
-    const sexo = faker.person.sexType();
-    const firstName = faker.person.firstName(sexo);
-    const lastName = `${faker.person.lastName()} ${faker.person.lastName()}`;
-    // maiores de idade na inscrição (janeiro): sem responsável legal
-    const nascimento = faker.date.birthdate({
-      min: ano - 30,
-      max: ano - 19,
-      mode: 'year',
-    });
-    const u = Object.assign(new User(), {
-      email: emailUnico(firstName, lastName),
-      password: null, // não loga: só o representante entra no demo
-      firstName,
-      lastName,
-      phone: `119${faker.string.numeric(8)}`,
-      gender: sexo === 'female' ? Gender.Female : Gender.Male,
-      birthday: inicioDoDia(nascimento),
-      postalCode: `0${entre(5000, 5599)}-${faker.string.numeric(3)}`,
-      street: faker.location.street(),
-      number: entre(10, 2000),
-      neighborhood: escolher([
-        'Butantã',
-        'Rio Pequeno',
-        'Jaguaré',
-        'Vila Sônia',
-        'Raposo Tavares',
-        'Jardim Bonfiglioli',
-        'Caxingui',
-      ]),
-      state: 'SP',
-      city: 'São Paulo',
-      lgpd: true,
-      emailConfirmSended: null,
-      role: roleAluno,
-      createdAt: criadoEm,
-      updatedAt: criadoEm,
-    });
-    return users.save(u);
-  }
-
-  /** student_course + log "Inscrição realizada" + submission, como o `create` da api. */
-  async function criarInscricao(
-    ano: number,
-    u: User,
-    extra: Partial<StudentCourse>,
-    inscritoEm: Date,
-  ) {
-    const perguntas = perguntasDoAno.get(ano)!;
-    const resposta = montarResposta(fx);
-    const answers: SocioeconomicAnswer[] = Object.entries(resposta).map(
-      ([question, answer]) => {
-        const id = perguntas.get(question);
-        if (!id)
-          throw new Error(
-            `05 alunos: resposta para "${question}", que não está no FormFull de ${ano}`,
-          );
-        return {
-          questionId: String(id),
-          question,
-          answer: answer as SocioeconomicAnswer['answer'],
-        };
-      },
-    );
-    const sc = await alunos.save(
-      Object.assign(new StudentCourse(), {
-        userId: u.id,
-        rg: faker.string.numeric(9),
-        uf: 'SP',
-        cpf: gerarCpf(),
-        email: u.email,
-        whatsapp: u.phone,
-        urgencyPhone: `119${faker.string.numeric(8)}`,
-        partnerPrepCourse: { id: ctx.cursinhoId },
-        inscriptionCourse: { id: ctx.processos[ano] },
-        socioeconomic: JSON.stringify(answers),
-        isFree: true,
-        createdAt: inscritoEm,
-        updatedAt: inscritoEm,
-        ...extra,
-      }),
-    );
-    log(sc.id, S.UnderReview, 'Inscrição realizada', inscritoEm);
-    // `SubmissionSevice.create`: o DTO vira o doc (inscriptionId cai no strict),
-    // `form` = FormFull._id, `questionId` vira ObjectId e cada resposta ganha _id
-    submissions.push({
-      _id: new ObjectId(),
-      form: ctx.formFull[ano],
-      userId: u.id,
-      studentId: sc.id,
-      name: `${u.firstName} ${u.lastName}`,
-      email: u.email,
-      birthday: u.birthday,
-      answers: answers.map((a) => ({
-        _id: new ObjectId(),
-        questionId: new ObjectId(a.questionId),
-        answer: a.answer,
-        question: a.question,
-      })),
-      deleted: false,
-      createdAt: inscritoEm,
-      updatedAt: inscritoEm,
-    });
-    return sc;
-  }
+  const { log, criarPessoa, criarInscricao, gravar } =
+    await criarInscritor(ctx);
 
   /** Convocação (log de agendamento + e-mail do cron). Devolve as datas do aluno. */
   function convocar(studentId: string, convocadoEm: Date) {
@@ -531,18 +337,9 @@ export async function executar(ctx: Contexto) {
       { head: naListaDeEspera, tail: naListaDeEspera, lenght: 1 },
     );
 
-  for (let i = 0; i < logs.length; i += 500)
-    await ctx.ds
-      .createQueryBuilder()
-      .insert()
-      .into(LogStudent)
-      .values(logs.slice(i, i + 500) as never)
-      .updateEntity(false)
-      .execute();
-  if (submissions.length)
-    await ctx.form.collection('submissions').insertMany(submissions);
+  const gravados = await gravar();
 
   console.log(
-    `05 alunos: ${ctx.alunos.length} matriculados ao longo dos anos + ${CANDIDATOS_EXTRAS.length} candidatos da 2ª chamada, ${logs.length} logs, ${submissions.length} submissions`,
+    `05 alunos: ${ctx.alunos.length} matriculados ao longo dos anos + ${CANDIDATOS_EXTRAS.length} candidatos da 2ª chamada, ${gravados.logs} logs, ${gravados.submissions} submissions`,
   );
 }

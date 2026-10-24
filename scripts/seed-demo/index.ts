@@ -16,6 +16,7 @@ const ETAPAS = [
   '05-alunos',
   '06-frequencia',
   '07-indicadores',
+  '08-inscricoes-abertas',
 ];
 
 function etapasEscolhidas() {

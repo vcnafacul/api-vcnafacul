@@ -1,4 +1,5 @@
 import { AttendancePeriod } from '../../src/modules/prepCourse/attendance/attendanceRecord/enum/attendance-period.enum';
+import { somarDias } from './calendario';
 
 export const CURSINHO = {
   nome: 'Cursinho Popular Semear',
@@ -34,6 +35,26 @@ export const datasDoAno = (ano: number) => ({
   inscricaoFim: new Date(Date.UTC(ano, 1, 20)),
   periodoInicio: new Date(Date.UTC(ano, 2, 2)),
   periodoFim: new Date(Date.UTC(ano, 11, 11)),
+});
+
+/**
+ * Processo seletivo com inscrições **abertas** no dia em que o seed roda
+ * (tickets/053, Q5): a lista de processos mostra 1 "Ativo" + 3 "Encerrado".
+ * Fora de `ANOS` de propósito — não tem período, turma, frequência nem
+ * indicador; só o processo (04) e inscritos "Em Análise" (08).
+ */
+export const PROCESSO_ABERTO = {
+  ano: 2027,
+  /** Começou há 10 dias e vai até daqui a 30 (relativo a `hoje`). */
+  diasDesdeInicio: 10,
+  diasAteFim: 30,
+  inscritos: 9,
+} as const;
+
+/** Datas do processo aberto, em UTC meia-noite (como `datasDoAno`). */
+export const datasDoProcessoAberto = (hoje: Date) => ({
+  inscricaoInicio: somarDias(hoje, -PROCESSO_ABERTO.diasDesdeInicio),
+  inscricaoFim: somarDias(hoje, PROCESSO_ABERTO.diasAteFim),
 });
 
 export const TURMAS = [

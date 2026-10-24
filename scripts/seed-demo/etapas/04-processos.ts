@@ -1,7 +1,13 @@
 import { ObjectId } from 'mongodb';
 import { InscriptionCourse } from '../../../src/modules/prepCourse/InscriptionCourse/inscription-course.entity';
 import { Status } from '../../../src/modules/simulado/enum/status.enum';
-import { ANO_ATUAL, ANOS, datasDoAno } from '../config';
+import {
+  ANO_ATUAL,
+  ANOS,
+  PROCESSO_ABERTO,
+  datasDoAno,
+  datasDoProcessoAberto,
+} from '../config';
 import { Contexto } from '../contexto';
 import {
   CondicoesFixture,
@@ -218,8 +224,11 @@ export async function executar(ctx: Contexto) {
     throw new Error('04 processos: o fixture não tem seção com pergunta');
 
   const repo = ctx.ds.getRepository(InscriptionCourse);
-  for (const ano of ANOS) {
-    const d = datasDoAno(ano);
+  async function criarProcesso(
+    ano: number,
+    d: { inscricaoInicio: Date; inscricaoFim: Date },
+    requestDocuments: boolean,
+  ) {
     // A api grava as datas no horário de parede de SP (conexão sem `timezone`,
     // processo com TZ=America/Sao_Paulo); a conexão do seed é `Z`, então as
     // partes UTC daqui viram exatamente esse texto no banco. Fim sem os .999 do
@@ -235,7 +244,7 @@ export async function executar(ctx: Contexto) {
         endDate: fim,
         actived: Status.Approved, // o service aprova quem começa no passado
         expectedOpening: 45,
-        requestDocuments: ano === ANO_ATUAL,
+        requestDocuments,
         partnerPrepCourse: { id: ctx.cursinhoId },
         createdAt: d.inscricaoInicio, // a listagem ordena por createdAt DESC
         updatedAt: d.inscricaoInicio,
@@ -274,7 +283,16 @@ export async function executar(ctx: Contexto) {
       updatedAt: d.inscricaoInicio,
     });
   }
+
+  for (const ano of ANOS)
+    await criarProcesso(ano, datasDoAno(ano), ano === ANO_ATUAL);
+  // inscrições abertas hoje; pede documentos como o do ano atual
+  await criarProcesso(
+    PROCESSO_ABERTO.ano,
+    datasDoProcessoAberto(ctx.hoje),
+    true,
+  );
   console.log(
-    `04 processos: ${ANOS.length} processos, ${idDaPergunta.size} perguntas e ${regras.length} regras no Mongo`,
+    `04 processos: ${ANOS.length + 1} processos (${PROCESSO_ABERTO.ano} com inscrições abertas), ${idDaPergunta.size} perguntas e ${regras.length} regras no Mongo`,
   );
 }
