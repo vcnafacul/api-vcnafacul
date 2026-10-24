@@ -11,7 +11,12 @@ import { Status } from '../../../src/modules/simulado/enum/status.enum';
 import { Gender } from '../../../src/modules/user/enum/gender';
 import { User } from '../../../src/modules/user/user.entity';
 import { faker } from '../aleatorio';
-import { COLABORADORES, CURSINHO, REPRESENTANTE } from '../config';
+import {
+  COLABORADORES,
+  CURSINHO,
+  DOMINIO_DEMO,
+  REPRESENTANTE,
+} from '../config';
 import { Contexto } from '../contexto';
 
 /** Coordenação = todas as permissões de cursinho (as da hierarquia da app). */
@@ -101,7 +106,7 @@ export async function executar(ctx: Contexto) {
       Object.assign(new User(), {
         email: `${faker.internet
           .username({ firstName, lastName })
-          .toLowerCase()}@demo.vcnafacul.local`,
+          .toLowerCase()}@${DOMINIO_DEMO}`,
         password: faker.internet.password(), // ninguém loga com eles
         firstName,
         lastName,

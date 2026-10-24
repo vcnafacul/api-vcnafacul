@@ -9,6 +9,8 @@ import { Contexto } from '../contexto';
  * existem depois do `02`: aqui ele nasce como aluno e a `02` troca a role.
  */
 export async function executar(ctx: Contexto) {
+  const senha = process.env.SEED_DEMO_SENHA;
+  if (!senha) throw new Error('SEED_DEMO_SENHA ausente no .env.seed-demo.');
   const users = ctx.ds.getRepository(User);
   const aluno = await ctx.ds
     .getRepository(Role)
@@ -18,7 +20,7 @@ export async function executar(ctx: Contexto) {
   Object.assign(u, {
     email: REPRESENTANTE.email,
     // texto puro: o @BeforeInsert gera o hash (hash aqui = hash duplo, login falha)
-    password: process.env.SEED_DEMO_SENHA,
+    password: senha,
     firstName: REPRESENTANTE.firstName,
     lastName: REPRESENTANTE.lastName,
     phone: REPRESENTANTE.phone,

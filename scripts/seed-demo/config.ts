@@ -11,8 +11,11 @@ export const CURSINHO = {
   longitude: -46.7307,
 };
 
+/** Domínio de todo e-mail que o seed cria; o `00` apaga usuários por ele. */
+export const DOMINIO_DEMO = 'demo.vcnafacul.local';
+
 export const REPRESENTANTE = {
-  email: 'fernando@demo.vcnafacul.local',
+  email: `fernando@${DOMINIO_DEMO}`,
   firstName: 'Fernando',
   lastName: 'Almeida',
   phone: '11987654321',

@@ -1,3 +1,5 @@
+import { BANCO_DEMO, conferirTrava } from '../ambiente';
+import { DOMINIO_DEMO } from '../config';
 import { Contexto } from '../contexto';
 
 /**
@@ -36,6 +38,8 @@ const TABELAS = [
   'log_geo',
   'geolocations',
   'notificacao_do_usuario',
+  'push_resultado_cartao',
+  'push_recalculo_anulacao',
   'push_notification',
   'push_device',
   'essay_ai_reviews',
@@ -45,16 +49,35 @@ const TABELAS = [
   'audit_logs',
 ];
 
+/** Apaga tudo: só com o env do demo E conectado de fato nos bancos do demo. */
+async function conferirBancosConectados(ctx: Contexto) {
+  try {
+    conferirTrava(process.env);
+  } catch (e) {
+    throw new Error(`00-limpar recusado: ${(e as Error).message}`);
+  }
+  const [{ db }] = await ctx.ds.query('SELECT DATABASE() AS db');
+  if (db !== BANCO_DEMO.mysqlDb)
+    throw new Error(
+      `00-limpar recusado: MySQL conectado em "${db}", não em ${BANCO_DEMO.mysqlDb}.`,
+    );
+  if (ctx.form.databaseName !== BANCO_DEMO.mongoDb)
+    throw new Error(
+      `00-limpar recusado: Mongo conectado em "${ctx.form.databaseName}", não em ${BANCO_DEMO.mongoDb}.`,
+    );
+}
+
 export async function executar(ctx: Contexto) {
+  await conferirBancosConectados(ctx);
   await ctx.ds.query('SET FOREIGN_KEY_CHECKS = 0');
   try {
     for (const t of TABELAS) await ctx.ds.query(`DELETE FROM \`${t}\``);
     await ctx.ds.query(
       'DELETE FROM roles WHERE partnerPrepCourseId IS NOT NULL',
     );
-    await ctx.ds.query(
-      "DELETE FROM users WHERE email LIKE '%@demo.vcnafacul.local'",
-    );
+    await ctx.ds.query('DELETE FROM users WHERE email LIKE ?', [
+      `%@${DOMINIO_DEMO}`,
+    ]);
   } finally {
     await ctx.ds.query('SET FOREIGN_KEY_CHECKS = 1');
   }
