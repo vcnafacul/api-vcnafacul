@@ -22,9 +22,10 @@ Nunca usa o `.env` da api nem o do form.
 (`CACHE_DRIVER=InMemory`): sem reiniciar, as telas mostram o que estava antes do seed.
 
 ### O que está pronto para as cenas ao vivo
-- **Convocado da 2ª chamada** (processo de 2026): 1 candidato *Convocado para matrícula*, com prazo daqui a
-  alguns dias — é o que se confirma ao vivo. Junto dele: 1 na lista de espera, 1 *Em Análise*,
-  1 *Indeferido* e 1 *Não declarou interesse*.
+- **2ª chamada** (processo de 2026), 6 candidatos: 1 *Declarou Interesse* — é o que se confirma ao vivo
+  (só esse status tem o ✓ "Confirmação de Matrícula" na lista do processo; escolher a turma de 2026 no modal;
+  o número sai `20260046`); 1 *Convocado para matrícula* com prazo correndo (mostra a convocação e o
+  "Reenviar e-mail"); 1 na lista de espera, 1 *Em Análise*, 1 *Indeferido* e 1 *Não declarou interesse*.
 - **3 alunos "sumindo" hoje**: matriculados ativos de 2026 que faltaram às últimas chamadas seguidas, sem
   justificativa — aparecem na lista de "sumindo" dos indicadores e na frequência da turma.
 - Chamadas vão até **ontem**; hoje fica livre para fazer uma chamada ao vivo. Os indicadores também param
