@@ -1,14 +1,22 @@
 import { parse } from 'dotenv';
 import { readFileSync } from 'fs';
 import { envSchema as envDaApi } from '../../src/shared/modules/env/env';
-import { envSchema as envDoForm } from '../../../vcnafacul-form/src/common/modules/env/env';
 import { ARQUIVO_ENV, conferirTrava } from './ambiente';
 
-/**
- * Só o que interessa de um `z.object`: as chaves. Tipo estrutural de propósito —
- * a api usa zod 3 e o form zod 4, e os tipos das duas versões não se misturam.
- */
+/** Só o que interessa de um `z.object`: as chaves. */
 type Esquema = { shape: Record<string, unknown> };
+
+/**
+ * Chaves do `envSchema` do vcnafacul-form
+ * (`../vcnafacul-form/src/common/modules/env/env.ts`). Copiadas à mão de
+ * propósito: importar o arquivo do outro repo tira o `rootDir` da api do lugar
+ * (o `nest start` passa a gerar `dist/api-vcnafacul/src/main.js` e não acha
+ * `dist/main`) e quebra o CI, onde o form não está ao lado. Se o form ganhar
+ * chave nova, acrescentar aqui.
+ */
+export const envDoForm: Esquema = {
+  shape: { PORT: 1, MONGODB: 1, NODE_ENV: 1, ADMIN_FORM_SECRET: 1 },
+};
 
 /** Chave com default também precisa estar no arquivo: senão o ConfigModule a busca no `.env`. */
 export function chavesFaltando(
