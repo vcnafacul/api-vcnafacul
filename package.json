@@ -31,11 +31,11 @@
     "seed-demo:db": "docker compose -f scripts/seed-demo/docker-compose.seed-demo.yml up -d --wait",
     "seed-demo:db:down": "docker compose -f scripts/seed-demo/docker-compose.seed-demo.yml down -v",
     "seed-demo:verificar-env": "node --require ts-node/register scripts/seed-demo/verificar-env.ts",
-    "seed-demo:migrate": "yarn seed-demo:verificar-env && dotenv -e scripts/seed-demo/.env.seed-demo -- yarn migration:run",
+    "seed-demo:migrate": "yarn seed-demo:verificar-env && dotenv -o -e scripts/seed-demo/.env.seed-demo -- yarn migration:run",
     "seed:demo": "node --require ts-node/register scripts/seed-demo/index.ts",
     "seed-demo:clonar-formulario": "node --require ts-node/register scripts/seed-demo/clonar-formulario.ts",
-    "dev:demo": "yarn seed-demo:verificar-env && dotenv -e scripts/seed-demo/.env.seed-demo -- nest start --watch",
-    "form:dev:demo": "yarn seed-demo:verificar-env && dotenv -e scripts/seed-demo/.env.seed-demo -- sh -c 'cd ../vcnafacul-form && yarn dev'"
+    "dev:demo": "yarn seed-demo:verificar-env && dotenv -o -e scripts/seed-demo/.env.seed-demo -- nest start --watch",
+    "form:dev:demo": "yarn seed-demo:verificar-env && dotenv -o -e scripts/seed-demo/.env.seed-demo -- sh -c 'cd ../vcnafacul-form && yarn dev'"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
@@ -127,6 +127,7 @@
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "babel-jest": "^29.7.0",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^8.42.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
