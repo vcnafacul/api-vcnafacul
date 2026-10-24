@@ -7,6 +7,7 @@ export const somarDias = (d: Date, n: number) =>
   new Date(d.getTime() + n * DIA);
 
 export const menor = (a: Date, b: Date) => (a < b ? a : b);
+export const maior = (a: Date, b: Date) => (a > b ? a : b);
 
 /** Dias (UTC meia-noite) entre `de` e `ate`, inclusive, cujo getUTCDay está em `diasDaSemana`. */
 export function diasDeChamada(

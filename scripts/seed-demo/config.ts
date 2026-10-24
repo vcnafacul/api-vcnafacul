@@ -53,7 +53,7 @@ export const EVASAO: Record<Ano, number> = {
   2026: 0.15,
 };
 /** Dos cancelamentos, quantos são "Desistência inicial" (6 primeiras semanas). */
-export const FRACAO_DESISTENCIA_INICIAL = 0.4;
+export const FRACAO_DESISTENCIA_INICIAL = 0.5;
 
 export const COLABORADORES = [
   { papel: 'Coordenação pedagógica', role: 'secretaria' },
