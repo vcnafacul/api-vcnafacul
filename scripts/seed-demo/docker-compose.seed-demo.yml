@@ -1,0 +1,35 @@
+# Bancos SÓ do seed demo (tickets/053). Não reaproveita nenhum outro container.
+name: vcnafacul-demo
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: vcnafacul-demo-mysql
+    ports: ["3308:3306"]
+    environment:
+      MYSQL_ROOT_PASSWORD: demo123456
+      MYSQL_DATABASE: vcnafacul_demo
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes: [mysql:/var/lib/mysql]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pdemo123456"]
+      interval: 5s
+      retries: 20
+  mongo:
+    image: mongo:8.0
+    container_name: vcnafacul-demo-mongo
+    ports: ["27018:27017"]
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    volumes: [mongo:/data/db]
+    healthcheck:
+      # inicia o replica set na 1ª vez (o form usa transação)
+      test: ["CMD", "mongosh", "--quiet", "--eval", "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'localhost:27017'}]}).ok }"]
+      interval: 5s
+      retries: 20
+  mailpit:
+    # nenhum e-mail sai de verdade: tudo cai aqui (http://localhost:8025)
+    image: axllent/mailpit:v1.21
+    container_name: vcnafacul-demo-mailpit
+    ports: ["1025:1025", "8025:8025"]
+volumes:
+  mysql:
+  mongo:

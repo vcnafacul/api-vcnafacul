@@ -27,7 +27,15 @@
     "roles:cleanup:permissions": "node --require ts-node/register scripts/delete-roles-without-permissions.ts",
     "chat:backfill:partner-prep-id": "node --require ts-node/register scripts/backfill-chat-partner-prep-id.ts",
     "periodo:recuperar-cancelados": "node --require ts-node/register scripts/recuperar-cancelados-do-fim-de-periodo.ts",
-    "indicadores:backfill": "node --require ts-node/register scripts/indicadores-backfill.ts"
+    "indicadores:backfill": "node --require ts-node/register scripts/indicadores-backfill.ts",
+    "seed-demo:db": "docker compose -f scripts/seed-demo/docker-compose.seed-demo.yml up -d --wait",
+    "seed-demo:db:down": "docker compose -f scripts/seed-demo/docker-compose.seed-demo.yml down -v",
+    "seed-demo:verificar-env": "node --require ts-node/register scripts/seed-demo/verificar-env.ts",
+    "seed-demo:migrate": "yarn seed-demo:verificar-env && dotenv -e scripts/seed-demo/.env.seed-demo -- yarn migration:run",
+    "seed:demo": "node --require ts-node/register scripts/seed-demo/index.ts",
+    "seed-demo:clonar-formulario": "node --require ts-node/register scripts/seed-demo/clonar-formulario.ts",
+    "dev:demo": "yarn seed-demo:verificar-env && dotenv -e scripts/seed-demo/.env.seed-demo -- nest start --watch",
+    "form:dev:demo": "yarn seed-demo:verificar-env && dotenv -e scripts/seed-demo/.env.seed-demo -- sh -c 'cd ../vcnafacul-form && yarn dev'"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
@@ -123,6 +131,7 @@
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
     "jest": "^29.5.0",
+    "mongodb": "^6.10.0",
     "prettier": "^3.0.0",
     "react-email": "3.0.2",
     "source-map-support": "^0.5.21",

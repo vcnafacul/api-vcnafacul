@@ -39,3 +39,6 @@ lerna-debug.log*
 
 /test/coverage.worktrees/
 .worktrees/
+
+# seed demo (tickets/053): env real, só local
+scripts/seed-demo/.env.seed-demo
