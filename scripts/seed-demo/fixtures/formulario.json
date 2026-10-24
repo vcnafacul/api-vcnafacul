@@ -1,0 +1,150 @@
+{
+  "global": {
+    "name": "Você na Facul",
+    "sections": [
+      {
+        "name": "Perfil socioeconômico",
+        "description": "Perguntas da plataforma, iguais para todos os cursinhos.",
+        "questions": [
+          {
+            "text": "Em relação à sua escolaridade (ensino fundamental e médio)",
+            "helpText": "",
+            "answerType": "Options",
+            "collection": "single",
+            "options": [
+              "Fiz toda em escola pública",
+              "Fiz toda em escola particular com bolsa",
+              "Fiz toda em escola particular sem bolsa",
+              "Fiz a maior parte em escola particular com bolsa",
+              "Fiz a maior parte em escola particular sem bolsa",
+              "Fiz a maior parte em escola pública e parte em escola particular com bolsa",
+              "Fiz a maior parte em escola pública e parte em escola particular sem bolsa",
+              "Sesi ou Senai"
+            ],
+            "conditions": null
+          },
+          {
+            "text": "Qual sua cor ou raça?",
+            "helpText": "",
+            "answerType": "Options",
+            "collection": "single",
+            "options": ["Afrodescendente", "Branco", "Indígena", "Oriental/Asiático", "Não sei", "Outros"],
+            "conditions": null
+          },
+          {
+            "text": "Quantas pessoas moram na sua casa, incluindo você?",
+            "helpText": "",
+            "answerType": "Number",
+            "collection": "single",
+            "options": [],
+            "conditions": null
+          }
+        ]
+      }
+    ]
+  },
+  "parceiro": {
+    "name": "Formulário do Cursinho",
+    "sections": [
+      {
+        "name": "Moradia e trabalho",
+        "description": "Perguntas do cursinho para conhecer a realidade de cada candidato.",
+        "questions": [
+          {
+            "text": "Qual a situação da sua moradia?",
+            "helpText": "",
+            "answerType": "Options",
+            "collection": "single",
+            "options": [
+              "Casa/apartamento próprio (quitado)",
+              "Casa/apartamento próprio (financiado)",
+              "Casa/apartamento alugado",
+              "Moradia em área rural ou comunidade tradicional",
+              "Moradia cedida por parentes/amigos",
+              "Situação de vulnerabilidade (abrigo; etc.)",
+              "Outra"
+            ],
+            "conditions": null
+          },
+          {
+            "text": "Você exerce alguma atividade remunerada?",
+            "helpText": "",
+            "answerType": "Options",
+            "collection": "single",
+            "options": [
+              "Sim, eventualmente",
+              "Sim, regularmente, em tempo parcial",
+              "Sim, regularmente, em tempo integral",
+              "Não"
+            ],
+            "conditions": null
+          }
+        ]
+      }
+    ]
+  },
+  "regras": [
+    {
+      "name": "Escola pública",
+      "description": "Quem estudou em escola pública soma mais pontos",
+      "type": "Score",
+      "strategy": "PerOption",
+      "pergunta": "Em relação à sua escolaridade (ensino fundamental e médio)",
+      "config": {
+        "points": {
+          "Fiz toda em escola pública": 10,
+          "Fiz a maior parte em escola pública e parte em escola particular com bolsa": 8,
+          "Fiz toda em escola particular com bolsa": 7,
+          "Fiz a maior parte em escola pública e parte em escola particular sem bolsa": 6,
+          "Fiz a maior parte em escola particular com bolsa": 5,
+          "Sesi ou Senai": 4,
+          "Fiz a maior parte em escola particular sem bolsa": 2,
+          "Fiz toda em escola particular sem bolsa": 0
+        }
+      },
+      "weight": 1
+    },
+    {
+      "name": "Situação de moradia",
+      "description": "Moradia mais vulnerável soma mais pontos",
+      "type": "Score",
+      "strategy": "PerOption",
+      "pergunta": "Qual a situação da sua moradia?",
+      "config": {
+        "points": {
+          "Situação de vulnerabilidade (abrigo; etc.)": 10,
+          "Moradia cedida por parentes/amigos": 8,
+          "Casa/apartamento alugado": 7,
+          "Moradia em área rural ou comunidade tradicional": 7,
+          "Outra": 5,
+          "Casa/apartamento próprio (financiado)": 3,
+          "Casa/apartamento próprio (quitado)": 0
+        }
+      },
+      "weight": 1
+    }
+  ],
+  "respostaBase": {
+    "Em relação à sua escolaridade (ensino fundamental e médio)": "Fiz toda em escola pública",
+    "Qual sua cor ou raça?": "Afrodescendente",
+    "Quantas pessoas moram na sua casa, incluindo você?": 4,
+    "Qual a situação da sua moradia?": "Casa/apartamento alugado",
+    "Você exerce alguma atividade remunerada?": "Não"
+  },
+  "variacoes": {
+    "Em relação à sua escolaridade (ensino fundamental e médio)": [
+      { "resposta": "Fiz toda em escola pública", "peso": 6 },
+      { "resposta": "Fiz a maior parte em escola pública e parte em escola particular com bolsa", "peso": 2 },
+      { "resposta": "Fiz a maior parte em escola pública e parte em escola particular sem bolsa", "peso": 2 },
+      { "resposta": "Fiz toda em escola particular com bolsa", "peso": 1 },
+      { "resposta": "Fiz toda em escola particular sem bolsa", "peso": 1 }
+    ],
+    "Qual a situação da sua moradia?": [
+      { "resposta": "Casa/apartamento alugado", "peso": 4 },
+      { "resposta": "Casa/apartamento próprio (quitado)", "peso": 3 },
+      { "resposta": "Casa/apartamento próprio (financiado)", "peso": 2 },
+      { "resposta": "Moradia cedida por parentes/amigos", "peso": 2 },
+      { "resposta": "Situação de vulnerabilidade (abrigo; etc.)", "peso": 1 }
+    ]
+  }
+}
