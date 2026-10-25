@@ -14,9 +14,9 @@ import { planejarHistorias } from '../historia';
 import { criarInscritor, emSP } from '../inscricao';
 
 /**
- * Datas, em dois formatos (ver 04 e 06):
- * - `log_student.created_at` / `student_course.created_at` (timestamp) são
- *   instantes em hora do dia de São Paulo (`emSP`, em `inscricao.ts`).
+ * Datas — tudo no relógio de São Paulo, como a api lê (ver 04 e 06):
+ * - `log_student.created_at` / `student_course.created_at` (timestamp): hora
+ *   de SP com `emSP` (em `inscricao.ts`); 00:00 é o cron da meia-noite de SP.
  * - `selectEnrolledAt` / `limitEnrolledAt` (datetime) são horário de parede
  *   de SP: o `scheduleEnrolled` grava `setHours(0,0,0,0)` com TZ=SP, e a
  *   conexão `Z` do seed grava as partes UTC como o texto — então

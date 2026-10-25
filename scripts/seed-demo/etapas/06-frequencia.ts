@@ -11,11 +11,15 @@ import { assiduidadeBase, presencaNaChamada } from '../presenca';
 
 const HORA = 60 * 60 * 1000;
 
-/** Hora (UTC) em que a chamada "foi feita": 10h, 15h e 20h de São Paulo. */
-const HORA_DA_CHAMADA_UTC: Record<AttendancePeriod, number> = {
-  [AttendancePeriod.MANHA]: 13,
-  [AttendancePeriod.TARDE]: 18,
-  [AttendancePeriod.NOITE]: 23,
+/**
+ * Hora de São Paulo em que a chamada "foi feita" (`created_at`, timestamp).
+ * Vai nas partes UTC: a conexão `Z` grava como texto, e a api lê esse texto
+ * no fuso de SP — como o `emSP` de `inscricao.ts`.
+ */
+const HORA_DA_CHAMADA_SP: Record<AttendancePeriod, number> = {
+  [AttendancePeriod.MANHA]: 10,
+  [AttendancePeriod.TARDE]: 15,
+  [AttendancePeriod.NOITE]: 20,
 };
 
 async function emLotes<T extends ObjectLiteral>(
@@ -64,7 +68,7 @@ export async function executar(ctx: Contexto) {
       config.dias,
     )) {
       const feitaEm = new Date(
-        dia.getTime() + HORA_DA_CHAMADA_UTC[config.periodo] * HORA,
+        dia.getTime() + HORA_DA_CHAMADA_SP[config.periodo] * HORA,
       );
       const recordId = randomUUID();
       chamadas.push({

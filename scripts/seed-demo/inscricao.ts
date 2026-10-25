@@ -13,27 +13,35 @@ import { Contexto } from './contexto';
 import { lerFixture } from './formulario';
 import { montarResposta } from './respostas';
 
+// Inscrição de um estudante como a api grava (user + student_course + log
+// "Inscrição realizada" + submission no form). Usado pelo 05 (anos com
+// história) e pelo 08 (processo com inscrições abertas).
+
 /**
- * Inscrição de um estudante como a api grava (user + student_course + log
- * "Inscrição realizada" + submission no form). Usado pelo 05 (anos com
- * história) e pelo 08 (processo com inscrições abertas).
+ * Hora do relógio de São Paulo, para coluna `timestamp` do MySQL
+ * (`log_student.created_at`, `student_course.created_at`, `users.created_at`).
  *
- * `log_student.created_at` / `student_course.created_at` (timestamp) são
- * instantes: gravados em hora do dia de São Paulo (`emSP`), longe da
- * meia-noite, para o dia ser o mesmo lido com fuso `Z` (seed, 07) ou com o
- * fuso do processo da api (SP).
+ * A api lê essas colunas com o fuso do processo (TypeORM sem `timezone`,
+ * TZ=America/Sao_Paulo): o texto no banco **é** a hora de SP que a tela
+ * mostra, e o `fimDoDia` dos indicadores também vira texto de SP. A conexão do
+ * seed é `Z` (grava as partes UTC como texto), então a hora de SP vai nas
+ * partes UTC. Qualquer hora (0–23) cai no dia certo para a api — por isso o
+ * 07 calcula com uma conexão igual à da api (`conexaoComoAApi`).
  */
-/** `hora` de SP até 20h: o texto gravado (hora + 3) fica no mesmo dia. */
 export const emSP = (dia: Date, hora: number, minuto = 0) =>
   new Date(
     Date.UTC(
       dia.getUTCFullYear(),
       dia.getUTCMonth(),
       dia.getUTCDate(),
-      hora + 3,
+      hora,
       minuto,
     ),
   );
+
+/** Instante real de um `emSP` (SP é -03:00 o ano todo desde 2019): para o Mongo, que guarda instantes. */
+export const instanteDe = (horaDeSP: Date) =>
+  new Date(horaDeSP.getTime() + 3 * 60 * 60 * 1000);
 
 /** CPF com dígitos verificadores válidos (só números, como a inscrição grava). */
 function gerarCpf() {
@@ -51,7 +59,7 @@ function gerarCpf() {
 const semAcento = (s: string) =>
   s
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '');
 
@@ -217,8 +225,8 @@ export async function criarInscritor(
         question: a.question,
       })),
       deleted: false,
-      createdAt: inscritoEm,
-      updatedAt: inscritoEm,
+      createdAt: instanteDe(inscritoEm),
+      updatedAt: instanteDe(inscritoEm),
     });
     return sc;
   }
