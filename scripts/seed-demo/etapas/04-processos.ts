@@ -236,13 +236,16 @@ export async function executar(ctx: Contexto) {
     // seguinte, e a tela mostraria o fim um dia depois.
     const fim = new Date(d.inscricaoFim);
     fim.setUTCHours(23, 59, 59, 0);
+    // Como o cron `updateInfosInscription` deixa (roda no boot da api e a cada
+    // 3h): fim no passado → Rejected (a tela mostra "Encerrado"); o 2027, com
+    // inscrições abertas hoje, fica Approved ("Ativo").
     const processo = await repo.save(
       Object.assign(new InscriptionCourse(), {
         name: `Processo Seletivo ${ano}`,
         description: `Seleção de estudantes para o ano letivo ${ano} do Cursinho Popular Semear.`,
         startDate: d.inscricaoInicio,
         endDate: fim,
-        actived: Status.Approved, // o service aprova quem começa no passado
+        actived: fim < ctx.hoje ? Status.Rejected : Status.Approved,
         expectedOpening: 45,
         requestDocuments,
         partnerPrepCourse: { id: ctx.cursinhoId },
