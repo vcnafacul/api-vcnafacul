@@ -12,6 +12,16 @@ frequência, formulário e indicadores) e mais o **Processo Seletivo 2027 com in
 5. `yarn seed:demo` — popula tudo (alguns minutos).
 
 ## Para gravar
+
+> ⚠️ **Rode `yarn seed:demo` perto da gravação** (de preferência no mesmo dia). As datas são relativas ao dia em
+> que o seed roda:
+> - o **Convocado** da 2ª chamada (Carlos Moraes Moreira) tem prazo até `limitEnrolledAt` = 4 dias depois do
+>   seed; à meia-noite desse dia o cron `verifyLostEnrolled` da api (se ela estiver no ar) o passa para
+>   *Não declarou interesse* e a cena da convocação some;
+> - chamadas e indicadores param no **dia anterior** ao seed — gravar dias depois deixa um buraco até hoje
+>   (e alunos "sumindo" que deixam de ser os mesmos);
+> - o processo de **2027** fica aberto até 30 dias depois do seed.
+
 - Terminal 1: `yarn form:dev:demo` (form na 3334)
 - Terminal 2: `yarn dev:demo` (api na 3333)
 - Terminal 3: no client, `npm run dev` (5173)
@@ -31,10 +41,12 @@ frequência, formulário e indicadores) e mais o **Processo Seletivo 2027 com in
   150 submissions.
 
 ### O que está pronto para as cenas ao vivo
-- **2ª chamada** (processo de 2026), 6 candidatos: 1 *Declarou Interesse* — é o que se confirma ao vivo
-  (só esse status tem o ✓ "Confirmação de Matrícula" na lista do processo; escolher a turma de 2026 no modal;
-  o número sai `20260046`); 1 *Convocado para matrícula* com prazo correndo (mostra a convocação e o
-  "Reenviar e-mail"); 1 na lista de espera, 1 *Em Análise*, 1 *Indeferido* e 1 *Não declarou interesse*.
+- **2ª chamada** (processo de 2026), 6 candidatos: **Elisa Franco Souza**, *Declarou Interesse* — é a que se
+  confirma ao vivo (só esse status tem o ✓ "Confirmação de Matrícula" na lista do processo; escolher a turma
+  de 2026 no modal; o número sai `20260046`); **Carlos Moraes Moreira**, *Convocado para matrícula* com prazo
+  correndo (mostra a convocação e o "Reenviar e-mail"); **Paulo Barros Barros** na lista de espera; Júlio César
+  Batista Albuquerque *Em Análise*, Bernardo Melo Costa *Indeferido* e Manuela Moreira Franco *Não declarou
+  interesse*. (Nomes da seed fixa do faker — mudam se o fixture ou a ordem dos sorteios mudar.)
 - **3 alunos "sumindo" hoje**: matriculados ativos de 2026 que faltaram às últimas chamadas seguidas, sem
   justificativa — aparecem na lista de "sumindo" dos indicadores e na frequência da turma.
 - Chamadas vão até **ontem**; hoje fica livre para fazer uma chamada ao vivo. Os indicadores também param
