@@ -145,6 +145,29 @@
       { "resposta": "Casa/apartamento próprio (financiado)", "peso": 2 },
       { "resposta": "Moradia cedida por parentes/amigos", "peso": 2 },
       { "resposta": "Situação de vulnerabilidade (abrigo; etc.)", "peso": 1 }
+    ],
+    "Qual sua cor ou raça?": [
+      { "resposta": "Afrodescendente", "peso": 55 },
+      { "resposta": "Branco", "peso": 35 },
+      { "resposta": "Indígena", "peso": 2 },
+      { "resposta": "Oriental/Asiático", "peso": 3 },
+      { "resposta": "Não sei", "peso": 3 },
+      { "resposta": "Outros", "peso": 2 }
+    ],
+    "Quantas pessoas moram na sua casa, incluindo você?": [
+      { "resposta": 1, "peso": 4 },
+      { "resposta": 2, "peso": 12 },
+      { "resposta": 3, "peso": 26 },
+      { "resposta": 4, "peso": 28 },
+      { "resposta": 5, "peso": 16 },
+      { "resposta": 6, "peso": 9 },
+      { "resposta": 7, "peso": 5 }
+    ],
+    "Você exerce alguma atividade remunerada?": [
+      { "resposta": "Não", "peso": 45 },
+      { "resposta": "Sim, eventualmente", "peso": 20 },
+      { "resposta": "Sim, regularmente, em tempo parcial", "peso": 20 },
+      { "resposta": "Sim, regularmente, em tempo integral", "peso": 15 }
     ]
   }
 }

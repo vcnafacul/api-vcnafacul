@@ -24,4 +24,19 @@ describe('montarResposta', () => {
       vistas.add(montarResposta(fixture)['Renda familiar'] as string);
     expect(vistas).toEqual(new Set(['Até 1 salário', 'De 1 a 3 salários']));
   });
+
+  it('mantém número como número (pergunta Number)', () => {
+    const comNumero = {
+      respostaBase: { Pessoas: 4 },
+      variacoes: {
+        Pessoas: [
+          { resposta: 3, peso: 1 },
+          { resposta: 5, peso: 1 },
+        ],
+      },
+    };
+    const vistas = new Set<unknown>();
+    for (let i = 0; i < 50; i++) vistas.add(montarResposta(comNumero).Pessoas);
+    expect(vistas).toEqual(new Set([3, 5]));
+  });
 });
