@@ -8,7 +8,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: demo123456
       MYSQL_DATABASE: vcnafacul_demo
-    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci", "--default-time-zone=-03:00"]
     volumes: [mysql:/var/lib/mysql]
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pdemo123456"]
