@@ -220,7 +220,7 @@ export async function executar(ctx: Contexto) {
           log(
             sc.id,
             S.EnrollmentClosed,
-            `Matrícula encerrada pelo fim do período letivo "Ano letivo ${ano}" (${ano})`,
+            `Matrícula encerrada pelo fim do período letivo "Ano ${ano}" (${ano})`,
             emSP(somarDias(datasDoAno(ano).periodoFim, 1), 0, 0),
           );
         ctx.alunos.push({

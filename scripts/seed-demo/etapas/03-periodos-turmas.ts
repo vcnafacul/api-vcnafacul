@@ -14,7 +14,7 @@ export async function executar(ctx: Contexto) {
     const d = datasDoAno(ano);
     const periodo = await ctx.ds.getRepository(CoursePeriod).save(
       Object.assign(new CoursePeriod(), {
-        name: `Ano letivo ${ano}`,
+        name: `Ano ${ano}`,
         year: ano,
         startDate: d.periodoInicio,
         endDate: d.periodoFim,
