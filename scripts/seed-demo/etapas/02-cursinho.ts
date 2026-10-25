@@ -11,6 +11,7 @@ import { Status } from '../../../src/modules/simulado/enum/status.enum';
 import { Gender } from '../../../src/modules/user/enum/gender';
 import { User } from '../../../src/modules/user/user.entity';
 import { faker } from '../aleatorio';
+import { inicioDoDia } from '../calendario';
 import {
   COLABORADORES,
   CURSINHO,
@@ -111,7 +112,15 @@ export async function executar(ctx: Contexto) {
         firstName,
         lastName,
         phone: faker.phone.number({ style: 'national' }).replace(/\D/g, ''),
-        birthday: faker.date.birthdate({ min: 24, max: 55, mode: 'age' }),
+        // relativo a `hoje` e sem hora: rodar de novo no mesmo dia dá o mesmo
+        birthday: inicioDoDia(
+          faker.date.birthdate({
+            min: 24,
+            max: 55,
+            mode: 'age',
+            refDate: ctx.hoje,
+          }),
+        ),
         state: 'SP',
         city: 'São Paulo',
         gender: sexo === 'female' ? Gender.Female : Gender.Male,
