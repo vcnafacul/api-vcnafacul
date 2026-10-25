@@ -22,7 +22,6 @@ export interface AlunoCriado {
 export interface Contexto extends Conexoes {
   hoje: Date;
   representanteUserId?: string;
-  representanteColabId?: string;
   cursinhoId?: string;
   colaboradores: { id: string; userId: string; papel: string }[];
   periodos: Record<number, string>; // ano → course_period.id

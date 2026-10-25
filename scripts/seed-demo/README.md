@@ -37,8 +37,8 @@ frequência, formulário e indicadores) e mais o **Processo Seletivo 2027 com in
   Cada um com FormFull e rule-set no Mongo.
 - **2027**: 9 inscritos *Em Análise* (inscrição entre o início e ontem), sem turma, período nem número de
   matrícula — não entram em frequência nem indicadores. 2027 não tem período nem turmas.
-- **2024–2026**: 135 matriculados (45 por ano) + 6 candidatos da 2ª chamada de 2026 → 150 `student_course`,
-  150 submissions.
+- **2024–2026**: 135 matriculados (45 por ano) + 6 candidatos da 2ª chamada de 2026 → 141 `student_course` e
+  141 submissions; com os 9 inscritos de 2027, 150 de cada no total.
 
 ### O que está pronto para as cenas ao vivo
 - **2ª chamada** (processo de 2026), 6 candidatos: **Elisa Franco Souza**, *Declarou Interesse* — é a que se

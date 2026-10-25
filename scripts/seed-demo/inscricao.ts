@@ -26,7 +26,7 @@ import { montarResposta } from './respostas';
  * mostra, e o `fimDoDia` dos indicadores também vira texto de SP. A conexão do
  * seed é `Z` (grava as partes UTC como texto), então a hora de SP vai nas
  * partes UTC. Qualquer hora (0–23) cai no dia certo para a api — por isso o
- * 07 calcula com uma conexão igual à da api (`conexaoComoAApi`).
+ * 07 calcula com uma conexão igual à da api (`abrirConexaoComoAApi`).
  */
 export const emSP = (dia: Date, hora: number, minuto = 0) =>
   new Date(

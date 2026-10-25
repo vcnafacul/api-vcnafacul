@@ -89,7 +89,7 @@ export async function executar(ctx: Contexto) {
   await users.save(representante);
 
   const colabs = ctx.ds.getRepository(Collaborator);
-  const rep = await colabs.save(
+  await colabs.save(
     Object.assign(new Collaborator(), {
       user: representante,
       partnerPrepCourse: cursinho,
@@ -97,7 +97,6 @@ export async function executar(ctx: Contexto) {
       description: 'Coordenação geral',
     }),
   );
-  ctx.representanteColabId = rep.id;
 
   for (const c of COLABORADORES) {
     const sexo = faker.person.sexType();
