@@ -7,6 +7,7 @@ import {
   ANO_ATUAL,
   ANOS,
   EVASAO,
+  alunosDoAno,
   datasDoAno,
 } from '../config';
 import { Contexto } from '../contexto';
@@ -165,7 +166,7 @@ export async function executar(ctx: Contexto) {
     const qtd = ALUNOS_POR_TURMA[ano];
     const historias = planejarHistorias(
       ano,
-      qtd[0] + qtd[1] + qtd[2],
+      alunosDoAno(ano),
       EVASAO[ano],
       ctx.hoje,
     );
@@ -176,7 +177,7 @@ export async function executar(ctx: Contexto) {
         const inscritoEm = emSP(h.inscritoEm, entre(8, 20), entre(0, 59));
         const u = await criarPessoa(ano, somarDias(inscritoEm, -entre(0, 3)));
         // gerado em ordem de matrícula do ano: o `generateEnrolledCode` pega o
-        // maior e soma 1 → a confirmação ao vivo vira `${ANO_ATUAL}00NN+1`
+        // maior e soma 1 → a confirmação ao vivo vira `${ANO_ATUAL}` + (total do ano + 1)
         const cod = `${ano}${String(seq).padStart(4, '0')}`;
         const sc = await criarInscricao(
           ano,

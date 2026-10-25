@@ -15,7 +15,7 @@ frequência, formulário e indicadores) e mais o **Processo Seletivo 2027 com in
 
 > ⚠️ **Rode `yarn seed:demo` perto da gravação** (de preferência no mesmo dia). As datas são relativas ao dia em
 > que o seed roda:
-> - o **Convocado** da 2ª chamada (Carlos Moraes Moreira) tem prazo até `limitEnrolledAt` = 4 dias depois do
+> - o **Convocado** da 2ª chamada (Talita Saraiva Costa) tem prazo até `limitEnrolledAt` = 4 dias depois do
 >   seed; à meia-noite desse dia o cron `verifyLostEnrolled` da api (se ela estiver no ar) o passa para
 >   *Não declarou interesse* e a cena da convocação some;
 > - chamadas e indicadores param no **dia anterior** ao seed — gravar dias depois deixa um buraco até hoje
@@ -35,20 +35,30 @@ frequência, formulário e indicadores) e mais o **Processo Seletivo 2027 com in
 - **4 processos seletivos**: 2024, 2025 e 2026 *Encerrado* (inscrições 05/01–20/02) e **2027 *Ativo*** — começou
   10 dias antes do dia em que o seed roda e termina 30 dias depois, então está sempre aberto ao rodar de novo.
   Cada um com FormFull e rule-set no Mongo.
-- **2027**: 9 inscritos *Em Análise* (inscrição entre o início e ontem), sem turma, período nem número de
-  matrícula — não entram em frequência nem indicadores. 2027 não tem período nem turmas.
-- **2024–2026**: 135 matriculados (45 por ano) + 6 candidatos da 2ª chamada de 2026 → 141 `student_course` e
-  141 submissions; com os 9 inscritos de 2027, 150 de cada no total.
+- **2027**: 9 inscritos (inscrição entre o início e ontem), sem turma, período nem número de matrícula — não
+  entram em frequência nem indicadores; 2027 não tem período nem turmas. Situações: 4 *Em Análise*, 2 na
+  **lista de espera** (Tertuliano Nogueira Batista → Feliciano Franco Carvalho), 2 *Enviado Documento* (Roberto
+  Franco Nogueira, Bernardo Saraiva Costa) e 1 *Indeferido* (Dalila Nogueira Moreira, "Não mora na região
+  atendida pelo cursinho"). Sem convocado: a convocação é o resultado da seleção e o processo ainda está aberto.
+  ⚠️ *Enviado Documento* é um status que a api não grava mais desde fev/2025 (hoje só convocado envia
+  documento); a tela ainda o mostra, mas não há arquivo em `document_student` para esses dois.
+- **2024–2026**: 135 matriculados — 38 em 2024 (13/12/13 nas turmas Manhã/Tarde/Noite), 45 em 2025
+  (13/17/15) e 52 em 2026 (18/16/18); 8 cancelamentos por ano (21%, 18% e 15%). Em 2026: 44 *Matriculado* +
+  8 *Matrícula Cancelada*; 2024 e 2025: 30 e 37 *Matrícula Encerrada*. Vagas do processo = matriculados do ano
+  (2027: 55). Mais 6 candidatos da 2ª chamada de 2026 → 141 `student_course` e 141 submissions; com os 9
+  inscritos de 2027, 150 de cada no total.
 
 ### O que está pronto para as cenas ao vivo
-- **2ª chamada** (processo de 2026), 6 candidatos: **Elisa Franco Souza**, *Declarou Interesse* — é a que se
+- **2ª chamada** (processo de 2026), 6 candidatos: **Nicolas Braga Oliveira**, *Declarou Interesse* — é o que se
   confirma ao vivo (só esse status tem o ✓ "Confirmação de Matrícula" na lista do processo; escolher a turma
-  de 2026 no modal; o número sai `20260046`); **Carlos Moraes Moreira**, *Convocado para matrícula* com prazo
-  correndo (mostra a convocação e o "Reenviar e-mail"); **Paulo Barros Barros** na lista de espera; Júlio César
-  Batista Albuquerque *Em Análise*, Bernardo Melo Costa *Indeferido* e Manuela Moreira Franco *Não declarou
-  interesse*. (Nomes da seed fixa do faker — mudam se o fixture ou a ordem dos sorteios mudar.)
+  de 2026 no modal; o número sai `20260053` — 52 matriculados em 2026 + 1); **Talita Saraiva Costa**, *Convocado
+  para matrícula* com prazo correndo (mostra a convocação e o "Reenviar e-mail"); **Pedro Oliveira Santos** na
+  lista de espera; Sarah Moraes Braga *Em Análise*, César Carvalho Costa *Indeferido* e Ana Clara Batista
+  Carvalho *Não declarou interesse*. (Nomes da seed fixa do faker — mudam se o fixture ou a ordem dos sorteios
+  mudar.)
 - **3 alunos "sumindo" hoje**: matriculados ativos de 2026 que faltaram às últimas chamadas seguidas, sem
-  justificativa — aparecem na lista de "sumindo" dos indicadores e na frequência da turma.
+  justificativa — aparecem na lista de "sumindo" dos indicadores e na frequência da turma: **Mariana Saraiva
+  Nogueira** (Turma Noite), **Enzo Santos Moreira** (Turma Tarde) e **Yango Moraes Braga** (Turma Manhã).
 - Chamadas vão até **ontem**; hoje fica livre para fazer uma chamada ao vivo. Os indicadores também param
   em ontem (o de hoje é do cron das 23h40).
 

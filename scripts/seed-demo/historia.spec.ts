@@ -1,6 +1,6 @@
 import { planejarHistorias } from './historia';
 import { reiniciarAleatorio } from './aleatorio';
-import { ANOS, datasDoAno, EVASAO } from './config';
+import { alunosDoAno, ANOS, datasDoAno, EVASAO } from './config';
 import { diasDeChamada, somarDias } from './calendario';
 import { StatusApplication } from '../../src/modules/prepCourse/studentCourse/enums/stastusApplication';
 import {
@@ -18,8 +18,18 @@ describe('planejarHistorias', () => {
     expect(h.filter((x) => x.saida).length).toBe(10);
   });
 
+  it.each([
+    [2024, 8],
+    [2025, 8],
+    [2026, 8],
+  ] as const)('%i: com as turmas da config, cancela %i', (ano, saidas) => {
+    const h = planejarHistorias(ano, alunosDoAno(ano), EVASAO[ano], hoje);
+    expect(h).toHaveLength(alunosDoAno(ano));
+    expect(h.filter((x) => x.saida)).toHaveLength(saidas);
+  });
+
   it('ano encerrado: quem fica termina Encerrada; quem sai, Cancelada', () => {
-    const h = planejarHistorias(2024, 45, 0.22, hoje);
+    const h = planejarHistorias(2024, alunosDoAno(2024), EVASAO[2024], hoje);
     for (const x of h)
       expect(x.statusFinal).toBe(
         x.saida
@@ -29,7 +39,7 @@ describe('planejarHistorias', () => {
   });
 
   it('ano atual: quem fica segue Matriculado e nenhuma saída é no futuro', () => {
-    const h = planejarHistorias(2026, 45, 0.15, hoje);
+    const h = planejarHistorias(2026, alunosDoAno(2026), EVASAO[2026], hoje);
     for (const x of h) {
       if (!x.saida) expect(x.statusFinal).toBe(StatusApplication.Enrolled);
       else expect(x.saida.data < hoje).toBe(true);
@@ -38,9 +48,12 @@ describe('planejarHistorias', () => {
 
   it('motivos sempre da lista oficial e saídas dentro do período', () => {
     const { periodoInicio, periodoFim } = datasDoAno(2025);
-    for (const x of planejarHistorias(2025, 45, 0.18, hoje).filter(
-      (x) => x.saida,
-    )) {
+    for (const x of planejarHistorias(
+      2025,
+      alunosDoAno(2025),
+      EVASAO[2025],
+      hoje,
+    ).filter((x) => x.saida)) {
       expect(MOTIVOS_DE_CANCELAMENTO).toContain(x.saida!.motivo);
       expect(x.saida!.data > periodoInicio && x.saida!.data < periodoFim).toBe(
         true,
@@ -51,14 +64,24 @@ describe('planejarHistorias', () => {
   it('desistência inicial cai nas 6 primeiras semanas', () => {
     const { periodoInicio } = datasDoAno(2025);
     const limite = new Date(periodoInicio.getTime() + 42 * 86400000);
-    for (const x of planejarHistorias(2025, 45, 0.18, hoje))
+    for (const x of planejarHistorias(
+      2025,
+      alunosDoAno(2025),
+      EVASAO[2025],
+      hoje,
+    ))
       if (x.saida?.motivo === 'Desistência inicial')
         expect(x.saida.data <= limite).toBe(true);
   });
 
   it('matrícula antes do início do período e depois do fim das inscrições', () => {
     const { inscricaoFim, periodoInicio } = datasDoAno(2024);
-    for (const x of planejarHistorias(2024, 45, 0.22, hoje)) {
+    for (const x of planejarHistorias(
+      2024,
+      alunosDoAno(2024),
+      EVASAO[2024],
+      hoje,
+    )) {
       expect(x.matriculadoEm > inscricaoFim).toBe(true);
       expect(x.matriculadoEm <= periodoInicio).toBe(true);
       expect(x.inscritoEm <= inscricaoFim).toBe(true);
@@ -66,7 +89,12 @@ describe('planejarHistorias', () => {
   });
 
   it('quem sai ao longo do ano some antes: >=3 chamadas seguidas sem vir antes da saída', () => {
-    for (const x of planejarHistorias(2025, 45, 0.18, hoje))
+    for (const x of planejarHistorias(
+      2025,
+      alunosDoAno(2025),
+      EVASAO[2025],
+      hoje,
+    ))
       if (x.saida && x.saida.motivo !== MOTIVO_DESISTENCIA_INICIAL) {
         expect(x.sumindoDesde!.getTime()).toBeGreaterThan(
           x.matriculadoEm.getTime(),
@@ -86,13 +114,13 @@ describe('planejarHistorias', () => {
     (ano) => {
       const { periodoInicio } = datasDoAno(ano);
       const limite = somarDias(periodoInicio, 42);
-      const h = planejarHistorias(ano, 45, EVASAO[ano], hoje);
+      const h = planejarHistorias(ano, alunosDoAno(ano), EVASAO[ano], hoje);
       const saidas = h.filter((x) => x.saida);
       const iniciais = saidas.filter(
         (x) => x.saida!.motivo === MOTIVO_DESISTENCIA_INICIAL,
       );
-      expect(saidas.length / 45).toBeGreaterThanOrEqual(0.15);
-      expect(saidas.length / 45).toBeLessThanOrEqual(0.25);
+      expect(saidas.length / h.length).toBeGreaterThanOrEqual(0.15);
+      expect(saidas.length / h.length).toBeLessThanOrEqual(0.25);
       expect(iniciais.length).toBe(Math.round(saidas.length * 0.5));
       for (const x of iniciais) {
         expect(x.saida!.data >= periodoInicio).toBe(true);
@@ -104,7 +132,12 @@ describe('planejarHistorias', () => {
   it('desistência inicial some só uma semana antes, nunca antes do início do período', () => {
     for (const ano of ANOS) {
       const { periodoInicio } = datasDoAno(ano);
-      for (const x of planejarHistorias(ano, 45, EVASAO[ano], hoje))
+      for (const x of planejarHistorias(
+        ano,
+        alunosDoAno(ano),
+        EVASAO[ano],
+        hoje,
+      ))
         if (x.saida?.motivo === MOTIVO_DESISTENCIA_INICIAL) {
           const esperado = Math.max(
             periodoInicio.getTime(),
@@ -116,9 +149,12 @@ describe('planejarHistorias', () => {
   });
 
   it('ano atual: exatamente 3 alunos ativos sumindo hoje, com >=3 chamadas sem vir', () => {
-    const sumindo = planejarHistorias(2026, 45, EVASAO[2026], hoje).filter(
-      (x) => !x.saida && x.sumindoDesde,
-    );
+    const sumindo = planejarHistorias(
+      2026,
+      alunosDoAno(2026),
+      EVASAO[2026],
+      hoje,
+    ).filter((x) => !x.saida && x.sumindoDesde);
     expect(sumindo).toHaveLength(3);
     for (const x of sumindo) {
       expect(x.statusFinal).toBe(StatusApplication.Enrolled);
@@ -135,14 +171,14 @@ describe('planejarHistorias', () => {
   });
 
   it.each([2024, 2025] as const)('%i: ninguém fica sumindo sem sair', (ano) => {
-    const h = planejarHistorias(ano, 45, EVASAO[ano], hoje);
+    const h = planejarHistorias(ano, alunosDoAno(ano), EVASAO[ano], hoje);
     expect(h.filter((x) => !x.saida && x.sumindoDesde)).toHaveLength(0);
   });
 
   it('mesma semente, mesmo plano', () => {
-    const a = planejarHistorias(2026, 45, EVASAO[2026], hoje);
+    const a = planejarHistorias(2026, alunosDoAno(2026), EVASAO[2026], hoje);
     reiniciarAleatorio();
-    const b = planejarHistorias(2026, 45, EVASAO[2026], hoje);
+    const b = planejarHistorias(2026, alunosDoAno(2026), EVASAO[2026], hoje);
     expect(b).toEqual(a);
   });
 });

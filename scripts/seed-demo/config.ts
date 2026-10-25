@@ -41,7 +41,8 @@ export const datasDoAno = (ano: number) => ({
  * Processo seletivo com inscrições **abertas** no dia em que o seed roda
  * (tickets/053, Q5): a lista de processos mostra 1 "Ativo" + 3 "Encerrado".
  * Fora de `ANOS` de propósito — não tem período, turma, frequência nem
- * indicador; só o processo (04) e inscritos "Em Análise" (08).
+ * indicador; só o processo (04) e os inscritos (08: Em Análise, Enviado
+ * Documento, Indeferido e lista de espera).
  */
 export const PROCESSO_ABERTO = {
   ano: 2027,
@@ -49,6 +50,8 @@ export const PROCESSO_ABERTO = {
   diasDesdeInicio: 10,
   diasAteFim: 30,
   inscritos: 9,
+  /** Vagas previstas (`expectedOpening`). */
+  vagas: 55,
 } as const;
 
 /** Datas do processo aberto, em UTC meia-noite (como `datasDoAno`). */
@@ -63,14 +66,24 @@ export const TURMAS = [
   { nome: 'Turma Noite', periodo: AttendancePeriod.NOITE, dias: [2, 4] },
 ] as const;
 
-/** Alunos por turma em cada ano (soma 135, não uniforme). */
+/**
+ * Alunos por turma em cada ano (38 + 45 + 52 = 135, crescendo ano a ano e
+ * não uniforme entre as turmas). A Turma Noite de 2026 é a do vídeo: cheia.
+ */
 export const ALUNOS_POR_TURMA: Record<Ano, [number, number, number]> = {
-  2024: [16, 14, 15],
+  2024: [13, 12, 13],
   2025: [13, 17, 15],
-  2026: [15, 16, 14],
+  2026: [18, 16, 18],
 };
 
-/** Fração que cancela no ano (2026 conta só até hoje). */
+/** Total de matriculados do ano (soma das turmas). */
+export const alunosDoAno = (ano: Ano) =>
+  ALUNOS_POR_TURMA[ano].reduce((a, b) => a + b, 0);
+
+/**
+ * Fração que cancela no ano (2026 conta só até hoje). Arredondada sobre o
+ * total do ano: 2024 8/38 (21%), 2025 8/45 (18%), 2026 8/52 (15%).
+ */
 export const EVASAO: Record<Ano, number> = {
   2024: 0.22,
   2025: 0.18,

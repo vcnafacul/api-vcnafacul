@@ -5,6 +5,7 @@ import {
   ANO_ATUAL,
   ANOS,
   PROCESSO_ABERTO,
+  alunosDoAno,
   datasDoAno,
   datasDoProcessoAberto,
 } from '../config';
@@ -228,6 +229,7 @@ export async function executar(ctx: Contexto) {
     ano: number,
     d: { inscricaoInicio: Date; inscricaoFim: Date },
     requestDocuments: boolean,
+    vagas: number,
   ) {
     // A api grava as datas no horário de parede de SP (conexão sem `timezone`,
     // processo com TZ=America/Sao_Paulo); a conexão do seed é `Z`, então as
@@ -246,7 +248,7 @@ export async function executar(ctx: Contexto) {
         startDate: d.inscricaoInicio,
         endDate: fim,
         actived: fim < ctx.hoje ? Status.Rejected : Status.Approved,
-        expectedOpening: 45,
+        expectedOpening: vagas,
         requestDocuments,
         partnerPrepCourse: { id: ctx.cursinhoId },
         createdAt: d.inscricaoInicio, // a listagem ordena por createdAt DESC
@@ -288,12 +290,18 @@ export async function executar(ctx: Contexto) {
   }
 
   for (const ano of ANOS)
-    await criarProcesso(ano, datasDoAno(ano), ano === ANO_ATUAL);
+    await criarProcesso(
+      ano,
+      datasDoAno(ano),
+      ano === ANO_ATUAL,
+      alunosDoAno(ano),
+    );
   // inscrições abertas hoje; pede documentos como o do ano atual
   await criarProcesso(
     PROCESSO_ABERTO.ano,
     datasDoProcessoAberto(ctx.hoje),
     true,
+    PROCESSO_ABERTO.vagas,
   );
   console.log(
     `04 processos: ${ANOS.length + 1} processos (${PROCESSO_ABERTO.ano} com inscrições abertas), ${idDaPergunta.size} perguntas e ${regras.length} regras no Mongo`,
