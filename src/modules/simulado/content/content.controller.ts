@@ -148,15 +148,20 @@ export class ContentProxyController {
     return await this.contentService.getFile(id);
   }
 
-  // As três estatísticas abaixo só são lidas pelo painel logado
-  // (`client/pages/analytics/content`); estavam abertas sem motivo.
+  /**
+   * ⚠️ **Público, de propósito.** A home (sem login) mostra o total de
+   * conteúdos aprovados (`client/services/public/impactStats`). Com o guard,
+   * o visitante levava 401, o client tentava renovar a sessão, mandava para
+   * `/logoff`, que volta para a home — e a tela ficava trocando sem parar.
+   * Só devolve contagens, nada do material.
+   */
   @Get('summary')
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
   async getSummary() {
     return await this.contentService.getSummary();
   }
 
+  // As duas estatísticas abaixo só são lidas pelo painel logado
+  // (`client/pages/analytics/content`).
   @Get('stats-by-frente')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
