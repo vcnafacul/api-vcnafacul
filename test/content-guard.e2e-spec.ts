@@ -74,7 +74,6 @@ describe('Conteúdos: arquivo e estatísticas exigem login (e2e)', () => {
 
   const rotas: [string, string, string][] = [
     ['/content/file/abc', 'getFile', 'arquivo'],
-    ['/content/summary', 'getSummary', 'resumo'],
     ['/content/stats-by-frente', 'getStatsByFrente', 'por frente'],
     ['/content/snapshot-content-status', 'getSnapshotContentStatus', 'snapshot'],
   ];
@@ -92,6 +91,13 @@ describe('Conteúdos: arquivo e estatísticas exigem login (e2e)', () => {
       .set('Authorization', await aluno())
       .expect(200);
     expect(proxy[metodo]).toHaveBeenCalledTimes(1);
+  });
+
+  // A home sem login mostra o total de conteúdos: com 401 aqui o client
+  // entrava em laço home ↔ /logoff.
+  it('/content/summary é público (a home sem login lê o total)', async () => {
+    await request(app.getHttpServer()).get('/content/summary').expect(200);
+    expect(proxy.getSummary).toHaveBeenCalledTimes(1);
   });
 
   it('o arquivo pedido é o que o aluno pediu', async () => {
