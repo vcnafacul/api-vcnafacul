@@ -93,13 +93,6 @@ export class ClassRepository extends BaseRepository<Class> {
   }
 
   /**
-   * A turma com os alunos matriculados, para montar a chamada.
-   *
-   * ⚠️ O status vai no `ON` do join (tickets-documentacao, card 11): no
-   * `WHERE`, uma turma sem nenhum matriculado sumia do resultado — e a chamada
-   * respondia "turma não encontrada".
-   */
-  /**
    * Aulas e faltas não justificadas de cada aluno nesta turma (tickets/054,
    * card 02, R1/R2). Uma consulta agregada para a turma inteira.
    *
@@ -155,6 +148,13 @@ export class ClassRepository extends BaseRepository<Class> {
     );
   }
 
+  /**
+   * A turma com os alunos matriculados, para montar a chamada.
+   *
+   * ⚠️ O status vai no `ON` do join (tickets-documentacao, card 11): no
+   * `WHERE`, uma turma sem nenhum matriculado sumia do resultado — e a chamada
+   * respondia "turma não encontrada".
+   */
   async findOneByIdToAttendanceRecord(id: string): Promise<Class> {
     return this.repository
       .createQueryBuilder('entity')
