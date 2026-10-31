@@ -1,11 +1,11 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
 } from '@nestjs/common';
 import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { CollaboratorRepository } from '../../collaborator/collaborator.repository';
+import { cursinhoDoColaboradorAtivo } from '../cursinho-do-colaborador-ativo';
 import { TipoDeLink } from './cursinho-link.entity';
 import { CursinhoPagina } from './cursinho-pagina.entity';
 import { CursinhoPaginaRepository } from './cursinho-pagina.repository';
@@ -59,15 +59,12 @@ export class CursinhoPaginaService {
     private readonly cache: CacheService,
   ) {}
 
-  private async cursinhoDoUsuario(userId: string) {
-    const colaborador =
-      await this.collaboratorRepository.findOneByUserIdWithGeo(userId);
-    if (!colaborador?.partnerPrepCourse || colaborador.actived === false) {
-      throw new ForbiddenException(
-        'Só colaboradores ativos de um cursinho editam a página dele.',
-      );
-    }
-    return colaborador.partnerPrepCourse;
+  private cursinhoDoUsuario(userId: string) {
+    return cursinhoDoColaboradorAtivo(
+      this.collaboratorRepository,
+      userId,
+      'Só colaboradores ativos de um cursinho editam a página dele.',
+    );
   }
 
   /** A página do cursinho; a primeira abertura cria, desativada (R1, R3). */

@@ -1,5 +1,6 @@
-import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { CollaboratorRepository } from '../../collaborator/collaborator.repository';
+import { cursinhoDoColaboradorAtivo } from '../cursinho-do-colaborador-ativo';
 import { PartnerPrepCourseRepository } from '../partner-prep-course.repository';
 import {
   AlertaEvasao,
@@ -20,15 +21,12 @@ export class AlertaEvasaoService {
     private readonly collaboratorRepository: CollaboratorRepository,
   ) {}
 
-  private async cursinhoDoUsuario(userId: string) {
-    const colaborador =
-      await this.collaboratorRepository.findOneByUserId(userId);
-    if (!colaborador?.partnerPrepCourse || colaborador.actived === false) {
-      throw new ForbiddenException(
-        'Só colaboradores ativos de um cursinho configuram o alerta dele.',
-      );
-    }
-    return colaborador.partnerPrepCourse;
+  private cursinhoDoUsuario(userId: string) {
+    return cursinhoDoColaboradorAtivo(
+      this.collaboratorRepository,
+      userId,
+      'Só colaboradores ativos de um cursinho configuram o alerta dele.',
+    );
   }
 
   async obter(userId: string): Promise<AlertaEvasao> {

@@ -6,14 +6,14 @@ import { SalvarAlertaEvasaoDtoInput } from './dtos/alerta-evasao.dto';
 
 describe('AlertaEvasaoService (tickets/054, card 01)', () => {
   const repository = { salvarAlertaEvasao: jest.fn() };
-  const collaboratorRepository = { findOneByUserId: jest.fn() };
+  const collaboratorRepository = { findOneByUserIdWithGeo: jest.fn() };
   const service = new AlertaEvasaoService(
     repository as any,
     collaboratorRepository as any,
   );
 
   const colaboradorDe = (cursinho: object, actived = true) =>
-    collaboratorRepository.findOneByUserId.mockResolvedValue({
+    collaboratorRepository.findOneByUserIdWithGeo.mockResolvedValue({
       actived,
       partnerPrepCourse: cursinho,
     });
@@ -35,7 +35,9 @@ describe('AlertaEvasaoService (tickets/054, card 01)', () => {
   it('⚠️ salva no cursinho do colaborador logado, nunca em outro', async () => {
     colaboradorDe({ id: 'c1' });
     await service.salvar('u1', { percentual: 15, minimoDeAulas: 12 });
-    expect(collaboratorRepository.findOneByUserId).toHaveBeenCalledWith('u1');
+    expect(collaboratorRepository.findOneByUserIdWithGeo).toHaveBeenCalledWith(
+      'u1',
+    );
     expect(repository.salvarAlertaEvasao).toHaveBeenCalledWith('c1', {
       alertaEvasaoPercentual: 15,
       alertaEvasaoMinimoAulas: 12,
@@ -61,7 +63,9 @@ describe('AlertaEvasaoService (tickets/054, card 01)', () => {
     ],
     ['colaborador sem cursinho', { actived: true, partnerPrepCourse: null }],
   ])('%s → 403 e nada é gravado', async (_, colaborador) => {
-    collaboratorRepository.findOneByUserId.mockResolvedValue(colaborador);
+    collaboratorRepository.findOneByUserIdWithGeo.mockResolvedValue(
+      colaborador,
+    );
     await expect(
       service.salvar('u1', { percentual: 15, minimoDeAulas: 10 }),
     ).rejects.toBeInstanceOf(ForbiddenException);
