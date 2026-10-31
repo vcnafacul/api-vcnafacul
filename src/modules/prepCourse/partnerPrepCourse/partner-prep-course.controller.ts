@@ -33,6 +33,8 @@ import { PartnerPrepCourseService } from './partner-prep-course.service';
 import { AtribuirFuncaoDtoInput } from './dtos/atribuir-funcao.input.dto';
 import { CursinhoPaginaService } from './pagina/cursinho-pagina.service';
 import { SalvarPaginaDtoInput } from './pagina/dtos/salvar-pagina.dto';
+import { AlertaEvasaoService } from './alertaEvasao/alerta-evasao.service';
+import { SalvarAlertaEvasaoDtoInput } from './alertaEvasao/dtos/alerta-evasao.dto';
 
 @ApiTags('PartnerPrepCourse')
 @Controller('partner-prep-course')
@@ -40,6 +42,7 @@ export class PartnerPrepCourseController {
   constructor(
     private readonly service: PartnerPrepCourseService,
     private readonly paginaService: CursinhoPaginaService,
+    private readonly alertaEvasaoService: AlertaEvasaoService,
   ) {}
 
   @Post()
@@ -205,6 +208,37 @@ export class PartnerPrepCourseController {
   ])
   async salvarPagina(@Req() req: Request, @Body() dto: SalvarPaginaDtoInput) {
     return await this.paginaService.salvar((req.user as User).id, dto);
+  }
+
+  // ---- Alerta de risco de evasão (tickets/054, card 01) ----
+  // ⚠️ Literal `alerta-evasao` antes do `GET :id` deste controller.
+
+  @Get('alerta-evasao')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description:
+      'alerta de risco de evasão do cursinho do usuário (% de faltas e mínimo de aulas)',
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.visualizarTurmas)
+  async getAlertaEvasao(@Req() req: Request) {
+    return await this.alertaEvasaoService.obter((req.user as User).id);
+  }
+
+  @Patch('alerta-evasao')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'salva o alerta de risco de evasão; percentual null desliga',
+  })
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarTurmas)
+  async salvarAlertaEvasao(
+    @Req() req: Request,
+    @Body() dto: SalvarAlertaEvasaoDtoInput,
+  ) {
+    return await this.alertaEvasaoService.salvar((req.user as User).id, dto);
   }
 
   @Get('logos')

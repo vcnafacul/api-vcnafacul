@@ -6,6 +6,7 @@ import { EnvService } from 'src/shared/modules/env/env.service';
 import { PartnerPrepCourseController } from './partner-prep-course.controller';
 import { PartnerPrepCourseService } from './partner-prep-course.service';
 import { CursinhoPaginaService } from './pagina/cursinho-pagina.service';
+import { AlertaEvasaoService } from './alertaEvasao/alerta-evasao.service';
 import { Permissions } from 'src/modules/role/permissions/permissions';
 
 /**
@@ -30,6 +31,11 @@ describe('PartnerPrepCourseController — rotas da troca de função', () => {
     salvar: jest.fn().mockResolvedValue({ slug: 'y' }),
   };
 
+  const alertaService = {
+    obter: jest.fn().mockResolvedValue({ percentual: null, minimoDeAulas: 10 }),
+    salvar: jest.fn().mockResolvedValue({ percentual: 15, minimoDeAulas: 10 }),
+  };
+
   const passaTudo = {
     canActivate: (ctx: any) => {
       ctx.switchToHttp().getRequest().user = { id: 'gestor' };
@@ -43,6 +49,7 @@ describe('PartnerPrepCourseController — rotas da troca de função', () => {
       providers: [
         { provide: PartnerPrepCourseService, useValue: service },
         { provide: CursinhoPaginaService, useValue: paginaService },
+        { provide: AlertaEvasaoService, useValue: alertaService },
         // O guard do convite (card 01) é um mixin que injeta o EnvService.
         { provide: EnvService, useValue: { get: jest.fn() } },
       ],
@@ -109,5 +116,34 @@ describe('PartnerPrepCourseController — rotas da troca de função', () => {
         Permissions.gerenciarEstudantes,
       ]);
     }
+  });
+
+  // ---- tickets/054, card 01 ----
+
+  it('GET alerta-evasao chega no obter — não no :id', async () => {
+    await request(app.getHttpServer())
+      .get('/partner-prep-course/alerta-evasao')
+      .expect(200, { percentual: null, minimoDeAulas: 10 });
+    expect(alertaService.obter).toHaveBeenCalledWith('gestor');
+    expect(service.getById).not.toHaveBeenCalled();
+  });
+
+  it('PATCH alerta-evasao repassa quem pede e o corpo', async () => {
+    const corpo = { percentual: 15, minimoDeAulas: 10 };
+    await request(app.getHttpServer())
+      .patch('/partner-prep-course/alerta-evasao')
+      .send(corpo)
+      .expect(200);
+    expect(alertaService.salvar).toHaveBeenCalledWith('gestor', corpo);
+  });
+
+  it('⚠️ alerta-evasao: ler com visualizarTurmas, salvar com gerenciarTurmas, na rota', () => {
+    const proto = PartnerPrepCourseController.prototype;
+    expect(
+      Reflect.getMetadata(PermissionsGuard.name, proto.getAlertaEvasao),
+    ).toEqual(Permissions.visualizarTurmas);
+    expect(
+      Reflect.getMetadata(PermissionsGuard.name, proto.salvarAlertaEvasao),
+    ).toEqual(Permissions.gerenciarTurmas);
   });
 });
