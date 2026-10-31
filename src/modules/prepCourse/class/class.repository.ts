@@ -99,6 +99,62 @@ export class ClassRepository extends BaseRepository<Class> {
    * `WHERE`, uma turma sem nenhum matriculado sumia do resultado — e a chamada
    * respondia "turma não encontrada".
    */
+  /**
+   * Aulas e faltas não justificadas de cada aluno nesta turma (tickets/054,
+   * card 02, R1/R2). Uma consulta agregada para a turma inteira.
+   *
+   * ⚠️ Entra por `attendance_record.classId` (índice da FK) e desce pelo
+   * único `(attendanceRecordId, studentCourseId)`: `student_attendance` tem
+   * todos os cursinhos e anos, e não pode ser varrida. Sem `DATE()` na
+   * coluna — desligaria o índice, e a conta não usa data.
+   */
+  async contagemDeFaltasPorAluno(
+    classId: string,
+    studentCourseIds: string[],
+  ): Promise<{ id: string; aulas: number; faltas: number }[]> {
+    if (!studentCourseIds.length) return [];
+    const linhas: { id: string; aulas: string; faltas: string }[] =
+      await this._entityManager.query(
+        `SELECT sa.studentCourseId AS id,
+                COUNT(*) AS aulas,
+                SUM(sa.present = 0 AND aj.id IS NULL) AS faltas
+           FROM attendance_record ar
+           JOIN student_attendance sa
+             ON sa.attendanceRecordId = ar.id AND sa.deleted_at IS NULL
+           LEFT JOIN absence_justification aj
+             ON aj.studentAttendanceId = sa.id AND aj.deleted_at IS NULL
+          WHERE ar.classId = ? AND ar.deleted_at IS NULL
+            AND sa.studentCourseId IN (?)
+          GROUP BY sa.studentCourseId`,
+        [classId, studentCourseIds],
+      );
+    return linhas.map((l) => ({
+      id: l.id,
+      aulas: Number(l.aulas),
+      faltas: Number(l.faltas ?? 0),
+    }));
+  }
+
+  /**
+   * Intervalos ativos de justificativa por período dos alunos (R4), em
+   * `YYYY-MM-DD` — a chamada compara com a data escolhida no aparelho. Sem
+   * o texto da justificativa: a chamada não precisa dele.
+   */
+  async justificativasPorPeriodo(
+    studentCourseIds: string[],
+  ): Promise<{ id: string; inicio: string; fim: string }[]> {
+    if (!studentCourseIds.length) return [];
+    return await this._entityManager.query(
+      `SELECT student_course_id AS id,
+              DATE_FORMAT(start_date, '%Y-%m-%d') AS inicio,
+              DATE_FORMAT(end_date, '%Y-%m-%d') AS fim
+         FROM period_justification
+        WHERE deleted_at IS NULL AND student_course_id IN (?)
+        ORDER BY start_date`,
+      [studentCourseIds],
+    );
+  }
+
   async findOneByIdToAttendanceRecord(id: string): Promise<Class> {
     return this.repository
       .createQueryBuilder('entity')

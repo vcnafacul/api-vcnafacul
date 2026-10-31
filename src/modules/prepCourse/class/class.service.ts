@@ -416,10 +416,27 @@ export class ClassService extends BaseService<Class> {
     userId: string,
   ): Promise<GetClassByIdAttendanceDtoOutput> {
     // Turma de outro cursinho → 404, como a tela da turma (card 13).
-    await this.cursinhoDaTurma(id, userId);
+    const cursinho = await this.cursinhoDaTurma(id, userId);
     const classEntity = await this.repository.findOneByIdToAttendanceRecord(id);
     if (!classEntity) {
       throw new HttpException('Turma não encontrada', HttpStatus.NOT_FOUND);
+    }
+    // Risco de evasão (tickets/054, card 02): duas consultas para a turma
+    // inteira, nunca uma por aluno.
+    const studentIds = classEntity.students.map((s) => s.id);
+    const [contagens, intervalos] = await Promise.all([
+      this.repository.contagemDeFaltasPorAluno(id, studentIds),
+      this.repository.justificativasPorPeriodo(studentIds),
+    ]);
+    const contagemPorAluno = new Map(contagens.map((c) => [c.id, c]));
+    const intervalosPorAluno = new Map<
+      string,
+      { inicio: string; fim: string }[]
+    >();
+    for (const { id: alunoId, inicio, fim } of intervalos) {
+      const lista = intervalosPorAluno.get(alunoId) ?? [];
+      lista.push({ inicio, fim });
+      intervalosPorAluno.set(alunoId, lista);
     }
     const students = classEntity.students.map((student) => {
       return {
@@ -428,6 +445,9 @@ export class ClassService extends BaseService<Class> {
           ? `${student.user.socialName?.split(' ')[0]} ${student.user.lastName}`
           : `${student.user.firstName} ${student.user.lastName}`,
         cod_enrolled: student.cod_enrolled,
+        aulas: contagemPorAluno.get(student.id)?.aulas ?? 0,
+        faltasNaoJustificadas: contagemPorAluno.get(student.id)?.faltas ?? 0,
+        justificativasPorPeriodo: intervalosPorAluno.get(student.id) ?? [],
       };
     });
     const result = {
@@ -435,6 +455,13 @@ export class ClassService extends BaseService<Class> {
       coursePeriodId: classEntity.coursePeriod?.id || '',
       coursePeriodName: classEntity.coursePeriod?.name || '',
       coursePeriodYear: classEntity.coursePeriod?.year || 0,
+      alertaEvasao:
+        cursinho.alertaEvasaoPercentual == null
+          ? null
+          : {
+              percentual: cursinho.alertaEvasaoPercentual,
+              minimoDeAulas: cursinho.alertaEvasaoMinimoAulas,
+            },
       students,
     };
     return result as unknown as GetClassByIdAttendanceDtoOutput;
