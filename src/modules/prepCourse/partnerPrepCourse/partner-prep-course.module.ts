@@ -7,6 +7,7 @@ import { EnvModule } from 'src/shared/modules/env/env.module';
 import { BlobModule } from 'src/shared/services/blob/blob.module';
 import { EmailService } from 'src/shared/services/email/email.service';
 import { CollaboratorModule } from '../collaborator/collaborator.module';
+import { AlertaEvasaoService } from './alertaEvasao/alerta-evasao.service';
 import { LogPartnerRepository } from './log-partner/log-partner.repository';
 import { CursinhoPaginaRepository } from './pagina/cursinho-pagina.repository';
 import { CursinhoPaginaService } from './pagina/cursinho-pagina.service';
@@ -34,6 +35,7 @@ import { PartnerPrepCourseExistValidator } from './validator/partner-pret-course
     LogPartnerRepository,
     CursinhoPaginaRepository,
     CursinhoPaginaService,
+    AlertaEvasaoService,
   ],
   exports: [
     PartnerPrepCourseService,

@@ -33,6 +33,28 @@ export class PartnerPrepCourse extends BaseEntity {
   @Column({ nullable: true, type: 'blob' })
   thumbnail?: Buffer;
 
+  /**
+   * % de faltas não justificadas a partir do qual a chamada mostra o aluno em
+   * risco de evasão (tickets/054). `null` = alerta desligado.
+   * ⚠️ Evasão em si continua sendo matrícula cancelada (tickets/033).
+   */
+  @Column({
+    name: 'alerta_evasao_percentual',
+    type: 'tinyint',
+    unsigned: true,
+    nullable: true,
+  })
+  alertaEvasaoPercentual: number | null;
+
+  /** Só avisa depois de o aluno ter este nº de aulas (tickets/054, D4). */
+  @Column({
+    name: 'alerta_evasao_minimo_aulas',
+    type: 'smallint',
+    unsigned: true,
+    default: 10,
+  })
+  alertaEvasaoMinimoAulas: number;
+
   @OneToMany(
     () => InscriptionCourse,
     (inscriptionCourse) => inscriptionCourse.partnerPrepCourse,

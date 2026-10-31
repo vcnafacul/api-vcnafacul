@@ -23,6 +23,17 @@ export class PartnerPrepCourseRepository extends BaseRepository<PartnerPrepCours
     super(_entityManager.getRepository(PartnerPrepCourse));
   }
 
+  /** Só as duas colunas do alerta (tickets/054): não regrava o resto. */
+  async salvarAlertaEvasao(
+    id: string,
+    valores: Pick<
+      PartnerPrepCourse,
+      'alertaEvasaoPercentual' | 'alertaEvasaoMinimoAulas'
+    >,
+  ): Promise<void> {
+    await this.repository.update(id, valores);
+  }
+
   override async findOneBy(where: object): Promise<PartnerPrepCourse> {
     return await this.repository
       .createQueryBuilder('partner_prep_course')
