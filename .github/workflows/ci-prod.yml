@@ -60,9 +60,9 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST_PROD }}
           username: ${{ secrets.DEPLOY_USER_PROD }}
           password: ${{ secrets.DEPLOY_PASS_PROD }}
-          script: |
-            chmod +x ~/subir_api.sh
-            ~/subir_api.sh
+          # compose do vcnafacul-stack (tickets/057): sobe a versão da tag e espera healthy;
+          # rollback no servidor: ~/stack/deploy.sh rollback api
+          script: ~/stack/deploy.sh api ${{ github.ref_name }}
 
   DEPLOY_FIRESTORE_INDEXES:
     needs: BUILD_AND_PUSH
