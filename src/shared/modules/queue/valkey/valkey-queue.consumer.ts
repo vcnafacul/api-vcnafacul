@@ -2,8 +2,8 @@ import {
   Inject,
   Injectable,
   Logger,
+  OnApplicationBootstrap,
   OnModuleDestroy,
-  OnModuleInit,
 } from '@nestjs/common';
 import Redis from 'ioredis';
 import { QueueConsumer } from '../queue.consumer';
@@ -19,7 +19,7 @@ type Registration = {
 @Injectable()
 export class ValkeyQueueConsumer
   extends QueueConsumer
-  implements OnModuleInit, OnModuleDestroy
+  implements OnApplicationBootstrap, OnModuleDestroy
 {
   private readonly logger = new Logger(ValkeyQueueConsumer.name);
   private running = false;
@@ -38,7 +38,10 @@ export class ValkeyQueueConsumer
     this.registrations.push({ stream, group, consumer, handler });
   }
 
-  async onModuleInit() {
+  // onApplicationBootstrap (not onModuleInit) runs only after every module's
+  // onModuleInit has finished, guaranteeing register() has already been
+  // called by consumers like AnswerProcessorService before we start polling.
+  async onApplicationBootstrap() {
     for (const { stream, group } of this.registrations) {
       await this.ensureGroup(stream, group);
     }
@@ -50,9 +53,13 @@ export class ValkeyQueueConsumer
     this.running = false;
   }
 
+  // Grupo criado lendo do INÍCIO ('0'), não só do que chegar depois ('$'): o
+  // recoverPending republica os pendentes antes deste ponto, e um Redis
+  // recriado vazio pode já ter mensagem na fila. Mensagem processada é apagada
+  // (xdel), então ler do início não reprocessa nada.
   private async ensureGroup(stream: string, group: string) {
     try {
-      await this.redis.xgroup('CREATE', stream, group, '$', 'MKSTREAM');
+      await this.redis.xgroup('CREATE', stream, group, '0', 'MKSTREAM');
     } catch (err: any) {
       if (!err.message.includes('BUSYGROUP')) throw err;
     }
@@ -61,14 +68,45 @@ export class ValkeyQueueConsumer
   private async poll() {
     while (this.running) {
       if (this.registrations.length === 0) {
-        await new Promise((r) => setTimeout(r, 100));
+        // Never spin the loop without an await: with no registrations this
+        // would pin the event loop at 100% CPU and freeze the whole app.
+        await new Promise((r) => setTimeout(r, 200));
         continue;
       }
       for (const reg of this.registrations) {
-        await this.readAndProcess(reg);
+        // Um erro de leitura não pode matar o laço: antes, uma exceção aqui
+        // subia até o poll().catch e a fila ficava sem leitor até reiniciar o
+        // ms (tickets/056 · 05b).
+        try {
+          await this.readAndProcess(reg);
+        } catch (err: any) {
+          await this.recoverFromReadError(reg, err);
+          continue;
+        }
         await this.reclaimStale(reg);
       }
     }
+  }
+
+  private async recoverFromReadError(reg: Registration, err: any) {
+    try {
+      if (String(err?.message).includes('NOGROUP')) {
+        // Redis recriado (ou stream apagado): o grupo sumiu.
+        this.logger.warn(
+          `Grupo ${reg.group} sumiu de ${reg.stream}; recriando`,
+        );
+        await this.ensureGroup(reg.stream, reg.group);
+        return;
+      }
+      this.logger.error(`Read error on ${reg.stream}:`, err);
+    } catch (recreateErr) {
+      this.logger.error(
+        `Could not recreate group on ${reg.stream}:`,
+        recreateErr,
+      );
+    }
+    // Redis fora do ar ou erro inesperado: pausa antes de tentar de novo.
+    await new Promise((r) => setTimeout(r, 1000));
   }
 
   private async readAndProcess({
