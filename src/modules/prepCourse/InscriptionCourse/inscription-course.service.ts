@@ -23,6 +23,7 @@ import { OpenInscriptionDtoOutput } from './dtos/open-inscription.dto.output';
 import { ExtendInscriptionCourseDtoInput } from './dtos/extend-inscription-course.dto.input';
 import { InscriptionCourseDtoOutput } from './dtos/get-all-inscription.dto.output';
 import { GetAllWithNameDtoOutput } from './dtos/get-all-with-name';
+import { GetHistoricoInscritoDtoOutput } from './dtos/get-historico-inscrito.dto.output';
 import { GetSubscribersDtoOutput } from './dtos/get-subscribers.dto.output';
 import { UpdateInscriptionCourseDTOInput } from './dtos/update-inscription-course.dto.input';
 import { InscriptionCourse } from './inscription-course.entity';
@@ -442,6 +443,10 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
         HttpStatus.BAD_REQUEST,
       );
     }
+    const ultimoEmailConvocacao =
+      await this.repository.getUltimoEmailConvocacao(
+        inscription.students.map((student) => student.id),
+      );
     const subscribers: GetSubscribersDtoOutput[] = inscription.students.map(
       (student) => {
         return Object.assign(new GetSubscribersDtoOutput(), {
@@ -489,13 +494,8 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
           cpf_guardiao_legal: maskCpf(student.legalGuardian?.cpf) || '',
           parentesco_guardiao_legal:
             student.legalGuardian?.family_relationship || '',
-          logs: student.logs,
-          documents: student.documents.map((d) => ({
-            createdAt: d.createdAt,
-            name: d.name,
-            key: d.key,
-            expiredAt: d.exprires,
-          })),
+          ultimo_email_convocacao:
+            ultimoEmailConvocacao.get(student.id) ?? null,
           photo: student.photo,
           areas_de_interesse: student.areaInterest,
           cursos_selecionados: student.selectedCourses,
@@ -503,6 +503,29 @@ export class InscriptionCourseService extends BaseService<InscriptionCourse> {
       },
     );
     return subscribers;
+  }
+
+  /** Logs e documentos de um inscrito, para o modal de detalhes. */
+  async getHistoricoInscrito(
+    inscriptionId: string,
+    studentId: string,
+  ): Promise<GetHistoricoInscritoDtoOutput> {
+    const student = await this.repository.getHistoricoInscrito(
+      inscriptionId,
+      studentId,
+    );
+    if (!student) {
+      throw new HttpException('Estudante não encontrado', HttpStatus.NOT_FOUND);
+    }
+    return {
+      logs: student.logs,
+      documents: student.documents.map((d) => ({
+        createdAt: d.createdAt,
+        name: d.name,
+        key: d.key,
+        expiredAt: d.exprires,
+      })),
+    };
   }
 
   @Cron(CronExpression.EVERY_3_HOURS, {

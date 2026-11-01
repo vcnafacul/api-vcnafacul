@@ -14,6 +14,7 @@ import { InscriptionCourseService } from 'src/modules/prepCourse/InscriptionCour
 import { LogPartnerRepository } from 'src/modules/prepCourse/partnerPrepCourse/log-partner/log-partner.repository';
 import { PartnerPrepCourseService } from 'src/modules/prepCourse/partnerPrepCourse/partner-prep-course.service';
 import { StatusApplication } from 'src/modules/prepCourse/studentCourse/enums/stastusApplication';
+import { LogStudent } from 'src/modules/prepCourse/studentCourse/log-student/log-student.entity';
 import { StudentCourseRepository } from 'src/modules/prepCourse/studentCourse/student-course.repository';
 import { StudentCourseService } from 'src/modules/prepCourse/studentCourse/student-course.service';
 import { RoleService } from 'src/modules/role/role.service';
@@ -868,6 +869,119 @@ describe('InscriptionCourse (e2e)', () => {
       });
   });
 
+  describe('lista leve de inscritos: logs e documentos à parte', () => {
+    const preparar = async () => {
+      const { representative } = await createPartnerPrepCourse();
+      const inscriptionCreated = await inscriptionService.create(
+        CreateInscriptionCourseDTOInputFaker(),
+        representative.id,
+      );
+      const userStudentDto = await CreateUserDtoInputFaker();
+      await userService.create(userStudentDto);
+      const userStudent = await userRepository.findOneBy({
+        email: userStudentDto.email,
+      });
+      const student = await studentCourseService.create(
+        createStudentCourseDTOInputFaker(userStudent.id, inscriptionCreated.id),
+      );
+      const token = await jwtService.signAsync(
+        { user: { id: representative.id } },
+        { expiresIn: '2h' },
+      );
+      return { inscriptionCreated, student, token };
+    };
+
+    const gravarLog = async (
+      studentId: string,
+      description: string,
+      createdAt: string,
+    ) => {
+      const ds = app.get(DataSource);
+      const log = await ds.getRepository(LogStudent).save({
+        studentId,
+        description,
+        applicationStatus: StatusApplication.CalledForEnrollment,
+      });
+      await ds.query('UPDATE log_student SET created_at = ? WHERE id = ?', [
+        createdAt,
+        log.id,
+      ]);
+    };
+
+    it('a lista traz só a data do último email de convocação, sem logs nem documentos', async () => {
+      const { inscriptionCreated, student, token } = await preparar();
+      await gravarLog(
+        student.id,
+        'Email de convocação enviado',
+        '2026-01-10 10:00:00',
+      );
+      await gravarLog(
+        student.id,
+        'Email de convocação enviado',
+        '2026-01-12 15:30:00',
+      );
+      // outra descrição não conta, mesmo sendo mais recente
+      await gravarLog(
+        student.id,
+        'Email de convocação enviado (em lote)',
+        '2026-01-20 08:00:00',
+      );
+
+      const { body } = await request(app.getHttpServer())
+        .get(`/inscription-course/subscribers/${inscriptionCreated.id}`)
+        .set({ Authorization: `Bearer ${token}` })
+        .expect(200);
+
+      expect(body).toHaveLength(1);
+      expect(body[0]).not.toHaveProperty('logs');
+      expect(body[0]).not.toHaveProperty('documents');
+      // o dia basta: a hora volta no fuso do driver
+      expect(body[0].ultimo_email_convocacao.slice(0, 10)).toBe('2026-01-12');
+    });
+
+    it('sem email de convocação, ultimo_email_convocacao é null', async () => {
+      const { inscriptionCreated, token } = await preparar();
+
+      const { body } = await request(app.getHttpServer())
+        .get(`/inscription-course/subscribers/${inscriptionCreated.id}`)
+        .set({ Authorization: `Bearer ${token}` })
+        .expect(200);
+
+      expect(body[0].ultimo_email_convocacao).toBeNull();
+    });
+
+    it('subscribers/:id/student/:studentId traz os logs (mais recente primeiro) e os documentos', async () => {
+      const { inscriptionCreated, student, token } = await preparar();
+      await gravarLog(student.id, 'primeiro', '2026-01-10 10:00:00');
+      await gravarLog(student.id, 'segundo', '2026-01-11 10:00:00');
+
+      const { body } = await request(app.getHttpServer())
+        .get(
+          `/inscription-course/subscribers/${inscriptionCreated.id}/student/${student.id}`,
+        )
+        .set({ Authorization: `Bearer ${token}` })
+        .expect(200);
+
+      const descricoes = body.logs.map((l) => l.description);
+      expect(descricoes.indexOf('segundo')).toBeLessThan(
+        descricoes.indexOf('primeiro'),
+      );
+      expect(body.documents).toEqual([]);
+    });
+
+    it('inscrito de outro processo do mesmo cursinho responde 404', async () => {
+      const { inscriptionCreated, token } = await preparar();
+      const outro = await preparar();
+
+      await request(app.getHttpServer())
+        .get(
+          `/inscription-course/subscribers/${inscriptionCreated.id}/student/${outro.student.id}`,
+        )
+        .set({ Authorization: `Bearer ${token}` })
+        .expect(404);
+    });
+  });
+
   it('should return 400 if the inscription course does not exist', async () => {
     const { representative } = await createPartnerPrepCourse();
 
@@ -1506,6 +1620,10 @@ describe('InscriptionCourse (e2e)', () => {
       const id = processoB.id;
       const tentativas: (() => request.Test)[] = [
         () => http().get(`/inscription-course/subscribers/${id}`),
+        () =>
+          http().get(
+            `/inscription-course/subscribers/${id}/student/${inscritoB.id}`,
+          ),
         () => http().get(`/inscription-course/waiting-list/${id}`),
         () => http().get(`/inscription-course/send-waiting-list/${id}`),
         () => http().get(`/inscription-course/${id}`),

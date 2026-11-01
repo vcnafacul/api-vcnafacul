@@ -27,6 +27,7 @@ import { ExtendInscriptionCourseDtoInput } from './dtos/extend-inscription-cours
 import { InscriptionCourseDtoOutput } from './dtos/get-all-inscription.dto.output';
 import { GetAllWithNameDtoOutput } from './dtos/get-all-with-name';
 import { OpenInscriptionDtoOutput } from './dtos/open-inscription.dto.output';
+import { GetHistoricoInscritoDtoOutput } from './dtos/get-historico-inscrito.dto.output';
 import { GetSubscribersDtoOutput } from './dtos/get-subscribers.dto.output';
 import { UpdateInscriptionCourseDTOInput } from './dtos/update-inscription-course.dto.input';
 import { InscriptionCourse } from './inscription-course.entity';
@@ -87,6 +88,19 @@ export class InscriptionCourseController {
   ): Promise<GetSubscribersDtoOutput[]> {
     await this.service.garantirDoCursinho(id, (req.user as User).id);
     return await this.service.getSubscribers(id);
+  }
+
+  @Get('subscribers/:id/student/:studentId')
+  @ApiBearerAuth()
+  @UseGuards(PermissionsGuard)
+  @SetMetadata(PermissionsGuard.name, Permissions.gerenciarProcessoSeletivo)
+  async getHistoricoInscrito(
+    @Param('id') id: string,
+    @Param('studentId') studentId: string,
+    @Req() req: Request,
+  ): Promise<GetHistoricoInscritoDtoOutput> {
+    await this.service.garantirDoCursinho(id, (req.user as User).id);
+    return await this.service.getHistoricoInscrito(id, studentId);
   }
 
   @Get('waiting-list/:id')

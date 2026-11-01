@@ -40,8 +40,12 @@ export class GetSubscribersDtoOutput {
   uf_guardiao_legal: string;
   cpf_guardiao_legal: string;
   parentesco_guardiao_legal: string;
-  logs: LogStudent[];
-  documents: DocumentStudentDtoOutput[];
+  // Só no detalhe de um estudante (getStudentDetails). A lista de inscritos
+  // não traz: logs e documentos vêm de `subscribers/:id/student/:studentId`.
+  logs?: LogStudent[];
+  documents?: DocumentStudentDtoOutput[];
+  // Só na lista de inscritos: último "Email de convocação enviado".
+  ultimo_email_convocacao?: Date | null;
   photo: string;
   areas_de_interesse?: string;
   cursos_selecionados?: string;
