@@ -5,6 +5,7 @@ import { GetAllWhereInput } from 'src/shared/modules/base/interfaces/get-all.inp
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { LinkedListRepository } from 'src/shared/modules/linked/linked-list.repository';
 import { EntityManager } from 'typeorm';
+import { LogStudent } from '../studentCourse/log-student/log-student.entity';
 import { StudentCourse } from '../studentCourse/student-course.entity';
 import { InscriptionCourse } from './inscription-course.entity';
 import { Period } from 'src/modules/user/enum/period';
@@ -104,6 +105,12 @@ export class InscriptionCourseRepository extends LinkedListRepository<
     };
   }
 
+  /*
+    Só relações para-um: uma linha por inscrito. Logs e documentos juntos na
+    mesma query multiplicavam as linhas (inscritos × logs × documentos, cada
+    uma repetindo o socioeconômico) — vêm à parte, em
+    `getUltimoEmailConvocacao` e `getHistoricoInscrito`.
+  */
   async getSubscribers(inscriptionId: string) {
     return await this.repository
       .createQueryBuilder('inscription_course')
@@ -111,10 +118,46 @@ export class InscriptionCourseRepository extends LinkedListRepository<
       .leftJoinAndSelect('inscription_course.students', 'student_course')
       .leftJoinAndSelect('student_course.user', 'user')
       .leftJoinAndSelect('student_course.legalGuardian', 'legalGuardian')
+      .getOne();
+  }
+
+  /** Data do último "Email de convocação enviado" de cada inscrito. */
+  async getUltimoEmailConvocacao(
+    studentIds: string[],
+  ): Promise<Map<string, Date>> {
+    const ultimos = new Map<string, Date>();
+    if (studentIds.length === 0) return ultimos;
+    const linhas: { studentId: string; ultimo: Date | string }[] =
+      await this._entityManager
+        .getRepository(LogStudent)
+        .createQueryBuilder('log')
+        .select('log.student_id', 'studentId')
+        .addSelect('MAX(log.created_at)', 'ultimo')
+        .where('log.student_id IN (:...studentIds)', { studentIds })
+        .andWhere('log.description = :descricao', {
+          descricao: 'Email de convocação enviado',
+        })
+        .groupBy('log.student_id')
+        .getRawMany();
+    linhas.forEach((l) => ultimos.set(l.studentId, new Date(l.ultimo)));
+    return ultimos;
+  }
+
+  /** Logs e documentos de um inscrito, só se ele for deste processo. */
+  async getHistoricoInscrito(
+    inscriptionId: string,
+    studentId: string,
+  ): Promise<StudentCourse | null> {
+    return await this._entityManager
+      .getRepository(StudentCourse)
+      .createQueryBuilder('student_course')
+      .innerJoin('student_course.inscriptionCourse', 'inscription_course')
       .leftJoinAndSelect('student_course.logs', 'logs')
       .leftJoinAndSelect('student_course.documents', 'documents')
-      .orderBy('logs.created_at', 'DESC') // Ordena os logs do mais recente para o mais antigo
-      .orderBy('documents.created_at', 'DESC') // Ordena os logs do mais recente para o mais antigo
+      .where('student_course.id = :studentId', { studentId })
+      .andWhere('inscription_course.id = :inscriptionId', { inscriptionId })
+      .orderBy('logs.created_at', 'DESC')
+      .addOrderBy('documents.created_at', 'DESC')
       .getOne();
   }
 
