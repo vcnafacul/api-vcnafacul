@@ -18,6 +18,7 @@ import { ReportMapHome } from './dto/report-map-home';
 import { SearchGeoDtoOutput } from './dto/search-geo.dto.output';
 import { UpdateGeoDTOInput } from './dto/update-geo.dto.input';
 import { StatusLogGeo } from './enum/status-log-geo';
+import { rotulosMotivoRejeicao } from './enum/motivo-rejeicao';
 import { TypeGeo } from './enum/typeGeo';
 import { Geolocation } from './geo.entity';
 import { GeoConfirmationRepository } from './confirmation/geo-confirmation.repository';
@@ -181,9 +182,14 @@ export class GeoService extends BaseService<Geolocation> {
     await this.geoRepository.update(geo);
     await this.invalidarPublico();
 
-    const changes = `Status: ${statusLabels[oldStatus]} -> ${
+    let changes = `Status: ${statusLabels[oldStatus]} -> ${
       statusLabels[geoStatus.status]
     }`;
+    // O motivo fica no log da mudança, que é o que a aba Histórico mostra.
+    if (geoStatus.status === Status.Rejected && geoStatus.motivo) {
+      changes += ` · Motivo: ${rotulosMotivoRejeicao[geoStatus.motivo]}`;
+      if (geoStatus.refuseReason) changes += ` — ${geoStatus.refuseReason}`;
+    }
 
     const logGeo = new LogGeo();
     logGeo.geoId = geo.id;
