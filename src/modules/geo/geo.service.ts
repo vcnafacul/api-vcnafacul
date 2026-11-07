@@ -1,7 +1,6 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { BaseService } from 'src/shared/modules/base/base.service';
-import { OrConditional } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
 import { CacheService } from 'src/shared/modules/cache/cache.service';
 import { EmailService } from 'src/shared/services/email/email.service';
@@ -73,27 +72,10 @@ export class GeoService extends BaseService<Geolocation> {
     return newGeo;
   }
 
-  async findAllByFilter({
-    page,
-    limit,
-    status,
-    text,
-    type,
-  }: ListGeoDTOInput): Promise<GetAllOutput<Geolocation>> {
-    const where: any = { status };
-
-    if (type) {
-      where.type = type;
-    }
-
-    const or = this.generateTextCombinations(text);
-    const data = await this.geoRepository.findAllBy({
-      page: page,
-      limit: limit,
-      where,
-      or,
-    });
-    return data;
+  async findAllByFilter(
+    filtro: ListGeoDTOInput,
+  ): Promise<GetAllOutput<Geolocation>> {
+    return this.geoRepository.listarDoDash(filtro);
   }
 
   /** Aprovados, só com campos públicos (`GET /geo/public`). */
@@ -245,18 +227,6 @@ export class GeoService extends BaseService<Geolocation> {
   private convertDtoToDomain(dto: CreateGeoDTOInput): Geolocation {
     const geolocation = new Geolocation();
     return Object.assign(geolocation, dto) as Geolocation;
-  }
-
-  private generateTextCombinations(text: string): OrConditional[] {
-    const combinations: OrConditional[] = [];
-
-    combinations.push({ prop: 'name', value: text });
-    combinations.push({ prop: 'state', value: text });
-    combinations.push({ prop: 'city', value: text });
-    combinations.push({ prop: 'email', value: text });
-    combinations.push({ prop: 'category', value: text });
-
-    return combinations;
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
