@@ -59,6 +59,15 @@ describe('maskCpf', () => {
   it('should return fallback for undefined', () => {
     expect(maskCpf(undefined)).toBe('***.***.***-**');
   });
+
+  it('should mask a CPF stored only with digits', () => {
+    expect(maskCpf('12345678900')).toBe('***.***.789-00');
+  });
+
+  it('should hide everything when it does not have 11 digits', () => {
+    expect(maskCpf('123456789')).toBe('***.***.***-**');
+    expect(maskCpf('abc')).toBe('***.***.***-**');
+  });
 });
 
 describe('adjustDate', () => {
