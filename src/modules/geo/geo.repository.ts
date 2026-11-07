@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
-import { GetAllWhereInput } from 'src/shared/modules/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/shared/modules/base/interfaces/get-all.output';
-import { Brackets, EntityManager } from 'typeorm';
+import { Brackets, EntityManager, SelectQueryBuilder } from 'typeorm';
 import { BaseRepository } from '../../shared/modules/base/base.repository';
 import { Status } from '../simulado/enum/status.enum';
+import { ListGeoDTOInput, STATUS_TODOS } from './dto/list-geo.dto.input';
 import { CAMPOS_PUBLICOS_GEO } from './dto/public-geo.dto.output';
 import { CONDICAO_VALIDA } from './confirmation/geo-confirmation.repository';
 import { TypeGeo } from './enum/typeGeo';
@@ -19,47 +19,62 @@ export class GeoRepository extends BaseRepository<Geolocation> {
     super(_entityManager.getRepository(Geolocation));
   }
 
-  override async findAllBy({
+  /**
+   * A lista do dash (`GET /geo`). Cada filtro é opcional e soma (E) com os
+   * outros; dentro das revisões, basta QUALQUER uma marcada.
+   */
+  async listarDoDash({
     page,
     limit,
-    where,
-    or,
-  }: GetAllWhereInput): Promise<GetAllOutput<Geolocation>> {
-    const query = this.repository
-      .createQueryBuilder('entity')
+    status,
+    type,
+    text,
+    email,
+    state,
+    city,
+    category,
+    revisoes,
+  }: ListGeoDTOInput): Promise<GetAllOutput<Geolocation>> {
+    const filtrar = (qb: SelectQueryBuilder<Geolocation>) => {
+      // O soft delete o query builder já filtra sozinho.
+      if (status !== STATUS_TODOS) {
+        qb.andWhere('entity.status = :status', { status });
+      }
+      if (type !== undefined) qb.andWhere('entity.type = :type', { type });
+      const contem = (colunas: string[], param: string, valor?: string) => {
+        if (!valor?.trim()) return;
+        qb.andWhere(
+          new Brackets((b) =>
+            colunas.forEach((c) =>
+              b.orWhere(`LOWER(entity.${c}) LIKE LOWER(:${param})`),
+            ),
+          ),
+          { [param]: `%${valor.trim()}%` },
+        );
+      };
+      contem(['name', 'alias', 'campus'], 'text', text);
+      contem(['email', 'email2', 'userEmail'], 'email', email);
+      contem(['city'], 'city', city);
+      if (state) qb.andWhere('entity.state = :state', { state });
+      if (category) qb.andWhere('entity.category = :category', { category });
+      if (revisoes?.length) {
+        // Os nomes vêm de REVISOES_GEO (validados no DTO), não do usuário.
+        qb.andWhere(
+          new Brackets((b) =>
+            revisoes.forEach((r) => b.orWhere(`entity.${r} = true`)),
+          ),
+        );
+      }
+      return qb;
+    };
+
+    const totalItems = await filtrar(
+      this.repository.createQueryBuilder('entity'),
+    ).getCount();
+    const data = await filtrar(this.repository.createQueryBuilder('entity'))
       .orderBy('entity.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit)
-      .where({ ...where });
-
-    const queryTotalItems = await this.repository
-      .createQueryBuilder('entity')
-      .where({ ...where });
-
-    if (or?.length > 0) {
-      query.andWhere(
-        new Brackets((qb) => {
-          or?.map((o) => {
-            qb.orWhere(`LOWER(entity.${o.prop}) LIKE LOWER(:text)`, {
-              text: `%${o.value}%`,
-            });
-          });
-        }),
-      );
-
-      queryTotalItems.andWhere(
-        new Brackets((qb) => {
-          or?.map((o) => {
-            qb.orWhere(`LOWER(entity.${o.prop}) LIKE LOWER(:text)`, {
-              text: `%${o.value}%`,
-            });
-          });
-        }),
-      );
-    }
-
-    const totalItems = await queryTotalItems.getCount();
-    const data = await query
       .leftJoinAndSelect('entity.logs', 'logs')
       .leftJoin('logs.user', 'user')
       .addSelect([
