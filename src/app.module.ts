@@ -52,6 +52,7 @@ import { ChatModule } from './modules/chat/chat.module';
 import { FirebaseModule } from './shared/modules/firebase/firebase.module';
 import { PushAdminModule } from './modules/push/admin/push-admin.module';
 import { PushModule } from './modules/push/push.module';
+import { EmailWhitelistModule } from './modules/email-whitelist/email-whitelist.module';
 
 /**
  * Desabilita ThrottlerGuard em ambiente de teste para evitar erros 429
@@ -137,6 +138,7 @@ const throttlerProvider: Provider = isTestEnv
     PushModule,
     PushAdminModule,
     ChatModule,
+    EmailWhitelistModule,
   ],
   controllers: [AppController],
   providers: [
