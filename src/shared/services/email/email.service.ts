@@ -1,9 +1,11 @@
 /* istanbul ignore file */
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { format } from 'date-fns';
 import * as nodemailer from 'nodemailer';
 import * as hbs from 'nodemailer-express-handlebars';
 import * as path from 'path';
+import { DataSource, In } from 'typeorm';
+import { EmailWhitelist } from 'src/modules/email-whitelist/email-whitelist.entity';
 import { Geolocation } from 'src/modules/geo/geo.entity';
 import { User } from 'src/modules/user/user.entity';
 import { EnvService } from 'src/shared/modules/env/env.service';
@@ -17,18 +19,31 @@ import { sendEmail } from './templates/reset-password';
 import { sendEmailWaitingList } from './templates/waiting-list';
 import { sendEssayReviewNotification } from './templates/essay-review-notification';
 import { sendEmailConviteColaborador } from './templates/convite-colaborador';
+import {
+  collectRecipients,
+  MailOptions,
+  replaceFromAddress,
+  splitByWhitelist,
+} from './email-routing';
 
 @Injectable()
 export class EmailService {
-  private transporter;
+  // Fachada com sendMail: escolhe o SMTP por destinatário (ver route).
+  private transporter: { sendMail: (options: MailOptions) => Promise<void> };
+  private blockedTransporter;
+  // SMTP "liberado" para a whitelist — só existe fora de produção.
+  private releasedTransporter = null;
   private readonly logger = new Logger(EmailService.name);
 
-  constructor(private envService: EnvService) {
+  constructor(
+    private envService: EnvService,
+    @Optional() private dataSource?: DataSource,
+  ) {
     const isProd = this.envService.get('NODE_ENV') === 'production';
     const useFakeSmtp =
       !isProd && this.envService.get('USE_SMTP_FAKE') === true;
 
-    this.transporter = nodemailer.createTransport({
+    this.blockedTransporter = nodemailer.createTransport({
       host: useFakeSmtp
         ? this.envService.get('SMTP_FAKE_HOST')
         : this.envService.get('SMTP_HOST'),
@@ -50,6 +65,23 @@ export class EmailService {
       this.logger.warn('SMTP_FAKE ativo: usando fake SMTP sem autenticação');
     }
 
+    const releasedHost = this.envService.get('SMTP_RELEASED_HOST');
+    if (useFakeSmtp && releasedHost && this.dataSource) {
+      const port = Number(this.envService.get('SMTP_RELEASED_PORT'));
+      this.releasedTransporter = nodemailer.createTransport({
+        host: releasedHost,
+        port,
+        secure: port === 465,
+        auth: {
+          user: this.envService.get('SMTP_RELEASED_USERNAME'),
+          pass: this.envService.get('SMTP_RELEASED_PASSWORD'),
+        },
+      });
+      this.logger.warn(
+        'SMTP liberado ativo: e-mails da whitelist saem pelo SMTP real',
+      );
+    }
+
     const templatePath = path.resolve(this.envService.get('TEMPLATE_EMAIL'));
     const handlebarOptions = {
       viewEngine: {
@@ -58,7 +90,44 @@ export class EmailService {
       },
       viewPath: templatePath,
     };
-    this.transporter.use('compile', hbs(handlebarOptions));
+    this.blockedTransporter.use('compile', hbs(handlebarOptions));
+    this.releasedTransporter?.use('compile', hbs(handlebarOptions));
+
+    this.transporter = { sendMail: (options) => this.route(options) };
+  }
+
+  /**
+   * Sem SMTP liberado, tudo segue pelo transporter de sempre. Com ele, os
+   * destinatários da whitelist recebem uma cópia pelo liberado e os demais
+   * (incluindo BCC fixo e o "to" falso dos envios em massa) ficam no fake.
+   */
+  private async route(options: MailOptions): Promise<void> {
+    if (!this.releasedTransporter) {
+      await this.blockedTransporter.sendMail(options);
+      return;
+    }
+
+    const whitelist = await this.findWhitelisted(collectRecipients(options));
+    const { released, blocked } = splitByWhitelist(options, (a) =>
+      whitelist.has(a),
+    );
+
+    if (blocked) await this.blockedTransporter.sendMail(blocked);
+    if (released) {
+      released.from = replaceFromAddress(
+        released.from,
+        this.envService.get('SMTP_RELEASED_USERNAME'),
+      );
+      await this.releasedTransporter.sendMail(released);
+    }
+  }
+
+  private async findWhitelisted(emails: string[]): Promise<Set<string>> {
+    if (!emails.length) return new Set();
+    const rows = await this.dataSource
+      .getRepository(EmailWhitelist)
+      .find({ where: { email: In(emails) }, select: ['email'] });
+    return new Set(rows.map((r) => r.email.toLowerCase()));
   }
 
   /**

@@ -49,6 +49,12 @@ export const envSchema = z.object({
     .transform((v) => v === 'true'),
   SMTP_FAKE_HOST: z.string().default('mailpit'),
   SMTP_FAKE_PORT: z.coerce.number().default(1025),
+  // SMTP "liberado": só fora de produção e com USE_SMTP_FAKE=true. Os e-mails
+  // da tabela email_whitelist saem por ele; o resto continua no SMTP_FAKE.
+  SMTP_RELEASED_HOST: z.string().optional(),
+  SMTP_RELEASED_PORT: z.coerce.number().default(465),
+  SMTP_RELEASED_USERNAME: z.string().optional(),
+  SMTP_RELEASED_PASSWORD: z.string().optional(),
 
   //S3
   BLOB_PROVIDER: z.enum(['S3']).default('S3'),
