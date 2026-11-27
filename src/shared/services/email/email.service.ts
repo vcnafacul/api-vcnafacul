@@ -124,9 +124,10 @@ export class EmailService {
 
   private async findWhitelisted(emails: string[]): Promise<Set<string>> {
     if (!emails.length) return new Set();
-    const rows = await this.dataSource
-      .getRepository(EmailWhitelist)
-      .find({ where: { email: In(emails) }, select: ['email'] });
+    const rows = await this.dataSource.getRepository(EmailWhitelist).find({
+      where: { email: In(emails), isActived: true },
+      select: ['email'],
+    });
     return new Set(rows.map((r) => r.email.toLowerCase()));
   }
 

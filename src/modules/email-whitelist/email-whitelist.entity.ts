@@ -22,4 +22,15 @@ export class EmailWhitelist {
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt: Date;
+
+  /** Fim da liberação: 30 dias depois do cadastro (ver validadeDaLiberacao). */
+  @Column({ name: 'expired_at', type: 'timestamp' })
+  expiredAt: Date;
+
+  /**
+   * É isto que o envio olha. O cron `email-whitelist-vencidos` desliga quem
+   * passou do `expired_at`, de hora em hora.
+   */
+  @Column({ name: 'is_actived', type: 'boolean', default: true })
+  isActived: boolean;
 }
